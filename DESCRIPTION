@@ -1,0 +1,49 @@
+Package: DeepPatientLevelPrediction
+Type: Package
+Title: Package for deep learning patient level prediction using data in the OMOP Common Data
+    Model
+Version: 0.0.1
+Date: 2021-06-07
+Authors@R: c(
+    person("Jenna", "Reps", email = "jreps@its.jnj.com", role = c("aut", "cre")),
+    person("Seng", "Chan You", role = c("aut")),
+    person("Egill", "Friogeirsson", role = c("aut"))
+    )
+    
+Maintainer: Jenna Reps <jreps@its.jnj.com>
+Description: A package for creating deep learning patient level prediction models following
+the OHDSI PatientLevelPrediction framework.
+License: Apache License 2.0
+URL: https://ohdsi.github.io/PatientLevelPrediction, https://github.com/OHDSI/DeepPatientLevelPrediction
+BugReports: https://github.com/OHDSI/DeepPatientLevelPrediction/issues
+VignetteBuilder: knitr
+Depends:
+    R (>= 3.3.0),
+    FeatureExtraction (>= 3.0.0)
+Imports:
+    Andromeda,
+    DatabaseConnector (>= 3.0.0),
+    dplyr,
+    knitr,
+    magrittr,
+    Matrix,
+    ParallelLogger (>= 2.0.0),
+    reshape2,
+    reticulate (> 1.16),
+    RSQLite,
+    slam,
+    SqlRender (>= 1.1.3),
+    tibble,
+    tidyr,
+Suggests:
+    devtools,
+    keras,
+    plyr,  
+    tensorflow,
+    testthat
+Remotes:
+    ohdsi/FeatureExtraction
+LinkingTo: Rcpp
+NeedsCompilation: yes
+RoxygenNote: 7.1.1
+Encoding: UTF-8
