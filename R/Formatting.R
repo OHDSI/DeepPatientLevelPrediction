@@ -309,6 +309,7 @@ toSparseTorchPython <- function(plpData,population, map=NULL, temporal=F, python
   }
   
   if(temporal==T){
+    if (nonTemporalCovs==T) {
     # add the age and non-temporal data
     timeIds <- unique(plpData$timeRef$timeId)
     normFactors <- attr(plpData$covariateData, 'metaData')$normFactors
@@ -324,7 +325,7 @@ toSparseTorchPython <- function(plpData,population, map=NULL, temporal=F, python
       }
       tempData <- NULL
     }
-    
+    }
     # add the rest
     tempData <- newcovariateData$covariates %>%
       dplyr::filter(.data$timeId!=0) %>%
@@ -423,6 +424,7 @@ addAgeTemp <- function(time, newcovariateData, timeRef, normFactors){
     dplyr::filter(.data$oldCovariateId == 1002) %>%
     dplyr::select(.data$newCovariateId))$newCovariateId
   
+  #check if age has been normalized
   if (!is.null(normFactors)) {
     normFactorAge <- normFactors %>% filter(covariateId == 1002) %>% pull(maxValue)
   }
