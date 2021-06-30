@@ -22,6 +22,7 @@ from pathlib import Path
 # --------------------------------------------------------------------------- #
 import sqlalchemy
 import pandas as pd
+import pyreadr
 
 # --------------------------------------------------------------------------- #
 #                  OWN IMPORTS                                                #
@@ -41,7 +42,14 @@ __status__ = 'Development'
 #                  GLOBAL VARIABLES                                           #
 # --------------------------------------------------------------------------- #
 # sqlite database engine
-db_engine = []
+db_engine = None
+
+# data read from .RDS files
+outcomes = None
+cohorts = None
+meta_data = None
+time_ref = None
+cov_rds = None
 
 
 # --------------------------------------------------------------------------- #
@@ -55,7 +63,9 @@ def load_plp_data(path):
     global db_engine
     sqlite_path = __uncompress_covariates(Path(path, "covariates"))
     __create_sqlite_engine(sqlite_path)
-    __test_sqlite_connection()
+    # __test_sqlite_connection()
+    __read_rds_files(path, sqlite_path)
+    print(outcomes[None])
     covariate_ref = pd.read_sql('select * from covariateRef', db_engine)
 
     return covariate_ref
@@ -74,17 +84,62 @@ def __uncompress_covariates(path_to_covariates):
 
 
 def __create_sqlite_engine(sqlite_path):
+    """Create the database engine to query SQLite database
+    :param sqlite_path: Path to uncompressed folder holding the SQLite database
+    :return:
+    """
     global db_engine
     rel_sqlite_db_path = list(Path(sqlite_path).glob("*.sqlite"))
-    print(type(rel_sqlite_db_path[0]))
-    db_engine = sqlalchemy.create_engine('sqlite:///'+str(rel_sqlite_db_path[0]))
+    db_engine = sqlalchemy.create_engine(
+        'sqlite:///' + str(rel_sqlite_db_path[0]))
 
 
 def __test_sqlite_connection():
+    """Just a testing function, which will be expanded or removed later
+    :return:
+    """
     # check tables: ['analysisRef', 'covariateRef', 'covariates']
-    print(db_engine.table_names())
+    global db_engine
+    inspector = sqlalchemy.inspect(db_engine)
+    inspect_tables = inspector.get_table_names()
+    print('Tables: %s' % inspect_tables)
+
     # Read data with pandas
     print(pd.read_sql('select * from covariateRef', db_engine))
+
+
+def __read_rds_files(path, sqlite_path):
+    """Read .RDS files from Andromeda object
+    :param path: Path to Andromeda object
+    :param sqlite_path: Path to uncompressed folder holding the SQLite database
+    :return:
+    """
+    global outcomes, cohorts, meta_data, time_ref, cov_rds
+
+    try:
+        outcomes = pyreadr.read_r(Path(path, "outcomes.rds"))
+    except pyreadr.custom_errors.LibrdataError:
+        print("Andromeda file outcomes.rds could not be read.")
+
+    try:
+        cohorts = pyreadr.read_r(Path(path, "cohorts.rds"))
+    except pyreadr.custom_errors.LibrdataError:
+        print("Andromeda file cohorts.rds could not be read.")
+
+    try:
+        meta_data = pyreadr.read_r(Path(path, "metaData.rds"))
+    except pyreadr.custom_errors.LibrdataError:
+        print("Andromeda file metaData.rds could not be read.")
+
+    try:
+        time_ref = pyreadr.read_r(Path(path, "timeRef.rds"))
+    except pyreadr.custom_errors.LibrdataError:
+        print("Andromeda file timeRef.rds could not be read.")
+
+    try:
+        cov_rds = pyreadr.read_r(str(list(Path(sqlite_path).glob("*.rds"))[0]))
+    except pyreadr.custom_errors.LibrdataError:
+        print("Andromeda file outcomes.rds could not be read.")
 
 # --------------------------------------------------------------------------- #
 #                  END OF FILE                                                #
