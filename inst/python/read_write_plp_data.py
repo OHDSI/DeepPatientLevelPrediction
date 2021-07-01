@@ -84,6 +84,17 @@ class ReadWritePlpData:
         except pyreadr.custom_errors.LibrdataError as err:
             print("Handling LibrdataError: Population could not be read.", err)
 
+    def get_population_data(self):
+        if self.population is not None and self.db_engine is not None:
+            covariates = pd.read_sql('select * from covariates',
+                                     self.db_engine)
+            population_data = covariates[covariates["rowId"]
+                .isin(self.population["rowId"])]
+            return population_data
+        warnings.warn("No population loaded or no connection to SQLite." +
+                      "First run load_population() and load_plp_data().")
+        return None
+
     def get_population(self):
         """Returns population
         :return: Population
@@ -192,18 +203,21 @@ class ReadWritePlpData:
             print("Handling LibrdataError: Andromeda file cohorts.rds could" +
                   " not be read.", err)
 
+        # ToDo: loading metaData.rds not working properly yet
         try:
             self.meta_data = pyreadr.read_r(str(Path(path, "metaData.rds")))
         except pyreadr.custom_errors.LibrdataError as err:
             print("Handling LibrdataError: Andromeda file metaData.rds could" +
                   " not be read.", err)
 
+        # ToDo: loading timeRef.rds not working properly yet
         try:
             self.time_ref = pyreadr.read_r(str(Path(path, "timeRef.rds")))
         except pyreadr.custom_errors.LibrdataError as err:
             print("Handling LibrdataError: Andromeda file timeRef.rds could" +
                   " not be read.", err)
 
+        # ToDo: loading SQLiteite .rds not working properly yet
         try:
             self.cov_rds = pyreadr.read_r(str(list(Path(sqlite_path)
                                                    .glob("*.rds"))[0]))
