@@ -1,3 +1,6 @@
+{DEFAULT @end_day == 0}
+{DEFAULT @start_day == -99999}
+
 -- Feature construction
 SELECT 
 CAST(@domain_concept_id AS BIGINT) * 1000 + @analysis_id AS covariate_id,
@@ -40,6 +43,7 @@ FROM (
   ON cohort.subject_id = @domain_table.person_id
 
     WHERE @domain_start_date <= DATEADD(DAY, @end_day, cohort.cohort_start_date)
+    AND @domain_start_date >= DATEADD(DAY, @start_day, cohort.cohort_start_date)
     AND @domain_concept_id != 0
 
   {@sub_type == 'inpatient'} ? {	AND condition_type_concept_id IN (38000183, 38000184, 38000199, 38000200)}
@@ -80,11 +84,15 @@ INSERT INTO #analysis_ref (
 analysis_id,
 analysis_name,
 domain_id,
+start_day,
+end_day,
 is_binary,
 missing_means_zero
 )
 SELECT @analysis_id AS analysis_id,
 CAST('@analysis_name' AS VARCHAR(512)) AS analysis_name,
 CAST('@domain_id' AS VARCHAR(20)) AS domain_id,
+@start_day AS start_day,
+@end_day AS end_day,
 CAST('Y' AS VARCHAR(1)) AS is_binary,
 CAST(NULL AS VARCHAR(1)) AS missing_means_zero;
