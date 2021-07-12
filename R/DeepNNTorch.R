@@ -284,8 +284,8 @@ trainDeepNNTorch <-function(plpData, population,
       rows <- sample(train_rows, batch_size, replace = F)
       y <- population$y[population$indexes!=index,1:2][rows,]
       
-      x_train <- torch_tensor(as.matrix(data[rows,]), dtype = torch_float())
-      y_train <- torch_tensor(y, dtype = torch_float())
+      x_train <- torch::torch_tensor(as.matrix(data[rows,]), dtype = torch::torch_float())
+      y_train <- torch::torch_tensor(y, dtype = torch::torch_float())
       pred_temp <- model(x_train)
       
       print(model)
@@ -295,9 +295,11 @@ trainDeepNNTorch <-function(plpData, population,
       )
       
       criterion = torch::nn_bce_loss() #Binary crossentropy only
-      optimizer = optim_adam(model$parameters, lr = lr)
+      optimizer = torch::optim_adam(model$parameters, lr = lr)
       
       # Need earlyStopping
+      # Need setting decay
+      
       for(i in 1:epochs){
         optimizer$zero_grad()
         y_pred = model(x_train)
@@ -325,7 +327,7 @@ trainDeepNNTorch <-function(plpData, population,
       prediction$value <- 0
       
       for(batch in batches){
-        b <- torch_tensor(as.matrix(plpData[population$rowId[population$indexes == index],][batch,,drop = F]), dtype = torch_float())
+        b <- torch::torch_tensor(as.matrix(plpData[population$rowId[population$indexes == index],][batch,,drop = F]), dtype = torch::torch_float())
         pred <- model(b)
         prediction$value[batch] <- as.array(pred$to())[,1]
       }
@@ -432,8 +434,8 @@ trainDeepNNTorch <-function(plpData, population,
     rows <- sample(train_rows, batch_size, replace = F)
     y <- population$y[,1:2][rows,]
     
-    x_train <- torch_tensor(as.matrix(data[rows,]), dtype = torch_float())
-    y_train <- torch_tensor(y, dtype = torch_float())
+    x_train <- torch::torch_tensor(as.matrix(data[rows,]), dtype = torch::torch_float())
+    y_train <- torch::torch_tensor(y, dtype = torch::torch_float())
     pred_temp <- model(x_train)
     
     print(model)
@@ -443,7 +445,7 @@ trainDeepNNTorch <-function(plpData, population,
     )
     
     criterion = torch::nn_bce_loss() #Binary crossentropy only
-    optimizer = optim_adam(model$parameters, lr = lr)
+    optimizer = torch::optim_adam(model$parameters, lr = lr)
     
     # Need earlyStopping
     for(i in 1:epochs){
@@ -474,7 +476,7 @@ trainDeepNNTorch <-function(plpData, population,
     prediction$value <- 0
     
     for(batch in batches){
-      b <- torch_tensor(as.matrix(plpData[batch,,drop = F]), dtype = torch_float())
+      b <- torch::torch_tensor(as.matrix(plpData[batch,,drop = F]), dtype = torch::torch_float())
       pred <- model(b)
       prediction$value[batch] <- as.array(pred$to())[,1]
     }
