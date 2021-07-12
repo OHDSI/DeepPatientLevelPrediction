@@ -458,6 +458,9 @@ savePlpModel <- function(plpModel, dirPath){
     if(attr(plpModel, 'type')=='deepMulti'){
       saveRDS(attr(plpModel, 'inputs'), file = file.path(dirPath,  "inputs_attr.rds"))
     }
+    if(attr(plpModel, 'type')=='deepNNTorch'){
+      torch::torch_save(model, file = file.path(dirPath,  "model.rt"))
+    }
   } else if(attr(plpModel, 'type') == "xgboost"){
     # fixing xgboost save/load issue
     xgboost::xgb.save(model = plpModel$model, fname = file.path(dirPath, "model"))

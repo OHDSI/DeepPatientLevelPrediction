@@ -535,6 +535,30 @@ predict.deepMulti <- function(plpModel, population, plpData,   ...){
   }
 }
 
+predict.deepNNTorch <- function(plpModel, population, plpData,   ...){
+  # ensure_installed("torch")
+  
+  ParallelLogger::logDebug(paste0('timeRef null: ',is.null(plpData$timeRef)))
+  ParallelLogger::logTrace('temporal')
+  result<-toSparseM(plpData,population,map=plpModel$covariateMap)
+  
+  data <-result$data[population$rowId,,]
+  
+  batch_size <- min(10000, length(population$rowId))
+  maxVal <- length(population$rowId)
+  batches <- lapply(1:ceiling(maxVal/batch_size), function(x) ((x-1)*batch_size+1):min((x*batch_size),maxVal))
+  prediction <- population
+  prediction$value <- 0
+  
+  for(batch in batches){
+    b <- torch_tensor(as.matrix(data[batch,,]), dtype = torch_float())
+    pred <- plpModel$model(b)
+    prediction$value[batch] <- as.array(pred$to())[,1]
+  }
+  
+  prediction <- prediction[,colnames(prediction)%in%c('rowId','subjectId','cohortStartDate','outcomeCount','indexes', 'value')] # need to fix no index issue
+  return(prediction)
+}
 
 #' Create predictive probabilities
 #'
