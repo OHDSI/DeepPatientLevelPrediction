@@ -183,7 +183,7 @@ toSparseM <- function(plpData,population, map=NULL, temporal=F){
 }
 
 # restricts to pop and saves/creates mapping
-MapCovariates <- function(covariateData,population, mapping){
+MapCovariates <- function(covariateData,population, mapping=NULL){
   
   # to remove check notes
   #covariateId <- oldCovariateId <- newCovariateId <- NULL
@@ -196,7 +196,7 @@ MapCovariates <- function(covariateData,population, mapping){
   ParallelLogger::logTrace('restricting to population for speed and mapping')
   if(is.null(mapping)){
     mapping <- data.frame(oldCovariateId = as.data.frame(covariateData$covariateRef %>% dplyr::select(.data$covariateId)),
-                          newCovariateId = 1:nrow(covariateData$covariateRef))
+                          newCovariateId = 1:nrow(as.data.frame(covariateData$covariateRef)))
   }
   if(sum(colnames(mapping)%in%c('oldCovariateId','newCovariateId'))!=2){
     colnames(mapping) <- c('oldCovariateId','newCovariateId')
@@ -236,6 +236,7 @@ MapCovariates <- function(covariateData,population, mapping){
 #' @param map                           A covariate map (telling us the column number for covariates)
 #' @param temporal                      Whether to include timeId into tensor
 #' @param pythonExePath                 Location of python exe you want to use
+#' @param nonTemporalCovs               If non-temporal covariates (such as age or sex) should be included in temporal sparse matrix 
 #' @examples
 #' #TODO
 #'
@@ -249,7 +250,8 @@ MapCovariates <- function(covariateData,population, mapping){
 #' }
 #'
 #' @export
-toSparseTorchPython <- function(plpData,population, map=NULL, temporal=F, pythonExePath=NULL){
+toSparseTorchPython <- function(plpData,population, map=NULL, temporal=F, pythonExePath=NULL,
+                                nonTemporalCovs=F){
   
   map_python_initiate <- map_python <- function(){return(NULL)}
   
@@ -273,7 +275,7 @@ toSparseTorchPython <- function(plpData,population, map=NULL, temporal=F, python
   
   maxT <- NULL
   if(temporal){
-    maxT <- as.data.frame(newcovariateData$covariates$timeId %>% dplyr::summarise(max = max(.data$id, na.rm=T)))
+    maxT <- as.data.frame(newcovariateData$covariates %>% dplyr::summarise(max = max(timeId, na.rm = TRUE)))$max
     ParallelLogger::logDebug(paste0('Max timeId: ', maxT))
   }
   
@@ -286,10 +288,7 @@ toSparseTorchPython <- function(plpData,population, map=NULL, temporal=F, python
   
   dataEnv <- e # adding to remove <<- 
   #dataPlp <<- map_python_initiate(maxCol = as.integer(maxCol), 
-  dataPlp <- map_python_initiate(maxCol = as.integer(maxCol), 
-                                         maxRow = as.integer(maxRow), 
-                                         maxT= as.integer(maxT))
-  
+  dataPlp <- NULL
   convertData <- function(batch, temporal=T, dataEnv) {
     if(temporal){
       #dataPlp <<- map_python(matrix = dataPlp ,
@@ -310,10 +309,12 @@ toSparseTorchPython <- function(plpData,population, map=NULL, temporal=F, python
   }
   
   if(temporal==T){
+    if (nonTemporalCovs==T) {
     # add the age and non-temporal data
     timeIds <- unique(plpData$timeRef$timeId)
+    normFactors <- attr(plpData$covariateData, 'metaData')$normFactors
     for(timeId in timeIds){
-      tempData <- addAgeTemp(timeId, newcovariateData)
+      tempData <- addAgeTemp(timeId, newcovariateData, plpData$timeRef, normFactors)
       if(!is.null(tempData)){
         Andromeda::batchApply(tempData, convertData,temporal =T, batchSize = 100000, dataEnv=dataEnv)
       }
@@ -324,7 +325,7 @@ toSparseTorchPython <- function(plpData,population, map=NULL, temporal=F, python
       }
       tempData <- NULL
     }
-    
+    }
     # add the rest
     tempData <- newcovariateData$covariates %>%
       dplyr::filter(.data$timeId!=0) %>%
@@ -415,30 +416,38 @@ reformatPerformance <- function(train, test, analysisId){
 
 
 # helpers for converting temporal PLP data to matrix/tensor
-addAgeTemp <- function(timeId, newcovariateData, timeRef){
+addAgeTemp <- function(time, newcovariateData, timeRef, normFactors){
   
-  startDay <- as.data.frame(timeRef[timeRef$timeId==timeId,])$startDay
+  startDay <- as.data.frame(timeRef[timeRef$timeId==time,])$startDay
   
   ageId <- as.data.frame(newcovariateData$mapping %>% 
     dplyr::filter(.data$oldCovariateId == 1002) %>%
     dplyr::select(.data$newCovariateId))$newCovariateId
   
+  #check if age has been normalized
+  if (!is.null(normFactors)) {
+    normFactorAge <- normFactors %>% filter(covariateId == 1002) %>% pull(maxValue)
+  }
+  else{
+    normFactorAge <- 1
+  }
+    
   ageData <- newcovariateData$covariates%>% # changed from plpData$covariateData
     dplyr::filter(.data$covariateId == ageId) %>%
-    dplyr::mutate(covariateValueNew = .data$covariateValue*365 + startDay,
-                  timeId = timeId) %>%
+    dplyr::mutate(covariateValueNew = .data$covariateValue + startDay / (365 * normFactorAge),
+                  timeId = time) %>%
     dplyr::select(- .data$covariateValue) %>%
     dplyr::rename(covariateValue = .data$covariateValueNew) %>%
     dplyr::select(.data$rowId,.data$covariateId,.data$covariateValue, .data$timeId)
   
-  if(nrow(ageData)==0){
+  if(nrow(as.data.frame(ageData))==0){
     return(NULL)
   }
   return(ageData)
 }
 
 
-addNonAgeTemp <- function(timeId, newcovariateData){
+addNonAgeTemp <- function(time, newcovariateData){
 
   ageId <- as.data.frame(newcovariateData$mapping %>% 
                            dplyr::filter(.data$oldCovariateId == 1002) %>%
@@ -447,10 +456,10 @@ addNonAgeTemp <- function(timeId, newcovariateData){
   otherTempCovs <- newcovariateData$covariates%>% 
     dplyr::filter(is.na(.data$timeId)) %>%
     dplyr::filter(.data$covariateId != ageId) %>%
-    dplyr::mutate(timeId = timeId) %>%
+    dplyr::mutate(timeId = time) %>%
     dplyr::select(.data$rowId,.data$covariateId,.data$covariateValue,.data$timeId)
   
-  if(nrow(otherTempCovs)==0){
+  if(nrow(as.data.frame(otherTempCovs))==0){
     return(NULL)
   }
   return(otherTempCovs)
