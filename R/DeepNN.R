@@ -119,7 +119,7 @@ fitDeepNN <- function(plpData,population, param, search='grid', quiet=F,
   
   start<-Sys.time()
   
-  result<- toSparseM(plpData,population,map=NULL, temporal=F)
+  result<- toSparseMDeep(plpData,population,map=NULL, temporal=F)
   data <- result$data
   
   #one-hot encoding

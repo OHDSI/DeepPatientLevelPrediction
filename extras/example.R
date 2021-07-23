@@ -27,8 +27,19 @@ covSetT <- createTemporalSequenceCovariateSettings(useDemographicsGender = T,
                                                   sequenceEndDay = -1, 
                                                   sequenceStartDay = -365*5)
 
-
 plpData <- PatientLevelPrediction::getPlpData(connectionDetails = connectionDetails, 
+                                               cdmDatabaseSchema = "main",
+                                               cohortId = 1, 
+                                               outcomeIds = 3, 
+                                               cohortDatabaseSchema = "main", 
+                                               cohortTable = "cohort", 
+                                               outcomeDatabaseSchema = "main", 
+                                               outcomeTable =  "cohort", 
+                                               firstExposureOnly = T, 
+                                               washoutPeriod = 365, 
+                                               covariateSettings = covSet
+)
+plpDataT <- PatientLevelPrediction::getPlpData(connectionDetails = connectionDetails, 
                                    cdmDatabaseSchema = "main",
                                    cohortId = 1, 
                                    outcomeIds = 3, 
@@ -38,7 +49,7 @@ plpData <- PatientLevelPrediction::getPlpData(connectionDetails = connectionDeta
                                    outcomeTable =  "cohort", 
                                    firstExposureOnly = T, 
                                    washoutPeriod = 365, 
-                                   covariateSettings = covSet
+                                   covariateSettings = covSetT
                                    )
 
 population <- PatientLevelPrediction::createStudyPopulation(plpData = plpData, 
@@ -48,6 +59,13 @@ population <- PatientLevelPrediction::createStudyPopulation(plpData = plpData,
                                                             riskWindowEnd = 365)
 
 ##sparseMat <- toSparseRTorch(plpData, population, map=NULL, temporal=T)
+x <- toSparseMDeep(plpData ,population, 
+              map=NULL, 
+              temporal=F)
+
+x2 <- toSparseMDeep(plpDataT ,population, 
+                   map=NULL, 
+                   temporal=T)
 
 # code to train models
 deepset <- setDeepNNTorch(units=list(c(128, 64), 128), layer_dropout=c(0.2),
