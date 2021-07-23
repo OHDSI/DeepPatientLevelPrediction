@@ -101,7 +101,7 @@ setDeepNNTorch <- function(units=list(c(128, 64), 128), layer_dropout=c(0.2),
   return(result)
 }
 
-
+#' @export
 fitDeepNNTorch <- function(plpData,population, param, search='grid', quiet=F,
                       outcomeId, cohortId, ...){
   # check plpData is coo format:
@@ -112,6 +112,11 @@ fitDeepNNTorch <- function(plpData,population, param, search='grid', quiet=F,
     warning('Data temporal but current deepNNTorch uses non-temporal data...')
     # This can be changed after supporting the temporal covariates.
   }
+  if(!is.null(plpData$metaData$call$covariateSettings$temporalSequence)){
+    if(plpData$metaData$call$covariateSettings$temporalSequence){
+    warning('Data temporal but current deepNNTorch uses non-temporal data...')
+    # This can be changed after supporting the temporal covariates.
+  }}
   
   metaData <- attr(population, 'metaData')
   if(!is.null(population$indexes))
@@ -184,12 +189,13 @@ fitDeepNNTorch <- function(plpData,population, param, search='grid', quiet=F,
 trainDeepNNTorch <-function(plpData, population,
                       units1=128, units2= NA, units3=NA, 
                       layer_dropout=0.2,
-                      lr =1e-4, decay=1e-5, outcome_weight = 1.0, batch_size = 100, 
-                      epochs= 100, seed=NULL, train=TRUE){
+                      lr =1e-4, decay=1e-5, outcome_weight = 1.0, batch_size = 10000, 
+                      epochs= 100, seed=NULL, train=TRUE,...){
   
-  ParallelLogger::logInfo(paste('Training deep neural network using Torch with ',length(unique(population$indexes)),' fold CV'))
   if(!is.null(population$indexes) && train==T){
     index_vect <- unique(population$indexes)
+    ParallelLogger::logInfo(paste('Training deep neural network using Torch with ',length(index_vect ),' fold CV'))
+    
     perform <- c()
     
     # create prediction matrix to store all predictions
@@ -202,97 +208,28 @@ trainDeepNNTorch <-function(plpData, population,
       ParallelLogger::logInfo(paste('Fold ',index, ' -- with ', sum(population$indexes!=index),'train rows'))
       
       if(is.na(units2)){
-        net <- torch::nn_module(
-          "classic_net",
-          
-          initialize = function(){
-            self$linear1 = torch::nn_linear(ncol(plpData), units1)
-            self$linear2 = torch::nn_linear(units1, 2)
-            self$softmax = torch::nn_softmax(2)
-          },
-          
-          forward = function(x){
-            x %>%
-              self$linear1() %>%
-              torch::nnf_dropout(p = layer_dropout) %>%
-              self$linear2() %>%
-              torch::nnf_dropout(p = layer_dropout) %>%
-              self$softmax()
-          }
-        )
-        model <- net()
+        model <- singleLayerNN(inputN = ncol(plpData),
+                               layer1 = units1, 
+                               outputN = 2, 
+                               layer_dropout = layer_dropout)
+        
       } else if(is.na(units3)){
-        net <- torch::nn_module(
-          "classic_net",
-          
-          initialize = function(){
-            self$linear1 = torch::nn_linear(ncol(plpData), units1)
-            self$linear2 = torch::nn_linear(units1, units2)
-            self$linear3 = torch::nn_linear(units2, 2)
-            self$softmax = torch::nn_softmax(2)
-          },
-          
-          forward = function(x){
-            x %>%
-              self$linear1() %>%
-              torch::nnf_dropout(p = layer_dropout) %>%
-              self$linear2() %>%
-              torch::nnf_dropout(p = layer_dropout) %>%
-              self$linear3() %>%
-              self$softmax()
-          }
-        )
-        model <- net()
+        model <- doubleLayerNN(inputN = ncol(plpData),
+                               layer1 = units1,
+                               layer2 = units2,
+                               outputN = 2, 
+                               layer_dropout = layer_dropout)
       } else{
-        net <- torch::nn_module(
-          "classic_net",
-          
-          initialize = function(){
-            self$linear1 = torch::nn_linear(ncol(plpData), units1)
-            self$linear2 = torch::nn_linear(units1, units2)
-            self$linear3 = torch::nn_linear(units2, units3)
-            self$linear4 = torch::nn_linear(units3, 2)
-            self$softmax = torch::nn_softmax(2)
-          },
-          
-          forward = function(x){
-            x %>%
-              self$linear1() %>%
-              torch::nnf_dropout(p = layer_dropout) %>%
-              self$linear2() %>%
-              torch::nnf_dropout(p = layer_dropout) %>%
-              self$linear3() %>%
-              torch::nnf_dropout(p = layer_dropout) %>%
-              self$linear4() %>%
-              self$softmax()
-              
-          }
-        )
-        model <- net()
+        model <- tripleLayerNN(inputN = ncol(plpData),
+                               layer1 = units1,
+                               layer2 = units2,
+                               layer3 = units3,
+                               outputN = 2, 
+                               layer_dropout = layer_dropout)
       }
 
-      
-      # Prepare model for training
-      data <- plpData[population$rowId[population$indexes!=index],]
-      
-      
-      #Extract validation set first - 10k people or 5%
-      valN <- min(10000,sum(population$indexes!=index)*0.05)
-      val_rows<-sample(1:sum(population$indexes!=index), valN, replace=FALSE)
-      train_rows <- c(1:sum(population$indexes!=index))[-val_rows]
-      
-      rows <- sample(train_rows, batch_size, replace = F)
-      y <- population$y[population$indexes!=index,1:2][rows,]
-      
-      x_train <- torch::torch_tensor(as.matrix(data[rows,]), dtype = torch::torch_float())
-      y_train <- torch::torch_tensor(y, dtype = torch::torch_float())
-      pred_temp <- model(x_train)
-      
-      print(model)
-      cat(
-        " Dimensions Prediction: ", pred_temp$shape," - Object type Prediction: ", as.character(pred_temp$dtype), "\n",
-        "Dimensions Label: ", y_train$shape," - Object type Label: ", as.character(y_train$dtype), "\n"
-      )
+      # get the rowIds for the train/test/earlyStopping
+      rowIdSet <- rowIdSets(population, index)
       
       criterion = torch::nn_bce_loss() #Binary crossentropy only
       optimizer = torch::optim_adam(model$parameters, lr = lr)
@@ -300,10 +237,18 @@ trainDeepNNTorch <-function(plpData, population,
       # Need earlyStopping
       # Need setting decay
       
+      # create batch sets
+      batches <- split(rowIdSet$trainRowIds, ceiling(seq_along(rowIdSet$trainRowIds)/batch_size))
+      
       for(i in 1:epochs){
+        for(batchRowIds in batches){
+          trainDataBatch <- convertToTorchData(plpData, 
+                                               population$y, 
+                                               rowIds = batchRowIds)
+          
         optimizer$zero_grad()
-        y_pred = model(x_train)
-        loss = criterion(y_pred, y_train)
+        y_pred = model(trainDataBatch$x)
+        loss = criterion(y_pred, trainDataBatch$y)
         loss$backward()
         optimizer$step()
         
@@ -317,26 +262,23 @@ trainDeepNNTorch <-function(plpData, population,
           cat("Epoch:", i, "Loss:", loss$item(), "\n")
           
         }
+        }
       }
       
       model$eval()
       
-      maxVal <- sum(population$indexes == index)
-      batches <- lapply(1:ceiling(maxVal/batch_size), function(x) ((x-1)*batch_size+1):min((x*batch_size), maxVal))
-      prediction <- population[population$indexes == index,]
-      prediction$value <- 0
+      # batch predict
+      prediction <- batchPredict(model, 
+                                 plpData,
+                                 population,
+                                 predictRowIds = rowIdSet$testRowIds,
+                                 batch_size )
       
-      for(batch in batches){
-        b <- torch::torch_tensor(as.matrix(plpData[population$rowId[population$indexes == index],][batch,,drop = F]), dtype = torch::torch_float())
-        pred <- model(b)
-        prediction$value[batch] <- as.array(pred$to())[,1]
-      }
-      
-      attr(prediction, "metaData") <- list(predictionType = "binary")
       aucVal <- computeAuc(prediction)
       perform <- c(perform,aucVal)
       
-      predictionMat$value[population$indexes == index] <- prediction$value
+      predictionMat <- updatePredictionMat(predictionMat,
+                                           prediction)
     }
     
     auc <- computeAuc(predictionMat)
@@ -351,137 +293,64 @@ trainDeepNNTorch <-function(plpData, population,
     ParallelLogger::logInfo('==========================================')
     
   } else{
+    
     if(is.na(units2)){
-      net <- torch::nn_module(
-        "classic_net",
-        
-        initialize = function(){
-          self$linear1 = torch::nn_linear(ncol(plpData), units1)
-          self$linear2 = torch::nn_linear(units1, 2)
-          self$softmax = torch::nn_softmax(2)
-        },
-        
-        forward = function(x){
-          x %>%
-            self$linear1() %>%
-            torch::nnf_dropout(p = layer_dropout) %>%
-            self$linear2() %>%
-            torch::nnf_dropout(p = layer_dropout) %>%
-            self$softmax()
-        }
-      )
-      model <- net()
+      model <- singleLayerNN(inputN = ncol(plpData),
+                             layer1 = units1, 
+                             outputN = 2, 
+                             layer_dropout = layer_dropout)
+      
     } else if(is.na(units3)){
-      net <- torch::nn_module(
-        "classic_net",
-        
-        initialize = function(){
-          self$linear1 = torch::nn_linear(ncol(plpData), units1)
-          self$linear2 = torch::nn_linear(units1, units2)
-          self$linear3 = torch::nn_linear(units2, 2)
-          self$softmax = torch::nn_softmax(2)
-        },
-        
-        forward = function(x){
-          x %>%
-            self$linear1() %>%
-            torch::nnf_dropout(p = layer_dropout) %>%
-            self$linear2() %>%
-            torch::nnf_dropout(p = layer_dropout) %>%
-            self$linear3() %>%
-            self$softmax()
-        }
-      )
-      model <- net()
+      model <- doubleLayerNN(inputN = ncol(plpData),
+                             layer1 = units1,
+                             layer2 = units2,
+                             outputN = 2, 
+                             layer_dropout = layer_dropout)
     } else{
-      net <- torch::nn_module(
-        "classic_net",
-        
-        initialize = function(){
-          self$linear1 = torch::nn_linear(ncol(plpData), units1)
-          self$linear2 = torch::nn_linear(units1, units2)
-          self$linear3 = torch::nn_linear(units2, units3)
-          self$linear4 = torch::nn_linear(units3, 2)
-          self$softmax = torch::nn_softmax(2)
-        },
-        
-        forward = function(x){
-          x %>%
-            self$linear1() %>%
-            torch::nnf_dropout(p = layer_dropout) %>%
-            self$linear2() %>%
-            torch::nnf_dropout(p = layer_dropout) %>%
-            self$linear3() %>%
-            torch::nnf_dropout(p = layer_dropout) %>%
-            self$linear4() %>%
-            self$softmax()
-          
-        }
-      )
-      model <- net()
+      model <- tripleLayerNN(inputN = ncol(plpData),
+                             layer1 = units1,
+                             layer2 = units2,
+                             layer3 = units3,
+                             outputN = 2, 
+                             layer_dropout = layer_dropout)
     }
     
-    
-    # Prepare model for training
-    data <- plpData
-    
-    
-    #Extract validation set first - 10k people or 5%
-    valN <- min(10000,nrow(population)*0.05)
-    val_rows<-sample(1:nrow(population), valN, replace=FALSE)
-    train_rows <- c(1:nrow(population))[-val_rows]
-    
-    rows <- sample(train_rows, batch_size, replace = F)
-    y <- population$y[,1:2][rows,]
-    
-    x_train <- torch::torch_tensor(as.matrix(data[rows,]), dtype = torch::torch_float())
-    y_train <- torch::torch_tensor(y, dtype = torch::torch_float())
-    pred_temp <- model(x_train)
-    
-    print(model)
-    cat(
-      "Dimensions Prediction: ", pred_temp$shape, " - Object type Prediction: ", as.character(pred_temp$dtype), "\n",
-      "Dimensions Label: ", y_train$shape," - Object type Label: ", as.character(y_train$dtype), "\n"
-    )
+    # get the rowIds for the train/earlyStopping
+    rowIdSet <- rowIdSets(population, index = NULL)
     
     criterion = torch::nn_bce_loss() #Binary crossentropy only
     optimizer = torch::optim_adam(model$parameters, lr = lr)
     
-    # Need earlyStopping
-    for(i in 1:epochs){
-      optimizer$zero_grad()
-      y_pred = model(x_train)
-      loss = criterion(y_pred, y_train)
-      loss$backward()
-      optimizer$step()
-      
-      if(i%%10 == 0){
-        # winners = y_pred$argmax(dim = 2) + 1
-        # winners = y_pred
-        # corrects = (winners = y_train)
-        # accuracy = corrects$sum()$item() / y_train$size()[1]
-        # cat("Epoch:", i, "Loss:", loss$item(), " Accuracy:", accuracy, "\n")
-   
-        cat("Epoch:", i, "Loss:", loss$item(), "\n")
-        
-        }
-    }
+    # create batch sets
+    batches <- split(rowIdSet$trainRowIds, ceiling(seq_along(rowIdSet$trainRowIds)/batch_size))
     
+    for(i in 1:epochs){
+      for(batchRowIds in batches){
+        trainDataBatch <- convertToTorchData(plpData, 
+                                             population$y, 
+                                             rowIds = batchRowIds)
+        
+        optimizer$zero_grad()
+        y_pred = model(trainDataBatch$x)
+        loss = criterion(y_pred, trainDataBatch$y)
+        loss$backward()
+        optimizer$step()
+        
+        if(i%%10 == 0){
+          cat("Epoch:", i, "Loss:", loss$item(), "\n")
+          
+        }
+      }
+    }
     model$eval()
     
-    #batch prediction
-    maxVal <- nrow(population)
-    batches <- lapply(1:ceiling(maxVal/batch_size), function(x) ((x-1)*batch_size+1):min((x*batch_size), maxVal))
-    prediction <- population
-    prediction$value <- 0
+    # batch predict
+    prediction <- batchPredict(model, 
+                               plpData,
+                               population,
+                               predictRowIds = population$rowId,
+                               batch_size )
     
-    for(batch in batches){
-      b <- torch::torch_tensor(as.matrix(plpData[batch,,drop = F]), dtype = torch::torch_float())
-      pred <- model(b)
-      prediction$value[batch] <- as.array(pred$to())[,1]
-    }
-    
-    attr(prediction, "metaData") <- list(predictionType = "binary")
     auc <- computeAuc(prediction)
     foldPerm <- auc
     predictionMat <- prediction

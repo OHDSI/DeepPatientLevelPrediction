@@ -3,6 +3,7 @@
 S3method(print,plpData)
 S3method(print,summary.plpData)
 S3method(summary,plpData)
+export(fitDeepNNTorch)
 export(getPlpData)
 export(loadPlpData)
 export(loadPlpFromCsv)
