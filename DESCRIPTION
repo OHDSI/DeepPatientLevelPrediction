@@ -7,12 +7,11 @@ Date: 2021-06-07
 Authors@R: c(
     person("Jenna", "Reps", email = "jreps@its.jnj.com", role = c("aut", "cre")),
     person("Seng", "Chan You", role = c("aut")),
-    person("Egill", "Friogeirsson", role = c("aut"))
+    person("Egill", "Fridgeirsson", role = c("aut"))
     )
-    
 Maintainer: Jenna Reps <jreps@its.jnj.com>
 Description: A package for creating deep learning patient level prediction models following
-the OHDSI PatientLevelPrediction framework.
+    the OHDSI PatientLevelPrediction framework.
 License: Apache License 2.0
 URL: https://ohdsi.github.io/PatientLevelPrediction, https://github.com/OHDSI/DeepPatientLevelPrediction
 BugReports: https://github.com/OHDSI/DeepPatientLevelPrediction/issues
@@ -43,7 +42,5 @@ Suggests:
     testthat
 Remotes:
     ohdsi/FeatureExtraction
-LinkingTo: Rcpp
-NeedsCompilation: yes
 RoxygenNote: 7.1.1
 Encoding: UTF-8
