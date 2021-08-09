@@ -237,6 +237,24 @@ predict.knn <- function(plpData, population, plpModel, ...){
   return(prediction)
 }
 
+#' predict.deepEstimator
+#' @description prediction function for models using estimator class
+#' @usage predict.deepEstimator(x)
+#' @export predict.deepEstimator
+predict.deepEstimator <- function(plpModel, population, plpData, ...) {
+  
+  sparseMatrix <- toSparseM(plpData, population)
+  indices <- population$rowId
+  numericalIndex <- sparseMatrix$map$newCovariateId[sparseMatrix$map$oldCovariateId==1002]
+  dataset <- Dataset(sparseMatrix$data, population$outcomeCount,indices=indices,
+                     numericalIndex = numericalIndex)
+  dataloader <- torch::dataloader(dataset, 
+                                  batch_size=plpModel$modelSettings$modelParameters$batch_size,
+                                  shuffle=FALSE, drop_last = FALSE)
+  prediction <- plpModel$model$predictProba(dataloader)
+  prediction <- population %>% mutate(value=prediction)
+  return(prediction)
+}
 
 predict.deep <- function(plpModel, population, plpData,   ...){
   ensure_installed("plyr")
