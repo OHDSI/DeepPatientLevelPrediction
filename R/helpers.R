@@ -10,9 +10,9 @@ rowIdSets <- function(population,
     earlyStopRowIds <- trainRowIds[valSamp]
     trainRowIds <- trainRowIds[-valSamp]
     
-    datas <- list(testRowIds = testRowIds,
-                  trainRowIds = trainRowIds,
-                  earlyStopRowIds = earlyStopRowIds
+    datas <- list(testRowIds = sort(testRowIds),
+                  trainRowIds = sort(trainRowIds),
+                  earlyStopRowIds = sort(earlyStopRowIds)
     )
   }else{
     trainRowIds <- population$rowId
@@ -22,8 +22,8 @@ rowIdSets <- function(population,
     earlyStopRowIds <- trainRowIds[valSamp]
     trainRowIds <- trainRowIds[-valSamp]
     
-    datas <- list(trainRowIds = trainRowIds,
-                  earlyStopRowIds = earlyStopRowIds
+    datas <- list(trainRowIds = sort(trainRowIds),
+                  earlyStopRowIds = sort(earlyStopRowIds)
     )
     
   }
@@ -31,9 +31,14 @@ rowIdSets <- function(population,
   return(datas)
 }
 
-convertToTorchData <- function(data, label, rowIds){
+convertToTorchData <- function(data, population, rowIds){
   x <- torch::torch_tensor(as.matrix(data[rowIds,]), dtype = torch::torch_float())
-  y <- torch::torch_tensor(label, dtype = torch::torch_float())
+  
+  #one-hot encoding
+  y <- population$outcomeCount[population$rowId%in%rowIds]
+  y[y>0] <- 1
+  y <- torch::torch_tensor(matrix(y), dtype = torch::torch_float())
+  
   return(list(x=x,
               y=y))
 }
@@ -43,13 +48,16 @@ batchPredict <- function(model,
                          population,
                          predictRowIds,
                          batch_size ){
+  ParallelLogger::logInfo('Predicting using  batch')
   maxVal <- length(predictRowIds)
   batches <- lapply(1:ceiling(maxVal/batch_size), function(x) ((x-1)*batch_size+1):min((x*batch_size), maxVal))
-  prediction <- population[predictRowIds,]
+  
+  ParallelLogger::logInfo('Pop')
+  prediction <- population[population$rowId%in%predictRowIds,]
   prediction$value <- 0
   
   for(batch in batches){
-    b <- torch::torch_tensor(as.matrix(plpData[predictRowIds,][batch,,drop = F]), dtype = torch::torch_float())
+    b <- torch::torch_tensor(as.matrix(plpData[predictRowIds[batch],, drop = F]), dtype = torch::torch_float())
     pred <- model(b)
     prediction$value[batch] <- as.array(pred$to())[,1]
   }
@@ -57,11 +65,6 @@ batchPredict <- function(model,
   return(prediction)
 }
 
-updatePredictionMat <- function(predictionMat,prediction){
-  predictionMat$value[prediction$rowIds] <- prediction$value
-}
-  
-  
 
   
   

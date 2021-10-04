@@ -61,7 +61,6 @@ plpDataT <- PatientLevelPrediction::getPlpData(connectionDetails = connectionDet
 }
 
 
-
 population <- PatientLevelPrediction::createStudyPopulation(plpData = plpData, 
                                                             outcomeId = 3, 
                                                             requireTimeAtRisk = F, 
@@ -82,7 +81,7 @@ x2 <- toSparseMDeep(plpDataT ,population,
 # code to train models
 deepset <- setDeepNNTorch(units=list(c(128, 64), 128), layer_dropout=c(0.2),
                           lr =c(1e-4), decay=c(1e-5), outcome_weight = c(1.0), batch_size = c(100), 
-                          epochs= c(1),  seed=NULL  )
+                          epochs= c(5),  seed=NULL  )
 
 
 #debug(fitDeepNNTorch)
