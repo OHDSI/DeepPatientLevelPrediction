@@ -2,7 +2,10 @@
 % Please edit documentation in R/Formatting.R
 \name{toSparseMDeep}
 \alias{toSparseMDeep}
-\title{Convert the plpData in COO format into a sparse R matrix}
+\title{Convert the plpData in COO format into a sparse R matrix
+Converts the standard plpData to a sparse matrix
+This function converts the covariate file from ffdf in COO format into a sparse matrix from
+the package Matrix}
 \usage{
 toSparseMDeep(plpData, population, map = NULL, temporal = F)
 }
@@ -26,9 +29,8 @@ This object is a list with the following components: \describe{
 }
 }
 \description{
+Convert the plpData in COO format into a sparse R matrix
 Converts the standard plpData to a sparse matrix
-}
-\details{
 This function converts the covariate file from ffdf in COO format into a sparse matrix from
 the package Matrix
 }
