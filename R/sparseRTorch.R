@@ -1,5 +1,3 @@
-source('R/Formatting.R')
-
 #' Convert the plpData in COO format into a sparse Torch tensor
 #'
 #' @description

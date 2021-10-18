@@ -1,8 +1,8 @@
-# @file formatting.R
+# @file Formatting.R
 #
 # Copyright 2020 Observational Health Data Sciences and Informatics
 #
-# This file is part of PatientLevelPrediction
+# This file is part of DeepPatientLevelPrediction
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,11 +17,7 @@
 # limitations under the License.
 
 #' Convert the plpData in COO format into a sparse R matrix
-#'
-#' @description
 #' Converts the standard plpData to a sparse matrix
-#'
-#' @details
 #' This function converts the covariate file from ffdf in COO format into a sparse matrix from
 #' the package Matrix
 #' @param plpData                       An object of type \code{plpData} with covariate in coo format - the patient level prediction
@@ -132,7 +128,7 @@ toSparseMDeep <- function(plpData,
 
 }
 
-# restricts to pop and saves/creates mapping
+
 MapCovariates <- function(covariateData,population, mapping=NULL){
   
   # to remove check notes
