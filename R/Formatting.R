@@ -1,8 +1,8 @@
-# @file formatting.R
+# @file Formatting.R
 #
 # Copyright 2020 Observational Health Data Sciences and Informatics
 #
-# This file is part of PatientLevelPrediction
+# This file is part of DeepPatientLevelPrediction
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
