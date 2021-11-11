@@ -15,10 +15,14 @@ Estimator <- R6::R6Class('Estimator',
     bestScore = NULL,
     bestEpoch = NULL,
     model = NULL,
-    initialize = function(baseModel, modelParameters, fitParameters,
-                        optimizer=torch::optim_adam,
-                        criterion=torch::nn_bce_with_logits_loss,
-                        device='cpu'){
+    earlyStopper = NULL,
+    initialize = function(baseModel, 
+                          modelParameters, 
+                          fitParameters,
+                          optimizer=torch::optim_adam,
+                          criterion=torch::nn_bce_with_logits_loss,
+                          device='cpu', 
+                          patience=3){
       self$device <- device
       self$model <- do.call(baseModel, modelParameters)
       self$modelParameters <- modelParameters
@@ -41,6 +45,8 @@ Estimator <- R6::R6Class('Estimator',
                                   lr=self$learningRate, 
                                   weight_decay=self$l2Norm)
       self$criterion <- criterion()
+      self$earlyStopper <- EarlyStopping$new(patience=patience)
+      
       self$model$to(device=self$device)
       
       self$bestScore <- NULL
@@ -79,16 +85,26 @@ Estimator <- R6::R6Class('Estimator',
                                 self$optimizer$param_groups[[1]]$lr)
         valLosses <- c(valLosses, scores$loss)
         valAUCs <- c(valAUCs, scores$auc)
-        
-        # here it saves the results to lists rather than files
-        modelStateDict[[epochI]]  <- self$model$state_dict()
-        epoch[[epochI]] <- currentEpoch
-        
+        self$earlyStopper$call(scores$auc)
+        if (self$earlyStopper$improved) {
+          # here it saves the results to lists rather than files
+          modelStateDict[[epochI]]  <- self$model$state_dict()
+          epoch[[epochI]] <- currentEpoch
+        }
+        if (self$earlyStopper$earlyStop) {
+          ParallelLogger::logInfo('Early stopping, validation AUC stopped improving')
+          self$finishFit(valAUCs, modelStateDict, valLosses, epoch)
+          invisible(self)
+        } 
       }
-      
-      
+      self$finishFit(valAUCs, modelStateDict, valLosses, epoch)
+      invisible(self)
+    },
+    
+    # operations that run when fitting is finished
+    finishFit = function(valAUCs, modelStateDict, valLosses, epoch) {
       #extract best epoch from the saved checkpoints
-      bestEpochInd <- which.min(valAUCs)  # change this if a different metric is used
+      bestEpochInd <- which.max(valAUCs)  # change this if a different metric is used
       
       bestModelStateDict <- modelStateDict[[bestEpochInd]]
       self$model$load_state_dict(bestModelStateDict)
@@ -97,11 +113,9 @@ Estimator <- R6::R6Class('Estimator',
       self$bestEpoch <- bestEpoch
       self$bestScore <- list(loss= valLosses[bestEpochInd], auc=valAUCs[bestEpochInd])
       
-      ParallelLogger::logInfo(paste0('Loaded best model (based on loss) from epoch ', bestEpoch))
-      ParallelLogger::logInfo(paste0('ValLoss: ', self$bestScore$loss))
-      ParallelLogger::logInfo(paste0('valAUC: ', self$bestScore$auc))
-      
-      invisible(self)
+      ParallelLogger::logInfo('Loaded best model (based on AUC) from epoch ', bestEpoch)
+      ParallelLogger::logInfo('ValLoss: ', self$bestScore$loss)
+      ParallelLogger::logInfo('valAUC: ', self$bestScore$auc)
     },
     
     # Fits whole training set on a specific number of epochs
@@ -231,3 +245,47 @@ Estimator <- R6::R6Class('Estimator',
     }
   )
 )
+
+EarlyStopping <- R6::R6Class('EarlyStopping',
+   public = list(
+     patience = NULL,
+     delta = NULL,
+     counter = NULL,
+     bestScore = NULL,
+     earlyStop =  NULL,
+     improved = NULL,
+     previousScore = NULL,
+     initialize = function(patience=3, delta=0) {
+       self$patience <- patience
+       self$counter <- 0
+       self$bestScore <- NULL
+       self$earlyStop <- FALSE
+       self$improved <- FALSE
+       self$delta <- delta
+       self$previousScore <- 0
+     },
+     call = function(metric){
+       score <- metric
+       if (is.null(self$bestScore)) {
+         self$bestScore <- score
+         self$improved <- TRUE
+       }
+       else if (score < self$bestScore + self$delta) {
+         self$counter <- self$counter + 1
+         self$improved <- FALSE
+         ParallelLogger::logInfo('EarlyStopping counter: ', self$counter,
+                                 ' out of ', self$patience)
+         if (self$counter >= self$patience) {
+           self$earlyStop <- TRUE
+         }
+       }
+       else {
+         self$bestScore <- score
+         self$counter <- 0
+         self$improved <- TRUE
+       }
+       self$previousScore <- score
+     } 
+   )
+)
+
