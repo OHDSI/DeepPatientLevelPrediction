@@ -2,10 +2,10 @@
 
 export(fitDeepNNTorch)
 export(fitResNet)
-export(predict.deepEstimator)
 export(predictAndromeda)
 export(predictPlp)
 export(predictProbabilities)
+export(predict_deepEstimator)
 export(setCIReNN)
 export(setCNNTorch)
 export(setCovNN)
