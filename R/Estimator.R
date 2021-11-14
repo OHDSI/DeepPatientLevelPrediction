@@ -59,11 +59,13 @@ Estimator <- R6::R6Class('Estimator',
       valAUCs <- c()
       
       dataloader <- torch::dataloader(dataset, 
-                                      batch_size=self$batchSize, 
-                                      shuffle=T)
+                                      batch_size = self$batchSize, 
+                                      shuffle = T,
+                                      collate_fn = dataset$collate_fn)
       testDataloader <- torch::dataloader(testDataset, 
-                                          batch_size=self$batchSize, 
-                                          shuffle=F)
+                                          batch_size = self$batchSize, 
+                                          shuffle = F,
+                                          collate_fn = dataset$collate_fn)
       
       modelStateDict <- list()
       epoch <- list()
@@ -101,6 +103,39 @@ Estimator <- R6::R6Class('Estimator',
       invisible(self)
     },
     
+    # trains for one epoch
+    fitEpoch = function(dataloader){
+      t <- Sys.time()
+      batch_loss <- 0
+      i <- 1
+      
+      self$model$train()
+      
+      coro::loop(for (b in dataloader) {
+        cat <- b[[1]]$to(device=self$device)
+        num <- b[[2]]$to(device=self$device)
+        target <- b[[3]]$to(device=self$device)
+        out <- self$model(num, cat)
+        
+        loss <- self$criterion(out, target)
+        
+        batch_loss = batch_loss + loss
+        if (i %% 10 == 0) {
+          elapsed_time <- Sys.time() - t
+          ParallelLogger::logInfo('Loss: ', round((batch_loss/1)$item(), 3), ' | Time: ',
+                                  round(elapsed_time,digits = 2), units(elapsed_time))
+          t <- Sys.time()
+          batch_loss = 0
+        }
+        
+        loss$backward()
+        self$optimizer$step()
+        self$optimizer$zero_grad()
+        i <- i + 1
+      })
+      
+    },
+    
     # operations that run when fitting is finished
     finishFit = function(valAUCs, modelStateDict, valLosses, epoch) {
       #extract best epoch from the saved checkpoints
@@ -111,7 +146,8 @@ Estimator <- R6::R6Class('Estimator',
       
       bestEpoch <- epoch[[bestEpochInd]]
       self$bestEpoch <- bestEpoch
-      self$bestScore <- list(loss= valLosses[bestEpochInd], auc=valAUCs[bestEpochInd])
+      self$bestScore <- list(loss = valLosses[bestEpochInd], 
+                             auc = valAUCs[bestEpochInd])
       
       ParallelLogger::logInfo('Loaded best model (based on AUC) from epoch ', bestEpoch)
       ParallelLogger::logInfo('ValLoss: ', self$bestScore$loss)
@@ -139,39 +175,6 @@ Estimator <- R6::R6Class('Estimator',
                         ))
       
     },    
-    
-    # trains for one epoch
-    fitEpoch = function(dataloader){
-      t = Sys.time()
-      batch_loss = 0
-      i=1
-      
-      self$model$train()
-      
-      coro::loop(for (b in dataloader) {
-        cat = b[[1]]$to(device=self$device)
-        num = b[[2]]$to(device=self$device)
-        target = b[[3]]$to(device=self$device)
-        out = self$model(num, cat)
-        
-        loss = self$criterion(out, target)
-        
-        batch_loss = batch_loss + loss
-        if (i %% 10 == 0) {
-          elapsed_time <- Sys.time() - t
-          ParallelLogger::logInfo('Loss: ', round((batch_loss/1)$item(), 3), ' | Time: ',
-                                  round(elapsed_time,digits = 2), units(elapsed_time))
-          t = Sys.time()
-          batch_loss = 0
-        }
-        
-        loss$backward()
-        self$optimizer$step()
-        self$optimizer$zero_grad()
-        i = i + 1
-      })
-      
-    },
     
     # calculates loss and auc after training for one epoch
     score = function(dataloader){
@@ -288,4 +291,5 @@ EarlyStopping <- R6::R6Class('EarlyStopping',
      } 
    )
 )
+
 
