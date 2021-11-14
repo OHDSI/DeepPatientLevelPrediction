@@ -3,6 +3,7 @@ Dataset <- torch::dataset(
   
   initialize = function(data, labels, indices, numericalIndex) {
     
+    self$collate_fn <- sparseCollate  
     # add labels
     self$target <- torch::torch_tensor(labels[indices])
     
