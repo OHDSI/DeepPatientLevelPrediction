@@ -66,7 +66,7 @@ setResNet <- function(numLayers=1:16, sizeHidden=2^(6:10), hiddenFactor=1:4,
     param <- param[sample(nrow(param), randomSample),]
   }
   param$device <- device
-  param$batch_size <- batchSize
+  param$batchSize <- batchSize
   param$epochs <- epochs
   
   results <- list(model='fitResNet', param=param, name='ResNet')
