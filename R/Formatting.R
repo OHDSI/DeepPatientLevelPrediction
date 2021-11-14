@@ -141,8 +141,13 @@ MapCovariates <- function(covariateData,population, mapping=NULL){
   # restrict to population for speed
   ParallelLogger::logTrace('restricting to population for speed and mapping')
   if(is.null(mapping)){
-    mapping <- data.frame(oldCovariateId = as.data.frame(covariateData$covariateRef %>% dplyr::select(.data$covariateId)),
-                          newCovariateId = 1:nrow(as.data.frame(covariateData$covariateRef)))
+    metaData <- attr(covariateData, 'metaData')
+    deletedCovariates <- c(metaData$deletedRedundantCovariateIds, metaData$deletedInfrequentCovariateIds)
+    mapping <- data.frame(oldCovariateId = as.data.frame(covariateData$covariateRef %>%
+                                                         dplyr::filter(!(.data$covariateId %in% deletedCovariates)) %>%
+                                                                         dplyr::select(.data$covariateId)),
+                          newCovariateId = 1:nrow(as.data.frame(covariateData$covariateRef %>% 
+                                                                  filter(!(covariateId %in% deletedCovariates)))))
   }
   if(sum(colnames(mapping)%in%c('oldCovariateId','newCovariateId'))!=2){
     colnames(mapping) <- c('oldCovariateId','newCovariateId')
