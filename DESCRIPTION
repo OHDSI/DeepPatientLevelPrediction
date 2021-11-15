@@ -6,7 +6,8 @@ Date: 2021-06-07
 Authors@R: c(
     person("Jenna", "Reps", email = "jreps@its.jnj.com", role = c("aut", "cre")),
     person("Seng", "Chan You", role = c("aut")),
-    person("Egill", "Fridgeirsson", role = c("aut"))
+    person("Egill", "Fridgeirsson", role = c("aut")),
+    person("Chungsoo", "Kim", role = c("aut"))
     )
 Maintainer: Jenna Reps <jreps@its.jnj.com>
 Description: A package for creating deep learning patient level prediction models following the OHDSI PatientLevelPrediction framework.
