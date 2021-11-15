@@ -118,21 +118,20 @@ fitDeepNNTorch <- function(plpData,population, param, search='grid', quiet=F,
     # This can be changed after supporting the temporal covariates.
   }}
   
-  metaData <- attr(population, 'metaData')
-  if(!is.null(population$indexes))
+  
+  if(!is.null(population$indexes)){
+    metaData <- attr(population, 'metaData')
     population <- population[population$indexes>0,]
-  attr(population, 'metaData') <- metaData
+    attr(population, 'metaData') <- metaData
+  }
+  
+  # make sure popualtion is ordered as this is required for rest of code
+  population <- population[order(population$rowId),]
   
   start<-Sys.time()
   
   result<- toSparseM(plpData,population,map=NULL, temporal=F)
   data <- result$data
-  
-  #one-hot encoding
-  y <- population$outcomeCount
-  y[y>0] <- 1
-  population$y <- cbind(matrix(y), matrix(abs(y-1)))
-  
   
   # do cross validation to find hyperParameter
   datas <- list(population=population, plpData=data)
@@ -196,30 +195,34 @@ trainDeepNNTorch <-function(plpData, population,
     index_vect <- unique(population$indexes)
     ParallelLogger::logInfo(paste('Training deep neural network using Torch with ',length(index_vect ),' fold CV'))
     
+    #initiate values
     perform <- c()
-    
-    # create prediction matrix to store all predictions
-    predictionMat <- population
-    predictionMat$value <- 0
-    attr(predictionMat, "metaData") <- list(predictionType = "binary")
-
+    prediction <- list()
+    length(prediction) <- length(index_vect)
     
     for(index in 1:length(index_vect)){
-      ParallelLogger::logInfo(paste('Fold ',index, ' -- with ', sum(population$indexes!=index),'train rows'))
+      ParallelLogger::logInfo(paste('Fold ',index, ' -- with ', sum(population$indexes!=index & population$indexes>0),'train rows and ',
+                                    sum(population$indexes==index),' validation rows' ))
       
       if(is.na(units2)){
+        ParallelLogger::logInfo(paste('single layer'))
+        ParallelLogger::logInfo(paste(ncol(plpData), units1, 2, sep='-'))
         model <- singleLayerNN(inputN = ncol(plpData),
                                layer1 = units1, 
                                outputN = 2, 
                                layer_dropout = layer_dropout)
         
       } else if(is.na(units3)){
+        ParallelLogger::logInfo(paste('double layer'))
+        ParallelLogger::logInfo(paste(ncol(plpData), units1,units2, 2, sep='-'))
         model <- doubleLayerNN(inputN = ncol(plpData),
                                layer1 = units1,
                                layer2 = units2,
                                outputN = 2, 
                                layer_dropout = layer_dropout)
       } else{
+        ParallelLogger::logInfo(paste('triple layer'))
+        ParallelLogger::logInfo(paste(ncol(plpData), units1, units2, units3, 2, sep='-'))
         model <- tripleLayerNN(inputN = ncol(plpData),
                                layer1 = units1,
                                layer2 = units2,
@@ -243,45 +246,48 @@ trainDeepNNTorch <-function(plpData, population,
       for(i in 1:epochs){
         for(batchRowIds in batches){
           trainDataBatch <- convertToTorchData(plpData, 
-                                               population$y, 
+                                               population, 
                                                rowIds = batchRowIds)
           
         optimizer$zero_grad()
         y_pred = model(trainDataBatch$x)
-        loss = criterion(y_pred, trainDataBatch$y)
+        ParallelLogger::logInfo(paste(dim(y_pred),collapse = '-'))
+        ParallelLogger::logInfo(paste(dim(trainDataBatch$y)))
+        loss = criterion(y_pred[,1], trainDataBatch$y)
         loss$backward()
         optimizer$step()
         
-        if(i%%10 == 0){
-          # winners = y_pred$argmax(dim = 2) + 1
-          # winners = y_pred
-          # corrects = (winners = y_train)
-          # accuracy = corrects$sum()$item() / y_train$size()[1]
-          # cat("Epoch:", i, "Loss:", loss$item(), " Accuracy:", accuracy, "\n")
-          
-          cat("Epoch:", i, "Loss:", loss$item(), "\n")
-          
+        if(i%%1 == 0){
+          cat("Epoch:", i, "out of ", epochs , ": Loss:", loss$item(), "\n")
         }
         }
       }
-      
+      ParallelLogger::logInfo(paste('Model Trained'))
       model$eval()
       
       # batch predict
-      prediction <- batchPredict(model, 
+      ParallelLogger::logInfo(paste('Calculating prediction on ', length(rowIdSet$testRowIds), ' test set patients'))
+    
+      prediction[[index]] <- batchPredict(model, 
                                  plpData,
-                                 population,
+                                 population = population,
                                  predictRowIds = rowIdSet$testRowIds,
                                  batch_size )
       
-      aucVal <- computeAuc(prediction)
+      ParallelLogger::logInfo(paste('Prediction on test done'))
+      
+      aucVal <- computeAuc(prediction[[index]])
+      
+      ParallelLogger::logInfo(paste('AUC ', aucVal ))
       perform <- c(perform,aucVal)
       
-      predictionMat <- updatePredictionMat(predictionMat,
-                                           prediction)
+      ParallelLogger::logInfo('fold complete')
     }
     
-    auc <- computeAuc(predictionMat)
+    prediction <- do.call(rbind, prediction)
+    attr(prediction, "metaData") <- list(predictionType = "binary")
+    
+    auc <- computeAuc(prediction)
     foldPerm <- perform
     
     # Output  ----------------------------------------------------------------
@@ -327,12 +333,12 @@ trainDeepNNTorch <-function(plpData, population,
     for(i in 1:epochs){
       for(batchRowIds in batches){
         trainDataBatch <- convertToTorchData(plpData, 
-                                             population$y, 
+                                             population, 
                                              rowIds = batchRowIds)
         
         optimizer$zero_grad()
         y_pred = model(trainDataBatch$x)
-        loss = criterion(y_pred, trainDataBatch$y)
+        loss = criterion(y_pred[,1], trainDataBatch$y)
         loss$backward()
         optimizer$step()
         
@@ -353,12 +359,11 @@ trainDeepNNTorch <-function(plpData, population,
     
     auc <- computeAuc(prediction)
     foldPerm <- auc
-    predictionMat <- prediction
   }
   
   result <- list(model=model,
                  auc=auc,
-                 prediction = predictionMat,
+                 prediction = prediction,
                  hyperSum = unlist(list(units1=units1,units2=units2,units3=units3, 
                                         layer_dropout=layer_dropout,lr =lr, decay=decay,
                                         batch_size = batch_size, epochs= epochs)))

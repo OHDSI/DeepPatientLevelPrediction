@@ -33,7 +33,7 @@ Imports:
     SqlRender (>= 1.1.3),
     torch,
     tibble,
-    tidyr,
+    tidyr
 Suggests:
     devtools,
     keras,

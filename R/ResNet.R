@@ -1,26 +1,72 @@
+# @file ResNet.R
+#
+# Copyright 2021 Observational Health Data Sciences and Informatics
+#
+# This file is part of PatientLevelPrediction
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+#' setResNet
+#'
+#' @description 
+#' Creates settings for a ResNet model
+#' 
+#' @details
+#' Model architecture from by https://arxiv.org/abs/2106.11959 
+#' 
+#' 
+#' @param numLayers         Number of layers in network, default: 1:16
+#' @param sizeHidden        Amount of neurons in each default layer, default: 2^(6:10) (64 to 1024)
+#' @param hiddenFactor      How much to grow the amount of neurons in each ResLayer, default: 1:4
+#' @param residualDropout   How much dropout to apply after last linear layer in ResLayer, default: seq(0, 0.3, 0.05)
+#' @param hiddenDropout     How much dropout to apply after first linear layer in ResLayer, default: seq(0, 0.3, 0.05)
+#' @param normalization     Which type of normalization to use. Default: 'Batchnorm'
+#' @param activation        What kind of activation to use. Default: 'RelU'
+#' @param sizeEmbedding     Size of embedding layer, default: 2^(6:9) (64 to 512)
+#' @param weightDecay       Weight decay to apply, default: c(1e-6, 1e-3)
+#' @param learningRate      Learning rate to use. default: c(1e-2, 1e-5)
+#' @param seed              Seed to use for sampling hyperparameter space
+#' @param hyperParamSearch  Which kind of hyperparameter search to use random sampling or exhaustive grid search. default: 'random'
+#' @param randomSample      How many random samples from hyperparameter space to use
+#' @param device            Which device to run analysis on, either 'cpu' or 'cuda', default: 'cpu'
+#' @param batch_size        Size of batch, default: 1024
+#' @param epochs            Number of epochs to run, default: 10
+#'
 #' @export
 setResNet <- function(numLayers=1:16, sizeHidden=2^(6:10), hiddenFactor=1:4,
                       residualDropout=seq(0,0.3,0.05), hiddenDropout=seq(0,0.3,0.05),
                       normalization='BatchNorm', activation='RelU',
                       sizeEmbedding=2^(6:9), weightDecay=c(1e-6, 1e-3),
-                      learningRate=c(1e-2,1e-5), seed=42, hyperParamSearch='random',
-                      randomSample=100, device='cpu', batch_size=1024, epochs=10) {
+                      learningRate=c(1e-2,1e-5), seed=NULL, hyperParamSearch='random',
+                      randomSample=100, device='cpu', batchSize=1024, epochs=10) {
 
   if (!is.null(seed)) {
     seed <- as.integer(sample(1e5, 1))
   }
-
+  
+  set.seed(seed)
+  
   param <- expand.grid(numLayers=numLayers, sizeHidden=sizeHidden,
-                             hiddenFactor=hiddenFactor,
-                             residualDropout=residualDropout,
-                             hiddenDropout=hiddenDropout,
-                             sizeEmbedding=sizeEmbedding, weightDecay=weightDecay,
-                             learningRate=learningRate)
+                       hiddenFactor=hiddenFactor,
+                       residualDropout=residualDropout,
+                       hiddenDropout=hiddenDropout,
+                       sizeEmbedding=sizeEmbedding, weightDecay=weightDecay,
+                       learningRate=learningRate)
   if (hyperParamSearch=='random'){
     param <- param[sample(nrow(param), randomSample),]
   }
   param$device <- device
-  param$batch_size <- batch_size
+  param$batchSize <- batchSize
   param$epochs <- epochs
   
   results <- list(model='fitResNet', param=param, name='ResNet')
@@ -30,50 +76,53 @@ setResNet <- function(numLayers=1:16, sizeHidden=2^(6:10), hiddenFactor=1:4,
   return(results)
 
 }
-
+#' @description 
+#' fits a ResNet model to data
+#' 
+#' @param population    the study population dataframe
+#' @param plpData       plp data object
+#' @param param         parameters to use for model
+#' @param outcomeId     Id of the outcome
+#' @param cohortId      Id of the cohort
+#' @param ... 
+#'
 #' @export
-fitResNet <- function(population, plpData, param,
-                      quiet=F, outcomeId, cohortId, ...) {
+fitResNet <- function(population, plpData, param, outcomeId, cohortId, ...) {
   
   start <- Sys.time()
-  sparseMatrix <- toSparseM(plpData, population)
+  #sparseMatrix <- toSparseM(plpData, population)
+  sparseMatrix <- toSparseMDeep(plpData ,population, 
+                     map=NULL, 
+                     temporal=F)
 
-  
-  # TODO where to save results?
-  outLoc <- './results'
-  
   #do cross validation to find hyperParameters
   hyperParamSel <- list()
   for (i in 1:nrow(param)) {
-    outLocHP <- file.path(outLoc, paste0('Iteration_', i))
     hyperParamSel[[i]] <- do.call(trainResNet, listAppend(param[i,], list(sparseMatrix =sparseMatrix,
                                                                            population = population,
-                                                                           train=TRUE,
-                                                                           modelOutput=outLocHP,
-                                                                           quiet = quiet)))
+                                                                           train=TRUE)))
   }
   hyperSummary <-as.data.frame(cbind(do.call(rbind, lapply(hyperParamSel, function(x) x$hyperSum))))
   hyperSummary$auc <- unlist(lapply(hyperParamSel, function(x) x$auc))
   
   scores <- unlist(lapply(hyperParamSel, function(x) x$auc))
   
-  # now train the final model and return coef
+  # now train the final model
   bestInd <- which.max(abs(unlist(scores)-0.5))[1]
-  uniqueEpochs <- unique(hyperSummary$bestEpochs[[bestInd]])
-  param$epochs <- uniqueEpochs[which.max(tabulate(match(hyperSummary$bestEpochs[[bestInd]], uniqueEpochs)))]
-  outLoc <- file.path(outLoc, paste0('whole_training_set'))
-  finalModel <- do.call(trainResNet, listAppend(param[bestInd,], 
-                                                  list(sparseMatrix = sparseMatrix,
-                                                       population = population,
-                                                       train=FALSE,
-                                                       modelOutput=outLoc)))
-  covariateRef <- as.data.frame(plpData$covariateData$covariateRef)
-  incs <- rep(1, nrow(covariateRef)) 
-  covariateRef$included <- incs
-  covariateRef$covariateValue <- rep(0, nrow(covariateRef))
-  
-  modelTrained <- file.path(outLoc) 
   param.best <- param[bestInd,]
+  uniqueEpochs <- unique(hyperSummary$bestEpochs[[bestInd]])
+  param.best$epochs <- uniqueEpochs[which.max(tabulate(match(hyperSummary$bestEpochs[[bestInd]], uniqueEpochs)))]
+  outLoc <- tempfile(pattern = 'resNet')
+  outLoc <- file.path(outLoc, paste0('finalModel'))
+  param.best$resultsDir <- outLoc
+  dir.create(outLoc, recursive = TRUE)
+  
+
+
+  finalModel <-  do.call(trainResNet, listAppend(param.best, list(sparseMatrix = sparseMatrix,
+                                                                  population = population,
+                                                                  train=FALSE)))
+  modelTrained <- file.path(outLoc, dir(outLoc))
   
   comp <- Sys.time() - start
   # return model location
@@ -85,7 +134,7 @@ fitResNet <- function(population, plpData, param,
                  populationSettings = attr(population, 'metaData'),
                  outcomeId=outcomeId,
                  cohortId=cohortId,
-                 varImp = covariateRef, 
+                 varImp = NULL, 
                  trainingTime =comp,
                  covariateMap=sparseMatrix$map, # I think this is need for new data to map the same?
                  predictionTrain = finalModel$prediction
@@ -96,6 +145,12 @@ fitResNet <- function(population, plpData, param,
   return(result)
 }
 
+#' @param sparseMatrix 
+#'
+#' @param population 
+#' @param ... 
+#' @param train 
+#'
 #' @export
 trainResNet <- function(sparseMatrix, population,...,train=T) {
 
@@ -103,22 +158,11 @@ trainResNet <- function(sparseMatrix, population,...,train=T) {
 
   modelParamNames <- c("numLayers", "sizeHidden", "hiddenFactor",
                       "residualDropout", "hiddenDropout", "sizeEmbedding")
+  modelParam <- param[modelParamNames]
+
+  fitParamNames <- c("weightDecay", "learningRate", "epochs", "batchSize")
+  fitParams <- param[fitParamNames]
   
-  # TODO can I use lapply here instead of for loops?
-  modelParam <- list()
-  for (i in 1:length(modelParamNames)){
-    modelParam[i] <- param[modelParamNames[i]]
-  }
-  names(modelParam) <- modelParamNames
-
-  fitParamNames <- c("weightDecay", "learningRate", "epochs")
-  fitParams <- list()
-  for (i in 1:length(fitParamNames)) {
-    fitParams[i] <- param[fitParamNames[i]]
-  }
-  names(fitParams) <- fitParamNames
-
-
   n_features <- ncol(sparseMatrix$data)
   modelParam$n_features <- n_features
   
@@ -131,50 +175,65 @@ trainResNet <- function(sparseMatrix, population,...,train=T) {
     foldAuc <- c()
     foldEpochs <- c()
     for(index in 1:length(index_vect)){
-      fitParams$resultsDir <- file.path(param$modelOutput, paste0('fold_', index))
-      ParallelLogger::logInfo(paste('Fold ',index, ' -- with ', sum(population$indexes!=index),'train rows'))
-      estimator <- Estimator(baseModel=ResNet, modelParameters=modelParam,
-                         fitParameters=fitParams, device=param$device)
+      ParallelLogger::logInfo(paste('Fold ',index, ' -- with ', sum(population$indexes!=index & population$indexes > 0),'train rows'))
       testIndices <- population$rowId[population$indexes==index]
       trainIndices <- population$rowId[(population$indexes!=index) & (population$indexes > 0)]
-      trainDataset <- Dataset(sparseMatrix$data, population$outcomeCount, indices=trainIndices, numericalIndex=numericalIndex)
-      testDataset <- Dataset(sparseMatrix$data, population$outcomeCount, indices=testIndices, numericalIndex=numericalIndex)
-      trainDataloader <- torch::dataloader(trainDataset, batch_size=param$batch_size, shuffle=T, drop_last=TRUE)
-      testDataloader <- torch::dataloader(testDataset, batch_size=param$batch_size, shuffle=F)
-      
-      score <- estimator$fit(trainDataloader, testDataloader)$score(testDataloader)
+      trainDataset <- Dataset(sparseMatrix$data[population$rowId,], 
+                              population$outcomeCount, 
+                              indices= population$rowId%in%trainIndices, 
+                              numericalIndex=numericalIndex)
+      testDataset <- Dataset(sparseMatrix$data[population$rowId,], 
+                             population$outcomeCount, 
+                             indices = population$rowId%in%testIndices, 
+                             numericalIndex = numericalIndex)
+      fitParams['posWeight'] <- trainDataset$posWeight
+      estimator <- Estimator$new(baseModel=ResNet, 
+                                 modelParameters=modelParam,
+                                 fitParameters=fitParams, 
+                                 device=param$device)
+      estimator$fit(trainDataset, testDataset)
+      score <- estimator$bestScore
       bestEpoch <- estimator$bestEpoch
       auc <- score$auc
       foldAuc <- c(foldAuc, auc)
       foldEpochs <- c(foldEpochs, bestEpoch)
     }
     auc <- mean(foldAuc)
-    predictions <- NULL
+    prediction <- NULL
     bestEpochs <- list(bestEpochs=foldEpochs)
   }
   else {
     ParallelLogger::logInfo('Training deep neural network using Torch on whole training set')
-    fitParams$resultsDir <- param$modelOutput      
-    estimator <- Estimator(baseModel = ResNet, modelParameters = modelParam,
-                           fitParameters = fitParams, device=param$device)
+    fitParams$resultsDir <- param$resultsDir    
+    estimator <- Estimator$new(baseModel = ResNet,
+                               modelParameters = modelParam,
+                               fitParameters = fitParams, 
+                               device=param$device)
+    
     trainIndices <- population$rowId[population$indexes > 0]
     
-    trainDataset <- Dataset(sparseMatrix$data, population$outcomeCount, indices=trainIndices, numericalIndex=numericalIndex)
-    trainDataloader <- torch::dataloader(trainDataset, batch_size=param$batch_size, shuffle=T, drop_last=TRUE)
-
-    estimator$fitWholeTrainingSet(trainDataloader, param$epochs)
-    dataloader <- torch::dataloader(trainDataset, batch_size = param$batch_size, shuffle=F, drop_last=FALSE)
-    predictions <- population[trainIndices, ]
-    predictions$value <- estimator$predictProba(dataloader)
-    predictionsClass <- list(value=predictions$value, outcomeCount=as.array(trainDataset$labels))
-    attr(predictionsClass, 'metaData')$predictionType <-'binary' 
-    auc <- computeAuc(predictionsClass)
+    trainDataset <- Dataset(sparseMatrix$data[population$rowId,], 
+                            population$outcomeCount, 
+                            indices=population$rowId%in%trainIndices, 
+                            numericalIndex=numericalIndex)
+   
+    estimator$fitWholeTrainingSet(trainDataset)
+    
+    # get predictions
+    prediction <- population[population$rowId%in%trainIndices, ]
+    prediction$value <- estimator$predictProba(trainDataset)
+    
+    #predictionsClass <- data.frame(value=predictions$value, 
+    #                               outcomeCount=as.array(trainDataset$labels))
+    
+    attr(prediction, 'metaData')$predictionType <-'binary' 
+    auc <- computeAuc(prediction)
     bestEpochs <- NULL
   }
  
-   result <- list(model=estimator,
+   result <- list(model = estimator,
                  auc = auc,
-                 prediction = predictions,
+                 prediction = prediction,
                  hyperSum = c(modelParam, fitParams, bestEpochs))
 
   return(result)
@@ -199,8 +258,6 @@ ResLayer <- torch::nn_module(
     }
     
     self$activation <- activation()
-    
-    
     
   },
   
@@ -261,256 +318,6 @@ ResNet <- torch::nn_module(
     x <- self$head(x)
     x <- x$squeeze(-1)
     return(x)
-  }
-)
-
-Estimator <- torch::nn_module(
-  name = 'Estimator',
-  initialize = function(baseModel, modelParameters, fitParameters,
-                        optimizer=torch::optim_adam,
-                        criterion=torch::nn_bce_with_logits_loss,
-                       device='cpu'){
-    self$device <- device
-    self$model <- do.call(baseModel, modelParameters)
-    self$modelParameters <- modelParameters
-    
-    self$epochs <- self$itemOrDefaults(fitParameters, 'epochs', 10)
-    self$learningRate <- self$itemOrDefaults(fitParameters,'learningRate', 1e-3)
-    self$l2Norm <- self$itemOrDefaults(fitParameters, 'weightDecay', 1e-5)
-    
-    self$resultsDir <- self$itemOrDefaults(fitParameters, 'resultsDir', './results')
-    dir.create(self$resultsDir, recursive=TRUE, showWarnings=FALSE)
-    self$prefix <- self$itemOrDefaults(fitParameters, 'prefix', 'resnet')
-    
-    self$previousEpochs <- self$itemOrDefaults(fitParameters, 'previousEpochs', 0)
-    
-    self$optimizer <- optimizer(params=self$model$parameters, 
-                                lr=self$learningRate, weight_decay=self$l2Norm)
-    self$criterion <- criterion()
-    self$model$to(device=self$device)
-  },
-  
-  # fits the estimator
-  fit = function(dataloader, testDataloader) {
-    valLosses <- c()
-    valAUCs <- c()
-    lr <- c()
-    for (epoch in 1:self$epochs) {
-      self$fitEpoch(dataloader)
-      scores <- self$score(testDataloader)
-      
-      currentEpoch <- epoch + self$previousEpochs
-      lr <- c(lr, self$optimizer$param_groups[[1]]$lr)
-      ParallelLogger::logInfo('Epochs: ', currentEpoch, ' | Val AUC: ', 
-                              round(scores$auc,3), ' | Val Loss: ', 
-                              round(scores$loss,3), ' | LR: ',
-                              self$optimizer$param_groups[[1]]$lr)
-      valLosses <- c(valLosses, scores$loss)
-      valAUCs <- c(valAUCs, scores$auc)
-      
-      torch::torch_save(list(
-        modelStateDict=self$model$state_dict(),
-        modelHyperparameters=self$modelParameters,
-        epoch=currentEpoch),
-        file.path(self$resultsDir, paste0(self$prefix, '_epochs:', currentEpoch, 
-                                         '_auc:', round(scores$auc,4), '_val_loss:',
-                                         round(scores$loss,4))))
-                  }
-    write.csv(data.frame(epochs=1:self$epochs, loss=valLosses, auc=valAUCs), 
-              file.path(self$resultsDir, 'log.txt'))
-    
-    #TODO here I should extract best epoch from the saved checkpoints
-    bestModelFile <- self$extractBestModel(metric='val_loss')
-    bestModel <- torch::torch_load(bestModelFile)
-    bestModelStateDict <- bestModel$modelStateDict
-    self$model$load_state_dict(bestModelStateDict)
-    bestEpoch <- bestModel$epoch
-    ParallelLogger::logInfo(paste0('Loaded best model from epoch ', bestEpoch))
-    self$bestEpoch <- bestEpoch
-    
-    invisible(self)
-  },
-  
-  # Fits whole training set on a specific number of epochs
-  # TODO What happens when learning rate changes per epochs?
-  # Ideally I would copy the learning rate strategy from before
-  fitWholeTrainingSet = function(dataloader, epochs) {
-    for (epoch in 1:epochs) {
-      self$fitEpoch(dataloader)
-    }
-    
-  },
-  
-  # trains for one epoch
-  fitEpoch = function(dataloader){
-    t = Sys.time()
-    batch_loss = 0
-    i=1
-    self$model$train()
-    coro::loop(for (b in dataloader) {
-      cat = b[[1]]$to(device=self$device)
-      num = b[[2]]$to(device=self$device)
-      target= b[[3]]$to(device=self$device)
-      out = self$model(num, cat)
-      loss = self$criterion(out, target)
-      
-       batch_loss = batch_loss + loss
-      if (i %% 1 == 10) {
-        elapsed_time <- Sys.time() - t
-        ParallelLogger::logInfo('Loss: ', round((batch_loss/1)$item(), 3), ' | Time: ',
-                                round(elapsed_time,digits = 2), units(elapsed_time))
-        t = Sys.time()
-        batch_loss = 0
-      }
-      
-      loss$backward()
-      self$optimizer$step()
-      self$optimizer$zero_grad()
-      i = i + 1
-    })
-    
-  },
-  
-  # calculates loss and auc after training for one epoch
-  score = function(dataloader){
-    torch::with_no_grad({
-      loss = c()
-      predictions = c()
-      targets = c()
-      self$model$eval()
-      coro::loop(for (b in dataloader) {
-        b <- self$batchToDevice(b)
-        cat <- b$cat
-        num <- b$num
-        target <- b$target
-        
-        pred <- self$model(num, cat)
-        predictions <- c(predictions, as.array(pred$cpu()))
-        targets <- c(targets, as.array(target$cpu()))
-        loss <- c(loss, self$criterion(pred, target)$item())
-      })
-      mean_loss <- mean(loss)
-      predictionsClass <- list(value=predictions, outcomeCount=targets)
-      attr(predictionsClass, 'metaData')$predictionType <-'binary' 
-      auc <- computeAuc(predictionsClass)
-    })
-    return(list(loss=mean_loss, auc=auc))
-  },
-  
-  # predicts and outputs the probabilities
-  predictProba = function(dataloader) {
-    torch::with_no_grad({
-      predictions <- c()
-      self$model$eval()
-      coro::loop(for (b in dataloader){
-        b <- self$batchToDevice(b)
-        cat <- b$cat
-        num <- b$num
-        target <- b$target
-        pred <- self$model(num,cat)
-        predictions <- c(predictions, as.array(torch::torch_sigmoid(pred$cpu())))
-      })
-    })
-    return(predictions)
-  },
-  
-
-  # predicts and outputs the class
-  predict = function(dataloader){
-    predictions <- self$predict_proba(dataloader)
-    predicted_class <- torch::torch_argmax(torch::torch_unsqueeze(torch::torch_tensor(predictions), dim=2),dim=2)
-    return(predicted_class)
-  },
-  
-  load_best_weight = function(){
-    best_model_file <- self$extract_best_model(self$resultsDor)
-    best_model <- torch::torch_load(best_model_file)
-    state_dict <- best_model$model_state_dict
-    epoch <- best_model$epoch
-    self$model$load_state_dict(state_dict)
-    ParallelLogger::logInfo(paste('Loaded best model from epoch: ', epoch))
-  },
-  
-  # extracts best model from the results directory
-  extractBestModel = function(metric='val_loss'){
-
-    if (metric=='val_loss')
-    {
-      direction = 'min'
-    }
-    else
-    {
-      direction = 'max'
-    }
-
-    # goes over checkpoints in folder and extracts metric value from name
-    checkpoints <- Sys.glob(file.path(self$resultsDir, paste0('*', metric, '*')))
-    metric_value <- c()
-    for (file in checkpoints) {
-      fileName <- basename(file)
-      metric_value <- c(metric_value, as.double(strsplit(strsplit(fileName, paste0(metric, ':'))[[1]][2], '_')[[1]][1]))
-    }
-    
-    if (direction == 'max') {
-      best_index <- which.max(metric_value)
-    } else if (direction == 'min') {
-      best_index <- which.min(metric_value)
-    }
-    bestModel <- checkpoints[[best_index]]
-    
-    return(bestModel)
-  },
-  
-  
-  # sends a batch of data to device
-  ## TODO make agnostic of the form of batch
-  batchToDevice = function(batch) {
-    cat <- batch[[1]]$to(device=self$device)
-    num <- batch[[2]]$to(device=self$device)
-    target <- batch[[3]]$to(device=self$device)
-    
-    result <- list(cat=cat, num=num, target=target)
-    return(result)
-  },
-
-  # select item from list, and if it's null sets a default
-  itemOrDefaults = function (list, item, default = NULL) {
-    value = list[[item]]
-    if (is.null(value)) default else value
-  },
-  
-)
-
-Dataset <- torch::dataset(
-  name = 'Dataset',
-  
-  initialize=function(data, labels, indices, numericalIndex) {
-    matrix <- data[indices,]
-    
-    tensor <- torch::torch_tensor(as.matrix(matrix), dtype=torch::torch_float32())
-    
-    # if labels have already been restricted to population
-    if (max(indices)>length(labels)) {
-     self$labels <- torch::torch_tensor(labels) 
-    }
-    else {
-      self$labels <- torch::torch_tensor(labels)[indices]
-    }
-    
-    notNumIndex <- 1:tensor$shape[2] != numericalIndex
-    self$cat <- tensor[, notNumIndex]
-    self$num <- tensor[,numericalIndex, drop=F]
-    
-  },
-  
-  .getitem = function(item) {
-    return(list(self$cat[item,], 
-                self$num[item,],
-                self$labels[item]))
-  },
-  
-  .length = function() {
-    self$labels$shape[1]
   }
 )
 
