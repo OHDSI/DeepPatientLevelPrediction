@@ -16,6 +16,7 @@ Estimator <- R6::R6Class('Estimator',
     bestEpoch = NULL,
     model = NULL,
     earlyStopper = NULL,
+    posWeight = NULL,
     initialize = function(baseModel, 
                           modelParameters, 
                           fitParameters,
@@ -31,6 +32,7 @@ Estimator <- R6::R6Class('Estimator',
       self$learningRate <- self$itemOrDefaults(fitParameters,'learningRate', 1e-3)
       self$l2Norm <- self$itemOrDefaults(fitParameters, 'weightDecay', 1e-5)
       self$batchSize <- self$itemOrDefaults(fitParameters, 'batchSize', 1024)
+      self$posWeight <- self$itemOrDefaults(fitParameters, 'posWeight', 1)
       
       # don´t save checkpoints unless you get a resultDir
       self$resultsDir <- self$itemOrDefaults(fitParameters, 'resultsDir', NULL)
@@ -45,7 +47,8 @@ Estimator <- R6::R6Class('Estimator',
       self$optimizer <- optimizer(params=self$model$parameters, 
                                   lr=self$learningRate, 
                                   weight_decay=self$l2Norm)
-      self$criterion <- criterion()
+      self$criterion <- criterion(torch::torch_tensor(self$posWeight, 
+                                                      device=self$device))
       self$earlyStopper <- EarlyStopping$new(patience=patience)
       
       
@@ -60,12 +63,10 @@ Estimator <- R6::R6Class('Estimator',
       
       dataloader <- torch::dataloader(dataset, 
                                       batch_size = self$batchSize, 
-                                      shuffle = T,
-                                      collate_fn = dataset$collate_fn)
+                                      shuffle = T)
       testDataloader <- torch::dataloader(testDataset, 
                                           batch_size = self$batchSize, 
-                                          shuffle = F,
-                                          collate_fn = dataset$collate_fn)
+                                          shuffle = F)
       
       modelStateDict <- list()
       epoch <- list()

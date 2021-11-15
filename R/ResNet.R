@@ -176,10 +176,6 @@ trainResNet <- function(sparseMatrix, population,...,train=T) {
     foldEpochs <- c()
     for(index in 1:length(index_vect)){
       ParallelLogger::logInfo(paste('Fold ',index, ' -- with ', sum(population$indexes!=index & population$indexes > 0),'train rows'))
-      estimator <- Estimator$new(baseModel=ResNet, 
-                                 modelParameters=modelParam,
-                                 fitParameters=fitParams, 
-                                 device=param$device)
       testIndices <- population$rowId[population$indexes==index]
       trainIndices <- population$rowId[(population$indexes!=index) & (population$indexes > 0)]
       trainDataset <- Dataset(sparseMatrix$data[population$rowId,], 
@@ -190,6 +186,11 @@ trainResNet <- function(sparseMatrix, population,...,train=T) {
                              population$outcomeCount, 
                              indices = population$rowId%in%testIndices, 
                              numericalIndex = numericalIndex)
+      fitParams['posWeight'] <- trainDataset$posWeight
+      estimator <- Estimator$new(baseModel=ResNet, 
+                                 modelParameters=modelParam,
+                                 fitParameters=fitParams, 
+                                 device=param$device)
       estimator$fit(trainDataset, testDataset)
       score <- estimator$bestScore
       bestEpoch <- estimator$bestEpoch

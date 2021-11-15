@@ -7,14 +7,21 @@ Dataset <- torch::dataset(
     # add labels
     self$target <- torch::torch_tensor(labels[indices])
     
+    # Weight to add in loss function to positive class
+    self$posWeight <- ((self$target==0)$sum()/self$target$sum())$item()
+    
     # add features
     dataCat <- data[indices,-numericalIndex]
-    matrix <- as(dataCat, 'dgTMatrix') # convert to triplet sparse format
-    sparseIndices <- torch::torch_tensor(matrix(c(matrix@i + 1, matrix@j + 1), ncol=2), dtype = torch::torch_long())
-    values <- torch::torch_tensor(matrix(c(matrix@x)), dtype = torch::torch_float32())
-    self$cat <- torch::torch_sparse_coo_tensor(indices=sparseIndices$t(), 
-                                               values=values$squeeze(), 
-                                               dtype=torch::torch_float32())$coalesce()
+    self$cat <- torch::torch_tensor(as.matrix(dataCat), dtype=torch::torch_float32())
+        
+    # comment out the sparse matrix for now, is really slow need to find 
+    # a better solution for converting it to dense before feeding to model
+    # matrix <- as(dataCat, 'dgTMatrix') # convert to triplet sparse format
+    # sparseIndices <- torch::torch_tensor(matrix(c(matrix@i + 1, matrix@j + 1), ncol=2), dtype = torch::torch_long())
+    # values <- torch::torch_tensor(matrix(c(matrix@x)), dtype = torch::torch_float32())
+    # self$cat <- torch::torch_sparse_coo_tensor(indices=sparseIndices$t(), 
+    #                                            values=values$squeeze(), 
+    #                                            dtype=torch::torch_float32())$coalesce()
     self$num <- torch::torch_tensor(as.matrix(data[indices,numericalIndex, drop = F]), dtype=torch::torch_float32())
   },
   
