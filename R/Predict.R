@@ -248,7 +248,7 @@ predict.knn <- function(plpData, population, plpModel, ...){
 #' @usage predict_deepEstimator(plpModel, population, plpData)
 #' @export predict_deepEstimator
 predict_deepEstimator <- function(plpModel, population, plpData, ...) {
-  
+  attr(plpData$covariateData,'metaData') <- plpModel$metaData$preprocessSettings
   sparseMatrix <- toSparseMDeep(plpData, population)
   indices <- population$rowId
   numericalIndex <- sparseMatrix$map$newCovariateId[sparseMatrix$map$oldCovariateId==1002]
