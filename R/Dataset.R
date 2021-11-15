@@ -32,11 +32,10 @@ Dataset <- torch::dataset(
 # a function to speed up the collation so I dont' call to_dense()
 # on the sparse tensors until they have been combined for the batch
 sparseCollate <- function(batch) {
-  browser()
   elem <- batch[[1]]
   if (inherits(elem, "torch_tensor")) {
     # temporary fix using a tryCatch until torch in R author adds
-    # an is_sparse method or exposes tensor&layout
+    # an is_sparse method or exposes tensor$layout
     tryCatch(return(torch::torch_stack(batch,dim = 1)$to_dense()),
              error=function(e) return(torch::torch_stack(batch, dim = 1)))  
       
