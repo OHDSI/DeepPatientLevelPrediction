@@ -40,6 +40,7 @@ Estimator <- R6::R6Class('Estimator',
       self$prefix <- self$itemOrDefaults(fitParameters, 'prefix', self$model$name)
       
       self$previousEpochs <- self$itemOrDefaults(fitParameters, 'previousEpochs', 0)
+      self$model$to(device=self$device)
       
       self$optimizer <- optimizer(params=self$model$parameters, 
                                   lr=self$learningRate, 
@@ -47,7 +48,6 @@ Estimator <- R6::R6Class('Estimator',
       self$criterion <- criterion()
       self$earlyStopper <- EarlyStopping$new(patience=patience)
       
-      self$model$to(device=self$device)
       
       self$bestScore <- NULL
       self$bestEpoch <- NULL
@@ -96,7 +96,7 @@ Estimator <- R6::R6Class('Estimator',
         if (self$earlyStopper$earlyStop) {
           ParallelLogger::logInfo('Early stopping, validation AUC stopped improving')
           self$finishFit(valAUCs, modelStateDict, valLosses, epoch)
-          invisible(self)
+          return(invisible(self))
         } 
       }
       self$finishFit(valAUCs, modelStateDict, valLosses, epoch)
@@ -112,14 +112,17 @@ Estimator <- R6::R6Class('Estimator',
       self$model$train()
       
       coro::loop(for (b in dataloader) {
+        self$optimizer$zero_grad()
         cat <- b[[1]]$to(device=self$device)
         num <- b[[2]]$to(device=self$device)
         target <- b[[3]]$to(device=self$device)
         out <- self$model(num, cat)
-        
         loss <- self$criterion(out, target)
+        loss$backward()
+        self$optimizer$step()
         
         batch_loss = batch_loss + loss
+        
         if (i %% 10 == 0) {
           elapsed_time <- Sys.time() - t
           ParallelLogger::logInfo('Loss: ', round((batch_loss/1)$item(), 3), ' | Time: ',
@@ -128,9 +131,7 @@ Estimator <- R6::R6Class('Estimator',
           batch_loss = 0
         }
         
-        loss$backward()
-        self$optimizer$step()
-        self$optimizer$zero_grad()
+      
         i <- i + 1
       })
       
@@ -206,7 +207,8 @@ Estimator <- R6::R6Class('Estimator',
     predictProba = function(dataset) {
       dataloader <- torch::dataloader(dataset, 
                                       batch_size = self$batchSize, 
-                                      shuffle=F)
+                                      shuffle=F,
+                                      collate_fn = dataset$collate_fn)
       torch::with_no_grad({
         predictions <- c()
         self$model$eval()
