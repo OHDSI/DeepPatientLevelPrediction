@@ -85,34 +85,28 @@ deepset <- setDeepNNTorch(units=list(c(128, 64), 128), layer_dropout=c(0.2),
 
 
 #debug(fitDeepNNTorch)
-res <- runPlp(population = population, 
-              plpData = plpData, 
-              nfold = 3,
-              modelSettings = deepset, 
-              savePlpData = F, 
-              savePlpResult = F, 
-              savePlpPlots = F, 
-              saveEvaluation = F)
+# res <- runPlp(population = population, 
+#               plpData = plpData, 
+#               nfold = 3,
+#               modelSettings = deepset, 
+#               savePlpData = F, 
+#               savePlpResult = F, 
+#               savePlpPlots = F, 
+#               saveEvaluation = F)
+# 
 
 
-
-resSet <- setResNet(numLayers=2, sizeHidden=c(2^3,2^4), hiddenFactor=1:4,
-                      residualDropout=c(0,0,1), 
-                    hiddenDropout=c(0,0,1),
-                      normalization='BatchNorm', activation= 'RelU',
-                      sizeEmbedding=2^(6), weightDecay=c(1e-6),
-                      learningRate=c(0.1), seed=42, hyperParamSearch='random',
-                      randomSample=3, 
-                    device='cpu', 
-                    batch_size=1024, 
+resSet <- setResNet(numLayers=5, sizeHidden=256, hiddenFactor=2,
+                    residualDropout=c(0.1), 
+                    hiddenDropout=c(0.1),
+                    normalization='BatchNorm', activation= 'RelU',
+                    sizeEmbedding=64, weightDecay=c(1e-6),
+                    learningRate=c(3e-4), seed=42, hyperParamSearch='random',
+                    randomSample=1, 
+                    device='cuda:0', 
+                    batchSize=128, 
                     epochs=10)
 
-resSet <- setResNet(numLayers=1:16, sizeHidden=2^(6:10), hiddenFactor=1:4,
-  residualDropout=seq(0,0.3,0.05), hiddenDropout=seq(0,0.3,0.05),
-  normalization='BatchNorm', activation='RelU',
-  sizeEmbedding=2^(6:9), weightDecay=c(1e-6, 1e-3),
-  learningRate=c(1e-2,1e-5), seed=42, hyperParamSearch='random',
-  randomSample=10, device='cpu', batch_size=1024, epochs=5)
 
 res2 <- runPlp(population = population, 
               plpData = plpData, 
