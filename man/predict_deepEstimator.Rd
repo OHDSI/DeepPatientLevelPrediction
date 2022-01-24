@@ -4,7 +4,14 @@
 \alias{predict_deepEstimator}
 \title{predict_deepEstimator}
 \usage{
-predict_deepEstimator(x)
+predict_deepEstimator(plpModel, population, plpData)
+}
+\arguments{
+\item{plpModel}{The plpModel object}
+
+\item{population}{Population dataframe}
+
+\item{plpData}{plpData object}
 }
 \description{
 prediction function for models using estimator class
