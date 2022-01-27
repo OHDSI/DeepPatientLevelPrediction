@@ -1,33 +1,19 @@
-Estimator <- R6::R6Class('Estimator',
+#' @export
+Estimator <- R6::R6Class(
+  classname = 'Estimator',
+  lock_objects = FALSE,
   public = list(
-    device = NULL,
-    mode = NULL,
-    modelParameters = NULL,
-    epochs = NULL,
-    learningRate = NULL,
-    l2Norm = NULL,
-    batchSize = NULL,
-    resultsDir = NULL,
-    prefix = NULL,
-    previousEpochs = NULL,
-    optimizer = NULL,
-    criterion = NULL,
-    bestScore = NULL,
-    bestEpoch = NULL,
-    model = NULL,
-    earlyStopper = NULL,
-    posWeight = NULL,
     initialize = function(baseModel, 
                           modelParameters, 
                           fitParameters,
                           optimizer=torch::optim_adam,
                           criterion=torch::nn_bce_with_logits_loss,
                           device='cpu', 
-                          patience=3){
+                          patience=NULL){
       self$device <- device
       self$model <- do.call(baseModel, modelParameters)
       self$modelParameters <- modelParameters
-      
+            
       self$epochs <- self$itemOrDefaults(fitParameters, 'epochs', 10)
       self$learningRate <- self$itemOrDefaults(fitParameters,'learningRate', 1e-3)
       self$l2Norm <- self$itemOrDefaults(fitParameters, 'weightDecay', 1e-5)
@@ -49,7 +35,12 @@ Estimator <- R6::R6Class('Estimator',
                                   weight_decay=self$l2Norm)
       self$criterion <- criterion(torch::torch_tensor(self$posWeight, 
                                                       device=self$device))
-      self$earlyStopper <- EarlyStopping$new(patience=patience)
+      
+      if (!is.null(patience)) {
+        self$earlyStopper <- EarlyStopping$new(patience=patience)
+      } else {
+        self$earlyStopper <- FALSE
+      }
       
       
       self$bestScore <- NULL
@@ -68,50 +59,58 @@ Estimator <- R6::R6Class('Estimator',
                                           batch_size = self$batchSize, 
                                           shuffle = F)
       
-      modelStateDict <- list()
-      epoch <- list()
+      # modelStateDict <- list()
+      # epoch <- list()
+      times <- list()
       
-      lr <- c()
+      # lr <- c()
       for (epochI in 1:self$epochs) {
         
         # fit the model
+        startTime <- Sys.time()
         self$fitEpoch(dataloader)
+        endTime <- Sys.time()
         
         # predict on test data
         scores <- self$score(testDataloader)
-        
+        delta <- endTime - startTime
         currentEpoch <- epochI + self$previousEpochs
-        lr <- c(lr, self$optimizer$param_groups[[1]]$lr)
-        ParallelLogger::logInfo('Epochs: ', currentEpoch, ' | Val AUC: ', 
-                                round(scores$auc,3), ' | Val Loss: ', 
-                                round(scores$loss,3), ' | LR: ',
-                                self$optimizer$param_groups[[1]]$lr)
-        valLosses <- c(valLosses, scores$loss)
-        valAUCs <- c(valAUCs, scores$auc)
-        self$earlyStopper$call(scores$auc)
-        if (self$earlyStopper$improved) {
-          # here it saves the results to lists rather than files
-          modelStateDict[[epochI]]  <- self$model$state_dict()
-          epoch[[epochI]] <- currentEpoch
-        }
-        if (self$earlyStopper$earlyStop) {
-          ParallelLogger::logInfo('Early stopping, validation AUC stopped improving')
-          self$finishFit(valAUCs, modelStateDict, valLosses, epoch)
-          return(invisible(self))
-        } 
+        # lr <- c(lr, self$optimizer$param_groups[[1]]$lr)
+        ParallelLogger::logInfo('Epochs: ', currentEpoch, 
+                                ' | Val AUC: ', round(scores$auc,3), 
+                                ' | Val Loss: ', round(scores$loss,3),
+                                ' | Time: ', round(delta, 3), ' ', 
+                                units(delta))
+                                
+        # valLosses <- c(valLosses, scores$loss)
+        # valAUCs <- c(valAUCs, scores$auc)
+        times <- c(times, round(delta, 3))
+        # if (self$earlyStopper){
+        #   self$earlyStopper$call(scores$auc)
+        #   if (self$earlyStopper$improved) {
+        #     # here it saves the results to lists rather than files
+        #     modelStateDict[[epochI]]  <- self$model$state_dict()
+        #     epoch[[epochI]] <- currentEpoch
+        #   }
+        #   if (self$earlyStopper$earlyStop) {
+        #     ParallelLogger::logInfo('Early stopping, validation AUC stopped improving')
+        #     ParallelLogger::logInfo('Average time per epoch was: ', mean(as.numeric(times)), ' ' , units(delta))
+        #     self$finishFit(valAUCs, modelStateDict, valLosses, epoch)
+        #     return(invisible(self))
+        #   }
+        # } else { 
+        #   modelStateDict[[epochI]]  <- self$model$state_dict()
+        #   epoch[[epochI]] <- currentEpoch
+        #   }
       }
-      self$finishFit(valAUCs, modelStateDict, valLosses, epoch)
+      ParallelLogger::logInfo('Average time per epoch was: ', mean(as.numeric(times)), ' ' , units(delta))
+      # self$finishFit(valAUCs, modelStateDict, valLosses, epoch)
       invisible(self)
     },
     
     # trains for one epoch
     fitEpoch = function(dataloader){
-      t <- Sys.time()
-      batch_loss <- 0
-      i <- 1
-      
       self$model$train()
-      
       coro::loop(for (b in dataloader) {
         self$optimizer$zero_grad()
         cat <- b[[1]]$to(device=self$device)
@@ -121,20 +120,7 @@ Estimator <- R6::R6Class('Estimator',
         loss <- self$criterion(out, target)
         loss$backward()
         self$optimizer$step()
-        
-        batch_loss = batch_loss + loss
-        
-        if (i %% 10 == 0) {
-          elapsed_time <- Sys.time() - t
-          ParallelLogger::logInfo('Loss: ', round((batch_loss/1)$item(), 3), ' | Time: ',
-                                  round(elapsed_time,digits = 2), units(elapsed_time))
-          t <- Sys.time()
-          batch_loss = 0
-        }
-        
-      
-        i <- i + 1
-      })
+        })
       
     },
     
@@ -163,8 +149,7 @@ Estimator <- R6::R6Class('Estimator',
     fitWholeTrainingSet = function(dataset) {
       dataloader <- torch::dataloader(dataset, 
                                       batch_size=self$batchSize, 
-                                      shuffle=TRUE, 
-                                      drop_last=FALSE)
+                                      shuffle=TRUE)
       for (epoch in 1:self$epochs) {
         self$fitEpoch(dataloader)
       }
@@ -208,8 +193,7 @@ Estimator <- R6::R6Class('Estimator',
     predictProba = function(dataset) {
       dataloader <- torch::dataloader(dataset, 
                                       batch_size = self$batchSize, 
-                                      shuffle=F,
-                                      collate_fn = dataset$collate_fn)
+                                      shuffle=F)
       torch::with_no_grad({
         predictions <- c()
         self$model$eval()
@@ -252,15 +236,10 @@ Estimator <- R6::R6Class('Estimator',
   )
 )
 
-EarlyStopping <- R6::R6Class('EarlyStopping',
+EarlyStopping <- R6::R6Class(
+   classname = 'EarlyStopping',
+   lock_objects = FALSE,
    public = list(
-     patience = NULL,
-     delta = NULL,
-     counter = NULL,
-     bestScore = NULL,
-     earlyStop =  NULL,
-     improved = NULL,
-     previousScore = NULL,
      initialize = function(patience=3, delta=0) {
        self$patience <- patience
        self$counter <- 0
