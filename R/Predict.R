@@ -252,8 +252,9 @@ predict_deepEstimator <- function(plpModel, population, plpData, ...) {
   sparseMatrix <- toSparseMDeep(plpData, population)
   indices <- population$rowId
   numericalIndex <- sparseMatrix$map$newCovariateId[sparseMatrix$map$oldCovariateId==1002]
-  dataset <- Dataset(sparseMatrix$data, population$outcomeCount,indices=indices,
-                     numericalIndex = numericalIndex)
+  dataset <- torch::dataset_subset(Dataset(sparseMatrix$data, population$outcomeCount,
+                     numericalIndex = numericalIndex), indices)
+  
   prediction <- plpModel$model$predictProba(dataset)
   prediction <- population %>% mutate(value=prediction)
   return(prediction)

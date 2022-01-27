@@ -110,8 +110,8 @@ fitResNet <- function(population, plpData, param, outcomeId, cohortId, ...) {
   # now train the final model
   bestInd <- which.max(abs(unlist(scores)-0.5))[1]
   param.best <- param[bestInd,]
-  uniqueEpochs <- unique(hyperSummary$bestEpochs[[bestInd]])
-  param.best$epochs <- uniqueEpochs[which.max(tabulate(match(hyperSummary$bestEpochs[[bestInd]], uniqueEpochs)))]
+  param.best$epochs <- floor(mean(hyperSummary$bestEpochs[[bestInd]]) + 0.5)
+  
   outLoc <- tempfile(pattern = 'resNet')
   outLoc <- file.path(outLoc, paste0('finalModel'))
   param.best$resultsDir <- outLoc
@@ -174,19 +174,15 @@ trainResNet <- function(sparseMatrix, population,...,train=T) {
     ParallelLogger::logInfo(paste('Training deep neural network using Torch with ',length(index_vect),' fold CV'))
     foldAuc <- c()
     foldEpochs <- c()
-    for(index in 1:length(index_vect)){
+    dataset <- Dataset(sparseMatrix$data, population$outcomeCount, 
+                       numericalIndex = numericalIndex)
+    fitParams['posWeight'] <- dataset$posWeight
+    for(index in 1:length(index_vect)) {
       ParallelLogger::logInfo(paste('Fold ',index, ' -- with ', sum(population$indexes!=index & population$indexes > 0),'train rows'))
       testIndices <- population$rowId[population$indexes==index]
       trainIndices <- population$rowId[(population$indexes!=index) & (population$indexes > 0)]
-      trainDataset <- Dataset(sparseMatrix$data[population$rowId,], 
-                              population$outcomeCount, 
-                              indices= population$rowId%in%trainIndices, 
-                              numericalIndex=numericalIndex)
-      testDataset <- Dataset(sparseMatrix$data[population$rowId,], 
-                             population$outcomeCount, 
-                             indices = population$rowId%in%testIndices, 
-                             numericalIndex = numericalIndex)
-      fitParams['posWeight'] <- trainDataset$posWeight
+      trainDataset <- torch::dataset_subset(dataset, trainIndices)
+      testDataset <- torch::dataset_subset(dataset, testIndices)
       estimator <- Estimator$new(baseModel=ResNet, 
                                  modelParameters=modelParam,
                                  fitParameters=fitParams, 
@@ -204,18 +200,18 @@ trainResNet <- function(sparseMatrix, population,...,train=T) {
   }
   else {
     ParallelLogger::logInfo('Training deep neural network using Torch on whole training set')
-    fitParams$resultsDir <- param$resultsDir    
+    trainIndices <- population$rowId[population$indexes > 0]
+    
+    dataset <- Dataset(sparseMatrix$data[population$rowId,], 
+                            population$outcomeCount, 
+                            numericalIndex=numericalIndex)
+    trainDataset <- torch::dataset_subset(dataset, trainIndices)
+    
+    fitParams['posWeight'] <- trainDataset$posWeight
     estimator <- Estimator$new(baseModel = ResNet,
                                modelParameters = modelParam,
                                fitParameters = fitParams, 
                                device=param$device)
-    
-    trainIndices <- population$rowId[population$indexes > 0]
-    
-    trainDataset <- Dataset(sparseMatrix$data[population$rowId,], 
-                            population$outcomeCount, 
-                            indices=population$rowId%in%trainIndices, 
-                            numericalIndex=numericalIndex)
    
     estimator$fitWholeTrainingSet(trainDataset)
     
@@ -241,14 +237,12 @@ trainResNet <- function(sparseMatrix, population,...,train=T) {
 
 ResLayer <- torch::nn_module(
   name='ResLayer',
-  
   initialize=function(sizeHidden, resHidden, normalization,
                      activation, hiddenDropout=NULL, residualDropout=NULL){
     self$norm <- normalization(sizeHidden)
     self$linear0 <- torch::nn_linear(sizeHidden, resHidden)
     self$linear1 <- torch::nn_linear(resHidden, sizeHidden)
     
-    self$activation <- activation
     if (!is.null(hiddenDropout)){
       self$hiddenDropout <- torch::nn_dropout(p=hiddenDropout)
     }
@@ -278,6 +272,7 @@ ResLayer <- torch::nn_module(
   }
 )
 
+#' @export
 ResNet <- torch::nn_module(
   name='ResNet',
   
