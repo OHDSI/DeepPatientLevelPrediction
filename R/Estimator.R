@@ -175,7 +175,8 @@ Estimator <- R6::R6Class(
         })
         mean_loss <- mean(loss)
         predictionsClass <- data.frame(value=predictions, outcomeCount=targets)
-        attr(predictionsClass, 'metaData')$predictionType <-'binary' 
+        attr(predictionsClass, 'metaData')$predictionType <-'binary' #old can be remvoed
+        attr(predictionsClass, 'metaData')$modelType <-'binary' 
         auc <- computeAuc(predictionsClass)
       })
       return(list(loss=mean_loss, auc=auc))
