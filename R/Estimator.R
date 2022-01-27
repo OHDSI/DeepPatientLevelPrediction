@@ -20,11 +20,6 @@ Estimator <- R6::R6Class(
       self$batchSize <- self$itemOrDefaults(fitParameters, 'batchSize', 1024)
       self$posWeight <- self$itemOrDefaults(fitParameters, 'posWeight', 1)
       
-      # don´t save checkpoints unless you get a resultDir
-      self$resultsDir <- self$itemOrDefaults(fitParameters, 'resultsDir', NULL)
-      if (!is.null(self$resultsDir)) {
-        dir.create(self$resultsDir, recursive=TRUE, showWarnings=FALSE) 
-        }
       self$prefix <- self$itemOrDefaults(fitParameters, 'prefix', self$model$name)
       
       self$previousEpochs <- self$itemOrDefaults(fitParameters, 'previousEpochs', 0)
@@ -42,7 +37,6 @@ Estimator <- R6::R6Class(
         self$earlyStopper <- FALSE
       }
       
-      
       self$bestScore <- NULL
       self$bestEpoch <- NULL
     },
@@ -59,11 +53,10 @@ Estimator <- R6::R6Class(
                                           batch_size = self$batchSize, 
                                           shuffle = F)
       
-      # modelStateDict <- list()
-      # epoch <- list()
+      modelStateDict <- list()
+      epoch <- list()
       times <- list()
       
-      # lr <- c()
       for (epochI in 1:self$epochs) {
         
         # fit the model
@@ -75,36 +68,35 @@ Estimator <- R6::R6Class(
         scores <- self$score(testDataloader)
         delta <- endTime - startTime
         currentEpoch <- epochI + self$previousEpochs
-        # lr <- c(lr, self$optimizer$param_groups[[1]]$lr)
         ParallelLogger::logInfo('Epochs: ', currentEpoch, 
                                 ' | Val AUC: ', round(scores$auc,3), 
                                 ' | Val Loss: ', round(scores$loss,3),
                                 ' | Time: ', round(delta, 3), ' ', 
                                 units(delta))
                                 
-        # valLosses <- c(valLosses, scores$loss)
-        # valAUCs <- c(valAUCs, scores$auc)
+        valLosses <- c(valLosses, scores$loss)
+        valAUCs <- c(valAUCs, scores$auc)
         times <- c(times, round(delta, 3))
-        # if (self$earlyStopper){
-        #   self$earlyStopper$call(scores$auc)
-        #   if (self$earlyStopper$improved) {
-        #     # here it saves the results to lists rather than files
-        #     modelStateDict[[epochI]]  <- self$model$state_dict()
-        #     epoch[[epochI]] <- currentEpoch
-        #   }
-        #   if (self$earlyStopper$earlyStop) {
-        #     ParallelLogger::logInfo('Early stopping, validation AUC stopped improving')
-        #     ParallelLogger::logInfo('Average time per epoch was: ', mean(as.numeric(times)), ' ' , units(delta))
-        #     self$finishFit(valAUCs, modelStateDict, valLosses, epoch)
-        #     return(invisible(self))
-        #   }
-        # } else { 
-        #   modelStateDict[[epochI]]  <- self$model$state_dict()
-        #   epoch[[epochI]] <- currentEpoch
-        #   }
+        if (self$earlyStopper){
+          self$earlyStopper$call(scores$auc)
+          if (self$earlyStopper$improved) {
+            # here it saves the results to lists rather than files
+            modelStateDict[[epochI]]  <- self$model$state_dict()
+            epoch[[epochI]] <- currentEpoch
+          }
+          if (self$earlyStopper$earlyStop) {
+            ParallelLogger::logInfo('Early stopping, validation AUC stopped improving')
+            ParallelLogger::logInfo('Average time per epoch was: ', mean(as.numeric(times)), ' ' , units(delta))
+            self$finishFit(valAUCs, modelStateDict, valLosses, epoch)
+            return(invisible(self))
+          }
+        } else {
+          modelStateDict[[epochI]]  <- self$model$state_dict()
+          epoch[[epochI]] <- currentEpoch
+          }
       }
       ParallelLogger::logInfo('Average time per epoch was: ', mean(as.numeric(times)), ' ' , units(delta))
-      # self$finishFit(valAUCs, modelStateDict, valLosses, epoch)
+      self$finishFit(valAUCs, modelStateDict, valLosses, epoch)
       invisible(self)
     },
     
