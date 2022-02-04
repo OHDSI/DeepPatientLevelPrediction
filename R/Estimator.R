@@ -13,6 +13,7 @@ Estimator <- R6::R6Class(
       self$device <- device
       self$model <- do.call(baseModel, modelParameters)
       self$modelParameters <- modelParameters
+      self$fitParameters <- fitParameters
             
       self$epochs <- self$itemOrDefaults(fitParameters, 'epochs', 10)
       self$learningRate <- self$itemOrDefaults(fitParameters,'learningRate', 1e-3)
@@ -145,15 +146,21 @@ Estimator <- R6::R6Class(
       for (epoch in 1:self$epochs) {
         self$fitEpoch(dataloader)
       }
+      
+    }, 
+    
+    # save model and those parameters needed to reconstruct it
+    save = function(path, name) {
+      savePath <- file.path(path, name)
       torch::torch_save(list(modelStateDict=self$model$state_dict(),
                              modelParameters=self$modelParameters,
                              fitParameters=self$fitParameters,
                              epoch=self$epochs),
-                        file.path(self$resultsDir, paste0(
-                          self$prefix, '_epochs:', self$epochs)
-                        ))
+                        savePath
+                        )
+      return(savePath)
       
-    },    
+    },
     
     # calculates loss and auc after training for one epoch
     score = function(dataloader){

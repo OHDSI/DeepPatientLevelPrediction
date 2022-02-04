@@ -212,7 +212,7 @@ fitResNet_plp5 <- function(
   class(result) <- "plpModel"
   attr(result, "predictionFunction") <- "predictDeepEstimator"
   attr(result, "modelType") <- "binary"
-  attr(result, "saveType") <- attr(param, 'saveType')
+  attr(result, "saveType") <- attr(param, 'settings')$saveType
   
   return(result)
 }
@@ -252,8 +252,21 @@ predictDeepEstimator <- function(
   
   # get predictions
   prediction <- cohort
-  prediction$value <- plpModel$model$predictProba(data)
   
+  if(is.character(plpModel$model)){
+    model <- torch::torch_load(file.path(plpModel$model, 'DeepEstimatorModel.pt'), device='cpu')
+    estimator <- Estimator$new(
+      baseModel = plpModel$settings$modelSettings$model,
+      modelParameters = model$modelParameters,
+      fitParameters = model$fitParameters, 
+      device = plpModel$settings$modelSettings$extraSettings$device
+    )
+    prediction$value <- estimator$predictProba(data)
+  } else {
+    prediction$value <- plpModel$model$predictProba(data)
+  }
+    
+
   attr(prediction, "metaData")$modelType <-  attr(plpModel, 'modelType')
   
   return(prediction)
@@ -273,13 +286,11 @@ gridCvDeep <- function(
 ){
   
   
-  ParallelLogger::logInfo(paste0("Rnning CV for ",modelName," model"))
+  ParallelLogger::logInfo(paste0("Running CV for ",modelName," model"))
   
   ###########################################################################
   
   
-  n_features <- ncol(matrixData)
-
   gridSearchPredictons <- list()
   length(gridSearchPredictons) <- length(paramSearch)
   
@@ -289,7 +300,6 @@ gridCvDeep <- function(
     modelParamNames <- c("numLayers", "sizeHidden", "hiddenFactor",
       "residualDropout", "hiddenDropout", "sizeEmbedding")
     modelParams <- paramSearch[[gridId]][modelParamNames]
-    modelParams$n_features <- n_features
     
     fitParams <- paramSearch[[gridId]][c("weightDecay", "learningRate")]
     fitParams$epochs <- epochs
@@ -411,11 +421,11 @@ gridCvDeep <- function(
   
 
   # save torch code here
-  
+  estimatorFile <- estimator$save(modelLocation, 'DeepEstimatorModel.pt')
   
   return(
     list( 
-      estimator = estimator,
+      estimator = modelLocation,
       prediction = prediction,
       finalParam = finalParam,
       paramGridSearch = paramGridSearch,
