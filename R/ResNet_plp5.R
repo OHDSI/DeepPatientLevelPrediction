@@ -302,19 +302,15 @@ gridCvDeep <- function(
     fold <- labels$index
     ParallelLogger::logInfo(paste0('Max fold: ', max(fold)))
     
+    dataset <- Dataset_plp5(matrixData, labels$outcomeCount)
+    modelParams$cat_features <- dataset$cat$shape[2]
+    modelParams$num_features <- dataset$num$shape[2]
+    
     for( i in 1:max(fold)){
       
       ParallelLogger::logInfo(paste0('Fold ',i))
-      trainDataset <- Dataset_plp5(
-        matrixData[fold != i,],
-        labels$outcomeCount[fold != i]
-        )
-      testDataset <- Dataset_plp5(
-        matrixData[fold == i,],
-        labels$outcomeCount[fold == i], 
-        trainDataset$getNumericalIndex
-      )
-      
+      trainDataset <- torch::dataset_subset(dataset, indices=which(fold!=i)) 
+      testDataset <- torch::dataset_subset(dataset, indices=which(fold==i))
       fitParams['posWeight'] <- trainDataset$posWeight
       
       estimator <- Estimator$new(
@@ -365,31 +361,33 @@ gridCvDeep <- function(
   modelParamNames <- c("numLayers", "sizeHidden", "hiddenFactor",
     "residualDropout", "hiddenDropout", "sizeEmbedding")
   modelParams <- finalParam[modelParamNames]
-  modelParams$n_features <- n_features
   fitParams <- finalParam[c("weightDecay", "learningRate")]
   fitParams$epochs <- epochs
   fitParams$batchSize <- batchSize
-  fitParams$resultsDir <- modelLocation # remove this?
   # create the dir
   if(!dir.exists(file.path(modelLocation))){
     dir.create(file.path(modelLocation), recursive = T)
   }
+  
+  trainDataset <- Dataset_plp5(
+    matrixData, 
+    labels$outcomeCount
+    )
+  modelParams$cat_features <- trainDataset$cat$shape[2]
+  modelParams$num_features <- trainDataset$num$shape[2]
+  
   
   estimator <- Estimator$new(
     baseModel = ResNet,
     modelParameters = modelParams,
     fitParameters = fitParams, 
     device = device
-    )
-  
-  trainDataset <- Dataset_plp5(
-    matrixData, 
-    labels$outcomeCount
-    )
+  )
   
   numericalIndex <- trainDataset$getNumericalIndex
   
   estimator$fitWholeTrainingSet(trainDataset)
+  
   
   ParallelLogger::logInfo("Calculating predictions on all train data...")
   prediction <- predictDeepEstimator(
@@ -471,15 +469,12 @@ ResLayer <- torch::nn_module(
 ResNet <- torch::nn_module(
   name='ResNet',
   
-  initialize=function(n_features, sizeEmbedding, sizeHidden, numLayers,
+  initialize=function(cat_features, num_features, sizeEmbedding, sizeHidden, numLayers,
                       hiddenFactor, activation=torch::nn_relu, 
                       normalization=torch::nn_batch_norm1d, hiddenDropout=NULL,
                       residualDropout=NULL, d_out=1) {
-    # n_features - 1 because only binary features are embedded (not Age)
-    # ages is concatenated with the embedding output
-    # TODO need to extend to support other numerical features
-    self$embedding <- torch::nn_linear(n_features - 1, sizeEmbedding, bias=F)
-    self$first_layer <- torch::nn_linear(sizeEmbedding + 1, sizeHidden)
+    self$embedding <- torch::nn_linear(cat_features, sizeEmbedding, bias=F)
+    self$first_layer <- torch::nn_linear(sizeEmbedding + num_features, sizeHidden)
     
     resHidden <- sizeHidden * hiddenFactor
     

@@ -1,9 +1,7 @@
 #' @export
 Dataset_plp5 <- torch::dataset(
   name = 'Dataset',
-  
   initialize = function(data, labels = NULL, numericalIndex = NULL) {
-    git 
     # determine numeric
     if(is.null(numericalIndex)){
       colBin <- apply(data, 2, function(x) sum(x==1 | x==0))
@@ -20,7 +18,6 @@ Dataset_plp5 <- torch::dataset(
     } else{
       self$target <- torch::torch_tensor(rep(0, nrow(data)))
     }
-    
     
     # Weight to add in loss function to positive class
     self$posWeight <- ((self$target==0)$sum()/self$target$sum())$item()
@@ -46,14 +43,10 @@ Dataset_plp5 <- torch::dataset(
     )
   },
   
-  .getitem = function(item) {
-    return(
-      list(
-        cat = self$cat[item], 
-        num = self$num[item,],
-        target = self$target[item]
-      )
-    )
+  .getbatch = function(item) {
+    return(list(cat = self$cat[item],
+                num = self$num[item],
+                target = self$target[item]))
   },
   
   .length = function() {
