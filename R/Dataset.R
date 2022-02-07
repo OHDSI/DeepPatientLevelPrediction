@@ -22,6 +22,9 @@ Dataset_plp5 <- torch::dataset(
     # Weight to add in loss function to positive class
     self$posWeight <- ((self$target==0)$sum()/self$target$sum())$item()
     
+    # for DeepNNTorch 
+    self$all <- torch::torch_tensor(as.matrix(data), dtype = torch::torch_float32())
+    
     # add features
     dataCat <- data[, !numericalIndex]
     self$cat <- torch::torch_tensor(as.matrix(dataCat), dtype=torch::torch_float32())

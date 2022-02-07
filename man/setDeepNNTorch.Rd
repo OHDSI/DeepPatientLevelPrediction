@@ -10,8 +10,9 @@ setDeepNNTorch(
   lr = c(1e-04),
   decay = c(1e-05),
   outcome_weight = c(1),
-  batch_size = c(100),
+  batch_size = c(10000),
   epochs = c(100),
+  device = "cpu",
   seed = NULL
 )
 }
