@@ -1,3 +1,4 @@
+#' @export
 setDeepNNTorch <- function(
   units=list(c(128, 64), 128),
   layer_dropout=c(0.2),
@@ -13,7 +14,7 @@ setDeepNNTorch <- function(
   
   param <- expand.grid(units=units,
                        layer_dropout=layer_dropout,
-                       lr =lr, decay=decay, outcome_weight=outcome_weight,epochs= epochs,
+                       lr =lr, decay=decay, outcome_weight=outcome_weight, epochs= epochs,
                        seed=ifelse(is.null(seed),'NULL', seed))
   
   param$units1=unlist(lapply(param$units, function(x) x[1])) 
@@ -148,6 +149,43 @@ fitDeepNNTorch <- function(
   attr(result, "saveType") <- attr(param, 'settings')$saveType
   
   return(result)
+}
+
+#' @export
+predictDeepNN <- function(
+  plpModel,
+  data,
+  cohort
+){
+  
+  if(!'plpModel' %in% class(plpModel)){
+    plpModel <- list(model = plpModel)
+    attr(plpModel, 'modelType') <- 'binary'
+  }
+  
+  if("plpData" %in% class(data)){
+    
+    dataMat <- PatientLevelPrediction::toSparseM(
+      plpData = data, 
+      cohort = cohort, 
+      map = plpModel$covariateImportance %>% 
+        dplyr::select(.data$columnId, .data$covariateId)
+    )
+    
+    data <- Dataset_plp5(dataMat$dataMatrix) # add numeric details..
+  }
+  
+  # get predictions
+  prediction <- cohort
+  
+  if(is.character(plpModel$model)) model <- torch::torch_load(file.path(plpModel$model, 'DeepNNTorchModel.rds'), device='cpu')
+    
+    y_pred = model(data$all)
+    prediction$value <- as.array(y_pred$to())[,1]
+    
+  attr(prediction, "metaData")$modelType <- attr(plpModel, 'modelType')
+  
+  return(prediction)
 }
 
 
