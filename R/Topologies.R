@@ -1,3 +1,4 @@
+#' @export
 singleLayerNN <- function(inputN, layer1, outputN = 2, layer_dropout){
   net <- torch::nn_module(
     "classic_net",
@@ -20,7 +21,7 @@ singleLayerNN <- function(inputN, layer1, outputN = 2, layer_dropout){
   return(net())
 }
 
-
+#' @export
 doubleLayerNN <- function(inputN, layer1, 
                           layer2, outputN,
                           layer_dropout){
@@ -47,7 +48,7 @@ doubleLayerNN <- function(inputN, layer1,
   return(net())
 }
 
-
+#' @export
 tripleLayerNN <- function(inputN, layer1, 
                           layer2, layer3,
                           outputN, layer_dropout){
