@@ -180,8 +180,8 @@ predictDeepNN <- function(
   
   if(is.character(plpModel$model)) model <- torch::torch_load(file.path(plpModel$model, 'DeepNNTorchModel.rds'), device='cpu')
     
-    y_pred = model(data$all)
-    prediction$value <- as.array(y_pred$to())[,1]
+  y_pred = model(data$all)
+  prediction$value <- as.array(y_pred$to())[,1]
     
   attr(prediction, "metaData")$modelType <- attr(plpModel, 'modelType')
   
