@@ -64,9 +64,6 @@ setTabNetTorch <- function(
   # }
   
   attr(param, 'settings') <- list(
-    modelType = 'DeepNNTorch',
-    seed = seed,
-    name = "TabNetTorch",
     batch_size = batch_size,
     epochs = epochs,
     drop_last = drop_last,
@@ -81,6 +78,7 @@ setTabNetTorch <- function(
   
   attr(param, 'modelType') <- 'binary' 
   attr(param, 'saveType') <- 'file'
+  attr(param, 'name') <-  "TabNetTorch"
   
   result <- list(fitFunction='fitTabNetTorch', 
                  param=param)
@@ -88,7 +86,6 @@ setTabNetTorch <- function(
   class(result) <- 'modelSettings' 
   
   return(result)
-  
 }
 
 #' @export
@@ -106,8 +103,6 @@ fitTabNetTorch <- function(
     stop('TabNetTorch requires correct covariateData')
   }
   
-  # get the settings from the param
-  settings <- attr(param, 'settings')
   
   if(!is.null(trainData$folds)){
     trainData$labels <- merge(trainData$labels, trainData$folds, by = 'rowId')
@@ -129,26 +124,29 @@ fitTabNetTorch <- function(
     args = list(
       matrixData = matrixData,
       labels = labels,
-      seed = settings$seed,
-      modelName = settings$name,
-      device = settings$device,
-      batch_size = settings$batch_size,
-      epochs = settings$epochs,
       modelLocation = outLoc,
       paramSearch = param
     )
   )
-  
   hyperSummary <- do.call(rbind, lapply(cvResult$paramGridSearch, function(x) x$hyperSummary))
   
   prediction <- cvResult$prediction
   
-  incs <- rep(1, nrow(covariateRef))
-  covariateRef$included <- incs
-  covariateRef$covariateValue <- 0
+  variableImportance <- cvResult$variableImportance
+  incs <- seq_len(nrow(variableImportance))
+  variableImportance$columnId <- incs
+
+  browser()
+  covariateRef <- covariateRef %>% merge(variableImportance, by = 'columnId', 
+                                         all.x = TRUE)  %>%
+                                   dplyr::mutate(included=1)  %>%
+                                   dplyr::rename(covariateValue=importance) %>%
+                                   dplyr::select(!variables)
+  covariateRef$covariateValue[is.na(covariateRef$covariateValue)] <- 0
+  covariateRef$included[is.na(covariateRef$included)] <- 0
+  
   
   comp <- start - Sys.time()
-  
   result <- list(
     model = cvResult$estimator, #file.path(outLoc),
     
@@ -162,7 +160,7 @@ fitTabNetTorch <- function(
       tidyCovariates = attr(trainData$covariateData, "metaData")$tidyCovariateDataSettings, 
       requireDenseMatrix = F,
       modelSettings = list(
-        model = settings$name, 
+        model = attr(param, 'name'), 
         param = param,
         finalModelParameters = cvResult$finalParam,
         extraSettings = attr(param, 'settings')
@@ -186,9 +184,9 @@ fitTabNetTorch <- function(
   )
   
   class(result) <- "plpModel"
-  attr(result, "predictionFunction") <- "predictDeepNN"
+  attr(result, "predictionFunction") <- "predictTabNetTorch"
   attr(result, "modelType") <- "binary"
-  attr(result, "saveType") <- attr(param, 'settings')$saveType
+  attr(result, "saveType") <- attr(param, 'saveType')
   
   return(result)
 }
@@ -196,22 +194,13 @@ fitTabNetTorch <- function(
 gridCvTabNetTorch <- function(
   matrixData,
   labels,
-  seed,
-  batch_size,
-  epochs,
-  drop_last,
-  clip_value,
-  loss,
-  mask_type,
-  optimizer,
-  lr_scheduler,
-  verbose,
-  device,
-  paramSearch
+  paramSearch,
+  modelLocation
 ){
   
+  fitSettings <- attr(paramSearch, 'settings')
   
-  ParallelLogger::logInfo(paste0("Running CV for ",modelName," model"))
+  ParallelLogger::logInfo(paste0("Running CV for ",attr(paramSearch, 'name')," model"))
   
   ###########################################################################
   
@@ -220,38 +209,9 @@ gridCvTabNetTorch <- function(
   length(gridSearchPredictons) <- length(paramSearch)
   
   for(gridId in 1:length(paramSearch)){
-    
+
     # get the params
-    
-    config <- tabnet_config(batch_size = batch_size,
-                            penalty = paramSearch$penalty,
-                            clip_value = clip_value,
-                            loss = loss,
-                            epochs = epochs,
-                            drop_last = drop_last,
-                            decision_width = paramSearch$decision_width,
-                            attention_width = paramSearch$attention_width,
-                            num_steps = paramSearch$num_steps,
-                            feature_reusage = paramSearch$feature_reusage,
-                            mask_type = mask_type,
-                            virtual_batch_size = paramSearch$virtual_batch_size,
-                            valid_split = paramSearch$valid_split,
-                            learn_rate = paramSearch$learn_rate,
-                            optimizer = optimizer,
-                            lr_scheduler = lr_scheduler,
-                            lr_decay = paramSearch$lr_decay,
-                            step_size = paramSearch$step_size,
-                            checkpoint_epochs = paramSearch$checkpoint_epochs,
-                            cat_emb_dim = paramSearch$cat_emb_dim,
-                            num_independent = paramSearch$num_independent,
-                            num_shared = paramSearch$num_shared,
-                            momentum = paramSearch$momentum,
-                            pretraining_ratio = paramSearch$pretraining_ratio,
-                            verbose = verbose,
-                            device = device,
-                            importance_sample_size = paramSearch$importance_sample_size,
-                            seed = seed) 
-    
+    config <- do.call(tabnet::tabnet_config, args=c(paramSearch[[gridId]], fitSettings))
     
     # initiate prediction
     prediction <- c()
@@ -273,23 +233,14 @@ gridCvTabNetTorch <- function(
       trainLabel <- labels[fold != i,]
       
       testDataset <-as.data.frame(as.matrix(matrixData)[fold == i,])
-      testLabel <- labels[fold == i,]
-      
-      model <- tabnet_fit(x = trainDataset, y = trainLabel$outcomeCount, config = config)
+
+      model <- tabnet::tabnet_fit(x = trainDataset, y = trainLabel$outcomeCount, config = config)
       
       ParallelLogger::logInfo("Calculating predictions on left out fold set...")
       
-      pred <- predict(model, testDataset)
-      predictionTable <- testLabel
-      predictionTable$value <- pred$.pred
-      
-      if(!'plpModel' %in% class(model)){
-        model <- list(model = model)
-        attr(model, 'modelType') <- 'binary'
-      }
-      attr(predictionTable, "metaData")$modelType <-  attr(model, 'modelType')
-      
-      prediction <- rbind(prediction, predictionTable)
+      prediction <- rbind(prediction, predictTabNetTorch(plpModel = model,
+                                                         data = testDataset,
+                                                         cohort = labels[fold == i,]))
       
     }
     
@@ -312,21 +263,10 @@ gridCvTabNetTorch <- function(
   cvPrediction$evaluationType <- 'CV'
   
   ParallelLogger::logInfo('Training final model using optimal parameters')
-  
   # get the params
+  finalParam <- c(finalParam, fitSettings)
   
-  finalParam$batch_size = batch_size
-  finalParam$epochs = epochs
-  finalParam$drop_last = drop_last
-  finalParam$clip_value = clip_value
-  finalParam$loss = loss
-  finalParam$mask_type = mask_type
-  finalParam$ optimizer = optimizer
-  finalParam$lr_scheduler = lr_scheduler
-  finalParam$verbose = verbose
-  finalParam$device = device
-  
-  config <- tabnet_config(finalParam) 
+  config <- do.call(tabnet::tabnet_config, finalParam) 
   
   # create the dir
   if(!dir.exists(file.path(modelLocation))){
@@ -334,15 +274,14 @@ gridCvTabNetTorch <- function(
   }
   
   trainDataset <- as.data.frame(as.matrix(matrixData))
-  trainLabel <- labels
 
-  model <- tabnet_fit(x = trainDataset, y = trainLabel$outcomeCount, config = config)
+  model <- tabnet::tabnet_fit(x = trainDataset, y = labels$outcomeCount, config = config)
   
   ParallelLogger::logInfo("Calculating predictions on all train data...")
   
-  pred <- predict(model, trainDataset)
-  prediction <- trainLabel
-  predictionTable$value <- pred$.pred
+  prediction <- predictTabNetTorch(plpModel = model, 
+                                   data = trainDataset,
+                                   cohort = labels)
   prediction$evaluationType <- 'Train'
 
   prediction <- rbind(
@@ -359,14 +298,14 @@ gridCvTabNetTorch <- function(
   
   
   # save torch code here
-  torch_save(model, file.path(modelLocation, 'TabNetTorchModel.rds'))
-  
+  saveRDS(model, file.path(modelLocation, 'TabNetTorchModel.Rds'))
   return(
     list( 
       estimator = modelLocation,
       prediction = prediction,
       finalParam = finalParam,
-      paramGridSearch = paramGridSearch
+      paramGridSearch = paramGridSearch,
+      variableImportance = model$fit$importances
     )
   )
   
@@ -378,12 +317,7 @@ predictTabNetTorch <- function(
   data,
   cohort
 ){
-  
-  if(!'plpModel' %in% class(plpModel)){
-    plpModel <- list(model = plpModel)
-    attr(plpModel, 'modelType') <- 'binary'
-  }
-  
+
   if("plpData" %in% class(data)){
     
     dataMat <- PatientLevelPrediction::toSparseM(
@@ -398,13 +332,15 @@ predictTabNetTorch <- function(
   
   # get predictions
   prediction <- cohort
+  if(is.character(plpModel$model)) {
+    plpModel <- readRDS(file.path(plpModel$model, 'TabNetTorchModel.Rds'))
+  }
+    
   
-  if(is.character(plpModel$model)) model <- torch::torch_load(file.path(plpModel$model, 'TabNetTorchModel.rds'), device='cpu')
+  pred <- predict(plpModel, data)
+  prediction$value <- as.vector(as.matrix(torch::torch_sigmoid(pred$.pred)))
   
-  pred <- predict(model, data)
-  prediction$value <- pred$.pred
-  
-  attr(prediction, "metaData")$modelType <- attr(plpModel, 'modelType')
+  attr(prediction, "metaData")$modelType <- 'binary'
   
   return(prediction)
 }
