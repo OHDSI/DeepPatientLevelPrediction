@@ -154,7 +154,6 @@ fitTabNetTorch <- function(
   incs <- seq_len(nrow(variableImportance))
   variableImportance$columnId <- incs
 
-  browser()
   covariateRef <- covariateRef %>% merge(variableImportance, by = 'columnId', 
                                          all.x = TRUE)  %>%
                                    dplyr::mutate(included=1)  %>%
