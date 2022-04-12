@@ -44,16 +44,16 @@
 #'
 #' @export
 setResNet_plp5 <- function(
-  numLayers = list(1:16), 
-  sizeHidden = list(2^(6:10)), 
-  hiddenFactor = list(1:4),
-  residualDropout = list(seq(0,0.3,0.05)), 
-  hiddenDropout = list(seq(0,0.3,0.05)),
-  normalization = list('BatchNorm'), 
-  activation = list('RelU'),
-  sizeEmbedding = list(2^(6:9)), 
-  weightDecay = list(c(1e-6, 1e-3)),
-  learningRate = list(c(1e-2,1e-5)), 
+  numLayers = c(1:16), 
+  sizeHidden = c(2^(6:10)), 
+  hiddenFactor = c(1:4),
+  residualDropout = c(seq(0,0.3,0.05)), 
+  hiddenDropout = c(seq(0,0.3,0.05)),
+  normalization = c('BatchNorm'), 
+  activation = c('RelU'),
+  sizeEmbedding = c(2^(6:9)), 
+  weightDecay = c(c(1e-6, 1e-3)),
+  learningRate = c(c(1e-2,1e-5)), 
   seed = NULL, 
   hyperParamSearch = 'random',
   randomSample = 100, 
@@ -531,7 +531,7 @@ listCartesian <- function(allList){
   for(i in 1:nrow(combinations)){
     tempList <- list()
     for(j in 1:ncol(combinations)){
-      tempList <- c(tempList, list(allList[[j]][[combinations[i,j]]]))
+      tempList <- c(tempList, list(allList[[j]][combinations[[i,j]]]))
     }
     names(tempList) <- names(allList)
     result[[i]] <- tempList
