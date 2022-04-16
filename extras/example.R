@@ -1,50 +1,80 @@
 # testing code (requires sequential branch of FeatureExtraction):
-rm(list = ls())
+# rm(list = ls())
 library(FeatureExtraction)
-library(PatientLevelPrediction)
+library(PatientLevelPredictionArrow)
 library(DeepPatientLevelPrediction)
 
-temp <- F
-
+arrow <- T
 data(plpDataSimulationProfile)
-sampleSize <- 2000
+sampleSize <- 1e4
 plpData <- simulatePlpData(
   plpDataSimulationProfile,
   n = sampleSize
 )
-population <- createStudyPopulation(
-  plpData,
-  outcomeId = 2,
-  binary = TRUE,
-  firstExposureOnly = FALSE,
-  washoutPeriod = 0,  
-  removeSubjectsWithPriorOutcome = FALSE,
-  priorOutcomeLookback = 99999,
-  requireTimeAtRisk = FALSE,
-  minTimeAtRisk = 0,
-  riskWindowStart = 0,
-  riskWindowEnd = 365,
-  verbosity = "INFO"
+
+
+populationSet <- PatientLevelPredictionArrow::createStudyPopulationSettings(
+  requireTimeAtRisk = F, 
+  riskWindowStart = 1, 
+  riskWindowEnd = 365)
+
+
+# modelSettings <- PatientLevelPrediction::setGradientBoostingMachine(ntrees = 100, nthread = 16, 
+#                                             earlyStopRound = 25, maxDepth = 6,
+#                                             minChildWeight = 1, learnRate = 0.3,
+#                                             seed = 42)
+
+# modelSettings <- PatientLevelPredictionArrow::setLassoLogisticRegression()
+
+modelSettings <- DeepPatientLevelPrediction::setTabNetTorch(device='cuda:0', randomSamples = 1,
+                                                            batchSize = 32)
+
+if (arrow) {
+  res2 <- runPlp(
+  plpData = plpData,
+  outcomeId = 3,
+  modelSettings = modelSettings,
+  analysisId = 'Test',
+  analysisName = 'Testing ARrow',
+  populationSettings = populationSet,
+  splitSettings = createDefaultSplitSetting(),
+  sampleSettings = createSampleSettings(),  # none
+  featureEngineeringSettings = createFeatureEngineeringSettings(), # none
+  preprocessSettings = createPreprocessSettings(),
+  logSettings = createLogSettings(verbosity='TRACE'),
+  executeSettings = createExecuteSettings(
+    runSplitData = T,
+    runSampleData = F,
+    runfeatureEngineering = F,
+    runPreprocessData = T,
+    runModelDevelopment = T,
+    runCovariateSummary = T
+  ),
+  saveDirectory = '~/test/arrow_new_plp/'
 )
+} else {
+  library(PatientLevelPrediction)
+  res2 <- PatientLevelPrediction::runPlp(
+  plpData = plpData,
+  outcomeId = 3,
+  modelSettings = modelSettings,
+  analysisId = 'Test',
+  analysisName = 'Testing Original',
+  populationSettings = populationSet,
+  splitSettings = createDefaultSplitSetting(),
+  sampleSettings = createSampleSettings(),  # none
+  featureEngineeringSettings = createFeatureEngineeringSettings(), # none
+  preprocessSettings = createPreprocessSettings(),
+  logSettings = createLogSettings(verbosity='TRACE'),
+  executeSettings = createExecuteSettings(
+    runSplitData = T,
+    runSampleData = F,
+    runfeatureEngineering = F,
+    runPreprocessData = T,
+    runModelDevelopment = T,
+    runCovariateSummary = T
+  ),
+  saveDirectory = '~/test/new_plp/'
+  )
+}
 
-
-resSet <- setResNet(numLayers=5, sizeHidden=256, hiddenFactor=2,
-                    residualDropout=c(0.1), 
-                    hiddenDropout=c(0.1),
-                    normalization='BatchNorm', activation= 'RelU',
-                    sizeEmbedding=64, weightDecay=c(1e-6),
-                    learningRate=c(3e-4), seed=42, hyperParamSearch='random',
-                    randomSample=1, 
-                    device='cuda:0', 
-                    batchSize=512, 
-                    epochs=1)
-
-debug(trainResNet)
-res2 <- runPlp(population = population, 
-              plpData = plpData, 
-              nfold = 3,
-              modelSettings = resSet,
-              savePlpData = F, 
-              savePlpResult = F, 
-              savePlpPlots = F, 
-              saveEvaluation = F)
