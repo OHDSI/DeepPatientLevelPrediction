@@ -2,7 +2,7 @@
 #
 # Copyright 2021 Observational Health Data Sciences and Informatics
 #
-# This file is part of PatientLevelPrediction
+# This file is part of DeepPatientLevelPrediction
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -43,206 +43,106 @@
 #' @param epochs            Number of epochs to run, default: 10
 #'
 #' @export
-setResNet <- function(numLayers=1:16, sizeHidden=2^(6:10), hiddenFactor=1:4,
-                      residualDropout=seq(0,0.3,0.05), hiddenDropout=seq(0,0.3,0.05),
-                      normalization='BatchNorm', activation='RelU',
-                      sizeEmbedding=2^(6:9), weightDecay=c(1e-6, 1e-3),
-                      learningRate=c(1e-2,1e-5), seed=NULL, hyperParamSearch='random',
-                      randomSample=100, device='cpu', batchSize=1024, epochs=10) {
+setResNet <- function(
+  numLayers = list(1:16), 
+  sizeHidden = list(2^(6:10)), 
+  hiddenFactor = list(1:4),
+  residualDropout = list(seq(0,0.3,0.05)), 
+  hiddenDropout = list(seq(0,0.3,0.05)),
+  normalization = list('BatchNorm'), 
+  activation = list('RelU'),
+  sizeEmbedding = list(2^(6:9)), 
+  weightDecay = list(c(1e-6, 1e-3)),
+  learningRate = list(c(1e-2,1e-5)), 
+  seed = NULL, 
+  hyperParamSearch = 'random',
+  randomSample = 100, 
+  device = 'cpu', 
+  batchSize = 1024, 
+  epochs = 10
+  ) {
 
   if (!is.null(seed)) {
     seed <- as.integer(sample(1e5, 1))
   }
   
-  set.seed(seed)
+  paramGrid <- list(
+    numLayers = numLayers, 
+    sizeHidden = sizeHidden,
+    hiddenFactor = hiddenFactor,
+    residualDropout = residualDropout,
+    hiddenDropout = hiddenDropout,
+    sizeEmbedding = sizeEmbedding, 
+    weightDecay = weightDecay,
+    learningRate = learningRate,
+    seed = list(as.integer(seed[[1]]))
+  )
   
-  param <- expand.grid(numLayers=numLayers, sizeHidden=sizeHidden,
-                       hiddenFactor=hiddenFactor,
-                       residualDropout=residualDropout,
-                       hiddenDropout=hiddenDropout,
-                       sizeEmbedding=sizeEmbedding, weightDecay=weightDecay,
-                       learningRate=learningRate)
+  param <- listCartesian(paramGrid)
+  
   if (hyperParamSearch=='random'){
-    param <- param[sample(nrow(param), randomSample),]
+    param <- param[sample(length(param), randomSample)]
   }
-  param$device <- device
-  param$batchSize <- batchSize
-  param$epochs <- epochs
-  
-  results <- list(model='fitResNet', param=param, name='ResNet')
+
+  attr(param, 'settings') <- list(
+    seed = seed[1],
+    device = device,
+    batchSize = batchSize,
+    epochs = epochs,
+    name = "ResNet",
+    saveType = 'file',
+    modelParamNames = c("numLayers", "sizeHidden", "hiddenFactor",
+                         "residualDropout", "hiddenDropout", "sizeEmbedding"),
+    baseModel = ResNet
+  )
+
+  results <- list(
+    fitFunction = 'fitEstimator',
+    param = param
+  )
 
   class(results) <- 'modelSettings'
 
   return(results)
 
 }
-#' @description 
-#' fits a ResNet model to data
-#' 
-#' @param population    the study population dataframe
-#' @param plpData       plp data object
-#' @param param         parameters to use for model
-#' @param outcomeId     Id of the outcome
-#' @param cohortId      Id of the cohort
-#' @param ... 
-#'
-#' @export
-fitResNet <- function(population, plpData, param, outcomeId, cohortId, ...) {
-  
-  start <- Sys.time()
-  #sparseMatrix <- toSparseM(plpData, population)
-  sparseMatrix <- toSparseMDeep(plpData ,population, 
-                     map=NULL, 
-                     temporal=F)
-
-  #do cross validation to find hyperParameters
-  hyperParamSel <- list()
-  for (i in 1:nrow(param)) {
-    hyperParamSel[[i]] <- do.call(trainResNet, listAppend(param[i,], list(sparseMatrix =sparseMatrix,
-                                                                           population = population,
-                                                                           train=TRUE)))
-  }
-  hyperSummary <-as.data.frame(cbind(do.call(rbind, lapply(hyperParamSel, function(x) x$hyperSum))))
-  hyperSummary$auc <- unlist(lapply(hyperParamSel, function(x) x$auc))
-  
-  scores <- unlist(lapply(hyperParamSel, function(x) x$auc))
-  
-  # now train the final model
-  bestInd <- which.max(abs(unlist(scores)-0.5))[1]
-  param.best <- param[bestInd,]
-  param.best$epochs <- floor(mean(hyperSummary$bestEpochs[[bestInd]]) + 0.5)
-  
-  outLoc <- tempfile(pattern = 'resNet')
-  outLoc <- file.path(outLoc, paste0('finalModel'))
-  param.best$resultsDir <- outLoc
-  dir.create(outLoc, recursive = TRUE)
-  
 
 
-  finalModel <-  do.call(trainResNet, listAppend(param.best, list(sparseMatrix = sparseMatrix,
-                                                                  population = population,
-                                                                  train=FALSE)))
-  modelTrained <- file.path(outLoc, dir(outLoc))
-  
-  comp <- Sys.time() - start
-  # return model location
-  result <- list(model = finalModel$model,
-                 trainCVAuc = scores[bestInd],
-                 hyperParamSearch = hyperSummary,
-                 modelSettings = list(model='fitResNet',modelParameters=param.best),
-                 metaData = plpData$metaData,
-                 populationSettings = attr(population, 'metaData'),
-                 outcomeId=outcomeId,
-                 cohortId=cohortId,
-                 varImp = NULL, 
-                 trainingTime =comp,
-                 covariateMap=sparseMatrix$map, # I think this is need for new data to map the same?
-                 predictionTrain = finalModel$prediction
-  )
-  class(result) <- 'plpModel'
-  attr(result, 'type') <- 'deepEstimator'
-  attr(result, 'predictionType') <- 'binary'
-  return(result)
-}
-
-#' @param sparseMatrix 
-#'
-#' @param population 
-#' @param ... 
-#' @param train 
-#'
-#' @export
-trainResNet <- function(sparseMatrix, population,...,train=T) {
-
-  param <- list(...)
-
-  modelParamNames <- c("numLayers", "sizeHidden", "hiddenFactor",
-                      "residualDropout", "hiddenDropout", "sizeEmbedding")
-  modelParam <- param[modelParamNames]
-
-  fitParamNames <- c("weightDecay", "learningRate", "epochs", "batchSize")
-  fitParams <- param[fitParamNames]
-  
-  n_features <- ncol(sparseMatrix$data)
-  modelParam$n_features <- n_features
-  
-  # TODO make more general for other variables than only age
-  numericalIndex <- sparseMatrix$map$newCovariateId[sparseMatrix$map$oldCovariateId==1002]
-  
-  index_vect <- unique(population$indexes[population$indexes > 0])
-  if(train==T){
-    ParallelLogger::logInfo(paste('Training deep neural network using Torch with ',length(index_vect),' fold CV'))
-    foldAuc <- c()
-    foldEpochs <- c()
-    dataset <- Dataset(sparseMatrix$data, population$outcomeCount, 
-                       numericalIndex = numericalIndex)
-    fitParams['posWeight'] <- dataset$posWeight
-    for(index in 1:length(index_vect)) {
-      ParallelLogger::logInfo(paste('Fold ',index, ' -- with ', sum(population$indexes!=index & population$indexes > 0),'train rows'))
-      testIndices <- population$rowId[population$indexes==index]
-      trainIndices <- population$rowId[(population$indexes!=index) & (population$indexes > 0)]
-      trainDataset <- torch::dataset_subset(dataset, trainIndices)
-      testDataset <- torch::dataset_subset(dataset, testIndices)
-      estimator <- Estimator$new(baseModel=ResNet, 
-                                 modelParameters=modelParam,
-                                 fitParameters=fitParams, 
-                                 device=param$device)
-      estimator$fit(trainDataset, testDataset)
-      score <- estimator$bestScore
-      bestEpoch <- estimator$bestEpoch
-      auc <- score$auc
-      foldAuc <- c(foldAuc, auc)
-      foldEpochs <- c(foldEpochs, bestEpoch)
+sparseLinearLayer <- torch::nn_module(
+  name='sparseLinearLayer',
+  initialize = function(inputSize, outputSize, bias=F){
+    self$weight <- torch::nn_parameter(torch::torch_empty(outputSize, inputSize))
+    if (bias){
+      self$bias <- torch::nn_parameter(torch::torch_empty(outputSize))
+    } else {
+      self$bias <- NULL
     }
-    auc <- mean(foldAuc)
-    prediction <- NULL
-    bestEpochs <- list(bestEpochs=foldEpochs)
+    
+    self$reset_parameters()
+  },
+  reset_parameters = function() {
+    torch::nn_init_kaiming_uniform_(self$weight, a = sqrt(5))
+    if (!is.null(self$bias)) {
+      fans <- nn_init_calculate_fan_in_and_fan_out(self$weight)
+      bound <- 1 / sqrt(fans[[1]])
+      torch::nn_init_uniform_(self$bias, -bound, bound)
+    }
+  },
+  forward = function(input) {
+    torch::nnf_linear(input, self$weight, self$bias)
   }
-  else {
-    ParallelLogger::logInfo('Training deep neural network using Torch on whole training set')
-    trainIndices <- population$rowId[population$indexes > 0]
-    
-    dataset <- Dataset(sparseMatrix$data[population$rowId,], 
-                            population$outcomeCount, 
-                            numericalIndex=numericalIndex)
-    trainDataset <- torch::dataset_subset(dataset, trainIndices)
-    
-    fitParams['posWeight'] <- trainDataset$posWeight
-    estimator <- Estimator$new(baseModel = ResNet,
-                               modelParameters = modelParam,
-                               fitParameters = fitParams, 
-                               device=param$device)
-   
-    estimator$fitWholeTrainingSet(trainDataset)
-    
-    # get predictions
-    prediction <- population[population$rowId%in%trainIndices, ]
-    prediction$value <- estimator$predictProba(trainDataset)
-    
-    #predictionsClass <- data.frame(value=predictions$value, 
-    #                               outcomeCount=as.array(trainDataset$labels))
-    
-    attr(prediction, 'metaData')$predictionType <-'binary' 
-    auc <- computeAuc(prediction)
-    bestEpochs <- NULL
-  }
- 
-   result <- list(model = estimator,
-                 auc = auc,
-                 prediction = prediction,
-                 hyperSum = c(modelParam, fitParams, bestEpochs))
-
-  return(result)
-  }
+)
 
 ResLayer <- torch::nn_module(
   name='ResLayer',
+  
   initialize=function(sizeHidden, resHidden, normalization,
                      activation, hiddenDropout=NULL, residualDropout=NULL){
     self$norm <- normalization(sizeHidden)
     self$linear0 <- torch::nn_linear(sizeHidden, resHidden)
     self$linear1 <- torch::nn_linear(resHidden, sizeHidden)
     
+    self$activation <- activation
     if (!is.null(hiddenDropout)){
       self$hiddenDropout <- torch::nn_dropout(p=hiddenDropout)
     }
@@ -272,19 +172,15 @@ ResLayer <- torch::nn_module(
   }
 )
 
-#' @export
 ResNet <- torch::nn_module(
   name='ResNet',
   
-  initialize=function(n_features, sizeEmbedding, sizeHidden, numLayers,
+  initialize=function(catFeatures, numFeatures, sizeEmbedding, sizeHidden, numLayers,
                       hiddenFactor, activation=torch::nn_relu, 
                       normalization=torch::nn_batch_norm1d, hiddenDropout=NULL,
                       residualDropout=NULL, d_out=1) {
-    # n_features - 1 because only binary features are embedded (not Age)
-    # ages is concatenated with the embedding output
-    # TODO need to extend to support other numerical features
-    self$embedding <- torch::nn_linear(n_features - 1, sizeEmbedding, bias=F)
-    self$first_layer <- torch::nn_linear(sizeEmbedding + 1, sizeHidden)
+    self$embedding <- sparseLinearLayer(catFeatures, sizeEmbedding, bias=F)
+    self$first_layer <- torch::nn_linear(sizeEmbedding + numFeatures, sizeHidden)
     
     resHidden <- sizeHidden * hiddenFactor
     
@@ -316,6 +212,43 @@ ResNet <- torch::nn_module(
   }
 )
 
+listCartesian <- function(allList){
   
+  sizes <- lapply(allList, function(x) 1:length(x))
+  combinations <- expand.grid(sizes)
   
+  result <- list()
+  length(result) <- nrow(combinations)
   
+  for(i in 1:nrow(combinations)){
+    tempList <- list()
+    for(j in 1:ncol(combinations)){
+      tempList <- c(tempList, list(allList[[j]][[combinations[i,j]]]))
+    }
+    names(tempList) <- names(allList)
+    result[[i]] <- tempList
+  }
+  
+  return(result)
+}
+
+
+# export this in PLP
+computeGridPerformance <- PatientLevelPredictionArrow:::computeGridPerformance
+  
+nn_init_calculate_fan_in_and_fan_out <- function(tensor) {
+  dimensions <- tensor$dim()
+  num_input_fmaps <- tensor$size(2)
+  num_output_fmaps <- tensor$size(1)
+  receptive_field_size <- 1
+  
+  if (dimensions > 2) {
+    receptive_field_size <- tensor[1, 1, ..]$numel()
+  }
+  
+  fan_in <- num_input_fmaps * receptive_field_size
+  fan_out <- num_output_fmaps * receptive_field_size
+  
+  list(fan_in, fan_out)
+}
+

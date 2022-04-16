@@ -1,3 +1,354 @@
+# @file Estimator.R
+#
+# Copyright 2022 Observational Health Data Sciences and Informatics
+#
+# This file is part of DeepPatientLevelPrediction
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+#' fitEstimator
+#'
+#' @description 
+#' fits a deep learning estimator to data.
+#' 
+#' @param trainData      the data to use
+#' @param param          model parameters
+#' @param analysisId     Id of the analysis
+#' @param ... 
+#'
+#' @export
+fitEstimator <- function(
+  trainData, 
+  param, 
+  analysisId,
+  ...
+) {
+  
+  start <- Sys.time()
+  
+  # check covariate data
+  if(!FeatureExtraction::isCovariateData(trainData$covariateData)){stop("Needs correct covariateData")}
+  
+  # get the settings from the param
+  settings <- attr(param, 'settings')
+  
+  if(!is.null(trainData$folds)){
+    trainData$labels <- merge(trainData$labels, trainData$fold, by = 'rowId')
+  }
+  
+  mappedData <- PatientLevelPredictionArrow::toSparseM(
+    plpData = trainData,  
+    map = NULL
+  )
+  
+  matrixData <- mappedData$dataMatrix
+  labels <- mappedData$labels
+  covariateRef <- mappedData$covariateRef
+  
+  outLoc <- PatientLevelPredictionArrow:::createTempModelLoc() # export
+  
+  cvResult <- do.call( 
+    what = gridCvDeep,
+    args = list(
+      matrixData = matrixData,
+      labels = labels,
+      settings = settings,
+      modelLocation = outLoc,
+      paramSearch = param
+    )
+  )
+  
+  hyperSummary <- do.call(rbind, lapply(cvResult$paramGridSearch, function(x) x$hyperSummary))
+  
+  prediction <- cvResult$prediction
+  
+  incs <- rep(1, nrow(covariateRef))
+  covariateRef$included <- incs
+  covariateRef$covariateValue <- 0
+  
+  comp <- start - Sys.time()
+  result <- list(
+    model = cvResult$estimator, #file.path(outLoc),
+    
+    prediction = prediction,
+    
+    settings = list(
+      plpDataSettings = attr(trainData, "metaData")$plpDataSettings,
+      covariateSettings = attr(trainData, "metaData")$covariateSettings,
+      populationSettings = attr(trainData, "metaData")$populationSettings,
+      featureEngineering = attr(trainData$covariateData, "metaData")$featureEngineering,
+      tidyCovariates = attr(trainData$covariateData, "metaData")$tidyCovariateDataSettings, 
+      requireDenseMatrix = F,
+      modelSettings = list(
+        model = settings$name, 
+        param = param,
+        finalModelParameters = cvResult$finalParam,
+        numericalIndex = cvResult$numericalIndex,
+        extraSettings = attr(param, 'settings')
+      ),
+      splitSettings = attr(trainData, "metaData")$splitSettings,
+      sampleSettings = attr(trainData, "metaData")$sampleSettings
+    ),
+    
+    trainDetails = list(
+      analysisId = analysisId,
+      cdmDatabaseSchema = attr(trainData, "metaData")$cdmDatabaseSchema,
+      outcomeId = attr(trainData, "metaData")$outcomeId,
+      cohortId = attr(trainData, "metaData")$cohortId,
+      attrition = attr(trainData, "metaData")$attrition, 
+      trainingTime = comp,
+      trainingDate = Sys.Date(),
+      hyperParamSearch = hyperSummary
+    ),
+    
+    covariateImportance = covariateRef
+  )
+  
+  class(result) <- "plpModel"
+  attr(result, "predictionFunction") <- "predictDeepEstimator"
+  attr(result, "modelType") <- "binary"
+  attr(result, "saveType") <- attr(param, 'settings')$saveType
+  
+  return(result)
+}
+
+#' predictDeepEstimator
+#'
+#' @description 
+#' the prediction function for the estimator
+#' 
+#' @param plpModel   the plpModel
+#' @param data       plp data object or a torch dataset
+#' @param cohort     data.frame with the rowIds of the people
+#'
+#' @export 
+predictDeepEstimator <- function(
+  plpModel, 
+  data, 
+  cohort
+){
+  if(!'plpModel' %in% class(plpModel)){
+    plpModel <- list(model = plpModel)
+    attr(plpModel, 'modelType') <- 'binary'
+  }
+  
+  if("plpData" %in% class(data)){
+    
+    dataMat <- toSparseM(
+      plpData = data, 
+      cohort = cohort, 
+      map = plpModel$covariateImportance %>% 
+        dplyr::select(.data$columnId, .data$covariateId)
+    )
+    data <- Dataset(dataMat$dataMatrix) # add numeric details..
+  }
+  
+  # get predictions
+  prediction <- cohort
+  
+  if(is.character(plpModel$model)){
+    model <- torch::torch_load(file.path(plpModel$model, 'DeepEstimatorModel.pt'), device='cpu')
+    estimator <- Estimator$new(
+      baseModel = plpModel$settings$modelSettings$model,
+      modelParameters = model$modelParameters,
+      fitParameters = model$fitParameters, 
+      device = plpModel$settings$modelSettings$extraSettings$device
+    )
+    prediction$value <- estimator$predictProba(data)
+  } else {
+    prediction$value <- plpModel$model$predictProba(data)
+  }
+  
+  
+  attr(prediction, "metaData")$modelType <-  attr(plpModel, 'modelType')
+  
+  return(prediction)
+}
+
+#' gr idCvDeep 
+#' 
+#' @description 
+#' Performs grid search for a deep learning estimator
+#' 
+#' 
+#' @param matrixData    Data in sparse matrix format
+#' @param labels        Dataframe with the outcomes
+#' @param settings      Settings of the model
+#' @param modelLocation Where to save the model
+#' @param paramSearch   model parameters to perform search over
+#' 
+#' @export 
+gridCvDeep <- function(
+  matrixData,
+  labels,
+  settings,
+  modelLocation,
+  paramSearch
+){
+  
+  modelName <- settings$modelName
+  modelParamNames <- settings$modelParamNames
+  fitParamNames <- c("weightDecay", "learningRate")
+  epochs <- settings$epochs
+  batchSize <- settings$batchSize
+  baseModel <- settings$baseModel
+  device <- settings$device
+  
+  ParallelLogger::logInfo(paste0("Running CV for ",modelName," model"))
+  
+  ###########################################################################
+  
+  
+  gridSearchPredictons <- list()
+  length(gridSearchPredictons) <- length(paramSearch)
+  dataset <- Dataset(matrixData, labels$outcomeCount)
+  
+  
+  for(gridId in 1:length(paramSearch)){
+    
+    modelParams <- paramSearch[[gridId]][modelParamNames]
+    
+    fitParams <- paramSearch[[gridId]][fitParamNames]
+    fitParams$epochs <- epochs
+    fitParams$batchSize <- batchSize
+    
+    
+    # initiate prediction
+    prediction <- c()
+    
+    fold <- labels$index
+    ParallelLogger::logInfo(paste0('Max fold: ', max(fold)))
+    
+    modelParams$catFeatures <- dataset$numCatFeatures()
+    modelParams$numFeatures <- dataset$numNumFeatures()
+    
+    for( i in 1:max(fold)){
+      
+      ParallelLogger::logInfo(paste0('Fold ',i))
+      trainDataset <- torch::dataset_subset(dataset, indices=which(fold!=i)) 
+      testDataset <- torch::dataset_subset(dataset, indices=which(fold==i))
+      fitParams['posWeight'] <- trainDataset$posWeight
+      estimator <- Estimator$new(
+        baseModel = baseModel, 
+        modelParameters = modelParams,
+        fitParameters = fitParams, 
+        device = device
+      )
+      
+      browser()
+      estimator$fit(
+        trainDataset, 
+        testDataset
+      )
+      
+      ParallelLogger::logInfo("Calculating predictions on left out fold set...")
+      
+      prediction <- rbind(
+        prediction, 
+        predictDeepEstimator(
+          plpModel = estimator, 
+          data = testDataset, 
+          cohort = labels[fold == i,]
+        )
+      )
+      
+    }
+    gridSearchPredictons[[gridId]] <- list(
+      prediction = prediction,
+      param = paramSearch[[gridId]]
+    )
+  }
+  # get best para (this could be modified to enable any metric instead of AUC, just need metric input in function)
+  
+  paramGridSearch <- lapply(gridSearchPredictons, function(x){do.call(computeGridPerformance, x)})  # cvAUCmean, cvAUC, param
+  
+  optimalParamInd <- which.max(unlist(lapply(paramGridSearch, function(x) x$cvPerformance)))
+  
+  finalParam <- paramGridSearch[[optimalParamInd]]$param
+  
+  cvPrediction <- gridSearchPredictons[[optimalParamInd]]$prediction
+  cvPrediction$evaluationType <- 'CV'
+  
+  ParallelLogger::logInfo('Training final model using optimal parameters')
+  
+  # get the params
+  modelParams <- finalParam[modelParamNames]
+  fitParams <- finalParam[fitParamNames]
+  fitParams$epochs <- epochs
+  fitParams$batchSize <- batchSize
+  # create the dir
+  if(!dir.exists(file.path(modelLocation))){
+    dir.create(file.path(modelLocation), recursive = T)
+  }
+  trainDataset <- Dataset(
+    matrixData, 
+    labels$outcomeCount
+  )
+  modelParams$catFeatures <- trainDataset$numCatFeatures()
+  modelParams$numFeatures <- trainDataset$numNumFeatures()
+  
+  
+  estimator <- Estimator$new(
+    baseModel = baseModel,
+    modelParameters = modelParams,
+    fitParameters = fitParams, 
+    device = device
+  )
+  numericalIndex <- trainDataset$.getNumericalIndex()
+  
+  estimator$fitWholeTrainingSet(trainDataset)
+  
+  
+  ParallelLogger::logInfo("Calculating predictions on all train data...")
+  prediction <- predictDeepEstimator(
+    plpModel = estimator, 
+    data = trainDataset, 
+    cohort = labels
+  )
+  prediction$evaluationType <- 'Train'
+  
+  prediction <- rbind(
+    prediction,
+    cvPrediction
+  )
+  
+  # modify prediction 
+  prediction <- prediction %>% 
+    dplyr::select(-.data$rowId, -.data$index) %>%
+    dplyr::rename(rowId = .data$originalRowId)
+  
+  prediction$cohortStartDate <- as.Date(prediction$cohortStartDate, origin = '1970-01-01')
+  
+  
+  # save torch code here
+  estimatorFile <- estimator$save(modelLocation, 'DeepEstimatorModel.pt')
+  
+  return(
+    list( 
+      estimator = modelLocation,
+      prediction = prediction,
+      finalParam = finalParam,
+      paramGridSearch = paramGridSearch,
+      numericalIndex = numericalIndex
+    )
+  )
+  
+}
+
+# Estimator
+#' @description 
+#' A generic R6 class that wraps around a torch nn module and can be used to 
+#' fit and predict the model defined in that module.
 #' @export
 Estimator <- R6::R6Class(
   classname = 'Estimator',
@@ -14,7 +365,6 @@ Estimator <- R6::R6Class(
       self$model <- do.call(baseModel, modelParameters)
       self$modelParameters <- modelParameters
       self$fitParameters <- fitParameters
-            
       self$epochs <- self$itemOrDefaults(fitParameters, 'epochs', 10)
       self$learningRate <- self$itemOrDefaults(fitParameters,'learningRate', 1e-3)
       self$l2Norm <- self$itemOrDefaults(fitParameters, 'weightDecay', 1e-5)
@@ -47,26 +397,30 @@ Estimator <- R6::R6Class(
       valLosses <- c()
       valAUCs <- c()
       
-      dataloader <- torch::dataloader(dataset, 
-                                      batch_size = self$batchSize, 
-                                      shuffle = T)
-      testDataloader <- torch::dataloader(testDataset, 
-                                          batch_size = self$batchSize, 
-                                          shuffle = F)
+      # dataloader <- torch::dataloader(dataset, 
+      #                                 batch_size = self$batchSize, 
+      #                                 shuffle = T)
+      # testDataloader <- torch::dataloader(testDataset, 
+      #                                     batch_size = self$batchSize, 
+      #                                     shuffle = F)
+      batchIndex <- torch::torch_randperm(length(dataset)) + 1L
+      batchIndex <- split(batchIndex, ceiling(seq_along(batchIndex)/self$batchSize))
+      
+      testBatchIndex <- 1:length(testDataset)
+      testBatchIndex <- split(testBatchIndex, ceiling(seq_along(testBatchIndex)/self$batchSize))
       
       modelStateDict <- list()
       epoch <- list()
       times <- list()
       
       for (epochI in 1:self$epochs) {
-        
         # fit the model
         startTime <- Sys.time()
-        self$fitEpoch(dataloader)
+        self$fitEpoch(dataset, batchIndex)
         endTime <- Sys.time()
         
         # predict on test data
-        scores <- self$score(testDataloader)
+        scores <- self$score(testDataset, testBatchIndex)
         delta <- endTime - startTime
         currentEpoch <- epochI + self$previousEpochs
         ParallelLogger::logInfo('Epochs: ', currentEpoch, 
@@ -102,13 +456,13 @@ Estimator <- R6::R6Class(
     },
     
     # trains for one epoch
-    fitEpoch = function(dataloader){
+    fitEpoch = function(dataset, batchIndex){
       self$model$train()
-      coro::loop(for (b in dataloader) {
+      coro::loop(for (b in batchIndex) {
         self$optimizer$zero_grad()
-        cat <- b[[1]]$to(device=self$device)
-        num <- b[[2]]$to(device=self$device)
-        target <- b[[3]]$to(device=self$device)
+        cat <- dataset[b]$cat$to(device=self$device)
+        num <- dataset[b]$num$to(device=self$device)
+        target <- dataset[b]$target$to(device=self$device)
         out <- self$model(num, cat)
         loss <- self$criterion(out, target)
         loss$backward()
@@ -140,11 +494,13 @@ Estimator <- R6::R6Class(
     # Ideally I would copy the learning rate strategy from before
     # and adjust for different sizes ie more iterations/updates???
     fitWholeTrainingSet = function(dataset) {
-      dataloader <- torch::dataloader(dataset, 
-                                      batch_size=self$batchSize, 
-                                      shuffle=TRUE)
+      # dataloader <- torch::dataloader(dataset, 
+      #                                 batch_size=self$batchSize, 
+      #                                 shuffle=TRUE)
+      batchIndex <- torch::torch_randperm(length(dataset)) + 1L
+      batchIndex <- split(batchIndex, ceiling(seq_along(batchIndex)/self$batchSize))
       for (epoch in 1:self$epochs) {
-        self$fitEpoch(dataloader)
+        self$fitEpoch(dataset, batchIndex)
       }
       
     }, 
@@ -163,14 +519,14 @@ Estimator <- R6::R6Class(
     },
     
     # calculates loss and auc after training for one epoch
-    score = function(dataloader){
+    score = function(dataset, batchIndex){
       torch::with_no_grad({
         loss = c()
         predictions = c()
         targets = c()
         self$model$eval()
-        coro::loop(for (b in dataloader) {
-          b <- self$batchToDevice(b)
+        coro::loop(for (b in batchIndex) {
+          b <- self$batchToDevice(dataset[b])
           cat <- b$cat
           num <- b$num
           target <- b$target
@@ -191,14 +547,16 @@ Estimator <- R6::R6Class(
     
     # predicts and outputs the probabilities
     predictProba = function(dataset) {
-      dataloader <- torch::dataloader(dataset, 
-                                      batch_size = self$batchSize, 
-                                      shuffle=F)
+      # dataloader <- torch::dataloader(dataset, 
+      #                                 batch_size = self$batchSize, 
+      #                                 shuffle=F)
+      batchIndex <- 1:length(dataset)
+      batchIndex <- split(batchIndex, ceiling(seq_along(batchIndex)/self$batchSize))
       torch::with_no_grad({
         predictions <- c()
         self$model$eval()
-        coro::loop(for (b in dataloader){
-          b <- self$batchToDevice(b)
+        coro::loop(for (b in batchIndex){
+          b <- self$batchToDevice(dataset[b])
           cat <- b$cat
           num <- b$num
           target <- b$target
