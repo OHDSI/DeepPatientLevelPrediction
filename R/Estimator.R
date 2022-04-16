@@ -46,7 +46,7 @@ fitEstimator <- function(
     trainData$labels <- merge(trainData$labels, trainData$fold, by = 'rowId')
   }
   
-  mappedData <- PatientLevelPredictionArrow::toSparseM(
+  mappedData <- PatientLevelPrediction::toSparseM(
     plpData = trainData,  
     map = NULL
   )
@@ -55,7 +55,7 @@ fitEstimator <- function(
   labels <- mappedData$labels
   covariateRef <- mappedData$covariateRef
   
-  outLoc <- PatientLevelPredictionArrow:::createTempModelLoc() # export
+  outLoc <- PatientLevelPrediction:::createTempModelLoc() # export
   
   cvResult <- do.call( 
     what = gridCvDeep,
@@ -245,7 +245,6 @@ gridCvDeep <- function(
         device = device
       )
       
-      browser()
       estimator$fit(
         trainDataset, 
         testDataset

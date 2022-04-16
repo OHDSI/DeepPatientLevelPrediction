@@ -93,7 +93,7 @@ setResNet <- function(
     saveType = 'file',
     modelParamNames = c("numLayers", "sizeHidden", "hiddenFactor",
                          "residualDropout", "hiddenDropout", "sizeEmbedding"),
-    baseModel = ResNet
+    baseModel = 'ResNet'
   )
 
   results <- list(
@@ -129,6 +129,9 @@ sparseLinearLayer <- torch::nn_module(
     }
   },
   forward = function(input) {
+    if (input$dtype != torch::torch_float32()) {
+      input <- input$type_as(self$weight)
+    }
     torch::nnf_linear(input, self$weight, self$bias)
   }
 )
