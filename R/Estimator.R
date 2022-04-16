@@ -345,7 +345,7 @@ gridCvDeep <- function(
   
 }
 
-# Estimator
+#' Estimator
 #' @description 
 #' A generic R6 class that wraps around a torch nn module and can be used to 
 #' fit and predict the model defined in that module.
@@ -354,6 +354,16 @@ Estimator <- R6::R6Class(
   classname = 'Estimator',
   lock_objects = FALSE,
   public = list(
+    #' @description 
+    #' Creates a new estimator
+    #' @param baseModel       The torch nn module to use as model
+    #' @param modelParameters Parameters to initialize the baseModel
+    #' @param fitParameters   Parameters required for the estimator fitting
+    #' @param optimizer       A torch optimizer to use, default is Adam
+    #' @param criterion       The torch loss function to use, defaults to 
+    #'                        binary cross entropy with logits
+    #'@param device           Which device to use for fitting, default is cpu
+    #'@param patience         Patience to use for early stopping                      
     initialize = function(baseModel, 
                           modelParameters, 
                           fitParameters,
@@ -392,7 +402,9 @@ Estimator <- R6::R6Class(
       self$bestEpoch <- NULL
     },
   
-    # fits the estimator
+    #' @description fits the estimator
+    #' @param dataset     a torch dataset to use for model fitting
+    #' @param testDataset a torch dataset to use for early stopping
     fit = function(dataset, testDataset) {
       valLosses <- c()
       valAUCs <- c()
@@ -455,7 +467,10 @@ Estimator <- R6::R6Class(
       invisible(self)
     },
     
-    # trains for one epoch
+    #' @description 
+    #' fits estimator for one epoch (one round through the data)
+    #' @param dataset     torch dataset to use for fitting
+    #' @param batchIndex  indices of batches 
     fitEpoch = function(dataset, batchIndex){
       self$model$train()
       coro::loop(for (b in batchIndex) {
@@ -471,9 +486,13 @@ Estimator <- R6::R6Class(
       
     },
     
-    # operations that run when fitting is finished
+    #' @description 
+    #' operations that run when fitting is finished
+    #' @param valAUCs         validation AUC values
+    #' @param modelStateDict  fitted model parameters
+    #' @param valLosses       validation losses
+    #' @param epoch           list of epochs fit
     finishFit = function(valAUCs, modelStateDict, valLosses, epoch) {
-      #extract best epoch from the saved checkpoints
       bestEpochInd <- which.max(valAUCs)  # change this if a different metric is used
       
       bestModelStateDict <- modelStateDict[[bestEpochInd]]
@@ -489,10 +508,12 @@ Estimator <- R6::R6Class(
       ParallelLogger::logInfo('valAUC: ', self$bestScore$auc)
     },
     
-    # Fits whole training set on a specific number of epochs
-    # TODO What happens when learning rate changes per epochs?
-    # Ideally I would copy the learning rate strategy from before
-    # and adjust for different sizes ie more iterations/updates???
+    #' @description 
+    #' Fits whole training set on a specific number of epochs
+    #' TODO What happens when learning rate changes per epochs?
+    #' Ideally I would copy the learning rate strategy from before
+    #' and adjust for different sizes ie more iterations/updates???
+    #' @param dataset torch dataset
     fitWholeTrainingSet = function(dataset) {
       # dataloader <- torch::dataloader(dataset, 
       #                                 batch_size=self$batchSize, 
@@ -505,7 +526,11 @@ Estimator <- R6::R6Class(
       
     }, 
     
-    # save model and those parameters needed to reconstruct it
+    #' @description 
+    #' save model and those parameters needed to reconstruct it
+    #' @param path where to save the model
+    #' @param name name of file
+    #' @return the path to saved model
     save = function(path, name) {
       savePath <- file.path(path, name)
       torch::torch_save(list(modelStateDict=self$model$state_dict(),
@@ -518,7 +543,11 @@ Estimator <- R6::R6Class(
       
     },
     
-    # calculates loss and auc after training for one epoch
+    #' @description 
+    #' calculates loss and auc after training for one epoch
+    #' @param dataset    The torch dataset to use to evaluate loss and auc
+    #' @param batchIndex Indices of batches in the dataset
+    #' @return list with average loss and auc in the dataset
     score = function(dataset, batchIndex){
       torch::with_no_grad({
         loss = c()
@@ -545,7 +574,10 @@ Estimator <- R6::R6Class(
       return(list(loss=mean_loss, auc=auc))
     },
     
-    # predicts and outputs the probabilities
+    #' @description 
+    #' predicts and outputs the probabilities
+    #' @param dataset Torch dataset to create predictions for
+    #' @return predictions as probabilities
     predictProba = function(dataset) {
       # dataloader <- torch::dataloader(dataset, 
       #                                 batch_size = self$batchSize, 
@@ -567,16 +599,21 @@ Estimator <- R6::R6Class(
       return(predictions)
     },
     
-    
-    # predicts and outputs the class
+    #' @description 
+    #' predicts and outputs the class
+    #' @param   dataset A torch dataset to create predictions for
+    #' @return  The predicted class for the data in the dataset
     predict = function(dataset){
       predictions <- self$predict_proba(dataset)
       predicted_class <- torch::torch_argmax(torch::torch_unsqueeze(torch::torch_tensor(predictions), dim=2),dim=2)
       return(predicted_class)
     },
     
-    # sends a batch of data to device
-    ## TODO make agnostic of the form of batch
+    #' @description 
+    #' sends a batch of data to device
+    #' TODO make agnostic of the form of batch
+    #' @param batch the batch to send, usually a list of torch tensors
+    #' @return the batch on the required device
     batchToDevice = function(batch) {
       cat <- batch[[1]]$to(device=self$device)
       num <- batch[[2]]$to(device=self$device)
@@ -586,7 +623,12 @@ Estimator <- R6::R6Class(
       return(result)
     },
     
-    # select item from list, and if it's null sets a default
+    #' @description
+    #' select item from list, and if it's null sets a default
+    #' @param list A list with items
+    #' @param item Which list item to retrieve
+    #' @param default The value to return if list doesn't have item
+    #' @return the list item or default 
     itemOrDefaults = function (list, item, default = NULL) {
       value <- list[[item]]
       if (is.null(value)) default else value
@@ -594,10 +636,18 @@ Estimator <- R6::R6Class(
   )
 )
 
+#' Earlystopping class
+#' @description 
+#' Stops training if a loss or metric has stopped improving
 EarlyStopping <- R6::R6Class(
    classname = 'EarlyStopping',
    lock_objects = FALSE,
    public = list(
+     #' @description 
+     #' Creates a new earlystopping object
+     #' @param patience Stop after this number of epochs if loss doesn't improve
+     #' @param delta    How much does the loss need to improve to count as improvement
+     #' @return a new earlystopping object
      initialize = function(patience=3, delta=0) {
        self$patience <- patience
        self$counter <- 0
@@ -607,6 +657,10 @@ EarlyStopping <- R6::R6Class(
        self$delta <- delta
        self$previousScore <- 0
      },
+     #' @description
+     #' call the earlystopping object and increment a counter if loss is not
+     #' improving
+     #' @param metric the current metric value
      call = function(metric){
        score <- metric
        if (is.null(self$bestScore)) {
