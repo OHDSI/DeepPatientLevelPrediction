@@ -475,7 +475,11 @@ Estimator <- R6::R6Class(
       coro::loop(for (b in batchIndex) {
         self$optimizer$zero_grad()
         cat <- dataset[b]$cat$to(device=self$device)
+        if (!is.null(dataset[b]$num)) {
         num <- dataset[b]$num$to(device=self$device)
+        } else {
+        num <- dataset[b]$num
+        }
         target <- dataset[b]$target$to(device=self$device)
         out <- self$model(num, cat)
         loss <- self$criterion(out, target)

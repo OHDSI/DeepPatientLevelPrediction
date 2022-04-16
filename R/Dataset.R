@@ -29,15 +29,21 @@ Dataset <- torch::dataset(
     dataCat <- data[, !numericalIndex]
     self$cat <- torch::torch_tensor(as.matrix(dataCat), dtype=torch::torch_long())
     
+    # for (i in dim(data)[[1]])
+    # 
     # comment out the sparse matrix for now, is really slow need to find 
     # a better solution for converting it to dense before feeding to model
     # matrix <- as(dataCat, 'dgTMatrix') # convert to triplet sparse format
     # sparseIndices <- torch::torch_tensor(matrix(c(matrix@i + 1, matrix@j + 1), ncol=2), dtype = torch::torch_long())
     # values <- torch::torch_tensor(matrix(c(matrix@x)), dtype = torch::torch_float32())
-    # self$cat <- torch::torch_sparse_coo_tensor(indices=sparseIndices$t(), 
-    #                                            values=values$squeeze(), 
-    #                                            dtype=torch::torch_float32())$coalesce()
+    # self$cat <- torch::torch_sparse_coo_tensor(indices=sparseIndices$t(),
+                                               # values=values$squeeze(),
+                                               # dtype=torch::torch_float32())$coalesce()
+    if (sum(numericalIndex) == 0) {
+      self$num <- NULL
+    } else  {
     self$num <- torch::torch_tensor(as.matrix(data[,numericalIndex, drop = F]), dtype=torch::torch_float32())
+    }
   },
   
   .getNumericalIndex = function() {
@@ -53,9 +59,11 @@ Dataset <- torch::dataset(
   },
   
   numNumFeatures = function() {
-    return (
-      self$num$shape[2]
-    )
+      if (!is.null(self$num)) {
+      return(self$num$shape[2])
+      } else {
+      return(0)
+      }
   },
   
   .getbatch = function(item) {
