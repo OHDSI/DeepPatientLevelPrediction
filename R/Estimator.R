@@ -474,15 +474,9 @@ Estimator <- R6::R6Class(
       self$model$train()
       coro::loop(for (b in batchIndex) {
         self$optimizer$zero_grad()
-        cat <- dataset[b]$cat$to(device=self$device)
-        if (!is.null(dataset[b]$num)) {
-        num <- dataset[b]$num$to(device=self$device)
-        } else {
-        num <- dataset[b]$num
-        }
-        target <- dataset[b]$target$to(device=self$device)
-        out <- self$model(num, cat)
-        loss <- self$criterion(out, target)
+        batch <- self$batchToDevice(dataset[b])
+        out <- self$model(batch$num, batch$cat)
+        loss <- self$criterion(out, batch$target)
         loss$backward()
         self$optimizer$step()
         })
@@ -558,15 +552,12 @@ Estimator <- R6::R6Class(
         targets = c()
         self$model$eval()
         coro::loop(for (b in batchIndex) {
-          b <- self$batchToDevice(dataset[b])
-          cat <- b$cat
-          num <- b$num
-          target <- b$target
-          
-          pred <- self$model(num, cat)
+          batch <- self$batchToDevice(dataset[b])
+          target <- batch$target
+          pred <- self$model(batch$num, batch$cat)
           predictions <- c(predictions, as.array(pred$cpu()))
-          targets <- c(targets, as.array(target$cpu()))
-          loss <- c(loss, self$criterion(pred, target)$item())
+          targets <- c(targets, as.array(batch$target$cpu()))
+          loss <- c(loss, self$criterion(pred, batch$target)$item())
         })
         mean_loss <- mean(loss)
         predictionsClass <- data.frame(value=predictions, outcomeCount=targets)
@@ -619,7 +610,12 @@ Estimator <- R6::R6Class(
     #' @return the batch on the required device
     batchToDevice = function(batch) {
       cat <- batch[[1]]$to(device=self$device)
+      if (!is.null(batch[[2]]))
+      {
       num <- batch[[2]]$to(device=self$device)
+      } else {
+        num <- NULL
+      }
       target <- batch[[3]]$to(device=self$device)
       
       result <- list(cat=cat, num=num, target=target)

@@ -5,7 +5,7 @@ library(PatientLevelPrediction)
 library(DeepPatientLevelPrediction)
 
 data(plpDataSimulationProfile)
-sampleSize <- 1e4
+sampleSize <- 1e3
 plpData <- simulatePlpData(
   plpDataSimulationProfile,
   n = sampleSize
@@ -16,18 +16,18 @@ populationSet <- PatientLevelPrediction::createStudyPopulationSettings(
   riskWindowStart = 1, 
   riskWindowEnd = 365)
 
-# 
-# modelSettings <- setResNet(numLayers = 2, sizeHidden = 64, hiddenFactor = 1,
-#                           residualDropout = 0, hiddenDropout = 0.2, normalization = 'BatchNorm',
-#                           activation = 'RelU', sizeEmbedding = 64, weightDecay = 1e-6,
-#                           learningRate = 3e-4, seed = 42, hyperParamSearch = 'random',
-#                           randomSample = 1, device = 'cuda:0',batchSize = 32,epochs = 1)
+ 
+modelSettings <- setResNet(numLayers = 2, sizeHidden = 64, hiddenFactor = 1,
+                          residualDropout = 0, hiddenDropout = 0.2, normalization = 'BatchNorm',
+                          activation = 'RelU', sizeEmbedding = 64, weightDecay = 1e-6,
+                          learningRate = 3e-4, seed = 42, hyperParamSearch = 'random',
+                          randomSample = 1, device = 'cuda:0',batchSize = 32,epochs = 10)
 
-modelSettings <- setTransformer(numBlocks=1, dimToken = 12, dimOut = 1, numHeads = 1,
-                                attDropout = 0.2, ffnDropout = 0.2, resDropout = 0,
-                                dimHidden = 8, batchSize = 4, hyperParamSearch = 'random',
-                                weightDecay = 1e-6, learningRate = 3e-4, epochs = 5,
-                                device = 'cuda:0', randomSamples = 1, seed = 42)
+# modelSettings <- setTransformer(numBlocks=1, dimToken = 12, dimOut = 1, numHeads = 1,
+#                                 attDropout = 0.2, ffnDropout = 0.2, resDropout = 0,
+#                                 dimHidden = 8, batchSize = 4, hyperParamSearch = 'random',
+#                                 weightDecay = 1e-6, learningRate = 3e-4, epochs = 1,
+#                                 device = 'cuda:0', randomSamples = 1, seed = 42)
 
 res2 <- PatientLevelPrediction::runPlp(
 plpData = plpData,

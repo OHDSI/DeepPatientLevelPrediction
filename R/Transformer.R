@@ -93,12 +93,14 @@ Transformer <- torch::nn_module(
                       headNorm, dimOut)
   },
   forward = function(x_num, x_cat){
-    x_cat <- self$embedding(x_cat)
+    x <- self$embedding(x_cat)
     if (!is.null(x_num)) {
-    x <- torch::torch_cat(list(x_cat, x_num), dim=2L)
+      x <- torch::torch_cat(list(x, x_num), dim=2L)
     } else {
-      x <- x_cat
+      x <- x
     }
+    if (length(dim(x))==2)
+    {browser()}
     x <- self$classToken(x)
     for (i in 1:length(self$layers)) {
       layer <- self$layers[[i]]

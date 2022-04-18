@@ -201,7 +201,11 @@ ResNet <- torch::nn_module(
       
   forward=function(x_num, x_cat) {
     x_cat <- self$embedding(x_cat)
-    x <- torch::torch_cat(list(x_cat, x_num), dim=2L)
+    if (!is.null(x_num)) {
+      x <- torch::torch_cat(list(x_cat, x_num), dim=2L)
+    } else {
+      x <- x_cat
+    }
     x <- self$first_layer(x)
     
     for (i in 1:length(self$layers)) {

@@ -67,9 +67,22 @@ Dataset <- torch::dataset(
   },
   
   .getbatch = function(item) {
+    if (length(item)==1) {
+      # add leading singleton dimension since models expects 2d tensors
+      if (!is.null(self$num)) {
+        return(list(cat = self$cat[item]$unsqueeze(1),
+                    num = self$num[item]$unsqueeze(1),
+                    target = self$target[item]))
+      } else {
+        return(list(cat = self$cat[item]$unsqueeze(1),
+                    num = NULL,
+                    target = self$target[item]$unsqueeze(1)))
+        
+      }
+    } else {
     return(list(cat = self$cat[item],
                 num = self$num[item],
-                target = self$target[item]))
+                target = self$target[item]))}
   },
   
   .length = function() {
