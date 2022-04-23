@@ -1,12 +1,17 @@
+#' @description A torch dataset 
+#' @import data.table
 #' @export
 Dataset <- torch::dataset(
   name = 'myDataset',
+  #' @param data           a dgCSparseMatrix with the features
+  #' @param labels         a dataframe with the labels
+  #' @param numericalIndex in what column numeric data is in (if any)
   initialize = function(data, labels = NULL, numericalIndex = NULL) {
     # determine numeric
     if(is.null(numericalIndex)){
-      colBin <- apply(data, 2, function(x) sum(x==1 | x==0))
-      colLen <- apply(data, 2, length)
-      numericalIndex <- colLen != colBin
+      colList <- listCols(data)
+      numericalIndex <- vapply(colList, function(x) sum(x==1 | x==0) != length(x), 
+                               TRUE)
     }
     
     self$numericalIndex <- numericalIndex
@@ -21,29 +26,26 @@ Dataset <- torch::dataset(
     
     # Weight to add in loss function to positive class
     self$posWeight <- ((self$target==0)$sum()/self$target$sum())$item()
-    
-    # for DeepNNTorch 
+    # for DeepNNTorch
     # self$all <- torch::torch_tensor(as.matrix(data), dtype = torch::torch_float32())
-    
+  
     # add features
     dataCat <- data[, !numericalIndex]
-    self$cat <- torch::torch_tensor(as.matrix(dataCat), dtype=torch::torch_long())
+    dataCat <- as(dataCat, 'dgTMatrix')
     
-    # for (i in dim(data)[[1]])
-    # 
-    # comment out the sparse matrix for now, is really slow need to find 
-    # a better solution for converting it to dense before feeding to model
-    # matrix <- as(dataCat, 'dgTMatrix') # convert to triplet sparse format
-    # sparseIndices <- torch::torch_tensor(matrix(c(matrix@i + 1, matrix@j + 1), ncol=2), dtype = torch::torch_long())
-    # values <- torch::torch_tensor(matrix(c(matrix@x)), dtype = torch::torch_float32())
-    # self$cat <- torch::torch_sparse_coo_tensor(indices=sparseIndices$t(),
-                                               # values=values$squeeze(),
-                                               # dtype=torch::torch_float32())$coalesce()
+    # the fastest way I found so far to convert data using data.table
+    # 1.5 min for 100k rows :(
+    dt <- data.table::data.table(rows=dataCat@i+1L, cols=dataCat@j+1L)
+    start <- Sys.time()
+    self$cat <- lapply(1:dim(dataCat)[[1]], function(x) torch::torch_tensor(dt[rows==x, cols]))
+    delta <- Sys.time() - start
+    ParallelLogger::logInfo("Data conversion for dataset took ", signif(delta, 3), " ", attr(delta, "units"))
+    
     if (sum(numericalIndex) == 0) {
       self$num <- NULL
     } else  {
-    self$num <- torch::torch_tensor(as.matrix(data[,numericalIndex, drop = F]), dtype=torch::torch_float32())
-    }
+      self$num <- torch::torch_tensor(as.matrix(data[,numericalIndex, drop = F]), dtype=torch::torch_float32())
+    } 
   },
   
   .getNumericalIndex = function() {
@@ -54,7 +56,7 @@ Dataset <- torch::dataset(
   
   numCatFeatures = function() {
     return (
-      self$cat$shape[2]
+      sum(!self$numericalIndex)
     )
   },
   
@@ -70,11 +72,11 @@ Dataset <- torch::dataset(
     if (length(item)==1) {
       # add leading singleton dimension since models expects 2d tensors
       if (!is.null(self$num)) {
-        return(list(cat = self$cat[item]$unsqueeze(1),
-                    num = self$num[item]$unsqueeze(1),
-                    target = self$target[item]))
+        return(list(cat = self$cat[item],
+                    num = self$num[item],
+                    target = self$target[item]$unsqueeze(1)))
       } else {
-        return(list(cat = self$cat[item]$unsqueeze(1),
+        return(list(cat = self$cat[item],
                     num = NULL,
                     target = self$target[item]$unsqueeze(1)))
         

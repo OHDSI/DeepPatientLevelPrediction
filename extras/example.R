@@ -1,14 +1,13 @@
 # testing code (requires sequential branch of FeatureExtraction):
 # rm(list = ls())
-library(FeatureExtraction)
 library(PatientLevelPrediction)
 library(DeepPatientLevelPrediction)
 
 data(plpDataSimulationProfile)
-sampleSize <- 1e3
+sampleSize <- 1e4
 plpData <- simulatePlpData(
   plpDataSimulationProfile,
-  n = sampleSize
+  n = sampleSize 
 )
 
 populationSet <- PatientLevelPrediction::createStudyPopulationSettings(
@@ -19,14 +18,14 @@ populationSet <- PatientLevelPrediction::createStudyPopulationSettings(
  
 modelSettings <- setResNet(numLayers = 2, sizeHidden = 64, hiddenFactor = 1,
                           residualDropout = 0, hiddenDropout = 0.2, normalization = 'BatchNorm',
-                          activation = 'RelU', sizeEmbedding = 64, weightDecay = 1e-6,
+                          activation = 'RelU', sizeEmbedding = 512, weightDecay = 1e-6,
                           learningRate = 3e-4, seed = 42, hyperParamSearch = 'random',
                           randomSample = 1, device = 'cuda:0',batchSize = 32,epochs = 10)
 
-# modelSettings <- setTransformer(numBlocks=1, dimToken = 12, dimOut = 1, numHeads = 1,
+# modelSettings <- setTransformer(numBlocks=1, dimToken = 33, dimOut = 1, numHeads = 3,
 #                                 attDropout = 0.2, ffnDropout = 0.2, resDropout = 0,
-#                                 dimHidden = 8, batchSize = 4, hyperParamSearch = 'random',
-#                                 weightDecay = 1e-6, learningRate = 3e-4, epochs = 1,
+#                                 dimHidden = 8, batchSize = 32, hyperParamSearch = 'random',
+#                                 weightDecay = 1e-6, learningRate = 3e-4, epochs = 10,
 #                                 device = 'cuda:0', randomSamples = 1, seed = 42)
 
 res2 <- PatientLevelPrediction::runPlp(

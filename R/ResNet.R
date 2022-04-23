@@ -107,32 +107,49 @@ setResNet <- function(
 
 }
 
-
-sparseLinearLayer <- torch::nn_module(
-  name='sparseLinearLayer',
-  initialize = function(inputSize, outputSize, bias=F){
-    self$weight <- torch::nn_parameter(torch::torch_empty(outputSize, inputSize))
-    if (bias){
-      self$bias <- torch::nn_parameter(torch::torch_empty(outputSize))
-    } else {
-      self$bias <- NULL
-    }
+ResNet <- torch::nn_module(
+  name='ResNet',
+  initialize=function(catFeatures, numFeatures, sizeEmbedding, sizeHidden, numLayers,
+                      hiddenFactor, activation=torch::nn_relu, 
+                      normalization=torch::nn_batch_norm1d, hiddenDropout=NULL,
+                      residualDropout=NULL, d_out=1) {
+    self$embedding <- EmbeddingBag(numEmbeddings=catFeatures + 1L, 
+                                   embeddingDim=sizeEmbedding,
+                                   paddingIdx=1)
+    self$first_layer <- torch::nn_linear(sizeEmbedding + numFeatures, sizeHidden)
     
-    self$reset_parameters()
+    resHidden <- sizeHidden * hiddenFactor
+    
+    self$layers <- torch::nn_module_list(lapply(1:numLayers,
+                                                 function (x) ResLayer(sizeHidden, resHidden,
+                                                          normalization, activation,
+                                                          hiddenDropout,
+                                                          residualDropout)))
+    self$lastNorm <- normalization(sizeHidden)
+    self$head <- torch::nn_linear(sizeHidden, d_out)
+    
+    self$lastAct <- activation()
+    
   },
-  reset_parameters = function() {
-    torch::nn_init_kaiming_uniform_(self$weight, a = sqrt(5))
-    if (!is.null(self$bias)) {
-      fans <- nn_init_calculate_fan_in_and_fan_out(self$weight)
-      bound <- 1 / sqrt(fans[[1]])
-      torch::nn_init_uniform_(self$bias, -bound, bound)
+      
+  forward=function(x_num, x_cat) {
+    x_cat <- torch::nn_utils_rnn_pad_sequence(x_cat, batch_first = TRUE)
+    x_cat <- self$embedding(x_cat)
+    if (!is.null(x_num)) {
+      x <- torch::torch_cat(list(x_cat, x_num), dim=2L)
+    } else {
+      x <- x_cat
     }
-  },
-  forward = function(input) {
-    if (input$dtype != torch::torch_float32()) {
-      input <- input$type_as(self$weight)
+    x <- self$first_layer(x)
+    
+    for (i in 1:length(self$layers)) {
+      x <- self$layers[[i]](x)
     }
-    torch::nnf_linear(input, self$weight, self$bias)
+    x <- self$lastNorm(x)
+    x <- self$lastAct(x)    
+    x <- self$head(x)
+    x <- x$squeeze(-1)
+    return(x)
   }
 )
 
@@ -140,7 +157,7 @@ ResLayer <- torch::nn_module(
   name='ResLayer',
   
   initialize=function(sizeHidden, resHidden, normalization,
-                     activation, hiddenDropout=NULL, residualDropout=NULL){
+                      activation, hiddenDropout=NULL, residualDropout=NULL){
     self$norm <- normalization(sizeHidden)
     self$linear0 <- torch::nn_linear(sizeHidden, resHidden)
     self$linear1 <- torch::nn_linear(resHidden, sizeHidden)
@@ -175,49 +192,6 @@ ResLayer <- torch::nn_module(
   }
 )
 
-ResNet <- torch::nn_module(
-  name='ResNet',
-  
-  initialize=function(catFeatures, numFeatures, sizeEmbedding, sizeHidden, numLayers,
-                      hiddenFactor, activation=torch::nn_relu, 
-                      normalization=torch::nn_batch_norm1d, hiddenDropout=NULL,
-                      residualDropout=NULL, d_out=1) {
-    self$embedding <- sparseLinearLayer(catFeatures, sizeEmbedding, bias=F)
-    self$first_layer <- torch::nn_linear(sizeEmbedding + numFeatures, sizeHidden)
-    
-    resHidden <- sizeHidden * hiddenFactor
-    
-    self$layers <- torch::nn_module_list(lapply(1:numLayers,
-                                                 function (x) ResLayer(sizeHidden, resHidden,
-                                                          normalization, activation,
-                                                          hiddenDropout,
-                                                          residualDropout)))
-    self$lastNorm <- normalization(sizeHidden)
-    self$head <- torch::nn_linear(sizeHidden, d_out)
-    
-    self$lastAct <- activation()
-    
-  },
-      
-  forward=function(x_num, x_cat) {
-    x_cat <- self$embedding(x_cat)
-    if (!is.null(x_num)) {
-      x <- torch::torch_cat(list(x_cat, x_num), dim=2L)
-    } else {
-      x <- x_cat
-    }
-    x <- self$first_layer(x)
-    
-    for (i in 1:length(self$layers)) {
-      x <- self$layers[[i]](x)
-    }
-    x <- self$lastNorm(x)
-    x <- self$lastAct(x)    
-    x <- self$head(x)
-    x <- x$squeeze(-1)
-    return(x)
-  }
-)
 
 listCartesian <- function(allList){
   
@@ -259,3 +233,26 @@ nn_init_calculate_fan_in_and_fan_out <- function(tensor) {
   list(fan_in, fan_out)
 }
 
+EmbeddingBag <- torch::nn_module(
+  name='EmbeddingBag',
+  initialize = function(numEmbeddings, embeddingDim, paddingIdx, mode='mean') {
+    self$mode <- mode
+    self$paddingIdx <- paddingIdx
+    self$weight <- torch::nn_parameter(torch::torch_empty(numEmbeddings, embeddingDim))
+    self$resetParameters()
+  },
+  forward = function(x_cat) {
+    offsets <- torch::torch_arange(0, x_cat$numel(), x_cat$size(2), 
+                                   dtype=x_cat$dtype, device=x_cat$device)
+    torch::nnf_embedding_bag(input=x_cat + 1L, weight=self$weight, mode=self$mode,
+                             offsets=offsets)
+  },
+  resetParameters = function() {
+    torch::nn_init_normal_(self$weight)
+    if (!is.null(self$paddingIdx)){
+      torch::with_no_grad({
+       self$weight[self$paddingIdx, ..]$fill_(0) 
+      })
+    }
+  }
+)

@@ -2,7 +2,7 @@
 % Please edit documentation in R/Estimator.R
 \name{gridCvDeep}
 \alias{gridCvDeep}
-\title{gr idCvDeep}
+\title{gridCvDeep}
 \usage{
 gridCvDeep(matrixData, labels, settings, modelLocation, paramSearch)
 }

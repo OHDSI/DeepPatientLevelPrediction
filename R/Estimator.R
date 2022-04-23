@@ -175,7 +175,7 @@ predictDeepEstimator <- function(
   return(prediction)
 }
 
-#' gr idCvDeep 
+#' gridCvDeep 
 #' 
 #' @description 
 #' Performs grid search for a deep learning estimator
@@ -205,7 +205,7 @@ gridCvDeep <- function(
   device <- settings$device
   
   ParallelLogger::logInfo(paste0("Running CV for ",modelName," model"))
-  
+
   ###########################################################################
   
   
@@ -605,21 +605,27 @@ Estimator <- R6::R6Class(
     
     #' @description 
     #' sends a batch of data to device
-    #' TODO make agnostic of the form of batch
+    #' assumes batch includes lists of tensors to arbitrary nested depths
     #' @param batch the batch to send, usually a list of torch tensors
     #' @return the batch on the required device
     batchToDevice = function(batch) {
-      cat <- batch[[1]]$to(device=self$device)
-      if (!is.null(batch[[2]]))
-      {
-      num <- batch[[2]]$to(device=self$device)
+      if (class(batch)[1] == 'torch_tensor') {
+        batch <- batch$to(device=self$device)
       } else {
-        num <- NULL
+        ix <- 1
+        for (b in batch) {
+          if (class(b)[1] == 'torch_tensor') {
+            b <- b$to(device=self$device)
+          } else {
+            b <- self$batchToDevice(b)
+          }
+          if (!is.null(b)) {
+            batch[[ix]] <- b
+          }
+          ix <- ix + 1
+        }
       }
-      target <- batch[[3]]$to(device=self$device)
-      
-      result <- list(cat=cat, num=num, target=target)
-      return(result)
+      return(batch)
     },
     
     #' @description

@@ -23,6 +23,7 @@ Imports:
     Andromeda,
     DatabaseConnector (>= 3.0.0),
     dplyr,
+    data.table,
     knitr,
     magrittr,
     Matrix,

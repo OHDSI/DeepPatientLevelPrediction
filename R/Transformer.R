@@ -12,6 +12,11 @@ setTransformer <- function(numBlocks=3, dimToken=96, dimOut=1,
   if (!is.null(seed)) {
     seed <- as.integer(sample(1e5, 1))
   }
+  
+  if (dimToken %% numHeads != 0) {
+    stop(paste('dimToken needs to divisble by numHeads. dimToken =', dimToken,
+               'is not divisible by numHeads =', numHeads))
+  }
 
   paramGrid <- list(
     numBlocks = numBlocks,
@@ -93,14 +98,13 @@ Transformer <- torch::nn_module(
                       headNorm, dimOut)
   },
   forward = function(x_num, x_cat){
+    x_cat <- torch::nn_utils_rnn_pad_sequence(x_cat, batch_first = TRUE)
     x <- self$embedding(x_cat)
     if (!is.null(x_num)) {
       x <- torch::torch_cat(list(x, x_num), dim=2L)
     } else {
       x <- x
     }
-    if (length(dim(x))==2)
-    {browser()}
     x <- self$classToken(x)
     for (i in 1:length(self$layers)) {
       layer <- self$layers[[i]]
@@ -180,11 +184,11 @@ Embedding <- torch::nn_module(
   name='Embedding',
   initialize = function(numEmbeddings, embeddingDim) {
     self$embedding <- torch::nn_embedding(numEmbeddings, embeddingDim, padding_idx = 1)
-    categoryOffsets <- torch::torch_arange(1, numEmbeddings, dtype=torch::torch_long())
-    self$register_buffer('categoryOffsets', categoryOffsets, persistent=FALSE)
+    # categoryOffsets <- torch::torch_arange(1, numEmbeddings, dtype=torch::torch_long())
+    # self$register_buffer('categoryOffsets', categoryOffsets, persistent=FALSE)
   },
   forward = function(x_cat) {
-    x <- self$embedding(x_cat * self$categoryOffsets + 1L)
+    x <- self$embedding(x_cat + 1L)
     }
 )
 
