@@ -44,25 +44,25 @@
 #'
 #' @export
 setResNet <- function(
-  numLayers = c(1:16), 
-  sizeHidden = c(2^(6:10)), 
-  hiddenFactor = C(1:4),
-  residualDropout = C(seq(0,0.3,0.05)), 
-  hiddenDropout = c(seq(0,0.3,0.05)),
+  numLayers = c(1:8), 
+  sizeHidden = c(2^(6:9)), 
+  hiddenFactor = c(1:4),
+  residualDropout = c(seq(0,0.5,0.05)), 
+  hiddenDropout = c(seq(0,0.5,0.05)),
   normalization = c('BatchNorm'), 
   activation = c('RelU'),
   sizeEmbedding = c(2^(6:9)), 
   weightDecay = c(1e-6, 1e-3),
-  learningRate = c(1e-2,1e-5), 
+  learningRate = c(1e-2, 3e-4, 1e-5), 
   seed = NULL, 
   hyperParamSearch = 'random',
   randomSample = 100, 
   device = 'cpu', 
   batchSize = 1024, 
-  epochs = 10
+  epochs = 30
   ) {
 
-  if (!is.null(seed)) {
+  if (is.null(seed)) {
     seed <- as.integer(sample(1e5, 1))
   }
   
@@ -109,13 +109,16 @@ setResNet <- function(
 
 ResNet <- torch::nn_module(
   name='ResNet',
-  initialize=function(catFeatures, numFeatures, sizeEmbedding, sizeHidden, numLayers,
+  initialize=function(catFeatures, numFeatures=0, sizeEmbedding, sizeHidden, numLayers,
                       hiddenFactor, activation=torch::nn_relu, 
                       normalization=torch::nn_batch_norm1d, hiddenDropout=NULL,
                       residualDropout=NULL, d_out=1) {
-    self$embedding <- EmbeddingBag(numEmbeddings=catFeatures + 1L, 
-                                   embeddingDim=sizeEmbedding,
-                                   paddingIdx=1)
+    # self$embedding <- EmbeddingBag(numEmbeddings=catFeatures + 1L, 
+    #                                embeddingDim=sizeEmbedding,
+    #                                paddingIdx=1)
+    self$embedding <- torch::nn_embedding_bag(num_embeddings = catFeatures + 1,
+                                              embedding_dim = sizeEmbedding,
+                                              padding_idx = 1)
     self$first_layer <- torch::nn_linear(sizeEmbedding + numFeatures, sizeHidden)
     
     resHidden <- sizeHidden * hiddenFactor
@@ -132,9 +135,10 @@ ResNet <- torch::nn_module(
     
   },
       
-  forward=function(x_num, x_cat) {
-    x_cat <- torch::nn_utils_rnn_pad_sequence(x_cat, batch_first = TRUE)
-    x_cat <- self$embedding(x_cat)
+  forward=function(x) {
+    x_cat <- x$cat
+    x_num <- x$num
+    x_cat <- self$embedding(x_cat + 1L) # padding_idx is 1
     if (!is.null(x_num)) {
       x <- torch::torch_cat(list(x_cat, x_num), dim=2L)
     } else {
@@ -232,27 +236,3 @@ nn_init_calculate_fan_in_and_fan_out <- function(tensor) {
   
   list(fan_in, fan_out)
 }
-
-EmbeddingBag <- torch::nn_module(
-  name='EmbeddingBag',
-  initialize = function(numEmbeddings, embeddingDim, paddingIdx, mode='mean') {
-    self$mode <- mode
-    self$paddingIdx <- paddingIdx
-    self$weight <- torch::nn_parameter(torch::torch_empty(numEmbeddings, embeddingDim))
-    self$resetParameters()
-  },
-  forward = function(x_cat) {
-    offsets <- torch::torch_arange(0, x_cat$numel(), x_cat$size(2), 
-                                   dtype=x_cat$dtype, device=x_cat$device)
-    torch::nnf_embedding_bag(input=x_cat + 1L, weight=self$weight, mode=self$mode,
-                             offsets=offsets)
-  },
-  resetParameters = function() {
-    torch::nn_init_normal_(self$weight)
-    if (!is.null(self$paddingIdx)){
-      torch::with_no_grad({
-       self$weight[self$paddingIdx, ..]$fill_(0) 
-      })
-    }
-  }
-)

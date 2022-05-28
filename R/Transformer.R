@@ -62,7 +62,7 @@ setTransformer <- function(numBlocks=3, dimToken=96, dimOut=1,
 
 Transformer <- torch::nn_module(
   name='Transformer',
-  initialize = function(catFeatures, numFeatures, numBlocks, dimToken, dimOut, 
+  initialize = function(catFeatures, numFeatures, numBlocks, dimToken, dimOut=1, 
                        numHeads, attDropout, ffnDropout, resDropout, 
                        headActivation=torch::nn_relu,
                        activation=torch::nn_relu,
@@ -71,7 +71,7 @@ Transformer <- torch::nn_module(
                        attNorm=torch::nn_layer_norm,
                        dimHidden){
     self$embedding <- Embedding(catFeatures + 1, dimToken) # + 1 for padding idx
-    dimToken <- dimToken + numFeatures # because I concatenate numerical features to embedding
+    # self$numericalEmbedding <- numericalEmbedding(numFeatures, dimToken)
     self$classToken <- ClassToken(dimToken)
     
     self$layers <- torch::nn_module_list(lapply(1:numBlocks,
@@ -89,7 +89,7 @@ Transformer <- torch::nn_module(
                           layer$add_module('ffnResDropout', torch::nn_dropout(resDropout))
                           layer$add_module('ffnNorm', ffnNorm(dimToken))
               
-                          if (x==1) {
+                          if (x!=1) {
                             layer$add_module('attentionNorm', attNorm(dimToken))
                         }
                          return(layer) 
@@ -97,15 +97,25 @@ Transformer <- torch::nn_module(
     self$head <- Head(dimToken, bias=TRUE, activation=headActivation, 
                       headNorm, dimOut)
   },
-  forward = function(x_num, x_cat){
-    x_cat <- torch::nn_utils_rnn_pad_sequence(x_cat, batch_first = TRUE)
+  forward = function(x){
+    x_cat <- x$cat
+    x_num <- x$num
     x <- self$embedding(x_cat)
     if (!is.null(x_num)) {
+      x_num <- self$numericalEmbedding(x_num)
       x <- torch::torch_cat(list(x, x_num), dim=2L)
     } else {
       x <- x
     }
     x <- self$classToken(x)
+    paddingMask <- torch::torch_zeros(x_cat$size()[1], x_cat$size()[2], 
+                                      device = x$device, dtype=torch::torch_bool())
+    paddingMask[x_cat==0] <- 1
+    paddingMask <- torch::torch_cat(list(paddingMask, 
+                                         torch::torch_zeros(x_cat$size()[1], 
+                                                            x$size()[2] - x_cat$size()[2],
+                                                            device=x$device,
+                                                            dtype=torch::torch_bool())), dim=2)
     for (i in 1:length(self$layers)) {
       layer <- self$layers[[i]]
       xResidual <- self$startResidual(layer, 'attention', x)
@@ -113,14 +123,21 @@ Transformer <- torch::nn_module(
       if (i==length(self$layers)) {
         dims <- xResidual$shape
         # in final layer take only attention on CLS token
-        xResidual <- layer$attention(xResidual[,-1]$view(c(dims[1], 1, dims[3])), 
-                                     xResidual, xResidual)
+        xResidual <- layer$attention(xResidual[,-1]$view(c(dims[1], 1, dims[3]))$transpose(1,2), 
+                                     xResidual$transpose(1,2), 
+                                     xResidual$transpose(1,2), paddingMask)
+        attnWeights <- xResidual[[2]]
         xResidual <- xResidual[[1]]
         x <- x[,-1]$view(c(dims[1], 1, dims[3]))
         } else {
-        xResidual <- layer$attention(xResidual, xResidual)
+        # attention input is seq_length x batch_size x embedding_dim
+        xResidual <- layer$attention(xResidual$transpose(1,2), 
+                                     xResidual$transpose(1,2), 
+                                     xResidual$transpose(1,2),
+                                     paddingMask,
+                                     )[[1]]
         }
-      x <- self$endResidual(layer, 'attention', x, xResidual)
+      x <- self$endResidual(layer, 'attention', x, xResidual$transpose(1,2))
 
       xResidual <- self$startResidual(layer, 'ffn', x)
       xResidual <- layer$ffn(xResidual)
@@ -184,12 +201,36 @@ Embedding <- torch::nn_module(
   name='Embedding',
   initialize = function(numEmbeddings, embeddingDim) {
     self$embedding <- torch::nn_embedding(numEmbeddings, embeddingDim, padding_idx = 1)
-    # categoryOffsets <- torch::torch_arange(1, numEmbeddings, dtype=torch::torch_long())
-    # self$register_buffer('categoryOffsets', categoryOffsets, persistent=FALSE)
   },
   forward = function(x_cat) {
-    x <- self$embedding(x_cat + 1L)
+    x <- self$embedding(x_cat + 1L) # padding idx is 1L
     }
+)
+
+numericalEmbedding <- torch::nn_module(
+  name='numericalEmbedding',
+  initialize = function(numEmbeddings, embeddingDim, bias=FALSE) {
+    self$weight <- torch::nn_parameter(torch::torch_empty(numEmbeddings,embeddingDim))
+    if (bias) {
+    self$bias <- torch::nn_parameter(torch::torch_empty(numEmbeddings, embeddingDim)) 
+    } else {
+      self$bias <- NULL
+    }
+    
+    for (parameter in list(self$weight, self$bias)) {
+      if (!is.null(parameter)) {
+        torch::nn_init_kaiming_uniform_(parameter, a=sqrt(5)) 
+      }
+    }
+  },
+  forward = function(x) {
+    x <- self$weight$unsqueeze(1) * x$unsqueeze(-1)
+    if (!is.null(self$bias)) {
+      x <- x + self$bias$unsqueeze(1)
+    }
+    return(x)
+  }
+  
 )
 
 # adds a class token embedding to embeddings

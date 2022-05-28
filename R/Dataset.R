@@ -36,8 +36,17 @@ Dataset <- torch::dataset(
     # the fastest way I found so far to convert data using data.table
     # 1.5 min for 100k rows :(
     dt <- data.table::data.table(rows=dataCat@i+1L, cols=dataCat@j+1L)
+    maxFeatures <- max(dt[, .N, by=rows][,N])
     start <- Sys.time()
-    self$cat <- lapply(1:dim(dataCat)[[1]], function(x) torch::torch_tensor(dt[rows==x, cols]))
+    cat <- lapply(1:dim(dataCat)[[1]], function(x) {
+      currRow <- dt[rows==x, cols]
+      maxCols <- length(currRow)
+      torch::torch_cat(list(torch::torch_tensor(currRow),torch::torch_zeros((maxFeatures - maxCols),
+                            dtype=torch::torch_long()))
+                       )
+      })
+    self$lengths <- lengths
+    self$cat <- torch::torch_vstack(cat)
     delta <- Sys.time() - start
     ParallelLogger::logInfo("Data conversion for dataset took ", signif(delta, 3), " ", attr(delta, "units"))
     
@@ -48,7 +57,7 @@ Dataset <- torch::dataset(
     } 
   },
   
-  .getNumericalIndex = function() {
+  getNumericalIndex = function() {
     return(
       self$numericalIndex
     )
@@ -71,19 +80,13 @@ Dataset <- torch::dataset(
   .getbatch = function(item) {
     if (length(item)==1) {
       # add leading singleton dimension since models expects 2d tensors
-      if (!is.null(self$num)) {
-        return(list(cat = self$cat[item],
-                    num = self$num[item],
-                    target = self$target[item]$unsqueeze(1)))
-      } else {
-        return(list(cat = self$cat[item],
-                    num = NULL,
-                    target = self$target[item]$unsqueeze(1)))
-        
+      return(list(batch = list(cat = self$cat[item],
+                               num = self$num[item]),
+                  target = self$target[item]$unsqueeze(1)))
       }
-    } else {
-    return(list(cat = self$cat[item],
-                num = self$num[item],
+    else {
+    return(list(batch = list(cat = self$cat[item],
+                             num = self$num[item]),
                 target = self$target[item]))}
   },
   

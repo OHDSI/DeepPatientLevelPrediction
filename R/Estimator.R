@@ -43,7 +43,14 @@ fitEstimator <- function(
   settings <- attr(param, 'settings')
   
   if(!is.null(trainData$folds)){
-    trainData$labels <- merge(trainData$labels, trainData$fold, by = 'rowId')
+    if(!is.null(trainData$fold$train)) {
+      trainData$labels <- merge(trainData$labels, 
+                                merge(trainData$folds$train, trainData$folds$validation, all=TRUE),
+                                by = 'rowId', all = TRUE)
+    }
+    else {
+      trainData$labels <- merge(trainData$labels, trainData$fold, by = 'rowId')
+    }
   }
   
   mappedData <- PatientLevelPrediction::toSparseM(
@@ -208,14 +215,14 @@ gridCvDeep <- function(
 
   ###########################################################################
   
-  
+
   gridSearchPredictons <- list()
   length(gridSearchPredictons) <- length(paramSearch)
   dataset <- Dataset(matrixData, labels$outcomeCount)
-  
-  
   for(gridId in 1:length(paramSearch)){
-    
+    ParallelLogger::logInfo(paste0("Running hyperparameter combination no ",gridId))
+    ParallelLogger::logInfo(paste0("HyperParameters: "))
+    ParallelLogger::logInfo(paste(names(paramSearch[[gridId]]), paramSearch[[gridId]], collapse=' | '))
     modelParams <- paramSearch[[gridId]][modelParamNames]
     
     fitParams <- paramSearch[[gridId]][fitParamNames]
@@ -231,7 +238,6 @@ gridCvDeep <- function(
     
     modelParams$catFeatures <- dataset$numCatFeatures()
     modelParams$numFeatures <- dataset$numNumFeatures()
-    
     for( i in 1:max(fold)){
       
       ParallelLogger::logInfo(paste0('Fold ',i))
@@ -242,7 +248,8 @@ gridCvDeep <- function(
         baseModel = baseModel, 
         modelParameters = modelParams,
         fitParameters = fitParams, 
-        device = device
+        device = device,
+        patience = 5
       )
       
       estimator$fit(
@@ -268,7 +275,6 @@ gridCvDeep <- function(
     )
   }
   # get best para (this could be modified to enable any metric instead of AUC, just need metric input in function)
-  
   paramGridSearch <- lapply(gridSearchPredictons, function(x){do.call(computeGridPerformance, x)})  # cvAUCmean, cvAUC, param
   
   optimalParamInd <- which.max(unlist(lapply(paramGridSearch, function(x) x$cvPerformance)))
@@ -289,13 +295,8 @@ gridCvDeep <- function(
   if(!dir.exists(file.path(modelLocation))){
     dir.create(file.path(modelLocation), recursive = T)
   }
-  trainDataset <- Dataset(
-    matrixData, 
-    labels$outcomeCount
-  )
-  modelParams$catFeatures <- trainDataset$numCatFeatures()
-  modelParams$numFeatures <- trainDataset$numNumFeatures()
-  
+  modelParams$catFeatures <- dataset$numCatFeatures()
+  modelParams$numFeatures <- dataset$numNumFeatures()
   
   estimator <- Estimator$new(
     baseModel = baseModel,
@@ -303,15 +304,15 @@ gridCvDeep <- function(
     fitParameters = fitParams, 
     device = device
   )
-  numericalIndex <- trainDataset$.getNumericalIndex()
+  numericalIndex <- dataset$getNumericalIndex()
   
-  estimator$fitWholeTrainingSet(trainDataset)
+  estimator$fitWholeTrainingSet(dataset)
   
   
   ParallelLogger::logInfo("Calculating predictions on all train data...")
   prediction <- predictDeepEstimator(
     plpModel = estimator, 
-    data = trainDataset, 
+    data = dataset, 
     cohort = labels
   )
   prediction$evaluationType <- 'Train'
@@ -369,7 +370,7 @@ Estimator <- R6::R6Class(
                           optimizer=torch::optim_adam,
                           criterion=torch::nn_bce_with_logits_loss,
                           device='cpu', 
-                          patience=NULL){
+                          patience=NULL) {
       self$device <- device
       self$model <- do.call(baseModel, modelParameters)
       self$modelParameters <- modelParameters
@@ -391,10 +392,12 @@ Estimator <- R6::R6Class(
       self$criterion <- criterion(torch::torch_tensor(self$posWeight, 
                                                       device=self$device))
       
+      self$gradAccumulationIter <- 1
+        
       if (!is.null(patience)) {
         self$earlyStopper <- EarlyStopping$new(patience=patience)
       } else {
-        self$earlyStopper <- FALSE
+        self$earlyStopper <- NULL
       }
       
       self$bestScore <- NULL
@@ -408,26 +411,19 @@ Estimator <- R6::R6Class(
       valLosses <- c()
       valAUCs <- c()
       
-      # dataloader <- torch::dataloader(dataset, 
-      #                                 batch_size = self$batchSize, 
-      #                                 shuffle = T)
-      # testDataloader <- torch::dataloader(testDataset, 
-      #                                     batch_size = self$batchSize, 
-      #                                     shuffle = F)
       batchIndex <- torch::torch_randperm(length(dataset)) + 1L
       batchIndex <- split(batchIndex, ceiling(seq_along(batchIndex)/self$batchSize))
-      
+
       testBatchIndex <- 1:length(testDataset)
       testBatchIndex <- split(testBatchIndex, ceiling(seq_along(testBatchIndex)/self$batchSize))
-      
+
       modelStateDict <- list()
       epoch <- list()
       times <- list()
-      
       for (epochI in 1:self$epochs) {
         # fit the model
         startTime <- Sys.time()
-        self$fitEpoch(dataset, batchIndex)
+        trainLoss <- self$fitEpoch(dataset, batchIndex)
         endTime <- Sys.time()
         
         # predict on test data
@@ -437,13 +433,14 @@ Estimator <- R6::R6Class(
         ParallelLogger::logInfo('Epochs: ', currentEpoch, 
                                 ' | Val AUC: ', round(scores$auc,3), 
                                 ' | Val Loss: ', round(scores$loss,3),
+                                ' | Train Loss: ', round(trainLoss,3),
                                 ' | Time: ', round(delta, 3), ' ', 
                                 units(delta))
                                 
         valLosses <- c(valLosses, scores$loss)
         valAUCs <- c(valAUCs, scores$auc)
         times <- c(times, round(delta, 3))
-        if (self$earlyStopper){
+        if (!is.null(self$earlyStopper)) {
           self$earlyStopper$call(scores$auc)
           if (self$earlyStopper$improved) {
             # here it saves the results to lists rather than files
@@ -452,7 +449,7 @@ Estimator <- R6::R6Class(
           }
           if (self$earlyStopper$earlyStop) {
             ParallelLogger::logInfo('Early stopping, validation AUC stopped improving')
-            ParallelLogger::logInfo('Average time per epoch was: ', mean(as.numeric(times)), ' ' , units(delta))
+            ParallelLogger::logInfo('Average time per epoch was: ', round(mean(as.numeric(times)),3), ' ' , units(delta))
             self$finishFit(valAUCs, modelStateDict, valLosses, epoch)
             return(invisible(self))
           }
@@ -461,7 +458,7 @@ Estimator <- R6::R6Class(
           epoch[[epochI]] <- currentEpoch
           }
       }
-      ParallelLogger::logInfo('Average time per epoch was: ', mean(as.numeric(times)), ' ' , units(delta))
+      ParallelLogger::logInfo('Average time per epoch was: ', round(mean(as.numeric(times)),3), ' ' , units(delta))
       self$finishFit(valAUCs, modelStateDict, valLosses, epoch)
       invisible(self)
     },
@@ -471,16 +468,59 @@ Estimator <- R6::R6Class(
     #' @param dataset     torch dataset to use for fitting
     #' @param batchIndex  indices of batches 
     fitEpoch = function(dataset, batchIndex){
+      trainLosses <- torch::torch_empty(floor(length(batchIndex) / self$gradAccumulationIter) + 1)
+      ix <- 1
+      jx <- 1
       self$model$train()
+      progressBar <- utils::txtProgressBar(style=3)
       coro::loop(for (b in batchIndex) {
-        self$optimizer$zero_grad()
         batch <- self$batchToDevice(dataset[b])
-        out <- self$model(batch$num, batch$cat)
-        loss <- self$criterion(out, batch$target)
+        out <- self$model(batch[[1]])
+        loss <- self$criterion(out, batch[[2]])
+        loss <- loss/self$gradAccumulationIter
         loss$backward()
-        self$optimizer$step()
+        
+        if (ix %% self$gradAccumulationIter == 0 | ix == length(batchIndex)) {
+          self$optimizer$zero_grad()
+          self$optimizer$step()
+          trainLosses[jx] <- loss$detach()
+          jx <- jx + 1
+        }
+        
+        utils::setTxtProgressBar(progressBar, ix/length(batchIndex))
+        ix <- ix + 1
         })
-      
+      close(progressBar)
+      trainLosses$mean()$item()
+    },
+    
+    #' @description 
+    #' calculates loss and auc after training for one epoch
+    #' @param dataset    The torch dataset to use to evaluate loss and auc
+    #' @param batchIndex Indices of batches in the dataset
+    #' @return list with average loss and auc in the dataset
+    score = function(dataset, batchIndex){
+      torch::with_no_grad({
+        loss <- torch::torch_empty(c(length(batchIndex)))
+        predictions = list()
+        targets = list()
+        self$model$eval()
+        ix <- 1
+        coro::loop(for (b in batchIndex) {
+          batch <- self$batchToDevice(dataset[b])
+          pred <- self$model(batch[[1]])
+          predictions <- c(predictions, pred)
+          targets <- c(targets, batch[[2]])
+          loss[ix] <- self$criterion(pred, batch[[2]])
+          ix <- ix + 1
+        })
+        mean_loss <- loss$mean()$item()
+        predictionsClass <- data.frame(value=as.matrix(torch::torch_sigmoid(torch::torch_cat(predictions)$cpu())), 
+                                       outcomeCount=as.matrix(torch::torch_cat(targets)$cpu()))
+        attr(predictionsClass, 'metaData')$modelType <-'binary' 
+        auc <- PatientLevelPrediction::computeAuc(predictionsClass)
+      })
+      return(list(loss=mean_loss, auc=auc))
     },
     
     #' @description 
@@ -540,53 +580,21 @@ Estimator <- R6::R6Class(
       
     },
     
-    #' @description 
-    #' calculates loss and auc after training for one epoch
-    #' @param dataset    The torch dataset to use to evaluate loss and auc
-    #' @param batchIndex Indices of batches in the dataset
-    #' @return list with average loss and auc in the dataset
-    score = function(dataset, batchIndex){
-      torch::with_no_grad({
-        loss = c()
-        predictions = c()
-        targets = c()
-        self$model$eval()
-        coro::loop(for (b in batchIndex) {
-          batch <- self$batchToDevice(dataset[b])
-          target <- batch$target
-          pred <- self$model(batch$num, batch$cat)
-          predictions <- c(predictions, as.array(pred$cpu()))
-          targets <- c(targets, as.array(batch$target$cpu()))
-          loss <- c(loss, self$criterion(pred, batch$target)$item())
-        })
-        mean_loss <- mean(loss)
-        predictionsClass <- data.frame(value=predictions, outcomeCount=targets)
-        attr(predictionsClass, 'metaData')$predictionType <-'binary' #old can be remvoed
-        attr(predictionsClass, 'metaData')$modelType <-'binary' 
-        auc <- PatientLevelPrediction::computeAuc(predictionsClass)
-      })
-      return(list(loss=mean_loss, auc=auc))
-    },
     
     #' @description 
     #' predicts and outputs the probabilities
     #' @param dataset Torch dataset to create predictions for
     #' @return predictions as probabilities
     predictProba = function(dataset) {
-      # dataloader <- torch::dataloader(dataset, 
-      #                                 batch_size = self$batchSize, 
-      #                                 shuffle=F)
       batchIndex <- 1:length(dataset)
       batchIndex <- split(batchIndex, ceiling(seq_along(batchIndex)/self$batchSize))
       torch::with_no_grad({
         predictions <- c()
         self$model$eval()
         coro::loop(for (b in batchIndex){
-          b <- self$batchToDevice(dataset[b])
-          cat <- b$cat
-          num <- b$num
-          target <- b$target
-          pred <- self$model(num,cat)
+          batch <- self$batchToDevice(dataset[b])
+          target <- batch$target
+          pred <- self$model(batch$batch)
           predictions <- c(predictions, as.array(torch::torch_sigmoid(pred$cpu())))
         })
       })
