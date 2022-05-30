@@ -4,13 +4,13 @@ Title: Deep learning function for patient level prediction using data in the OMO
 Version: 0.0.1
 Date: 2021-06-07
 Authors@R: c(
-    person("Jenna", "Reps", email = "jreps@its.jnj.com", role = c("aut", "cre")),
+    person("Jenna", "Reps", email = "jreps@its.jnj.com", role = c("aut", "cre")), 
+    person("Egill", "Fridgeirsson", email = "e.fridgeirsson@erasmusmc.nl", role = c("aut", "cre")),
     person("Seng", "Chan You", role = c("aut")),
-    person("Egill", "Fridgeirsson", role = c("aut")),
     person("Chungsoo", "Kim", role = c("aut")),
     person("Henrik", "John", role = c("aut"))
     )
-Maintainer: Jenna Reps <jreps@its.jnj.com>
+Maintainer: Egill Fridgeirsson <e.fridgeirsson@erasmusmc.nl>
 Description: A package for creating deep learning patient level prediction models following the OHDSI PatientLevelPrediction framework.
 License: Apache License 2.0
 URL: https://ohdsi.github.io/PatientLevelPrediction, https://github.com/OHDSI/DeepPatientLevelPrediction
