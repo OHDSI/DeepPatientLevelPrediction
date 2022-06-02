@@ -5,7 +5,7 @@ Version: 0.0.1
 Date: 2021-06-07
 Authors@R: c(
     person("Jenna", "Reps", email = "jreps@its.jnj.com", role = c("aut", "cre")), 
-    person("Egill", "Fridgeirsson", email = "e.fridgeirsson@erasmusmc.nl", role = c("aut", "cre")),
+    person("Egill", "Fridgeirsson", email = "e.fridgeirsson@erasmusmc.nl", role = c("aut")),
     person("Seng", "Chan You", role = c("aut")),
     person("Chungsoo", "Kim", role = c("aut")),
     person("Henrik", "John", role = c("aut"))
