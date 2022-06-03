@@ -36,6 +36,7 @@ Creates a new estimator
   fitParameters,
   optimizer = torch::optim_adam,
   criterion = torch::nn_bce_with_logits_loss,
+  scheduler = torch::lr_reduce_on_plateau,
   device = "cpu",
   patience = NULL
 )}\if{html}{\out{</div>}}

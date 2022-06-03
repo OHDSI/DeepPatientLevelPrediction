@@ -1,6 +1,4 @@
-#Sys.setenv("R_TESTS" = "")
-#options(fftempdir = file.path(getwd(),'fftemp'))
 library(testthat)
 library(DeepPatientLevelPrediction)
+
 test_check("DeepPatientLevelPrediction")
-unlink('T:/Temp', recursive = T)

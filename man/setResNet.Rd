@@ -5,22 +5,22 @@
 \title{setResNet}
 \usage{
 setResNet(
-  numLayers = c(1:16),
-  sizeHidden = c(2^(6:10)),
-  hiddenFactor = C(1:4),
-  residualDropout = C(seq(0, 0.3, 0.05)),
-  hiddenDropout = c(seq(0, 0.3, 0.05)),
+  numLayers = c(1:8),
+  sizeHidden = c(2^(6:9)),
+  hiddenFactor = c(1:4),
+  residualDropout = c(seq(0, 0.5, 0.05)),
+  hiddenDropout = c(seq(0, 0.5, 0.05)),
   normalization = c("BatchNorm"),
   activation = c("RelU"),
   sizeEmbedding = c(2^(6:9)),
   weightDecay = c(1e-06, 0.001),
-  learningRate = c(0.01, 1e-05),
+  learningRate = c(0.01, 3e-04, 1e-05),
   seed = NULL,
   hyperParamSearch = "random",
   randomSample = 100,
   device = "cpu",
   batchSize = 1024,
-  epochs = 10
+  epochs = 30
 )
 }
 \arguments{

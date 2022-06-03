@@ -25,13 +25,15 @@ Imports:
     knitr,
     Matrix,
     ParallelLogger (>= 2.0.0),
+    rlang,
     torch,
     tibble,
 Suggests:
     devtools,
-    plyr,  
-    testthat
+    plyr,
+    testthat (>= 3.0.0)
 Remotes:
     ohdsi/PatientLevelPrediction
 RoxygenNote: 7.1.2
 Encoding: UTF-8
+Config/testthat/edition: 3
