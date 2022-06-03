@@ -157,8 +157,8 @@ fitTabNetTorch <- function(
   covariateRef <- covariateRef %>% merge(variableImportance, by = 'columnId', 
                                          all.x = TRUE)  %>%
                                    dplyr::mutate(included=1)  %>%
-                                   dplyr::rename(covariateValue=importance) %>%
-                                   dplyr::select(!variables)
+                                   dplyr::rename(covariateValue = 'importance') ##%>%
+                                   ##dplyr::select(!variables) # removed as dont know what variables is
   covariateRef$covariateValue[is.na(covariateRef$covariateValue)] <- 0
   covariateRef$included[is.na(covariateRef$included)] <- 0
   
@@ -354,7 +354,7 @@ predictTabNetTorch <- function(
   }
     
   
-  pred <- predict(plpModel, data)
+  pred <- stats::predict(plpModel, data)
   prediction$value <- as.vector(as.matrix(torch::torch_sigmoid(pred$.pred)))
   
   attr(prediction, "metaData")$modelType <- 'binary'

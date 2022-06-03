@@ -1,3 +1,5 @@
+# is this still used???
+
 #' Convert the plpData in COO format into a sparse Torch tensor
 #'
 #' @description
@@ -30,8 +32,8 @@ toSparseRTorch <- function(plpData, population, map=NULL, temporal=T){
                                     mapping=map)
 
   if(temporal){
-    indicesTemporal <- newCovariateData$covariates %>% filter(!is.na(.data$timeId)) %>% mutate(timeId = .data$timeId+1) %>% select(.data$rowId, .data$covariateId, .data$timeId) %>% collect() %>% as.matrix() 
-    valuesTemporal <- newCovariateData$covariates %>% filter(!is.na(.data$timeId)) %>% select(.data$covariateValue) %>% collect() %>% as.matrix() 
+    indicesTemporal <- newCovariateData$covariates %>% dplyr::filter(!is.na(.data$timeId)) %>% dplyr::mutate(timeId = .data$timeId+1) %>% dplyr::select(.data$rowId, .data$covariateId, .data$timeId) %>% dplyr::collect() %>% as.matrix() 
+    valuesTemporal <- newCovariateData$covariates %>% dplyr::filter(!is.na(.data$timeId)) %>% dplyr::select(.data$covariateValue) %>% dplyr::collect() %>% as.matrix() 
     
     indicesTensor <- torch::torch_tensor(indicesTemporal, dtype=torch::torch_long())$t() 
     valuesTensor <- torch::torch_tensor(valuesTemporal)$squeeze()
@@ -39,13 +41,13 @@ toSparseRTorch <- function(plpData, population, map=NULL, temporal=T){
     sparseMatrixTemporal <- torch::torch_sparse_coo_tensor(indices=indicesTensor,
                                                            values=valuesTensor) 
     
-    indicesNonTemporal <- newCovariateData$covariates %>% filter(is.na(.data$timeId)) %>% select(.data$rowId, .data$covariateId) %>% collect() %>% as.matrix()
-    valuesNonTemporal <- newCovariateData$covariates %>% filter(is.na(.data$timeId)) %>% select(.data$covariateValue) %>% collect() %>% as.matrix() 
+    indicesNonTemporal <- newCovariateData$covariates %>% dplyr::filter(is.na(.data$timeId)) %>% dplyr::select(.data$rowId, .data$covariateId) %>% dplyr::collect() %>% as.matrix()
+    valuesNonTemporal <- newCovariateData$covariates %>% dplyr::filter(is.na(.data$timeId)) %>% dplyr::select(.data$covariateValue) %>% dplyr::collect() %>% as.matrix() 
     
   } else{
     sparseMatrixTemporal <- NULL
-    indicesNonTemporal <- newCovariateData$covariates %>% select(.data$rowId, .data$covariateId) %>% collect() %>% as.matrix()
-    valuesNonTemporal <- newCovariateData$covariates %>% select(.data$covariateValue) %>% collect() %>% as.matrix() 
+    indicesNonTemporal <- newCovariateData$covariates %>% dplyr::select(.data$rowId, .data$covariateId) %>% dplyr::collect() %>% as.matrix()
+    valuesNonTemporal <- newCovariateData$covariates %>% dplyr::select(.data$covariateValue) %>% dplyr::collect() %>% as.matrix() 
     }
   
   indicesTensor <- torch::torch_tensor(indicesNonTemporal, dtype=torch::torch_long())$t() 

@@ -1,5 +1,8 @@
 #' @export
 singleLayerNN <- function(inputN, layer1, outputN = 2, layer_dropout){
+  
+  self <- NA # fixing R check
+  
   net <- torch::nn_module(
     "classic_net",
     
@@ -25,6 +28,9 @@ singleLayerNN <- function(inputN, layer1, outputN = 2, layer_dropout){
 doubleLayerNN <- function(inputN, layer1, 
                           layer2, outputN,
                           layer_dropout){
+  
+  self <- NA # fixing R check
+  
   net <- torch::nn_module(
     "classic_net",
     
@@ -52,6 +58,9 @@ doubleLayerNN <- function(inputN, layer1,
 tripleLayerNN <- function(inputN, layer1, 
                           layer2, layer3,
                           outputN, layer_dropout){
+  
+  self <- NA # fixing R check
+  
   net <- torch::nn_module(
     "classic_net",
     
@@ -83,6 +92,9 @@ tripleLayerNN <- function(inputN, layer1,
 # Stucture based on https://arxiv.org/pdf/1608.00647.pdf CNN1
 
 MRCovNN_submodel1 <- function(kernel_size){
+  
+  self <- NA # adding this to stop R check warning
+  
   net <- torch::nn_module(
     "MRCovNN_submodel1",
     
@@ -104,6 +116,9 @@ MRCovNN_submodel1 <- function(kernel_size){
 }
 
 MRCovNN_submodel2 <- function(kernel_size){
+  
+  self <- NA # adding this to stop R check warning
+  
   net <- torch::nn_module(
     "MRCovNN_submodel2",
     
@@ -126,6 +141,9 @@ MRCovNN_submodel2 <- function(kernel_size){
 
 
 MRCovNN_submodel3 <- function(kernel_size){
+  
+  self <- NA # adding this to stop R check warning
+  
   net <- torch::nn_module(
     "MRCovNN_submodel3",
     
@@ -157,13 +175,21 @@ MRCovNN_submodel3 <- function(kernel_size){
 # submodel1 = submodel1(x)
 # modelList = list(submodel1, submodel2, submodel3)
 
-MultiResolutionCovNN <- function(modelList = list(submodel1, submodel2, submodel3),
-                                 kernelSize,
-                                 dropout,
-                                 inputN,
-                                 layer1,
-                                 layer2,
-                                 outputN = 2){
+MultiResolutionCovNN <- function(
+  modelList = list(
+    MRCovNN_submodel1(kernel_size = c(4,1)), 
+    MRCovNN_submodel2(kernel_size = c(4,1)),  
+    MRCovNN_submodel3(kernel_size = c(4,1))
+  ),
+  kernelSize,
+  dropout,
+  inputN,
+  layer1,
+  layer2,
+  outputN = 2
+){
+  self <- NA # adding this to stop R check warning
+  
   net <- torch::nn_module(
     "MultiResolutionCovNN",
     

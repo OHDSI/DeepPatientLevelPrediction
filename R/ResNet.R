@@ -39,7 +39,7 @@
 #' @param hyperParamSearch  Which kind of hyperparameter search to use random sampling or exhaustive grid search. default: 'random'
 #' @param randomSample      How many random samples from hyperparameter space to use
 #' @param device            Which device to run analysis on, either 'cpu' or 'cuda', default: 'cpu'
-#' @param batch_size        Size of batch, default: 1024
+#' @param batchSize        Size of batch, default: 1024
 #' @param epochs            Number of epochs to run, default: 10
 #'
 #' @export
@@ -228,7 +228,8 @@ nn_init_calculate_fan_in_and_fan_out <- function(tensor) {
   receptive_field_size <- 1
   
   if (dimensions > 2) {
-    receptive_field_size <- tensor[1, 1, ..]$numel()
+    ##receptive_field_size <- tensor[1, 1, ..]$numel() # what is .. ?
+    receptive_field_size <- tensor[1, 1, ]$numel() # modified to fix check
   }
   
   fan_in <- num_input_fmaps * receptive_field_size

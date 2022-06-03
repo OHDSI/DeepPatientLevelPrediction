@@ -23,6 +23,39 @@ setTransformer(
   seed = NULL
 )
 }
+\arguments{
+\item{numBlocks}{TODO: add desc}
+
+\item{dimToken}{TODO: add desc}
+
+\item{dimOut}{TODO: add desc}
+
+\item{numHeads}{TODO: add desc}
+
+\item{attDropout}{TODO: add desc}
+
+\item{ffnDropout}{TODO: add desc}
+
+\item{resDropout}{TODO: add desc}
+
+\item{dimHidden}{TODO: add desc}
+
+\item{weightDecay}{TODO: add desc}
+
+\item{learningRate}{TODO: add desc}
+
+\item{batchSize}{TODO: add desc}
+
+\item{epochs}{TODO: add desc}
+
+\item{device}{TODO: add desc}
+
+\item{hyperParamSearch}{TODO: add desc}
+
+\item{randomSamples}{TODO: add desc}
+
+\item{seed}{TODO: add desc}
+}
 \description{
 A transformer model
 }

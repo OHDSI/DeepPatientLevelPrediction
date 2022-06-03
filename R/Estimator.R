@@ -24,7 +24,7 @@
 #' @param trainData      the data to use
 #' @param param          model parameters
 #' @param analysisId     Id of the analysis
-#' @param ... 
+#' @param ...            Extra inputs
 #'
 #' @export
 fitEstimator <- function(
@@ -151,7 +151,7 @@ predictDeepEstimator <- function(
   
   if("plpData" %in% class(data)){
     
-    dataMat <- toSparseM(
+    dataMat <- PatientLevelPrediction::toSparseM(
       plpData = data, 
       cohort = cohort, 
       map = plpModel$covariateImportance %>% 
