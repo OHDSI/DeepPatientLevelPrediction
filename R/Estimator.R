@@ -249,7 +249,7 @@ gridCvDeep <- function(
         modelParameters = modelParams,
         fitParameters = fitParams, 
         device = device,
-        patience = 5
+        patience = 3
       )
       
       estimator$fit(
@@ -369,6 +369,7 @@ Estimator <- R6::R6Class(
                           fitParameters,
                           optimizer=torch::optim_adam,
                           criterion=torch::nn_bce_with_logits_loss,
+                          scheduler=torch::lr_reduce_on_plateau,
                           device='cpu', 
                           patience=NULL) {
       self$device <- device
@@ -392,6 +393,11 @@ Estimator <- R6::R6Class(
       self$criterion <- criterion(torch::torch_tensor(self$posWeight, 
                                                       device=self$device))
       
+      self$scheduler <- scheduler(self$optimizer, patience=1,
+                                  verbose=TRUE)
+      
+      # gradient accumulation is useful when training large numbers where
+      # you can only fit few samples on the GPU in each batch.
       self$gradAccumulationIter <- 1
         
       if (!is.null(patience)) {
@@ -400,7 +406,7 @@ Estimator <- R6::R6Class(
         self$earlyStopper <- NULL
       }
       
-      self$bestScore <- NULL
+      self$bestScore <- NULL 
       self$bestEpoch <- NULL
     },
   
@@ -435,8 +441,9 @@ Estimator <- R6::R6Class(
                                 ' | Val Loss: ', round(scores$loss,3),
                                 ' | Train Loss: ', round(trainLoss,3),
                                 ' | Time: ', round(delta, 3), ' ', 
-                                units(delta))
-                                
+                                units(delta),
+                                ' | LR: ', self$optimizer$param_groups[[1]]$lr)
+        self$scheduler$step(scores$loss)                        
         valLosses <- c(valLosses, scores$loss)
         valAUCs <- c(valAUCs, scores$auc)
         times <- c(times, round(delta, 3))
