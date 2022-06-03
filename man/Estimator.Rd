@@ -10,23 +10,23 @@ fit and predict the model defined in that module.
 \section{Methods}{
 \subsection{Public methods}{
 \itemize{
-\item \href{#method-new}{\code{Estimator$new()}}
-\item \href{#method-fit}{\code{Estimator$fit()}}
-\item \href{#method-fitEpoch}{\code{Estimator$fitEpoch()}}
-\item \href{#method-score}{\code{Estimator$score()}}
-\item \href{#method-finishFit}{\code{Estimator$finishFit()}}
-\item \href{#method-fitWholeTrainingSet}{\code{Estimator$fitWholeTrainingSet()}}
-\item \href{#method-save}{\code{Estimator$save()}}
-\item \href{#method-predictProba}{\code{Estimator$predictProba()}}
-\item \href{#method-predict}{\code{Estimator$predict()}}
-\item \href{#method-batchToDevice}{\code{Estimator$batchToDevice()}}
-\item \href{#method-itemOrDefaults}{\code{Estimator$itemOrDefaults()}}
-\item \href{#method-clone}{\code{Estimator$clone()}}
+\item \href{#method-Estimator-new}{\code{Estimator$new()}}
+\item \href{#method-Estimator-fit}{\code{Estimator$fit()}}
+\item \href{#method-Estimator-fitEpoch}{\code{Estimator$fitEpoch()}}
+\item \href{#method-Estimator-score}{\code{Estimator$score()}}
+\item \href{#method-Estimator-finishFit}{\code{Estimator$finishFit()}}
+\item \href{#method-Estimator-fitWholeTrainingSet}{\code{Estimator$fitWholeTrainingSet()}}
+\item \href{#method-Estimator-save}{\code{Estimator$save()}}
+\item \href{#method-Estimator-predictProba}{\code{Estimator$predictProba()}}
+\item \href{#method-Estimator-predict}{\code{Estimator$predict()}}
+\item \href{#method-Estimator-batchToDevice}{\code{Estimator$batchToDevice()}}
+\item \href{#method-Estimator-itemOrDefaults}{\code{Estimator$itemOrDefaults()}}
+\item \href{#method-Estimator-clone}{\code{Estimator$clone()}}
 }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-new"></a>}}
-\if{latex}{\out{\hypertarget{method-new}{}}}
+\if{html}{\out{<a id="method-Estimator-new"></a>}}
+\if{latex}{\out{\hypertarget{method-Estimator-new}{}}}
 \subsection{Method \code{new()}}{
 Creates a new estimator
 \subsection{Usage}{
@@ -56,6 +56,8 @@ Creates a new estimator
 \item{\code{criterion}}{The torch loss function to use, defaults to 
 binary cross entropy with logits}
 
+\item{\code{scheduler}}{learning rate scheduler to use}
+
 \item{\code{device}}{Which device to use for fitting, default is cpu}
 
 \item{\code{patience}}{Patience to use for early stopping}
@@ -64,8 +66,8 @@ binary cross entropy with logits}
 }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-fit"></a>}}
-\if{latex}{\out{\hypertarget{method-fit}{}}}
+\if{html}{\out{<a id="method-Estimator-fit"></a>}}
+\if{latex}{\out{\hypertarget{method-Estimator-fit}{}}}
 \subsection{Method \code{fit()}}{
 fits the estimator
 \subsection{Usage}{
@@ -83,8 +85,8 @@ fits the estimator
 }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-fitEpoch"></a>}}
-\if{latex}{\out{\hypertarget{method-fitEpoch}{}}}
+\if{html}{\out{<a id="method-Estimator-fitEpoch"></a>}}
+\if{latex}{\out{\hypertarget{method-Estimator-fitEpoch}{}}}
 \subsection{Method \code{fitEpoch()}}{
 fits estimator for one epoch (one round through the data)
 \subsection{Usage}{
@@ -102,8 +104,8 @@ fits estimator for one epoch (one round through the data)
 }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-score"></a>}}
-\if{latex}{\out{\hypertarget{method-score}{}}}
+\if{html}{\out{<a id="method-Estimator-score"></a>}}
+\if{latex}{\out{\hypertarget{method-Estimator-score}{}}}
 \subsection{Method \code{score()}}{
 calculates loss and auc after training for one epoch
 \subsection{Usage}{
@@ -124,8 +126,8 @@ list with average loss and auc in the dataset
 }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-finishFit"></a>}}
-\if{latex}{\out{\hypertarget{method-finishFit}{}}}
+\if{html}{\out{<a id="method-Estimator-finishFit"></a>}}
+\if{latex}{\out{\hypertarget{method-Estimator-finishFit}{}}}
 \subsection{Method \code{finishFit()}}{
 operations that run when fitting is finished
 \subsection{Usage}{
@@ -147,8 +149,8 @@ operations that run when fitting is finished
 }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-fitWholeTrainingSet"></a>}}
-\if{latex}{\out{\hypertarget{method-fitWholeTrainingSet}{}}}
+\if{html}{\out{<a id="method-Estimator-fitWholeTrainingSet"></a>}}
+\if{latex}{\out{\hypertarget{method-Estimator-fitWholeTrainingSet}{}}}
 \subsection{Method \code{fitWholeTrainingSet()}}{
 Fits whole training set on a specific number of epochs
 TODO What happens when learning rate changes per epochs?
@@ -167,8 +169,8 @@ and adjust for different sizes ie more iterations/updates???
 }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-save"></a>}}
-\if{latex}{\out{\hypertarget{method-save}{}}}
+\if{html}{\out{<a id="method-Estimator-save"></a>}}
+\if{latex}{\out{\hypertarget{method-Estimator-save}{}}}
 \subsection{Method \code{save()}}{
 save model and those parameters needed to reconstruct it
 \subsection{Usage}{
@@ -189,8 +191,8 @@ the path to saved model
 }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-predictProba"></a>}}
-\if{latex}{\out{\hypertarget{method-predictProba}{}}}
+\if{html}{\out{<a id="method-Estimator-predictProba"></a>}}
+\if{latex}{\out{\hypertarget{method-Estimator-predictProba}{}}}
 \subsection{Method \code{predictProba()}}{
 predicts and outputs the probabilities
 \subsection{Usage}{
@@ -209,8 +211,8 @@ predictions as probabilities
 }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-predict"></a>}}
-\if{latex}{\out{\hypertarget{method-predict}{}}}
+\if{html}{\out{<a id="method-Estimator-predict"></a>}}
+\if{latex}{\out{\hypertarget{method-Estimator-predict}{}}}
 \subsection{Method \code{predict()}}{
 predicts and outputs the class
 \subsection{Usage}{
@@ -229,8 +231,8 @@ The predicted class for the data in the dataset
 }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-batchToDevice"></a>}}
-\if{latex}{\out{\hypertarget{method-batchToDevice}{}}}
+\if{html}{\out{<a id="method-Estimator-batchToDevice"></a>}}
+\if{latex}{\out{\hypertarget{method-Estimator-batchToDevice}{}}}
 \subsection{Method \code{batchToDevice()}}{
 sends a batch of data to device
 assumes batch includes lists of tensors to arbitrary nested depths
@@ -250,8 +252,8 @@ the batch on the required device
 }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-itemOrDefaults"></a>}}
-\if{latex}{\out{\hypertarget{method-itemOrDefaults}{}}}
+\if{html}{\out{<a id="method-Estimator-itemOrDefaults"></a>}}
+\if{latex}{\out{\hypertarget{method-Estimator-itemOrDefaults}{}}}
 \subsection{Method \code{itemOrDefaults()}}{
 select item from list, and if it's null sets a default
 \subsection{Usage}{
@@ -274,8 +276,8 @@ the list item or default
 }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-clone"></a>}}
-\if{latex}{\out{\hypertarget{method-clone}{}}}
+\if{html}{\out{<a id="method-Estimator-clone"></a>}}
+\if{latex}{\out{\hypertarget{method-Estimator-clone}{}}}
 \subsection{Method \code{clone()}}{
 The objects of this class are cloneable with this method.
 \subsection{Usage}{

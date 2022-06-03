@@ -52,9 +52,9 @@ setResNet(
 
 \item{device}{Which device to run analysis on, either 'cpu' or 'cuda', default: 'cpu'}
 
-\item{epochs}{Number of epochs to run, default: 10}
+\item{batchSize}{Size of batch, default: 1024}
 
-\item{batch_size}{Size of batch, default: 1024}
+\item{epochs}{Number of epochs to run, default: 10}
 }
 \description{
 Creates settings for a ResNet model

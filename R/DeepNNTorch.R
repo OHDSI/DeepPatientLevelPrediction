@@ -60,7 +60,7 @@ fitDeepNNTorch <- function(
   start <- Sys.time()
   
   # check covariateData
-  if (!FeatureExtraction::isCovariateData(plpData$covariateData)){
+  if (!FeatureExtraction::isCovariateData(trainData$covariateData)){
     stop('DeepNNTorch requires correct covariateData')
   }
   
@@ -172,7 +172,7 @@ predictDeepNN <- function(
         dplyr::select(.data$columnId, .data$covariateId)
     )
     
-    data <- Dataset_plp5(dataMat$dataMatrix) # add numeric details..
+    data <- Dataset(dataMat$dataMatrix) # add numeric details..
   }
   
   # get predictions
@@ -227,7 +227,7 @@ gridCvDeepNN <- function(
     fold <- labels$index
     ParallelLogger::logInfo(paste0('Max fold: ', max(fold)))
     
-    dataset <- Dataset_plp5(matrixData, labels$outcomeCount)
+    dataset <- Dataset(matrixData, labels$outcomeCount)
     # modelParams$cat_features <- dataset$cat$shape[2]
     # modelParams$num_features <- dataset$num$shape[2]
     
@@ -327,7 +327,7 @@ gridCvDeepNN <- function(
     dir.create(file.path(modelLocation), recursive = T)
   }
   
-  trainDataset <- Dataset_plp5(
+  trainDataset <- Dataset(
     matrixData, 
     labels$outcomeCount
   )
@@ -387,7 +387,7 @@ gridCvDeepNN <- function(
   
   
   # save torch code here
-  torch_save(model, file.path(modelLocation, 'DeepNNTorchModel.rds'))
+  torch::torch_save(model, file.path(modelLocation, 'DeepNNTorchModel.rds'))
   
   return(
     list( 

@@ -24,7 +24,7 @@
 #' @param trainData      the data to use
 #' @param param          model parameters
 #' @param analysisId     Id of the analysis
-#' @param ... 
+#' @param ...            Extra inputs
 #'
 #' @export
 fitEstimator <- function(
@@ -151,7 +151,7 @@ predictDeepEstimator <- function(
   
   if("plpData" %in% class(data)){
     
-    dataMat <- toSparseM(
+    dataMat <- PatientLevelPrediction::toSparseM(
       plpData = data, 
       cohort = cohort, 
       map = plpModel$covariateImportance %>% 
@@ -362,8 +362,9 @@ Estimator <- R6::R6Class(
     #' @param optimizer       A torch optimizer to use, default is Adam
     #' @param criterion       The torch loss function to use, defaults to 
     #'                        binary cross entropy with logits
-    #'@param device           Which device to use for fitting, default is cpu
-    #'@param patience         Patience to use for early stopping                      
+    #' @param scheduler       learning rate scheduler to use                  
+    #' @param device           Which device to use for fitting, default is cpu
+    #' @param patience         Patience to use for early stopping                      
     initialize = function(baseModel, 
                           modelParameters, 
                           fitParameters,

@@ -95,29 +95,13 @@ Dataset <- torch::dataset(
   }
 )
 
-# a function to speed up the collation so I dont' call to_dense()
-# on the sparse tensors until they have been combined for the batch
-# not currently used 
-sparseCollate <- function(batch) {
-  elem <- batch[[1]]
-  if (inherits(elem, "torch_tensor")) {
-    # temporary fix using a tryCatch until torch in R author adds
-    # an is_sparse method or exposes tensor$layout
-    return (torch::torch_stack(batch, dim = 1))
-    # tryCatch(return(torch::torch_stack(batch,dim = 1)$to_dense()),
-    #          error=function(e) return(torch::torch_stack(batch, dim = 1)))  
-  }
-  else if (is.list(elem)) {
-    # preserve names of elements 
-    named_seq <- seq_along(elem)
-    names(named_seq) <- names(elem)
-    
-    lapply(named_seq, function(i) {sparseCollate(lapply(batch, function(x) x[[i]]))})
-  }
+#' @description converts a sparse Matrix into a list of its columns, 
+#' subsequently vapply can be used to apply functions over the list 
+listCols<-function(m){
+  res<-split(m@x, findInterval(seq_len(length(m@x)), m@p, left.open=TRUE))
+  names(res)<-colnames(m)
+  res
 }
-
-
-
 
 
 

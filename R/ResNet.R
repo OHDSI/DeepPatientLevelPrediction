@@ -39,7 +39,7 @@
 #' @param hyperParamSearch  Which kind of hyperparameter search to use random sampling or exhaustive grid search. default: 'random'
 #' @param randomSample      How many random samples from hyperparameter space to use
 #' @param device            Which device to run analysis on, either 'cpu' or 'cuda', default: 'cpu'
-#' @param batch_size        Size of batch, default: 1024
+#' @param batchSize        Size of batch, default: 1024
 #' @param epochs            Number of epochs to run, default: 10
 #'
 #' @export
@@ -220,3 +220,4 @@ listCartesian <- function(allList){
 
 # export this in PLP
 computeGridPerformance <- PatientLevelPrediction:::computeGridPerformance
+

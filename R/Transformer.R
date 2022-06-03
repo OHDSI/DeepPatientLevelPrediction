@@ -2,13 +2,33 @@
 #'
 #' @description A transformer model
 #' @details from https://arxiv.org/abs/2106.11959 
+#' 
+#' @param numBlocks        TODO: add desc
+#' @param dimToken        TODO: add desc
+#' @param dimOut        TODO: add desc
+#' @param numHeads        TODO: add desc
+#' @param attDropout        TODO: add desc
+#' @param ffnDropout        TODO: add desc
+#' @param resDropout        TODO: add desc
+#' @param dimHidden        TODO: add desc
+#' @param weightDecay        TODO: add desc
+#' @param learningRate        TODO: add desc
+#' @param batchSize       TODO: add desc
+#' @param epochs        TODO: add desc
+#' @param device        TODO: add desc
+#' @param hyperParamSearch       TODO: add desc
+#' @param randomSamples       TODO: add desc
+#' @param seed        TODO: add desc
+#' 
 #' @export
-setTransformer <- function(numBlocks=3, dimToken=96, dimOut=1,
-                           numHeads=8, attDropout=0.25, ffnDropout=0.25,
-                           resDropout=0,dimHidden=512, weightDecay=1e-6, 
-                           learningRate=3e-4, batchSize=1024,
-                           epochs=10, device='cpu', hyperParamSearch='random',
-                           randomSamples=100, seed=NULL) {
+setTransformer <- function(
+  numBlocks=3, dimToken=96, dimOut=1,
+  numHeads=8, attDropout=0.25, ffnDropout=0.25,
+  resDropout=0,dimHidden=512, weightDecay=1e-6, 
+  learningRate=3e-4, batchSize=1024,
+  epochs=10, device='cpu', hyperParamSearch='random',
+  randomSamples=100, seed=NULL
+) {
   if (!is.null(seed)) {
     seed <- as.integer(sample(1e5, 1))
   }

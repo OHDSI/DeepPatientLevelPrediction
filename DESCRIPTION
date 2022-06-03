@@ -4,8 +4,8 @@ Title: Deep learning function for patient level prediction using data in the OMO
 Version: 0.0.1
 Date: 2021-06-07
 Authors@R: c(
-    person("Jenna", "Reps", email = "jreps@its.jnj.com", role = c("aut", "cre")), 
-    person("Egill", "Fridgeirsson", email = "e.fridgeirsson@erasmusmc.nl", role = c("aut")),
+    person("Jenna", "Reps", email = "jreps@its.jnj.com", role = c("aut")), 
+    person("Egill", "Fridgeirsson", email = "e.fridgeirsson@erasmusmc.nl", role = c("aut", "cre")),
     person("Seng", "Chan You", role = c("aut")),
     person("Chungsoo", "Kim", role = c("aut")),
     person("Henrik", "John", role = c("aut"))
@@ -17,23 +17,28 @@ URL: https://ohdsi.github.io/PatientLevelPrediction, https://github.com/OHDSI/De
 BugReports: https://github.com/OHDSI/DeepPatientLevelPrediction/issues
 VignetteBuilder: knitr
 Depends:
-    R (>= 3.3.0),
+    R (>= 3.3.0)
 Imports:
-    PatientLevelPrediction,
+    Andromeda,
     dplyr,
     data.table,
-    knitr,
+    FeatureExtraction (>= 3.0.0),
     Matrix,
     ParallelLogger (>= 2.0.0),
     rlang,
-    torch,
-    tibble,
+    slam,
+    stats,
+    tabnet,
+    torch
 Suggests:
     devtools,
-    plyr,
-    testthat (>= 3.0.0)
+    Eunomia,
+    knitr,
+    plyr,  
+    testthat
 Remotes:
-    ohdsi/PatientLevelPrediction
-RoxygenNote: 7.1.2
+    ohdsi/FeatureExtraction,
+    ohdsi/Eunomia
+RoxygenNote: 7.2.0
 Encoding: UTF-8
 Config/testthat/edition: 3

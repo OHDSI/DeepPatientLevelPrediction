@@ -13,7 +13,7 @@ fitEstimator(trainData, param, analysisId, ...)
 
 \item{analysisId}{Id of the analysis}
 
-\item{...}{}
+\item{...}{Extra inputs}
 }
 \description{
 fits a deep learning estimator to data.
