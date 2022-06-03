@@ -18,31 +18,20 @@ BugReports: https://github.com/OHDSI/DeepPatientLevelPrediction/issues
 VignetteBuilder: knitr
 Depends:
     R (>= 3.3.0),
-    FeatureExtraction (>= 3.0.0)
 Imports:
-    Andromeda,
-    DatabaseConnector (>= 3.0.0),
+    PatientLevelPrediction,
     dplyr,
     data.table,
     knitr,
-    magrittr,
     Matrix,
     ParallelLogger (>= 2.0.0),
-    reshape2,
-    reticulate (> 1.16),
-    RSQLite,
-    slam,
-    SqlRender (>= 1.1.3),
     torch,
     tibble,
-    tidyr
 Suggests:
     devtools,
-    keras,
     plyr,  
-    tensorflow,
     testthat
 Remotes:
-    ohdsi/FeatureExtraction
+    ohdsi/PatientLevelPrediction
 RoxygenNote: 7.1.2
 Encoding: UTF-8
