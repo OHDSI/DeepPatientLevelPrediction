@@ -13,10 +13,10 @@ fit and predict the model defined in that module.
 \item \href{#method-new}{\code{Estimator$new()}}
 \item \href{#method-fit}{\code{Estimator$fit()}}
 \item \href{#method-fitEpoch}{\code{Estimator$fitEpoch()}}
+\item \href{#method-score}{\code{Estimator$score()}}
 \item \href{#method-finishFit}{\code{Estimator$finishFit()}}
 \item \href{#method-fitWholeTrainingSet}{\code{Estimator$fitWholeTrainingSet()}}
 \item \href{#method-save}{\code{Estimator$save()}}
-\item \href{#method-score}{\code{Estimator$score()}}
 \item \href{#method-predictProba}{\code{Estimator$predictProba()}}
 \item \href{#method-predict}{\code{Estimator$predict()}}
 \item \href{#method-batchToDevice}{\code{Estimator$batchToDevice()}}
@@ -101,6 +101,28 @@ fits estimator for one epoch (one round through the data)
 }
 }
 \if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-score"></a>}}
+\if{latex}{\out{\hypertarget{method-score}{}}}
+\subsection{Method \code{score()}}{
+calculates loss and auc after training for one epoch
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{Estimator$score(dataset, batchIndex)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{dataset}}{The torch dataset to use to evaluate loss and auc}
+
+\item{\code{batchIndex}}{Indices of batches in the dataset}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+list with average loss and auc in the dataset
+}
+}
+\if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-finishFit"></a>}}
 \if{latex}{\out{\hypertarget{method-finishFit}{}}}
 \subsection{Method \code{finishFit()}}{
@@ -166,28 +188,6 @@ the path to saved model
 }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-score"></a>}}
-\if{latex}{\out{\hypertarget{method-score}{}}}
-\subsection{Method \code{score()}}{
-calculates loss and auc after training for one epoch
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{Estimator$score(dataset, batchIndex)}\if{html}{\out{</div>}}
-}
-
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{dataset}}{The torch dataset to use to evaluate loss and auc}
-
-\item{\code{batchIndex}}{Indices of batches in the dataset}
-}
-\if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-list with average loss and auc in the dataset
-}
-}
-\if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-predictProba"></a>}}
 \if{latex}{\out{\hypertarget{method-predictProba}{}}}
 \subsection{Method \code{predictProba()}}{
@@ -232,7 +232,7 @@ The predicted class for the data in the dataset
 \if{latex}{\out{\hypertarget{method-batchToDevice}{}}}
 \subsection{Method \code{batchToDevice()}}{
 sends a batch of data to device
-TODO make agnostic of the form of batch
+assumes batch includes lists of tensors to arbitrary nested depths
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Estimator$batchToDevice(batch)}\if{html}{\out{</div>}}
 }

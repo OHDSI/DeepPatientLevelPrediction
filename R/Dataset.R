@@ -1,4 +1,4 @@
-#' @description A torch dataset 
+#'  A torch dataset 
 #' @import data.table
 #' @export
 Dataset <- torch::dataset(
