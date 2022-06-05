@@ -8,53 +8,55 @@ Dataset <- torch::dataset(
   #' @param numericalIndex in what column numeric data is in (if any)
   initialize = function(data, labels = NULL, numericalIndex = NULL) {
     # determine numeric
-    if(is.null(numericalIndex)){
-      colList <- listCols(data)
-      numericalIndex <- vapply(colList, function(x) sum(x==1 | x==0) != length(x), 
-                               TRUE)
+    if (is.null(numericalIndex)) {
+    numericalIndex <- data %>% dplyr::group_by(columnId) %>% dplyr::collect() %>% 
+      dplyr::summarise(n=dplyr::n_distinct(.data$covariateValue)) %>% dplyr::pull(n)>1
     }
-    
     self$numericalIndex <- numericalIndex
     
-    self$collate_fn <- sparseCollate  
     # add labels if training (make 0 vector for prediction)
     if(!is.null(labels)){
       self$target <- torch::torch_tensor(labels)
     } else{
-      self$target <- torch::torch_tensor(rep(0, nrow(data)))
+      self$target <- torch::torch_tensor(rep(0, data %>% dplyr::distinct(rowId) 
+                                             %>% dplyr::collect() %>% nrow()))
     }
-    
     # Weight to add in loss function to positive class
-    self$posWeight <- ((self$target==0)$sum()/self$target$sum())$item()
+    self$posWeight <- (self$target==0)$sum()/self$target$sum()
     # for DeepNNTorch
     # self$all <- torch::torch_tensor(as.matrix(data), dtype = torch::torch_float32())
   
     # add features
-    dataCat <- data[, !numericalIndex]
-    dataCat <- as(dataCat, 'dgTMatrix')
-    
+    catColumns <- which(!numericalIndex) 
+    dataCat <- dplyr::filter(data,columnId %in% catColumns) %>% 
+      dplyr::arrange(columnId) %>%
+      dplyr::group_by(columnId) %>% 
+      dplyr::collect() %>% 
+      dplyr::mutate(newColumnId=dplyr::cur_group_id()) %>% dplyr::ungroup() %>%
+      dplyr::select(c('rowId', 'newColumnId'))  %>% dplyr::rename(columnId=newColumnId)
     # the fastest way I found so far to convert data using data.table
     # 1.5 min for 100k rows :(
-    dt <- data.table::data.table(rows=dataCat@i+1L, cols=dataCat@j+1L)
+    dt <- data.table::data.table(rows=dataCat$rowId, cols=dataCat$columnId)
     maxFeatures <- max(dt[, .N, by=rows][,N])
     start <- Sys.time()
-    cat <- lapply(1:dim(dataCat)[[1]], function(x) {
-      currRow <- dt[rows==x, cols]
-      maxCols <- length(currRow)
-      torch::torch_cat(list(torch::torch_tensor(currRow),torch::torch_zeros((maxFeatures - maxCols),
-                            dtype=torch::torch_long()))
-                       )
+    tensorList <- lapply(1:max(dataCat$rowId), function(x) {
+      torch::torch_tensor(dt[rows==x, cols])
       })
     self$lengths <- lengths
-    self$cat <- torch::torch_vstack(cat)
+    self$cat <- torch::nn_utils_rnn_pad_sequence(tensorList, batch_first = T)
     delta <- Sys.time() - start
     ParallelLogger::logInfo("Data conversion for dataset took ", signif(delta, 3), " ", attr(delta, "units"))
-    
     if (sum(numericalIndex) == 0) {
       self$num <- NULL
     } else  {
-      self$num <- torch::torch_tensor(as.matrix(data[,numericalIndex, drop = F]), dtype=torch::torch_float32())
-    } 
+      numericalData <- data %>% filter(columnId %in% which(numericalIndex)) %>% collect()
+      numericalData <-numericalData %>% group_by(columnId) %>% mutate(newId = dplyr::cur_group_id())
+      indices <- torch::torch_tensor(cbind(numericalData$rowId, numericalData$newId), dtype=torch::torch_long())$t_()
+      values <- torch::torch_tensor(numericalData$covariateValue,dtype=torch::torch_float32())
+      self$num <- torch::torch_sparse_coo_tensor(indices=indices,
+                                            values=values, 
+                                            size=c(max(dataCat$rowId),sum(numericalIndex)))$to_dense()
+    }  
   },
   
   getNumericalIndex = function() {

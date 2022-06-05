@@ -41,34 +41,28 @@ fitEstimator <- function(
   
   # get the settings from the param
   settings <- attr(param, 'settings')
-  
   if(!is.null(trainData$folds)){
     if(!is.null(trainData$fold$train)) {
       trainData$labels <- merge(trainData$labels, 
-                                merge(trainData$folds$train, trainData$folds$validation, all=TRUE),
-                                by = 'rowId', all = TRUE)
+                                merge(trainData$folds$train, trainData$folds$validation),
+                                by = 'rowId')
     }
     else {
       trainData$labels <- merge(trainData$labels, trainData$fold, by = 'rowId')
     }
   }
+  mappedCovariateData <- PatientLevelPrediction:::MapIds(covariateData = trainData$covariateData,
+                                                         cohort = trainData$labels)
   
-  mappedData <- PatientLevelPrediction::toSparseM(
-    plpData = trainData,  
-    map = NULL
-  )
-  
-  matrixData <- mappedData$dataMatrix
-  labels <- mappedData$labels
-  covariateRef <- mappedData$covariateRef
+  covariateRef <- mappedCovariateData$covariateRef
   
   outLoc <- PatientLevelPrediction:::createTempModelLoc() # export
   
   cvResult <- do.call( 
     what = gridCvDeep,
     args = list(
-      matrixData = matrixData,
-      labels = labels,
+      mappedData = mappedCovariateData,
+      labels = trainData$labels,
       settings = settings,
       modelLocation = outLoc,
       paramSearch = param
@@ -150,14 +144,13 @@ predictDeepEstimator <- function(
   }
   
   if("plpData" %in% class(data)){
-    
-    dataMat <- PatientLevelPrediction::toSparseM(
-      plpData = data, 
-      cohort = cohort, 
-      map = plpModel$covariateImportance %>% 
-        dplyr::select(.data$columnId, .data$covariateId)
-    )
-    data <- Dataset(dataMat$dataMatrix) # add numeric details..
+    mappedData <- PatientLevelPrediction:::MapIds(data$covariateData,
+                                                  cohort=cohort,
+                                                  mapping=plpModel$covariateImportance %>% 
+                                                    dplyr::select(.data$columnId, 
+                                                                  .data$covariateId))
+    data <- Dataset(mappedData$covariates,
+                    numericalIndex = plpModel$settings$modelSettings$numericalIndex)
   }
   
   # get predictions
@@ -171,6 +164,7 @@ predictDeepEstimator <- function(
       fitParameters = model$fitParameters, 
       device = plpModel$settings$modelSettings$extraSettings$device
     )
+    estimator$model$load_state_dict(model$modelStateDict)
     prediction$value <- estimator$predictProba(data)
   } else {
     prediction$value <- plpModel$model$predictProba(data)
@@ -188,7 +182,7 @@ predictDeepEstimator <- function(
 #' Performs grid search for a deep learning estimator
 #' 
 #' 
-#' @param matrixData    Data in sparse matrix format
+#' @param mappedData    Mapped data with covariates
 #' @param labels        Dataframe with the outcomes
 #' @param settings      Settings of the model
 #' @param modelLocation Where to save the model
@@ -196,7 +190,7 @@ predictDeepEstimator <- function(
 #' 
 #' @export 
 gridCvDeep <- function(
-  matrixData,
+  mappedData,
   labels,
   settings,
   modelLocation,
@@ -218,7 +212,7 @@ gridCvDeep <- function(
 
   gridSearchPredictons <- list()
   length(gridSearchPredictons) <- length(paramSearch)
-  dataset <- Dataset(matrixData, labels$outcomeCount)
+  dataset <- Dataset(mappedData$covariates, labels$outcomeCount)
   for(gridId in 1:length(paramSearch)){
     ParallelLogger::logInfo(paste0("Running hyperparameter combination no ",gridId))
     ParallelLogger::logInfo(paste0("HyperParameters: "))
@@ -235,11 +229,10 @@ gridCvDeep <- function(
     
     fold <- labels$index
     ParallelLogger::logInfo(paste0('Max fold: ', max(fold)))
-    
     modelParams$catFeatures <- dataset$numCatFeatures()
     modelParams$numFeatures <- dataset$numNumFeatures()
+    learnRates <- list()
     for( i in 1:max(fold)){
-      
       ParallelLogger::logInfo(paste0('Fold ',i))
       trainDataset <- torch::dataset_subset(dataset, indices=which(fold!=i)) 
       testDataset <- torch::dataset_subset(dataset, indices=which(fold==i))
@@ -248,8 +241,7 @@ gridCvDeep <- function(
         baseModel = baseModel, 
         modelParameters = modelParams,
         fitParameters = fitParams, 
-        device = device,
-        patience = 3
+        device = device
       )
       
       estimator$fit(
@@ -267,18 +259,21 @@ gridCvDeep <- function(
           cohort = labels[fold == i,]
         )
       )
-      
+      learnRates[[i]] <- list(LRs=estimator$learnRateSchedule,
+                         bestEpoch=estimator$bestEpoch)
     }
+    maxIndex <- which.max(unlist(sapply(learnRates, `[`, 2)))
+    paramSearch[[gridId]]$learnSchedule <- learnRates[[maxIndex]]
+    
     gridSearchPredictons[[gridId]] <- list(
       prediction = prediction,
       param = paramSearch[[gridId]]
-    )
+      )
   }
   # get best para (this could be modified to enable any metric instead of AUC, just need metric input in function)
   paramGridSearch <- lapply(gridSearchPredictons, function(x){do.call(computeGridPerformance, x)})  # cvAUCmean, cvAUC, param
   
   optimalParamInd <- which.max(unlist(lapply(paramGridSearch, function(x) x$cvPerformance)))
-  
   finalParam <- paramGridSearch[[optimalParamInd]]$param
   
   cvPrediction <- gridSearchPredictons[[optimalParamInd]]$prediction
@@ -289,7 +284,7 @@ gridCvDeep <- function(
   # get the params
   modelParams <- finalParam[modelParamNames]
   fitParams <- finalParam[fitParamNames]
-  fitParams$epochs <- epochs
+  fitParams$epochs <- finalParam$learnSchedule$bestEpoch
   fitParams$batchSize <- batchSize
   # create the dir
   if(!dir.exists(file.path(modelLocation))){
@@ -306,8 +301,7 @@ gridCvDeep <- function(
   )
   numericalIndex <- dataset$getNumericalIndex()
   
-  estimator$fitWholeTrainingSet(dataset)
-  
+  estimator$fitWholeTrainingSet(dataset, finalParam$learnSchedule$LRs)
   
   ParallelLogger::logInfo("Calculating predictions on all train data...")
   prediction <- predictDeepEstimator(
@@ -321,12 +315,10 @@ gridCvDeep <- function(
     prediction,
     cvPrediction
   )
-  
   # modify prediction 
   prediction <- prediction %>% 
-    dplyr::select(-.data$rowId, -.data$index) %>%
-    dplyr::rename(rowId = .data$originalRowId)
-  
+    dplyr::select(-.data$index)
+
   prediction$cohortStartDate <- as.Date(prediction$cohortStartDate, origin = '1970-01-01')
   
   
@@ -372,7 +364,7 @@ Estimator <- R6::R6Class(
                           criterion=torch::nn_bce_with_logits_loss,
                           scheduler=torch::lr_reduce_on_plateau,
                           device='cpu', 
-                          patience=NULL) {
+                          patience=6) {
       self$device <- device
       self$model <- do.call(baseModel, modelParameters)
       self$modelParameters <- modelParameters
@@ -394,7 +386,7 @@ Estimator <- R6::R6Class(
       self$criterion <- criterion(torch::torch_tensor(self$posWeight, 
                                                       device=self$device))
       
-      self$scheduler <- scheduler(self$optimizer, patience=1,
+      self$scheduler <- scheduler(self$optimizer, patience=3,
                                   verbose=TRUE)
       
       # gradient accumulation is useful when training large numbers where
@@ -417,7 +409,6 @@ Estimator <- R6::R6Class(
     fit = function(dataset, testDataset) {
       valLosses <- c()
       valAUCs <- c()
-      
       batchIndex <- torch::torch_randperm(length(dataset)) + 1L
       batchIndex <- split(batchIndex, ceiling(seq_along(batchIndex)/self$batchSize))
 
@@ -427,8 +418,8 @@ Estimator <- R6::R6Class(
       modelStateDict <- list()
       epoch <- list()
       times <- list()
+      learnRates <-list()
       for (epochI in 1:self$epochs) {
-        # fit the model
         startTime <- Sys.time()
         trainLoss <- self$fitEpoch(dataset, batchIndex)
         endTime <- Sys.time()
@@ -437,16 +428,18 @@ Estimator <- R6::R6Class(
         scores <- self$score(testDataset, testBatchIndex)
         delta <- endTime - startTime
         currentEpoch <- epochI + self$previousEpochs
+        lr <- self$optimizer$param_groups[[1]]$lr
         ParallelLogger::logInfo('Epochs: ', currentEpoch, 
                                 ' | Val AUC: ', round(scores$auc,3), 
                                 ' | Val Loss: ', round(scores$loss,3),
                                 ' | Train Loss: ', round(trainLoss,3),
                                 ' | Time: ', round(delta, 3), ' ', 
                                 units(delta),
-                                ' | LR: ', self$optimizer$param_groups[[1]]$lr)
+                                ' | LR: ', lr)
         self$scheduler$step(scores$loss)                        
         valLosses <- c(valLosses, scores$loss)
         valAUCs <- c(valAUCs, scores$auc)
+        learnRates <- c(learnRates, lr)
         times <- c(times, round(delta, 3))
         if (!is.null(self$earlyStopper)) {
           self$earlyStopper$call(scores$auc)
@@ -458,7 +451,7 @@ Estimator <- R6::R6Class(
           if (self$earlyStopper$earlyStop) {
             ParallelLogger::logInfo('Early stopping, validation AUC stopped improving')
             ParallelLogger::logInfo('Average time per epoch was: ', round(mean(as.numeric(times)),3), ' ' , units(delta))
-            self$finishFit(valAUCs, modelStateDict, valLosses, epoch)
+            self$finishFit(valAUCs, modelStateDict, valLosses, epoch, learnRates)
             return(invisible(self))
           }
         } else {
@@ -467,7 +460,7 @@ Estimator <- R6::R6Class(
           }
       }
       ParallelLogger::logInfo('Average time per epoch was: ', round(mean(as.numeric(times)),3), ' ' , units(delta))
-      self$finishFit(valAUCs, modelStateDict, valLosses, epoch)
+      self$finishFit(valAUCs, modelStateDict, valLosses, epoch, learnRates)
       invisible(self)
     },
     
@@ -476,25 +469,19 @@ Estimator <- R6::R6Class(
     #' @param dataset     torch dataset to use for fitting
     #' @param batchIndex  indices of batches 
     fitEpoch = function(dataset, batchIndex){
-      trainLosses <- torch::torch_empty(floor(length(batchIndex) / self$gradAccumulationIter) + 1)
+      trainLosses <- torch::torch_empty(length(batchIndex))
       ix <- 1
-      jx <- 1
       self$model$train()
       progressBar <- utils::txtProgressBar(style=3)
       coro::loop(for (b in batchIndex) {
+        self$optimizer$zero_grad()
         batch <- self$batchToDevice(dataset[b])
         out <- self$model(batch[[1]])
         loss <- self$criterion(out, batch[[2]])
-        loss <- loss/self$gradAccumulationIter
         loss$backward()
         
-        if (ix %% self$gradAccumulationIter == 0 | ix == length(batchIndex)) {
-          self$optimizer$zero_grad()
-          self$optimizer$step()
-          trainLosses[jx] <- loss$detach()
-          jx <- jx + 1
-        }
-        
+        self$optimizer$step()
+        trainLosses[ix] <- loss$detach()
         utils::setTxtProgressBar(progressBar, ix/length(batchIndex))
         ix <- ix + 1
         })
@@ -537,7 +524,8 @@ Estimator <- R6::R6Class(
     #' @param modelStateDict  fitted model parameters
     #' @param valLosses       validation losses
     #' @param epoch           list of epochs fit
-    finishFit = function(valAUCs, modelStateDict, valLosses, epoch) {
+    #' @param learnRates      learning rate sequence used so far
+    finishFit = function(valAUCs, modelStateDict, valLosses, epoch, learnRates) {
       bestEpochInd <- which.max(valAUCs)  # change this if a different metric is used
       
       bestModelStateDict <- modelStateDict[[bestEpochInd]]
@@ -547,6 +535,7 @@ Estimator <- R6::R6Class(
       self$bestEpoch <- bestEpoch
       self$bestScore <- list(loss = valLosses[bestEpochInd], 
                              auc = valAUCs[bestEpochInd])
+      self$learnRateSchedule <- learnRates[1:bestEpochInd]
       
       ParallelLogger::logInfo('Loaded best model (based on AUC) from epoch ', bestEpoch)
       ParallelLogger::logInfo('ValLoss: ', self$bestScore$loss)
@@ -559,13 +548,12 @@ Estimator <- R6::R6Class(
     #' Ideally I would copy the learning rate strategy from before
     #' and adjust for different sizes ie more iterations/updates???
     #' @param dataset torch dataset
-    fitWholeTrainingSet = function(dataset) {
-      # dataloader <- torch::dataloader(dataset, 
-      #                                 batch_size=self$batchSize, 
-      #                                 shuffle=TRUE)
+    #' @param learnRates learnRateSchedule from CV
+    fitWholeTrainingSet = function(dataset, learnRates=NULL) {
       batchIndex <- torch::torch_randperm(length(dataset)) + 1L
       batchIndex <- split(batchIndex, ceiling(seq_along(batchIndex)/self$batchSize))
       for (epoch in 1:self$epochs) {
+        self$optimizer$param_groups[[1]]$lr <- learnRates[[epoch]]
         self$fitEpoch(dataset, batchIndex)
       }
       
