@@ -2,7 +2,7 @@
 % Please edit documentation in R/Transformer.R
 \name{setTransformer}
 \alias{setTransformer}
-\title{setTransformer}
+\title{create settings for training a non-temporal transformer}
 \usage{
 setTransformer(
   numBlocks = 3,
@@ -24,37 +24,37 @@ setTransformer(
 )
 }
 \arguments{
-\item{numBlocks}{TODO: add desc}
+\item{numBlocks}{number of transformer blocks}
 
-\item{dimToken}{TODO: add desc}
+\item{dimToken}{dimension of each token (embedding size)}
 
-\item{dimOut}{TODO: add desc}
+\item{dimOut}{dimension of output, usually 1 for binary problems}
 
-\item{numHeads}{TODO: add desc}
+\item{numHeads}{number of attention heads}
 
-\item{attDropout}{TODO: add desc}
+\item{attDropout}{dropout to use on attentions}
 
-\item{ffnDropout}{TODO: add desc}
+\item{ffnDropout}{dropout to use in feedforward block}
 
-\item{resDropout}{TODO: add desc}
+\item{resDropout}{dropout to use in residual connections}
 
-\item{dimHidden}{TODO: add desc}
+\item{dimHidden}{dimension of the feedworward block}
 
-\item{weightDecay}{TODO: add desc}
+\item{weightDecay}{weightdecay to use}
 
-\item{learningRate}{TODO: add desc}
+\item{learningRate}{learning rate to use}
 
-\item{batchSize}{TODO: add desc}
+\item{batchSize}{batchSize to use}
 
-\item{epochs}{TODO: add desc}
+\item{epochs}{How many epochs to run the model for}
 
-\item{device}{TODO: add desc}
+\item{device}{Which device to use, cpu or cuda}
 
-\item{hyperParamSearch}{TODO: add desc}
+\item{hyperParamSearch}{what kind of hyperparameter search to do, default 'random'}
 
-\item{randomSamples}{TODO: add desc}
+\item{randomSamples}{How many samples to use in hyperparameter search if random}
 
-\item{seed}{TODO: add desc}
+\item{seed}{Random seed to use}
 }
 \description{
 A transformer model

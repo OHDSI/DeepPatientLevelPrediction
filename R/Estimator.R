@@ -42,14 +42,7 @@ fitEstimator <- function(
   # get the settings from the param
   settings <- attr(param, 'settings')
   if(!is.null(trainData$folds)){
-    if(!is.null(trainData$fold$train)) {
-      trainData$labels <- merge(trainData$labels, 
-                                merge(trainData$folds$train, trainData$folds$validation),
-                                by = 'rowId')
-    }
-    else {
-      trainData$labels <- merge(trainData$labels, trainData$fold, by = 'rowId')
-    }
+    trainData$labels <- merge(trainData$labels, trainData$fold, by = 'rowId')
   }
   mappedCovariateData <- PatientLevelPrediction:::MapIds(covariateData = trainData$covariateData,
                                                          cohort = trainData$labels)
@@ -57,7 +50,6 @@ fitEstimator <- function(
   covariateRef <- mappedCovariateData$covariateRef
   
   outLoc <- PatientLevelPrediction:::createTempModelLoc() # export
-  
   cvResult <- do.call( 
     what = gridCvDeep,
     args = list(
@@ -70,12 +62,12 @@ fitEstimator <- function(
   )
   
   hyperSummary <- do.call(rbind, lapply(cvResult$paramGridSearch, function(x) x$hyperSummary))
-  
   prediction <- cvResult$prediction
-  
-  incs <- rep(1, nrow(covariateRef))
-  covariateRef$included <- incs
-  covariateRef$covariateValue <- 0
+  incs <- rep(1, covariateRef %>% dplyr::tally() %>% dplyr::pull())
+  covariateRef <- covariateRef %>% dplyr::collect() %>% 
+                                   dplyr::mutate(included=incs,
+                                                 covariateValue=0)
+                  
   
   comp <- start - Sys.time()
   result <- list(
@@ -142,7 +134,6 @@ predictDeepEstimator <- function(
     plpModel <- list(model = plpModel)
     attr(plpModel, 'modelType') <- 'binary'
   }
-  
   if("plpData" %in% class(data)){
     mappedData <- PatientLevelPrediction:::MapIds(data$covariateData,
                                                   cohort=cohort,
@@ -364,7 +355,7 @@ Estimator <- R6::R6Class(
                           criterion=torch::nn_bce_with_logits_loss,
                           scheduler=torch::lr_reduce_on_plateau,
                           device='cpu', 
-                          patience=6) {
+                          patience=4) {
       self$device <- device
       self$model <- do.call(baseModel, modelParameters)
       self$modelParameters <- modelParameters
@@ -386,8 +377,8 @@ Estimator <- R6::R6Class(
       self$criterion <- criterion(torch::torch_tensor(self$posWeight, 
                                                       device=self$device))
       
-      self$scheduler <- scheduler(self$optimizer, patience=3,
-                                  verbose=TRUE)
+      self$scheduler <- scheduler(self$optimizer, patience=1,
+                                  verbose=FALSE, mode='max')
       
       # gradient accumulation is useful when training large numbers where
       # you can only fit few samples on the GPU in each batch.
@@ -436,7 +427,7 @@ Estimator <- R6::R6Class(
                                 ' | Time: ', round(delta, 3), ' ', 
                                 units(delta),
                                 ' | LR: ', lr)
-        self$scheduler$step(scores$loss)                        
+        self$scheduler$step(scores$auc)                        
         valLosses <- c(valLosses, scores$loss)
         valAUCs <- c(valAUCs, scores$auc)
         learnRates <- c(learnRates, lr)
@@ -445,7 +436,7 @@ Estimator <- R6::R6Class(
           self$earlyStopper$call(scores$auc)
           if (self$earlyStopper$improved) {
             # here it saves the results to lists rather than files
-            modelStateDict[[epochI]]  <- self$model$state_dict()
+            modelStateDict[[epochI]]  <- lapply(self$model$state_dict(), function(x) x$detach()$cpu())
             epoch[[epochI]] <- currentEpoch
           }
           if (self$earlyStopper$earlyStop) {
@@ -455,7 +446,7 @@ Estimator <- R6::R6Class(
             return(invisible(self))
           }
         } else {
-          modelStateDict[[epochI]]  <- self$model$state_dict()
+          modelStateDict[[epochI]]  <- lapply(self$model$state_dict(), function(x) x$detach()$cpu())
           epoch[[epochI]] <- currentEpoch
           }
       }
@@ -528,7 +519,7 @@ Estimator <- R6::R6Class(
     finishFit = function(valAUCs, modelStateDict, valLosses, epoch, learnRates) {
       bestEpochInd <- which.max(valAUCs)  # change this if a different metric is used
       
-      bestModelStateDict <- modelStateDict[[bestEpochInd]]
+      bestModelStateDict <- lapply(modelStateDict[[bestEpochInd]], function(x) x$to(device=self$device))
       self$model$load_state_dict(bestModelStateDict)
       
       bestEpoch <- epoch[[bestEpochInd]]
@@ -550,9 +541,13 @@ Estimator <- R6::R6Class(
     #' @param dataset torch dataset
     #' @param learnRates learnRateSchedule from CV
     fitWholeTrainingSet = function(dataset, learnRates=NULL) {
+      if(is.null(self$bestEpoch)) {
+        self$bestEpoch <- self$epochs
+      }
+      
       batchIndex <- torch::torch_randperm(length(dataset)) + 1L
       batchIndex <- split(batchIndex, ceiling(seq_along(batchIndex)/self$batchSize))
-      for (epoch in 1:self$epochs) {
+      for (epoch in 1:self$bestEpoch) {
         self$optimizer$param_groups[[1]]$lr <- learnRates[[epoch]]
         self$fitEpoch(dataset, batchIndex)
       }
@@ -600,10 +595,16 @@ Estimator <- R6::R6Class(
     #' @description 
     #' predicts and outputs the class
     #' @param   dataset A torch dataset to create predictions for
+    #' @param   threshold Which threshold to use for predictions
     #' @return  The predicted class for the data in the dataset
-    predict = function(dataset){
-      predictions <- self$predict_proba(dataset)
-      predicted_class <- torch::torch_argmax(torch::torch_unsqueeze(torch::torch_tensor(predictions), dim=2),dim=2)
+    predict = function(dataset, threshold=NULL){
+      predictions <- self$predictProba(dataset)
+      
+      if (is.null(threshold)) {
+        # use outcome rate
+        threshold <- dataset$target$sum()$item()/length(dataset)
+      }
+      predicted_class <- as.integer(predictions > threshold)
       return(predicted_class)
     },
     
@@ -656,10 +657,12 @@ EarlyStopping <- R6::R6Class(
      #' Creates a new earlystopping object
      #' @param patience Stop after this number of epochs if loss doesn't improve
      #' @param delta    How much does the loss need to improve to count as improvement
+     #' @param verbose   
      #' @return a new earlystopping object
-     initialize = function(patience=3, delta=0) {
+     initialize = function(patience=3, delta=0, verbose=TRUE) {
        self$patience <- patience
        self$counter <- 0
+       self$verbose <- verbose
        self$bestScore <- NULL
        self$earlyStop <- FALSE
        self$improved <- FALSE
@@ -679,8 +682,10 @@ EarlyStopping <- R6::R6Class(
        else if (score < self$bestScore + self$delta) {
          self$counter <- self$counter + 1
          self$improved <- FALSE
+         if (self$verbose) {
          ParallelLogger::logInfo('EarlyStopping counter: ', self$counter,
                                  ' out of ', self$patience)
+         }
          if (self$counter >= self$patience) {
            self$earlyStop <- TRUE
          }

@@ -123,7 +123,7 @@ fitTabNetTorch <- function(
   
   
   if(!is.null(trainData$folds)){
-    trainData$labels <- merge(trainData$labels, trainData$folds, by = 'rowId')
+     trainData$labels <- merge(trainData$labels, trainData$fold, by = 'rowId')
   }
   
   mappedData <- PatientLevelPrediction::toSparseM(

@@ -1,14 +1,13 @@
-context("ResNet")
 
 resSet <- setResNet(
-  numLayers = list(5), 
-  sizeHidden = list(256),
+  numLayers = list(2), 
+  sizeHidden = list(32),
   hiddenFactor = list(2),
   residualDropout = list(0.1), 
   hiddenDropout = list(0.1),
   normalization = list('BatchNorm'), 
   activation = list('RelU'),
-  sizeEmbedding = list(64), 
+  sizeEmbedding = list(32), 
   weightDecay = list(1e-6),
   learningRate = list(3e-4), 
   seed = 42, 
@@ -16,7 +15,7 @@ resSet <- setResNet(
   randomSample = 1, 
   #device='cuda:0', 
   batchSize = 128, 
-  epochs = 10
+  epochs = 3
 )
 
 test_that("setResNet works", {
@@ -29,8 +28,8 @@ test_that("setResNet works", {
   
 })
 
-
-res2 <- res <- tryCatch({
+sink(nullfile())
+res2 <- tryCatch({
   PatientLevelPrediction::runPlp(
     plpData = plpData, 
     outcomeId = 3, 
@@ -54,8 +53,9 @@ res2 <- res <- tryCatch({
   )
 }, error = function(e){print(e); return(NULL)}
 )
+sink()
 
-test_that("setDeepNNTorch with runPlp working checks", {
+test_that("ResNet with runPlp working checks", {
   
   testthat::expect_false(is.null(res2))
   
@@ -66,10 +66,47 @@ test_that("setDeepNNTorch with runPlp working checks", {
   testthat::expect_true('performanceEvaluation' %in% names(res2))
   
   # check prediction same size as pop
-  testthat::expect_equal(nrow(res2$prediction), nrow(population))
+  testthat::expect_equal(nrow(res2$prediction %>% filter(evaluationType %in% c('Train', 'Test'))), nrow(population))
   
   # check prediction between 0 and 1
   testthat::expect_gte(min(res2$prediction$value), 0)
   testthat::expect_lte(max(res2$prediction$value), 1)
   
 })
+
+
+test_that("ResNet nn-module works ", {
+
+  model <- ResNet(catFeatures=5, numFeatures=1, sizeEmbedding=5, 
+                  sizeHidden=16, numLayers=1, hiddenFactor=2,
+                  activation=torch::nn_relu, 
+                  normalization=torch::nn_batch_norm1d, hiddenDropout=0.3,
+                  residualDropout=0.3, d_out=1)
+  
+  pars <- sum(sapply(model$parameters, function(x) prod(x$shape)))
+  
+  # expected number of parameters
+  expect_equal(pars, 1295)
+  
+  input <- list()
+  input$cat <- torch::torch_randint(0, 5, c(10,5), dtype = torch::torch_long())
+  input$num <- torch::torch_randn(10,1, dtype = torch::torch_float32())
+  
+  
+  output <- model(input)
+  
+  # output is correct shape
+  expect_equal(output$shape, 10)
+  
+  input$num <- NULL
+  model <- ResNet(catFeatures=5, numFeatures=0, sizeEmbedding=5, 
+                  sizeHidden=16, numLayers=1, hiddenFactor=2,
+                  activation=torch::nn_relu, 
+                  normalization=torch::nn_batch_norm1d, hiddenDropout=0.3,
+                  residualDropout=0.3, d_out=1)
+  output <- model(input)
+  # model works without numeric variables
+  expect_equal(output$shape, 10)
+  
+}
+)

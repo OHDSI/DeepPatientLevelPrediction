@@ -3,29 +3,42 @@
 #' @export
 Dataset <- torch::dataset(
   name = 'myDataset',
-  #' @param data           a dgCSparseMatrix with the features
+  #' @param data           a dataframe like object with the covariates
   #' @param labels         a dataframe with the labels
   #' @param numericalIndex in what column numeric data is in (if any)
-  initialize = function(data, labels = NULL, numericalIndex = NULL) {
+  #' @param all            if True then returns all features instead of splitting num/cat
+  initialize = function(data, labels = NULL, numericalIndex = NULL, all=FALSE) {
     # determine numeric
-    if (is.null(numericalIndex)) {
+    if (is.null(numericalIndex) && all==FALSE) {
     numericalIndex <- data %>% dplyr::group_by(columnId) %>% dplyr::collect() %>% 
       dplyr::summarise(n=dplyr::n_distinct(.data$covariateValue)) %>% dplyr::pull(n)>1
-    }
     self$numericalIndex <- numericalIndex
+    }
+    else {
+      self$numericalIndex <- NULL
+    }
+    
     
     # add labels if training (make 0 vector for prediction)
     if(!is.null(labels)){
       self$target <- torch::torch_tensor(labels)
     } else{
+      if (all==FALSE) {
       self$target <- torch::torch_tensor(rep(0, data %>% dplyr::distinct(rowId) 
                                              %>% dplyr::collect() %>% nrow()))
+      } else{
+        self$target <- torch::torch_tensor(rep(0, dim(data)[[1]]))
+      }
     }
     # Weight to add in loss function to positive class
     self$posWeight <- (self$target==0)$sum()/self$target$sum()
     # for DeepNNTorch
-    # self$all <- torch::torch_tensor(as.matrix(data), dtype = torch::torch_float32())
-  
+    if (all) {
+    self$all <- torch::torch_tensor(as.matrix(data), dtype = torch::torch_float32())
+    self$cat <- NULL
+    self$num <- NULL
+    return()
+    }
     # add features
     catColumns <- which(!numericalIndex) 
     dataCat <- dplyr::filter(data,columnId %in% catColumns) %>% 
@@ -49,7 +62,7 @@ Dataset <- torch::dataset(
     if (sum(numericalIndex) == 0) {
       self$num <- NULL
     } else  {
-      numericalData <- data %>% filter(columnId %in% which(numericalIndex)) %>% collect()
+      numericalData <- data %>% filter(columnId %in% !! which(numericalIndex)) %>% collect()
       numericalData <-numericalData %>% group_by(columnId) %>% mutate(newId = dplyr::cur_group_id())
       indices <- torch::torch_tensor(cbind(numericalData$rowId, numericalData$newId), dtype=torch::torch_long())$t_()
       values <- torch::torch_tensor(numericalData$covariateValue,dtype=torch::torch_float32())
@@ -82,8 +95,8 @@ Dataset <- torch::dataset(
   .getbatch = function(item) {
     if (length(item)==1) {
       # add leading singleton dimension since models expects 2d tensors
-      return(list(batch = list(cat = self$cat[item],
-                               num = self$num[item]),
+      return(list(batch = list(cat = self$cat[item]$unsqueeze(1),
+                               num = self$num[item]$unsqueeze(1)),
                   target = self$target[item]$unsqueeze(1)))
       }
     else {
@@ -91,21 +104,10 @@ Dataset <- torch::dataset(
                              num = self$num[item]),
                 target = self$target[item]))}
   },
-  
   .length = function() {
     self$target$size()[[1]] # shape[1]
   }
 )
-
-#' @description converts a sparse Matrix into a list of its columns, 
-#' subsequently vapply can be used to apply functions over the list 
-listCols<-function(m){
-  res<-split(m@x, findInterval(seq_len(length(m@x)), m@p, left.open=TRUE))
-  names(res)<-colnames(m)
-  res
-}
-
-
 
 
 

@@ -1,4 +1,3 @@
-context("DeepNNTorch")
 
 # code to train models
 deepset <- setDeepNNTorch(units=list(c(128, 64), 128), layer_dropout=c(0.2),
@@ -15,6 +14,7 @@ test_that("setDeepNNTorch works", {
   
 })
 
+sink(nullfile())
 res <- tryCatch({
   PatientLevelPrediction::runPlp(
     plpData = plpData, 
@@ -39,6 +39,7 @@ res <- tryCatch({
   )
 }, error = function(e){print(e); return(NULL)}
 )
+sink()
 
 test_that("setDeepNNTorch with runPlp working checks", {
   
@@ -51,7 +52,8 @@ test_that("setDeepNNTorch with runPlp working checks", {
   testthat::expect_true('performanceEvaluation' %in% names(res))
   
   # check prediction same size as pop
-  testthat::expect_equal(nrow(res$prediction), nrow(population))
+  testthat::expect_equal(nrow(res$prediction %>% filter(evaluationType %in% c('Train', 'Test'))), 
+                         nrow(population))
   
   # check prediction between 0 and 1
   testthat::expect_gte(min(res$prediction$value), 0)

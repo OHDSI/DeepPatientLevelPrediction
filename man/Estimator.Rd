@@ -34,11 +34,11 @@ Creates a new estimator
   baseModel,
   modelParameters,
   fitParameters,
-  optimizer = torch::optim_adam,
+  optimizer = torchopt::optim_adamw,
   criterion = torch::nn_bce_with_logits_loss,
   scheduler = torch::lr_reduce_on_plateau,
   device = "cpu",
-  patience = NULL
+  patience = 4
 )}\if{html}{\out{</div>}}
 }
 
@@ -131,7 +131,7 @@ list with average loss and auc in the dataset
 \subsection{Method \code{finishFit()}}{
 operations that run when fitting is finished
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{Estimator$finishFit(valAUCs, modelStateDict, valLosses, epoch)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{Estimator$finishFit(valAUCs, modelStateDict, valLosses, epoch, learnRates)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
@@ -144,6 +144,8 @@ operations that run when fitting is finished
 \item{\code{valLosses}}{validation losses}
 
 \item{\code{epoch}}{list of epochs fit}
+
+\item{\code{learnRates}}{learning rate sequence used so far}
 }
 \if{html}{\out{</div>}}
 }
@@ -157,13 +159,15 @@ TODO What happens when learning rate changes per epochs?
 Ideally I would copy the learning rate strategy from before
 and adjust for different sizes ie more iterations/updates???
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{Estimator$fitWholeTrainingSet(dataset)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{Estimator$fitWholeTrainingSet(dataset, learnRates = NULL)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
 \item{\code{dataset}}{torch dataset}
+
+\item{\code{learnRates}}{learnRateSchedule from CV}
 }
 \if{html}{\out{</div>}}
 }
@@ -216,13 +220,15 @@ predictions as probabilities
 \subsection{Method \code{predict()}}{
 predicts and outputs the class
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{Estimator$predict(dataset)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{Estimator$predict(dataset, threshold = NULL)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
 \item{\code{dataset}}{A torch dataset to create predictions for}
+
+\item{\code{threshold}}{Which threshold to use for predictions}
 }
 \if{html}{\out{</div>}}
 }

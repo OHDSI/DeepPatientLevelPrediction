@@ -1,15 +1,13 @@
-context("TabNet")
-
 tabSet <- setTabNetTorch(
   batch_size = 256,
   penalty = 1e-3,
   clip_value = NULL,
   loss = "auto",
-  epochs = 5,
+  epochs = 2,
   drop_last = FALSE,
   decision_width = 8,
   attention_width = 8,
-  num_steps = 3,
+  num_steps = 2,
   feature_reusage = 1.3,
   mask_type = "sparsemax",
   virtual_batch_size = 128,
@@ -30,7 +28,7 @@ tabSet <- setTabNetTorch(
   importance_sample_size = 1e5,
   seed=NULL,
   hyperParamSearch = 'random',
-  randomSample = 100
+  randomSample = 1
   )
 
 test_that("setTabNet works", {
@@ -43,7 +41,7 @@ test_that("setTabNet works", {
   
 })
 
-
+sink(nullfile())
 tab2 <- res <- tryCatch({
   PatientLevelPrediction::runPlp(
     plpData = plpData, 
@@ -68,6 +66,7 @@ tab2 <- res <- tryCatch({
   )
 }, error = function(e){print(e); return(NULL)}
 )
+sink()
 
 test_that("setTabNetTorch with runPlp working checks", {
   
@@ -80,7 +79,8 @@ test_that("setTabNetTorch with runPlp working checks", {
   testthat::expect_true('performanceEvaluation' %in% names(tab2))
   
   # check prediction same size as pop
-  testthat::expect_equal(nrow(tab2$prediction), nrow(population))
+  testthat::expect_equal(nrow(tab2$prediction %>% filter(evaluationType %in% c('Train', 'Test'))),
+                         nrow(population))
   
   # check prediction between 0 and 1
   testthat::expect_gte(min(tab2$prediction$value), 0)

@@ -113,9 +113,6 @@ ResNet <- torch::nn_module(
                       hiddenFactor, activation=torch::nn_relu, 
                       normalization=torch::nn_batch_norm1d, hiddenDropout=NULL,
                       residualDropout=NULL, d_out=1) {
-    # self$embedding <- EmbeddingBag(numEmbeddings=catFeatures + 1L, 
-    #                                embeddingDim=sizeEmbedding,
-    #                                paddingIdx=1)
     self$embedding <- torch::nn_embedding_bag(num_embeddings = catFeatures + 1,
                                               embedding_dim = sizeEmbedding,
                                               padding_idx = 1)

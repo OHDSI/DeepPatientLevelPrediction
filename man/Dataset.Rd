@@ -4,14 +4,16 @@
 \alias{Dataset}
 \title{A torch dataset}
 \usage{
-Dataset(data, labels = NULL, numericalIndex = NULL)
+Dataset(data, labels = NULL, numericalIndex = NULL, all = FALSE)
 }
 \arguments{
-\item{data}{a dgCSparseMatrix with the features}
+\item{data}{a dataframe like object with the covariates}
 
 \item{labels}{a dataframe with the labels}
 
 \item{numericalIndex}{in what column numeric data is in (if any)}
+
+\item{all}{if True then returns all features instead of splitting num/cat}
 }
 \description{
 A torch dataset
