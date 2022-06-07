@@ -9,18 +9,18 @@ Stops training if a loss or metric has stopped improving
 \section{Methods}{
 \subsection{Public methods}{
 \itemize{
-\item \href{#method-new}{\code{EarlyStopping$new()}}
-\item \href{#method-call}{\code{EarlyStopping$call()}}
-\item \href{#method-clone}{\code{EarlyStopping$clone()}}
+\item \href{#method-EarlyStopping-new}{\code{EarlyStopping$new()}}
+\item \href{#method-EarlyStopping-call}{\code{EarlyStopping$call()}}
+\item \href{#method-EarlyStopping-clone}{\code{EarlyStopping$clone()}}
 }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-new"></a>}}
-\if{latex}{\out{\hypertarget{method-new}{}}}
+\if{html}{\out{<a id="method-EarlyStopping-new"></a>}}
+\if{latex}{\out{\hypertarget{method-EarlyStopping-new}{}}}
 \subsection{Method \code{new()}}{
 Creates a new earlystopping object
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{EarlyStopping$new(patience = 3, delta = 0)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{EarlyStopping$new(patience = 3, delta = 0, verbose = TRUE)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
@@ -29,6 +29,8 @@ Creates a new earlystopping object
 \item{\code{patience}}{Stop after this number of epochs if loss doesn't improve}
 
 \item{\code{delta}}{How much does the loss need to improve to count as improvement}
+
+\item{\code{verbose}}{}
 }
 \if{html}{\out{</div>}}
 }
@@ -37,8 +39,8 @@ a new earlystopping object
 }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-call"></a>}}
-\if{latex}{\out{\hypertarget{method-call}{}}}
+\if{html}{\out{<a id="method-EarlyStopping-call"></a>}}
+\if{latex}{\out{\hypertarget{method-EarlyStopping-call}{}}}
 \subsection{Method \code{call()}}{
 call the earlystopping object and increment a counter if loss is not
 improving
@@ -55,8 +57,8 @@ improving
 }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-clone"></a>}}
-\if{latex}{\out{\hypertarget{method-clone}{}}}
+\if{html}{\out{<a id="method-EarlyStopping-clone"></a>}}
+\if{latex}{\out{\hypertarget{method-EarlyStopping-clone}{}}}
 \subsection{Method \code{clone()}}{
 The objects of this class are cloneable with this method.
 \subsection{Usage}{

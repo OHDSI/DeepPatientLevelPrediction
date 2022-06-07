@@ -20,6 +20,7 @@ setDeepNNTorch <- function(
   param$units1=unlist(lapply(param$units, function(x) x[1])) 
   param$units2=unlist(lapply(param$units, function(x) x[2])) 
   param$units3=unlist(lapply(param$units, function(x) x[3]))
+  param$units <- NULL
   
   attr(param, 'settings') <- list(
     selectorType = "byPid",  # is this correct?
@@ -38,7 +39,7 @@ setDeepNNTorch <- function(
   )
   
   attr(param, 'modelType') <- 'binary' 
-  attr(param, 'saveType') <- 'RtoJson'
+  attr(param, 'settings')$saveType <- 'file'
   
   result <- list(fitFunction='fitDeepNNTorch', 
                  param=param)
@@ -60,7 +61,7 @@ fitDeepNNTorch <- function(
   start <- Sys.time()
   
   # check covariateData
-  if (!FeatureExtraction::isCovariateData(plpData$covariateData)){
+  if (!FeatureExtraction::isCovariateData(trainData$covariateData)){
     stop('DeepNNTorch requires correct covariateData')
   }
   
@@ -68,7 +69,7 @@ fitDeepNNTorch <- function(
   settings <- attr(param, 'settings')
   
   if(!is.null(trainData$folds)){
-    trainData$labels <- merge(trainData$labels, trainData$folds, by = 'rowId')
+    trainData$labels <- merge(trainData$labels, trainData$fold, by = 'rowId')
   }
   
   mappedData <- PatientLevelPrediction::toSparseM(
@@ -172,14 +173,15 @@ predictDeepNN <- function(
         dplyr::select(.data$columnId, .data$covariateId)
     )
     
-    data <- Dataset_plp5(dataMat$dataMatrix) # add numeric details..
+    data <- Dataset(dataMat$dataMatrix, all=TRUE) # add numeric details..
   }
   
   # get predictions
   prediction <- cohort
   
-  if(is.character(plpModel$model)) model <- torch::torch_load(file.path(plpModel$model, 'DeepNNTorchModel.rds'), device='cpu')
-    
+  if(is.character(plpModel$model)) {
+    model <- torch::torch_load(file.path(plpModel$model, 'DeepNNTorchModel.pt'), device='cpu')
+  }
   y_pred = model(data$all)
   prediction$value <- as.array(y_pred$to())[,1]
     
@@ -227,7 +229,7 @@ gridCvDeepNN <- function(
     fold <- labels$index
     ParallelLogger::logInfo(paste0('Max fold: ', max(fold)))
     
-    dataset <- Dataset_plp5(matrixData, labels$outcomeCount)
+    dataset <- Dataset(matrixData, labels$outcomeCount, all=TRUE)
     # modelParams$cat_features <- dataset$cat$shape[2]
     # modelParams$num_features <- dataset$num$shape[2]
     
@@ -269,6 +271,8 @@ gridCvDeepNN <- function(
       for(j in 1:epochs){
         # for(batchRowIds in batches){
           optimizer$zero_grad()
+        
+          # this is full batch training, won't work on real data
           y_pred = model(trainDataset$dataset$all[trainDataset$indices])
           loss = criterion(y_pred[,1], trainDataset$dataset$target[trainDataset$indices])
           loss$backward()
@@ -327,9 +331,10 @@ gridCvDeepNN <- function(
     dir.create(file.path(modelLocation), recursive = T)
   }
   
-  trainDataset <- Dataset_plp5(
+  trainDataset <- Dataset(
     matrixData, 
-    labels$outcomeCount
+    labels$outcomeCount,
+    all=TRUE
   )
   
   # modelParams$cat_features <- trainDataset$cat$shape[2]
@@ -387,7 +392,7 @@ gridCvDeepNN <- function(
   
   
   # save torch code here
-  torch_save(model, file.path(modelLocation, 'DeepNNTorchModel.rds'))
+  torch::torch_save(model, file.path(modelLocation, 'DeepNNTorchModel.pt'))
   
   return(
     list( 

@@ -4,10 +4,10 @@
 \alias{gridCvDeep}
 \title{gridCvDeep}
 \usage{
-gridCvDeep(matrixData, labels, settings, modelLocation, paramSearch)
+gridCvDeep(mappedData, labels, settings, modelLocation, paramSearch)
 }
 \arguments{
-\item{matrixData}{Data in sparse matrix format}
+\item{mappedData}{Mapped data with covariates}
 
 \item{labels}{Dataframe with the outcomes}
 

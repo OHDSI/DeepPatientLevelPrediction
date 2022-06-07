@@ -2,7 +2,7 @@
 % Please edit documentation in R/Transformer.R
 \name{setTransformer}
 \alias{setTransformer}
-\title{setTransformer}
+\title{create settings for training a non-temporal transformer}
 \usage{
 setTransformer(
   numBlocks = 3,
@@ -22,6 +22,39 @@ setTransformer(
   randomSamples = 100,
   seed = NULL
 )
+}
+\arguments{
+\item{numBlocks}{number of transformer blocks}
+
+\item{dimToken}{dimension of each token (embedding size)}
+
+\item{dimOut}{dimension of output, usually 1 for binary problems}
+
+\item{numHeads}{number of attention heads}
+
+\item{attDropout}{dropout to use on attentions}
+
+\item{ffnDropout}{dropout to use in feedforward block}
+
+\item{resDropout}{dropout to use in residual connections}
+
+\item{dimHidden}{dimension of the feedworward block}
+
+\item{weightDecay}{weightdecay to use}
+
+\item{learningRate}{learning rate to use}
+
+\item{batchSize}{batchSize to use}
+
+\item{epochs}{How many epochs to run the model for}
+
+\item{device}{Which device to use, cpu or cuda}
+
+\item{hyperParamSearch}{what kind of hyperparameter search to do, default 'random'}
+
+\item{randomSamples}{How many samples to use in hyperparameter search if random}
+
+\item{seed}{Random seed to use}
 }
 \description{
 A transformer model

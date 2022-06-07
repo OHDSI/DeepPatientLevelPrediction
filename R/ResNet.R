@@ -39,7 +39,7 @@
 #' @param hyperParamSearch  Which kind of hyperparameter search to use random sampling or exhaustive grid search. default: 'random'
 #' @param randomSample      How many random samples from hyperparameter space to use
 #' @param device            Which device to run analysis on, either 'cpu' or 'cuda', default: 'cpu'
-#' @param batch_size        Size of batch, default: 1024
+#' @param batchSize        Size of batch, default: 1024
 #' @param epochs            Number of epochs to run, default: 10
 #'
 #' @export
@@ -113,9 +113,6 @@ ResNet <- torch::nn_module(
                       hiddenFactor, activation=torch::nn_relu, 
                       normalization=torch::nn_batch_norm1d, hiddenDropout=NULL,
                       residualDropout=NULL, d_out=1) {
-    # self$embedding <- EmbeddingBag(numEmbeddings=catFeatures + 1L, 
-    #                                embeddingDim=sizeEmbedding,
-    #                                paddingIdx=1)
     self$embedding <- torch::nn_embedding_bag(num_embeddings = catFeatures + 1,
                                               embedding_dim = sizeEmbedding,
                                               padding_idx = 1)
@@ -220,19 +217,4 @@ listCartesian <- function(allList){
 
 # export this in PLP
 computeGridPerformance <- PatientLevelPrediction:::computeGridPerformance
-  
-nn_init_calculate_fan_in_and_fan_out <- function(tensor) {
-  dimensions <- tensor$dim()
-  num_input_fmaps <- tensor$size(2)
-  num_output_fmaps <- tensor$size(1)
-  receptive_field_size <- 1
-  
-  if (dimensions > 2) {
-    receptive_field_size <- tensor[1, 1, ..]$numel()
-  }
-  
-  fan_in <- num_input_fmaps * receptive_field_size
-  fan_out <- num_output_fmaps * receptive_field_size
-  
-  list(fan_in, fan_out)
-}
+

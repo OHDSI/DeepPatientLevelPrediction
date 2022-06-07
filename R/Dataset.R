@@ -1,60 +1,75 @@
-#' @description A torch dataset 
+#'  A torch dataset 
 #' @import data.table
 #' @export
 Dataset <- torch::dataset(
   name = 'myDataset',
-  #' @param data           a dgCSparseMatrix with the features
+  #' @param data           a dataframe like object with the covariates
   #' @param labels         a dataframe with the labels
   #' @param numericalIndex in what column numeric data is in (if any)
-  initialize = function(data, labels = NULL, numericalIndex = NULL) {
+  #' @param all            if True then returns all features instead of splitting num/cat
+  initialize = function(data, labels = NULL, numericalIndex = NULL, all=FALSE) {
     # determine numeric
-    if(is.null(numericalIndex)){
-      colList <- listCols(data)
-      numericalIndex <- vapply(colList, function(x) sum(x==1 | x==0) != length(x), 
-                               TRUE)
+    if (is.null(numericalIndex) && all==FALSE) {
+    numericalIndex <- data %>% dplyr::group_by(columnId) %>% dplyr::collect() %>% 
+      dplyr::summarise(n=dplyr::n_distinct(.data$covariateValue)) %>% dplyr::pull(n)>1
+    self$numericalIndex <- numericalIndex
+    }
+    else {
+      self$numericalIndex <- NULL
     }
     
-    self$numericalIndex <- numericalIndex
     
-    self$collate_fn <- sparseCollate  
     # add labels if training (make 0 vector for prediction)
     if(!is.null(labels)){
       self$target <- torch::torch_tensor(labels)
     } else{
-      self$target <- torch::torch_tensor(rep(0, nrow(data)))
+      if (all==FALSE) {
+      self$target <- torch::torch_tensor(rep(0, data %>% dplyr::distinct(rowId) 
+                                             %>% dplyr::collect() %>% nrow()))
+      } else{
+        self$target <- torch::torch_tensor(rep(0, dim(data)[[1]]))
+      }
     }
-    
     # Weight to add in loss function to positive class
-    self$posWeight <- ((self$target==0)$sum()/self$target$sum())$item()
+    self$posWeight <- (self$target==0)$sum()/self$target$sum()
     # for DeepNNTorch
-    # self$all <- torch::torch_tensor(as.matrix(data), dtype = torch::torch_float32())
-  
+    if (all) {
+    self$all <- torch::torch_tensor(as.matrix(data), dtype = torch::torch_float32())
+    self$cat <- NULL
+    self$num <- NULL
+    return()
+    }
     # add features
-    dataCat <- data[, !numericalIndex]
-    dataCat <- as(dataCat, 'dgTMatrix')
-    
+    catColumns <- which(!numericalIndex) 
+    dataCat <- dplyr::filter(data,columnId %in% catColumns) %>% 
+      dplyr::arrange(columnId) %>%
+      dplyr::group_by(columnId) %>% 
+      dplyr::collect() %>% 
+      dplyr::mutate(newColumnId=dplyr::cur_group_id()) %>% dplyr::ungroup() %>%
+      dplyr::select(c('rowId', 'newColumnId'))  %>% dplyr::rename(columnId=newColumnId)
     # the fastest way I found so far to convert data using data.table
     # 1.5 min for 100k rows :(
-    dt <- data.table::data.table(rows=dataCat@i+1L, cols=dataCat@j+1L)
+    dt <- data.table::data.table(rows=dataCat$rowId, cols=dataCat$columnId)
     maxFeatures <- max(dt[, .N, by=rows][,N])
     start <- Sys.time()
-    cat <- lapply(1:dim(dataCat)[[1]], function(x) {
-      currRow <- dt[rows==x, cols]
-      maxCols <- length(currRow)
-      torch::torch_cat(list(torch::torch_tensor(currRow),torch::torch_zeros((maxFeatures - maxCols),
-                            dtype=torch::torch_long()))
-                       )
+    tensorList <- lapply(1:max(dataCat$rowId), function(x) {
+      torch::torch_tensor(dt[rows==x, cols])
       })
     self$lengths <- lengths
-    self$cat <- torch::torch_vstack(cat)
+    self$cat <- torch::nn_utils_rnn_pad_sequence(tensorList, batch_first = T)
     delta <- Sys.time() - start
     ParallelLogger::logInfo("Data conversion for dataset took ", signif(delta, 3), " ", attr(delta, "units"))
-    
     if (sum(numericalIndex) == 0) {
       self$num <- NULL
     } else  {
-      self$num <- torch::torch_tensor(as.matrix(data[,numericalIndex, drop = F]), dtype=torch::torch_float32())
-    } 
+      numericalData <- data %>% filter(columnId %in% !! which(numericalIndex)) %>% collect()
+      numericalData <-numericalData %>% group_by(columnId) %>% mutate(newId = dplyr::cur_group_id())
+      indices <- torch::torch_tensor(cbind(numericalData$rowId, numericalData$newId), dtype=torch::torch_long())$t_()
+      values <- torch::torch_tensor(numericalData$covariateValue,dtype=torch::torch_float32())
+      self$num <- torch::torch_sparse_coo_tensor(indices=indices,
+                                            values=values, 
+                                            size=c(max(dataCat$rowId),sum(numericalIndex)))$to_dense()
+    }  
   },
   
   getNumericalIndex = function() {
@@ -80,8 +95,8 @@ Dataset <- torch::dataset(
   .getbatch = function(item) {
     if (length(item)==1) {
       # add leading singleton dimension since models expects 2d tensors
-      return(list(batch = list(cat = self$cat[item],
-                               num = self$num[item]),
+      return(list(batch = list(cat = self$cat[item]$unsqueeze(1),
+                               num = self$num[item]$unsqueeze(1)),
                   target = self$target[item]$unsqueeze(1)))
       }
     else {
@@ -89,37 +104,10 @@ Dataset <- torch::dataset(
                              num = self$num[item]),
                 target = self$target[item]))}
   },
-  
   .length = function() {
     self$target$size()[[1]] # shape[1]
   }
 )
-
-# a function to speed up the collation so I dont' call to_dense()
-# on the sparse tensors until they have been combined for the batch
-# not currently used 
-sparseCollate <- function(batch) {
-  elem <- batch[[1]]
-  if (inherits(elem, "torch_tensor")) {
-    # temporary fix using a tryCatch until torch in R author adds
-    # an is_sparse method or exposes tensor$layout
-    return (torch::torch_stack(batch, dim = 1))
-    # tryCatch(return(torch::torch_stack(batch,dim = 1)$to_dense()),
-    #          error=function(e) return(torch::torch_stack(batch, dim = 1)))  
-  }
-  else if (is.list(elem)) {
-    # preserve names of elements 
-    named_seq <- seq_along(elem)
-    names(named_seq) <- names(elem)
-    
-    lapply(named_seq, function(i) {sparseCollate(lapply(batch, function(x) x[[i]]))})
-  }
-}
-
-
-
-
-
 
 
 

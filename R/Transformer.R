@@ -1,14 +1,34 @@
-#' setTransformer
+#' create settings for training a non-temporal transformer
 #'
 #' @description A transformer model
 #' @details from https://arxiv.org/abs/2106.11959 
+#' 
+#' @param numBlocks               number of transformer blocks
+#' @param dimToken                dimension of each token (embedding size)
+#' @param dimOut                  dimension of output, usually 1 for binary problems
+#' @param numHeads                number of attention heads
+#' @param attDropout              dropout to use on attentions
+#' @param ffnDropout              dropout to use in feedforward block
+#' @param resDropout              dropout to use in residual connections
+#' @param dimHidden               dimension of the feedworward block
+#' @param weightDecay             weightdecay to use
+#' @param learningRate            learning rate to use
+#' @param batchSize               batchSize to use
+#' @param epochs                  How many epochs to run the model for
+#' @param device                  Which device to use, cpu or cuda
+#' @param hyperParamSearch        what kind of hyperparameter search to do, default 'random'
+#' @param randomSamples           How many samples to use in hyperparameter search if random
+#' @param seed                    Random seed to use
+#' 
 #' @export
-setTransformer <- function(numBlocks=3, dimToken=96, dimOut=1,
-                           numHeads=8, attDropout=0.25, ffnDropout=0.25,
-                           resDropout=0,dimHidden=512, weightDecay=1e-6, 
-                           learningRate=3e-4, batchSize=1024,
-                           epochs=10, device='cpu', hyperParamSearch='random',
-                           randomSamples=100, seed=NULL) {
+setTransformer <- function(
+  numBlocks=3, dimToken=96, dimOut=1,
+  numHeads=8, attDropout=0.25, ffnDropout=0.25,
+  resDropout=0,dimHidden=512, weightDecay=1e-6, 
+  learningRate=3e-4, batchSize=1024,
+  epochs=10, device='cpu', hyperParamSearch='random',
+  randomSamples=100, seed=NULL
+) {
   if (!is.null(seed)) {
     seed <- as.integer(sample(1e5, 1))
   }
@@ -65,13 +85,14 @@ Transformer <- torch::nn_module(
   initialize = function(catFeatures, numFeatures, numBlocks, dimToken, dimOut=1, 
                        numHeads, attDropout, ffnDropout, resDropout, 
                        headActivation=torch::nn_relu,
-                       activation=torch::nn_relu,
+                       activation=NULL,
                        ffnNorm=torch::nn_layer_norm, 
                        headNorm=torch::nn_layer_norm,
                        attNorm=torch::nn_layer_norm,
                        dimHidden){
-    self$embedding <- Embedding(catFeatures + 1, dimToken) # + 1 for padding idx
-    # self$numericalEmbedding <- numericalEmbedding(numFeatures, dimToken)
+    activation = nn_reglu
+    self$Categoricalembedding <- Embedding(catFeatures + 1, dimToken) # + 1 for padding idx
+    self$numericalEmbedding <- numericalEmbedding(numFeatures, dimToken)
     self$classToken <- ClassToken(dimToken)
     
     self$layers <- torch::nn_module_list(lapply(1:numBlocks,
@@ -98,24 +119,25 @@ Transformer <- torch::nn_module(
                       headNorm, dimOut)
   },
   forward = function(x){
-    x_cat <- x$cat
-    x_num <- x$num
-    x <- self$embedding(x_cat)
-    if (!is.null(x_num)) {
-      x_num <- self$numericalEmbedding(x_num)
-      x <- torch::torch_cat(list(x, x_num), dim=2L)
+    mask <- torch::torch_where(x$cat ==0, TRUE, FALSE)
+    input <- x
+    cat <- self$Categoricalembedding(x$cat)
+    if (!is.null(input$num)) {
+      num <- self$numericalEmbedding(input$num)
+      x <- torch::torch_cat(list(cat, num), dim=2L)
+      mask <- torch::torch_cat(list(mask, torch::torch_zeros(c(x$shape[1], 
+                                                               num$shape[2]), 
+                                                             device=mask$device,
+                                                             dtype=mask$dtype)), 
+                               dim=2L)
     } else {
-      x <- x
+      x <- cat
     }
     x <- self$classToken(x)
-    paddingMask <- torch::torch_zeros(x_cat$size()[1], x_cat$size()[2], 
-                                      device = x$device, dtype=torch::torch_bool())
-    paddingMask[x_cat==0] <- 1
-    paddingMask <- torch::torch_cat(list(paddingMask, 
-                                         torch::torch_zeros(x_cat$size()[1], 
-                                                            x$size()[2] - x_cat$size()[2],
-                                                            device=x$device,
-                                                            dtype=torch::torch_bool())), dim=2)
+    mask <- torch::torch_cat(list(mask, torch::torch_zeros(c(x$shape[1], 1), 
+                                                           device=mask$device,
+                                                           dtype=mask$dtype)), 
+                             dim=2L)
     for (i in 1:length(self$layers)) {
       layer <- self$layers[[i]]
       xResidual <- self$startResidual(layer, 'attention', x)
@@ -125,7 +147,7 @@ Transformer <- torch::nn_module(
         # in final layer take only attention on CLS token
         xResidual <- layer$attention(xResidual[,-1]$view(c(dims[1], 1, dims[3]))$transpose(1,2), 
                                      xResidual$transpose(1,2), 
-                                     xResidual$transpose(1,2), paddingMask)
+                                     xResidual$transpose(1,2), mask)
         attnWeights <- xResidual[[2]]
         xResidual <- xResidual[[1]]
         x <- x[,-1]$view(c(dims[1], 1, dims[3]))
@@ -134,7 +156,7 @@ Transformer <- torch::nn_module(
         xResidual <- layer$attention(xResidual$transpose(1,2), 
                                      xResidual$transpose(1,2), 
                                      xResidual$transpose(1,2),
-                                     paddingMask,
+                                     mask,
                                      )[[1]]
         }
       x <- self$endResidual(layer, 'attention', x, xResidual$transpose(1,2))
@@ -167,7 +189,7 @@ FeedForwardBlock <- torch::nn_module(
   name='FeedForwardBlock',
   initialize = function(dimToken, dimHidden, biasFirst, biasSecond,
                         dropout, activation) {
-    self$linearFirst <- torch::nn_linear(dimToken, dimHidden, biasFirst)
+    self$linearFirst <- torch::nn_linear(dimToken, dimHidden*2, biasFirst)
     self$activation <- activation()
     self$dropout <- torch::nn_dropout(dropout)
     self$linearSecond <- torch::nn_linear(dimHidden, dimToken, biasSecond)
@@ -204,12 +226,13 @@ Embedding <- torch::nn_module(
   },
   forward = function(x_cat) {
     x <- self$embedding(x_cat + 1L) # padding idx is 1L
+    return(x)
     }
 )
 
 numericalEmbedding <- torch::nn_module(
   name='numericalEmbedding',
-  initialize = function(numEmbeddings, embeddingDim, bias=FALSE) {
+  initialize = function(numEmbeddings, embeddingDim, bias=TRUE) {
     self$weight <- torch::nn_parameter(torch::torch_empty(numEmbeddings,embeddingDim))
     if (bias) {
     self$bias <- torch::nn_parameter(torch::torch_empty(numEmbeddings, embeddingDim)) 
@@ -249,3 +272,18 @@ ClassToken <- torch::nn_module(
     return(torch::torch_cat(c(x, self$expand(c(dim(x)[[1]], 1))), dim=2))
   }
 )
+
+nn_reglu <- torch::nn_module(
+  name='ReGlu',
+  forward = function(x) {
+    return(reglu(x))
+  }
+)
+
+
+reglu <- function(x) {
+  chunks <- x$chunk(2, dim=-1)
+  
+  return(chunks[[1]]* torch::nnf_relu(chunks[[2]]))
+  
+}
