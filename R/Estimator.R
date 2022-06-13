@@ -200,7 +200,6 @@ gridCvDeep <- function(
 
   ###########################################################################
   
-
   gridSearchPredictons <- list()
   length(gridSearchPredictons) <- length(paramSearch)
   dataset <- Dataset(mappedData$covariates, labels$outcomeCount)
