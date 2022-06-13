@@ -34,7 +34,7 @@ Creates a new estimator
   baseModel,
   modelParameters,
   fitParameters,
-  optimizer = torchopt::optim_adamw,
+  optimizer = torch::optim_adam,
   criterion = torch::nn_bce_with_logits_loss,
   scheduler = torch::lr_reduce_on_plateau,
   device = "cpu",

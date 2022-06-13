@@ -227,7 +227,7 @@ gridCvDeep <- function(
       ParallelLogger::logInfo(paste0('Fold ',i))
       trainDataset <- torch::dataset_subset(dataset, indices=which(fold!=i)) 
       testDataset <- torch::dataset_subset(dataset, indices=which(fold==i))
-      fitParams['posWeight'] <- trainDataset$posWeight
+      fitParams$posWeight <- trainDataset$dataset$posWeight
       estimator <- Estimator$new(
         baseModel = baseModel, 
         modelParameters = modelParams,
@@ -277,6 +277,7 @@ gridCvDeep <- function(
   fitParams <- finalParam[fitParamNames]
   fitParams$epochs <- finalParam$learnSchedule$bestEpoch
   fitParams$batchSize <- batchSize
+  fitParams$posWeight <- dataset$posWeight
   # create the dir
   if(!dir.exists(file.path(modelLocation))){
     dir.create(file.path(modelLocation), recursive = T)
@@ -365,7 +366,6 @@ Estimator <- R6::R6Class(
       self$l2Norm <- self$itemOrDefaults(fitParameters, 'weightDecay', 1e-5)
       self$batchSize <- self$itemOrDefaults(fitParameters, 'batchSize', 1024)
       self$posWeight <- self$itemOrDefaults(fitParameters, 'posWeight', 1)
-      
       self$prefix <- self$itemOrDefaults(fitParameters, 'prefix', self$model$name)
       
       self$previousEpochs <- self$itemOrDefaults(fitParameters, 'previousEpochs', 0)
