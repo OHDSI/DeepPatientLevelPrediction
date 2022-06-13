@@ -1,3 +1,8 @@
+#' A single layer neural network
+#' @param inputN        Input neurons
+#' @param layer1        Layer 1 neurons
+#' @param outputN       Output neurons
+#' @param layer_dropout Layer dropout to use
 #' @export
 singleLayerNN <- function(inputN, layer1, outputN = 2, layer_dropout){
   
@@ -24,6 +29,12 @@ singleLayerNN <- function(inputN, layer1, outputN = 2, layer_dropout){
   return(net())
 }
 
+#' Double layer neural network
+#' @param inputN        Input neurons
+#' @param layer1        Layer 1 neurons
+#' @param layer2        Layer 2 neurons
+#' @param outputN       output neurons
+#' @param layer_dropout layer_dropout to use
 #' @export
 doubleLayerNN <- function(inputN, layer1, 
                           layer2, outputN,
@@ -54,6 +65,13 @@ doubleLayerNN <- function(inputN, layer1,
   return(net())
 }
 
+#' Triple layer neural network
+#' @param inputN        Input neurons
+#' @param layer1        amount of layer 1 neurons
+#' @param layer2        amount of layer 2 neurons
+#' @param layer3        amount of layer 3 neurons
+#' @param outputN       Number of output neurons
+#' @param layer_dropout The dropout to use in layer
 #' @export
 tripleLayerNN <- function(inputN, layer1, 
                           layer2, layer3,
