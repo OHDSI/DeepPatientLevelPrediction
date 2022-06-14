@@ -44,6 +44,7 @@ setTabNetTorch <- function(
   pretraining_ratio = 0.5,
   verbose = FALSE,
   device = "auto",
+  skip_importance = FALSE,
   importance_sample_size = 1e5,
   seed=NULL,
   hyperParamSearch = 'random',
@@ -72,7 +73,8 @@ setTabNetTorch <- function(
     num_shared = num_shared,
     momentum = momentum,
     pretraining_ratio = pretraining_ratio,
-    importance_sample_size = importance_sample_size
+    importance_sample_size = importance_sample_size,
+    skip_importance = skip_importance
   )
   
   param <- listCartesian(paramGrid)
@@ -225,6 +227,10 @@ gridCvTabNetTorch <- function(
   gridSearchPredictons <- list()
   length(gridSearchPredictons) <- length(paramSearch)
   
+  dataset <- as.data.frame(as.matrix(matrixData))
+  catColumns <- colnames(dataset)[-1:-6]
+  dataset[catColumns] <- lapply(dataset[catColumns], factor)
+  
   for(gridId in 1:length(paramSearch)){
 
     # get the params
@@ -235,38 +241,28 @@ gridCvTabNetTorch <- function(
     
     fold <- labels$index
     ParallelLogger::logInfo(paste0('Max fold: ', max(fold)))
-    
-    # dataset <- Dataset_plp5(matrixData, labels$outcomeCount)
-    # modelParams$cat_features <- dataset$cat$shape[2]
-    # modelParams$num_features <- dataset$num$shape[2]
-    
-    # rec <- recipes::recipe(dataset$target ~ ., data = dataset$all)
-    # fit <- tabnet_fit(x = as.data.frame(as.matrix(matrixData)), y =labels$outcomeCount , epoch = epochs)
-    
+    bestEpoch <- list()
     for(i in 1:max(fold)){
-      
       ParallelLogger::logInfo(paste0('Fold ',i))
-      trainDataset <- as.data.frame(as.matrix(matrixData)[fold != i,])
-      trainLabel <- labels[fold != i,]
+      config$valid_indices <- which(fold==i)
+        
+      model <- tabnet::tabnet_fit(x = dataset, y = labels$outcomeCount, config = config)
       
-      testDataset <-as.data.frame(as.matrix(matrixData)[fold == i,])
-
-      model <- tabnet::tabnet_fit(x = trainDataset, y = trainLabel$outcomeCount, config = config)
-      
+      model$bestEpoch <- which.min(lapply(model$fit$metrics, function(x) x$valid$loss))
+      bestEpoch[[i]] <- model$bestEpoch
       ParallelLogger::logInfo("Calculating predictions on left out fold set...")
-      
       prediction <- rbind(prediction, predictTabNetTorch(plpModel = model,
-                                                         data = testDataset,
+                                                         data = dataset[model$fit$valid_indices,],
                                                          cohort = labels[fold == i,]))
       
     }
-    
+    maxBestEpochIndex <- which.max(bestEpoch)
+    paramSearch[[gridId]] <- bestEpoch[[maxBestEpochIndex]]
     gridSearchPredictons[[gridId]] <- list(
       prediction = prediction,
       param = paramSearch[[gridId]]
     )
   }    
-  
   
   # get best para (this could be modified to enable any metric instead of AUC, just need metric input in function)
   
@@ -283,21 +279,21 @@ gridCvTabNetTorch <- function(
   # get the params
   finalParam <- c(finalParam, fitSettings)
   
-  config <- do.call(tabnet::tabnet_config, finalParam) 
+  config <- do.call(tabnet::tabnet_config, finalParam)
+  config$valid_split <- NULL
   
   # create the dir
   if(!dir.exists(file.path(modelLocation))){
     dir.create(file.path(modelLocation), recursive = T)
   }
   
-  trainDataset <- as.data.frame(as.matrix(matrixData))
 
-  model <- tabnet::tabnet_fit(x = trainDataset, y = labels$outcomeCount, config = config)
+  model <- tabnet::tabnet_fit(x = dataset, y = labels$outcomeCount, config = config)
   
   ParallelLogger::logInfo("Calculating predictions on all train data...")
   
   prediction <- predictTabNetTorch(plpModel = model, 
-                                   data = trainDataset,
+                                   data = dataset,
                                    cohort = labels)
   prediction$evaluationType <- 'Train'
 
@@ -353,33 +349,10 @@ predictTabNetTorch <- function(
     plpModel <- readRDS(file.path(plpModel$model, 'TabNetTorchModel.Rds'))
   }
     
-  
-  pred <- stats::predict(plpModel, data)
+  pred <- stats::predict(plpModel, data, epoch=plpModel$bestEpoch)
   prediction$value <- as.vector(as.matrix(torch::torch_sigmoid(pred$.pred)))
   
   attr(prediction, "metaData")$modelType <- 'binary'
   
   return(prediction)
 }
-
-listCartesian <- function(allList){
-  
-  sizes <- lapply(allList, function(x) 1:length(x))
-  combinations <- expand.grid(sizes)
-  
-  result <- list()
-  length(result) <- nrow(combinations)
-  
-  for(i in 1:nrow(combinations)){
-    tempList <- list()
-    for(j in 1:ncol(combinations)){
-      tempList <- c(tempList, list(allList[[j]][[combinations[i,j]]]))
-    }
-    names(tempList) <- names(allList)
-    result[[i]] <- tempList
-  }
-  
-  return(result)
-}
-
-
