@@ -1,3 +1,8 @@
+#' A single layer neural network
+#' @param inputN        Input neurons
+#' @param layer1        Layer 1 neurons
+#' @param outputN       Output neurons
+#' @param layer_dropout Layer dropout to use
 #' @export
 singleLayerNN <- function(inputN, layer1, outputN = 2, layer_dropout){
   
@@ -24,6 +29,12 @@ singleLayerNN <- function(inputN, layer1, outputN = 2, layer_dropout){
   return(net())
 }
 
+#' Double layer neural network
+#' @param inputN        Input neurons
+#' @param layer1        Layer 1 neurons
+#' @param layer2        Layer 2 neurons
+#' @param outputN       output neurons
+#' @param layer_dropout layer_dropout to use
 #' @export
 doubleLayerNN <- function(inputN, layer1, 
                           layer2, outputN,
@@ -54,6 +65,13 @@ doubleLayerNN <- function(inputN, layer1,
   return(net())
 }
 
+#' Triple layer neural network
+#' @param inputN        Input neurons
+#' @param layer1        amount of layer 1 neurons
+#' @param layer2        amount of layer 2 neurons
+#' @param layer3        amount of layer 3 neurons
+#' @param outputN       Number of output neurons
+#' @param layer_dropout The dropout to use in layer
 #' @export
 tripleLayerNN <- function(inputN, layer1, 
                           layer2, layer3,
@@ -86,133 +104,4 @@ tripleLayerNN <- function(inputN, layer1,
     }
   )
   model <- net()
-}
-
-# Multi-resolution CNN1 model 
-# Stucture based on https://arxiv.org/pdf/1608.00647.pdf CNN1
-
-MRCovNN_submodel1 <- function(kernel_size){
-  
-  self <- NA # adding this to stop R check warning
-  
-  net <- torch::nn_module(
-    "MRCovNN_submodel1",
-    
-    initialize = function(){
-      self$conv1 <- torch::nn_conv2d(in_channel = 1,
-                                     out_channel = 1,
-                                     kernel_size = kernel_size)
-      
-    },
-    
-    forward = function(x){
-      x %>%
-        torch::nnf_max_pool2d(kernel_size) %>%
-        self$conv1() %>%
-        torch::nnf_relu()
-    }
-  )
-  return(net())
-}
-
-MRCovNN_submodel2 <- function(kernel_size){
-  
-  self <- NA # adding this to stop R check warning
-  
-  net <- torch::nn_module(
-    "MRCovNN_submodel2",
-    
-    initialize = function(){
-      self$maxPool <- torch::nn_max_pool2d(kernel_size = kernel_size)
-      self$conv1 <- torch::nn_conv2d(in_channels = 1,
-                                     out_channels = 1,
-                                     kernel_size = kernel_size)
-    },
-    
-    forward = function(x){
-      x %>%
-        self$maxPool() %>%
-        self$conv1() %>%
-        torch::nnf_relu()
-    }
-  )
-  return(net())
-}
-
-
-MRCovNN_submodel3 <- function(kernel_size){
-  
-  self <- NA # adding this to stop R check warning
-  
-  net <- torch::nn_module(
-    "MRCovNN_submodel3",
-    
-    initialize = function(){
-      self$maxPool <- torch::nn_max_pool2d(kernel_size = kernel_size)
-      self$conv1 <- torch::nn_conv2d(in_channels = 1,
-                                     out_channels = 1,
-                                     kernel_size = kernel_size)
-      
-      self$conv2 <- torch::nn_conv2d(in_channels = 1,
-                                     out_channels = 1,
-                                     kernel_size = kernel_size)
-    },
-    
-    forward = function(x){
-      x %>%
-        self$conv1() %>%
-        torch::nnf_relu() %>%
-        self$maxPool() %>%
-        self$conv2() %>%
-        torch::nnf_relu()
-    }
-  )
-  return(net())
-}
-
-
-# submodel1 = MRCovNN_submodel1(kernelSize = c(4,1))
-# submodel1 = submodel1(x)
-# modelList = list(submodel1, submodel2, submodel3)
-
-MultiResolutionCovNN <- function(
-  modelList = list(
-    MRCovNN_submodel1(kernel_size = c(4,1)), 
-    MRCovNN_submodel2(kernel_size = c(4,1)),  
-    MRCovNN_submodel3(kernel_size = c(4,1))
-  ),
-  kernelSize,
-  dropout,
-  inputN,
-  layer1,
-  layer2,
-  outputN = 2
-){
-  self <- NA # adding this to stop R check warning
-  
-  net <- torch::nn_module(
-    "MultiResolutionCovNN",
-    
-    initialize = function(){
-      self$linear1 <- torch::nn_linear(inputN, layer1)
-      self$linear2 <- torch::nn_linear(layer1, layer2)
-      self$linear3 <- torch::nn_linear(layer2, outputN)
-    },
-    
-    forward = function(){
-      
-      torch::torch_cat(modelList, 3) %>%
-        torch::nnf_dropout(p = dropout) %>%
-        self$linear1() %>%
-        torch::nnf_relu() %>%
-        torch::nnf_dropout(p = dropout) %>%
-        self$linear2() %>%
-        torch::nnf_relu() %>%
-        torch::nnf_dropout(p = dropout) %>%
-        self$linear3() %>%
-        torch::nnf_softmax(outputN)
-      
-    }
-  )
-  return(net())
 }

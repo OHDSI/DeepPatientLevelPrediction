@@ -1,3 +1,13 @@
+#' settings for a Deep neural network
+#' @param units           A list of vectors for neurons per layer
+#' @param layer_dropout   Dropout to use per layer
+#' @param lr              Learning rate ot use
+#' @param decay           Weight decay to use
+#' @param outcome_weight  Weight for minority outcome in cost function
+#' @param batch_size      Batch size to use
+#' @param epochs          How many epochs to use
+#' @param device          Which device to use
+#' @param seed            A seed to make experiments more reproducible
 #' @export
 setDeepNNTorch <- function(
   units=list(c(128, 64), 128),
@@ -50,13 +60,18 @@ setDeepNNTorch <- function(
   
 }
 
+#' Fits a deep neural network
+#' @param trainData     Training data object
+#' @param param         Hyperparameters to search over
+#' @param search        Which kind of search strategy to use
+#' @param analysisId    Analysis Id
 #' @export
 fitDeepNNTorch <- function(
   trainData,
   param, 
   search='grid', 
-  analysisId,
-  ...){
+  analysisId)
+  {
   
   start <- Sys.time()
   
@@ -152,6 +167,10 @@ fitDeepNNTorch <- function(
   return(result)
 }
 
+#' Create predictions for a deep neural network
+#' @param plpModel  The plpModel to predict for
+#' @param data      The data to make predictions for
+#' @param cohort    The cohort to use
 #' @export
 predictDeepNN <- function(
   plpModel,

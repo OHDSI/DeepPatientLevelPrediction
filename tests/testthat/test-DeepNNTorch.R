@@ -61,4 +61,20 @@ test_that("setDeepNNTorch with runPlp working checks", {
   
 })
 
-
+test_that("Triple layer-nn works", {
+  deepset <- setDeepNNTorch(units=list(c(64,64,32), c(64,32,16), c(32,16,8)), layer_dropout=c(0.2),
+                            lr =c(1e-4), decay=c(1e-5), outcome_weight = c(1.0), batch_size = c(100), 
+                            epochs= c(5),  seed=NULL)
+  
+  sink(nullfile())
+  results <- fitDeepNNTorch(trainData$Train, deepset$param, analysisId=1)
+  sink()
+  
+  expect_equal(class(results), 'plpModel')
+  expect_equal(attr(results, 'modelType'), 'binary')
+  expect_equal(attr(results, 'saveType'), 'file')
+  
+  # check prediction between 0 and 1
+  testthat::expect_gt(min(results$prediction$value), 0)
+  testthat::expect_lt(max(results$prediction$value), 1)
+})

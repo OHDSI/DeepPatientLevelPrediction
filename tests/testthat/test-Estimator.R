@@ -137,3 +137,20 @@ test_that('predictDeepEstimator works', {
   
 }) 
 
+test_that('batchToDevice works', {
+  # since we can't test moving to gpu there is a fake device called meta
+  # which we can use to test of the device is updated
+  estimator$device <- 'meta'
+  b <- 1:10
+  batch <- estimator$batchToDevice(dataset[b])
+  
+  devices <- lapply(lapply(unlist(batch, recursive=TRUE), function(x) x$device), 
+                    function(x) x==torch::torch_device(type='meta'))
+  # test that all are meta
+  expect_true(all(devices==TRUE))
+
+  }
+)
+
+
+#cases to add, estimator with early stopping that stops, and estimator without earlystopping

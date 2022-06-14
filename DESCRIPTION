@@ -18,24 +18,22 @@ VignetteBuilder: knitr
 Depends:
     R (>= 3.3.0)
 Imports:
-    Andromeda,
     dplyr,
     data.table,
     FeatureExtraction (>= 3.0.0),
-    Matrix,
     ParallelLogger (>= 2.0.0),
+    PatientLevelPrediction,
     rlang,
-    slam,
-    stats,
-    tabnet,
     torch
 Suggests:
     devtools,
     Eunomia,
     knitr,
+    markdown,
     plyr,  
     testthat
 Remotes:
+    ohdsi/PatientLevelPrediction,
     ohdsi/FeatureExtraction,
     ohdsi/Eunomia
 RoxygenNote: 7.2.0
