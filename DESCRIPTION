@@ -9,6 +9,7 @@ Authors@R: c(
     person("Seng", "Chan You", role = c("aut")),
     person("Chungsoo", "Kim", role = c("aut")),
     person("Henrik", "John", role = c("aut"))
+    )
 Maintainer: Egill Fridgeirsson <e.fridgeirsson@erasmusmc.nl>
 Description: A package for creating deep learning patient level prediction models following the OHDSI PatientLevelPrediction framework.
 License: Apache License 2.0
