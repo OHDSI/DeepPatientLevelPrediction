@@ -2,7 +2,7 @@ DeepPatientLevelPrediction
 ======================
 
 [![Build Status](https://github.com/OHDSI/DeepPatientLevelPrediction/workflows/R-CMD-check/badge.svg)](https://github.com/OHDSI/DeepPatientLevelPrediction/actions?query=workflow%3AR-CMD-check)
-[![codecov.io](https://codecov.io/github/OHDSI/DeepPatientLevelPrediction/coverage.svg?branch=master)](https://codecov.io/github/OHDSI/DeepPatientLevelPrediction?branch=master)
+[![codecov.io](https://codecov.io/github/OHDSI/DeepPatientLevelPrediction/coverage.svg?branch=master)](https://codecov.io/github/OHDSI/DeepPatientLevelPrediction?branch=main)
 
 
 Introduction
