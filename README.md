@@ -1,7 +1,7 @@
 DeepPatientLevelPrediction
 ======================
 
-[![Build Status](https://github.com/OHDSI/DeepPatientLevelPrediction/workflows/R-CMD-check/badge.svg)](https://github.com/OHDSI/DeepPatientLevelPrediction/actions?query=workflow%3AR-CMD-check)
+[![Build Status](https://github.com/OHDSI/DeepPatientLevelPrediction/workflows/R-CMD-check/badge.svg)](https://github.com/OHDSI/DeepPatientLevelPrediction/actions?query=workflow%3AR-CMD-check?branch=develop)
 [![codecov.io](https://codecov.io/github/OHDSI/DeepPatientLevelPrediction/coverage.svg?branch=master)](https://codecov.io/github/OHDSI/DeepPatientLevelPrediction?branch=main)
 
 
@@ -18,17 +18,14 @@ Features
 - add
 
 
-
 Technology
 ==========
-DeepPatientLevelPrediction is an R package, with some functions implemented in C++ and python.
+DeepPatientLevelPrediction is an R package.
 
 System Requirements
 ===================
-Requires R (version 3.3.0 or higher). Installation on Windows requires [RTools](http://cran.r-project.org/bin/windows/Rtools/). Libraries used in DeepPatientLevelPrediction require Java and Python.
+Requires R (version 3.5.0 or higher). Installation on Windows requires [RTools](http://cran.r-project.org/bin/windows/Rtools/).
 
-The python installation is required for some of the machine learning algorithms. We advise to
-install Python 3.7 using Anaconda (https://www.continuum.io/downloads). 
 
 Getting Started
 ===============
