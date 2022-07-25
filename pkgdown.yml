@@ -1,8 +1,8 @@
-pandoc: 2.7.3
+pandoc: 2.14.2
 pkgdown: 2.0.6
 pkgdown_sha: ~
 articles:
   BuildingDeepModels: BuildingDeepModels.html
   Installing: Installing.html
-last_built: 2022-07-25T13:53Z
+last_built: 2022-07-25T17:07Z
 
