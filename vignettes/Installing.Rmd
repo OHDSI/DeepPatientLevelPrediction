@@ -1,30 +1,106 @@
 ---
-title: "Installing DeepPLP"
+title: "DeepPatientLevelPrediction Installation Guide"
 author: "Egill Fridgeirsson"
-date: "2022-07-25"
-output: html_document
+date: '`r Sys.Date()`'
+header-includes:
+  - \usepackage{fancyhdr}
+  - \pagestyle{fancy}
+  - \fancyhead{}
+  - \fancyfoot[CO,CE]{PatientLevelPrediction Package Version `r  utils::packageVersion("PatientLevelPrediction")`}
+  - \fancyfoot[CO,CE]{DeepPatientLevelPrediction Package Version `r  utils::packageVersion("DeepPatientLevelPrediction")`}
+  - \fancyfoot[LE,RO]{\thepage}
+  - \renewcommand{\headrulewidth}{0.4pt}
+  - \renewcommand{\footrulewidth}{0.4pt}
+output:
+  pdf_document:
+    includes:
+      in_header: preamble.tex
+    number_sections: yes
+    toc: yes
+  word_document:
+    toc: yes
+  html_document:
+    number_sections: yes
+    toc: yes
 ---
 
+```{=html}
+<!--
+%\VignetteEngine{knitr}
+%\VignetteIndexEntry{Installing DeepPLP}
+-->
+```
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+# Introduction
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+This vignette describes how you need to install the Observational Health Data Science and Informatics (OHDSI) DeepPatientLevelPrediction under Windows, Mac and Linux.
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+# Software Prerequisites
 
-```{r cars}
-summary(cars)
+## Windows Users
+
+Under Windows the OHDSI Deep Patient Level Prediction (DeepPLP) package requires installing:
+
+-   R (<https://cran.cnr.berkeley.edu/> ) - (R \>= 3.5.0, but latest is recommended)
+-   Rstudio (<https://www.rstudio.com/> )
+-   Java (<http://www.java.com> )
+-   RTools (<https://cran.r-project.org/bin/windows/Rtools/>)
+
+## Mac/Linux Users
+
+Under Mac and Linux the OHDSI deepPLP package requires installing:
+
+-   R (<https://cran.cnr.berkeley.edu/> ) - (R \>= 3.5.0, but latest is recommended)
+-   Rstudio (<https://www.rstudio.com/> )
+-   Java (<http://www.java.com> )
+-   Xcode command line tools(run in terminal: xcode-select --install) [MAC USERS ONLY]
+
+# Installing the Package
+
+The preferred way to install the package is by using `remotes`, which will automatically install the latest release and all the latest dependencies.
+
+If you do not want the official release you could install the bleeding edge version of the package (latest develop branch).
+
+Note that the latest develop branch could contain bugs, please report them to us if you experience problems.
+
+## Installing DeepPatientLevelPrediction using remotes
+
+To install using `remotes` run:
+
+```{r, echo = TRUE, message = FALSE, warning = FALSE,tidy=FALSE,eval=FALSE}
+install.packages("remotes")
+remotes::install_github("OHDSI/FeatureExtraction")
+remotes::install_github("OHDSI/PatientLevelPrediction")
+remotes::install_github("OHDSI/DeepPatientLevelPrediction")
 ```
 
-## Including Plots
+DeepPLP relies on [torch for R](https://torch.mlverse.org/). When torch is installed for the first time the installation is not finished until you run:
 
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r, echo = TRUE, message = FALSE, warning = FALSE, tidy=FALSE,eval=FALSE}
+library(torch)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+This will download the required libtorch and lantern binaries for your operating system and copy them to the required locations for torch to use.
+
+If you are using DeepPLP in an offline environment the function `torch::install_torch_from_file()` can be used. See [torch installation guide](https://torch.mlverse.org/docs/articles/installation.html) for more detailed instructions.
+
+When installing make sure to close any other Rstudio sessions that are using `DeepPatientLevelPrediction` or any dependency. Keeping Rstudio sessions open can cause locks that prevent the package installing.
+
+# Testing Installation
+
+-add simple test code
+
+# Acknowledgments
+
+Considerable work has been dedicated to provide the `DeepPatientLevelPrediction` package.
+
+```{r tidy=TRUE,eval=TRUE}
+citation("PatientLevelPrediction")
+```
+
+**Please reference this paper if you use the DeepPLP Package in your work:**
+
+[Reps JM, Schuemie MJ, Suchard MA, Ryan PB, Rijnbeek PR. Design and implementation of a standardized framework to generate and evaluate patient-level prediction models using observational healthcare data. J Am Med Inform Assoc. 2018;25(8):969-975.](http://dx.doi.org/10.1093/jamia/ocy032)
