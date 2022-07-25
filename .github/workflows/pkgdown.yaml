@@ -32,8 +32,7 @@ jobs:
           needs: website
           
       - name: Build site
-        run: pkgdown::build_site_github_pages(new_process = FALSE, install = FALSE, examples = FALSE)
-        shell: Rscript {0}
+        run: Rscript -e 'pkgdown::build_site_github_pages(new_process = FALSE, install = TRUE)'
         
       - name: Fix Hades Logo
         run: Rscript -e 'OhdsiRTools::fixHadesLogo()'
