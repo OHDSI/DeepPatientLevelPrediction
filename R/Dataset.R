@@ -66,13 +66,9 @@ Dataset <- torch::dataset(
       numericalData <-numericalData %>% group_by(columnId) %>% mutate(newId = dplyr::cur_group_id())
       indices <- torch::torch_tensor(cbind(numericalData$rowId, numericalData$newId), dtype=torch::torch_long())$t_()
       values <- torch::torch_tensor(numericalData$covariateValue,dtype=torch::torch_float32())
-      tryCatch({
       self$num <- torch::torch_sparse_coo_tensor(indices=indices,
                                             values=values, 
-                                            size=c(max(dataCat$rowId),sum(numericalIndex)))$to_dense()},
-      error= function(e) {
-        browser()
-      })
+                                            size=c(self$target$shape,sum(numericalIndex)))$to_dense()
     }  
   },
   

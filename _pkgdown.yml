@@ -27,7 +27,7 @@ navbar:
       href: articles/Installing.html
     github:
       icon: fa-github fa-lg
-      href: https://github.com/OHDSI/PatientLevelPrediction
+      href: https://github.com/OHDSI/DeepPatientLevelPrediction
     hades:
       text: hadesLogo
       href: https://ohdsi.github.io/Hades
