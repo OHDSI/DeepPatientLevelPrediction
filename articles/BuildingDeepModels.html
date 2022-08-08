@@ -163,20 +163,40 @@
 <p>A multilayer perceptron (MLP) model is a directed graph consisting of an input layer, one or more hidden layers and an output layer. The model takes in the input feature values and feeds these forward through the graph to determine the output class. A process known as ‘backpropogation’ is used to train the model. Backpropogation requires labelled data and involves iteratively calculating the error between the MLP model’s predictions and ground truth to learn how to adjust the model.</p>
 </div>
 <div class="section level4">
-<h4 id="examples">Examples<a class="anchor" aria-label="anchor" href="#examples"></a>
+<h4 id="example">Example<a class="anchor" aria-label="anchor" href="#example"></a>
 </h4>
+<div class="section level5">
+<h5 id="set-fuction">Set Fuction<a class="anchor" aria-label="anchor" href="#set-fuction"></a>
+</h5>
 <p>To use the package to fit a MLP model you can use the <code><a href="../reference/setDeepNNTorch.html">setDeepNNTorch()</a></code> function to specify the hyper-parameter settings for the MLP.</p>
+</div>
+<div class="section level5">
+<h5 id="inputs">Inputs<a class="anchor" aria-label="anchor" href="#inputs"></a>
+</h5>
+<p>The <code>units</code> input defines the network topology via the number of nodes per layer in the networks hidden layers. A list of different topologies can be investigated <code>list(c(10,63), 128)</code> means two different topologies will be fit, the first has two hidden layers with 10 nodes in the first hidden layer and 63 in the second hidden layer. The second just has one hidden layer with 128 nodes.</p>
+<p>The <code>layer_dropout</code> input specifies the probability that a layer randomly sets input units to 0 at each step during training time. A value of <code>0.2</code> means that 20% of the time the layer input units will be set to 0. This is used to reduce overfitting.</p>
+<p>The <code>lr</code> input is the learning rate which is a hyperparameter that controls how much to change the model in response to the estimated error each time the model weights are updated. The smaller the <code>lr</code> the longer it will take to fit the model and the model weights may get stuck, but if the <code>lr</code> is too large, the weights may sub-optimally converge too fast.</p>
+<p>The <code>decay</code> input corresponds to the weight decay in the objective function. During model fitting the aim is to minimize the objective function. The objective function is made up of the prediction error (the difference between the prediction vs the truth) plus the square of the weights multiplied by the weight decay. The larger the weight decay, the more you penalize having large weights. If you set the weight decay too large, the model will never fit well enough, if you set it too low, you need to be careful of overfitting (so try to stop model fitting earlier).</p>
+<p>The <code>outcome_weight</code> specifies whether to add more weight to misclassifying one class (e.g., with outcome during TAR) vs the other (e.g., without outcome during TAR). This can be useful if there is imbalance between the classes (e.g., the outcome rarely occurs during TAR).</p>
+<p>The <code>batch_size</code> corresponds to the number of data points (patients) used per iteration to estimate the network error during model fitting.</p>
+<p>The <code>epochs</code> corresponds to how many time to run through the entire training data while fitting the model.</p>
+<p>The <code>seed</code> lets the user reproduce the same network given the same training data and hyper-parameter settings if they use the same seed.</p>
+</div>
+<div class="section level5">
+<h5 id="example-code">Example Code<a class="anchor" aria-label="anchor" href="#example-code"></a>
+</h5>
+<p>For example, the following code will try two different network topologies and pick the topology that obtains the greatest AUROC via cross validation in the training data and then fit the model with that topology using all the training data. The standard output of <code>runPlp()</code> will be returned - this contains the MLP model along with the performance details and settings.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co">#singleLayerNN(inputN = 10, layer1 = 100, outputN = 2, layer_dropout = 0.1)</span></span>
 <span><span class="va">deepset</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/setDeepNNTorch.html">setDeepNNTorch</a></span><span class="op">(</span></span>
-<span>  units<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">10</span>,<span class="fl">63</span><span class="op">)</span>, <span class="fl">128</span><span class="op">)</span>, </span>
-<span>  layer_dropout<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.2</span><span class="op">)</span>,</span>
-<span>  lr <span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1e-4</span><span class="op">)</span>, </span>
-<span>  decay<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1e-5</span><span class="op">)</span>, </span>
+<span>  units <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">10</span>,<span class="fl">63</span><span class="op">)</span>, <span class="fl">128</span><span class="op">)</span>, </span>
+<span>  layer_dropout <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.2</span><span class="op">)</span>,</span>
+<span>  lr <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1e-4</span><span class="op">)</span>, </span>
+<span>  decay <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1e-5</span><span class="op">)</span>, </span>
 <span>  outcome_weight <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1.0</span><span class="op">)</span>, </span>
 <span>  batch_size <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">100</span><span class="op">)</span>, </span>
-<span>  epochs<span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">5</span><span class="op">)</span>,  </span>
-<span>  seed<span class="op">=</span><span class="cn">NULL</span>  </span>
+<span>  epochs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">5</span><span class="op">)</span>,  </span>
+<span>  seed <span class="op">=</span> <span class="fl">12</span>  </span>
 <span>  <span class="op">)</span></span>
 <span></span>
 <span><span class="va">mlpResult</span> <span class="op">&lt;-</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/runPlp.html" class="external-link">runPlp</a></span><span class="op">(</span></span>
@@ -202,6 +222,7 @@
 <span>  <span class="op">)</span></span></code></pre></div>
 </div>
 </div>
+</div>
 <div class="section level3">
 <h3 id="resnet">ResNet<a class="anchor" aria-label="anchor" href="#resnet"></a>
 </h3>
@@ -210,7 +231,7 @@
 </h4>
 </div>
 <div class="section level4">
-<h4 id="examples-1">Examples<a class="anchor" aria-label="anchor" href="#examples-1"></a>
+<h4 id="examples">Examples<a class="anchor" aria-label="anchor" href="#examples"></a>
 </h4>
 </div>
 </div>
@@ -222,7 +243,7 @@
 </h4>
 </div>
 <div class="section level4">
-<h4 id="examples-2">Examples<a class="anchor" aria-label="anchor" href="#examples-2"></a>
+<h4 id="examples-1">Examples<a class="anchor" aria-label="anchor" href="#examples-1"></a>
 </h4>
 </div>
 </div>
@@ -234,7 +255,7 @@
 </h4>
 </div>
 <div class="section level4">
-<h4 id="examples-3">Examples<a class="anchor" aria-label="anchor" href="#examples-3"></a>
+<h4 id="examples-2">Examples<a class="anchor" aria-label="anchor" href="#examples-2"></a>
 </h4>
 </div>
 </div>
