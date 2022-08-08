@@ -123,23 +123,23 @@ modelSettings <- setResNet(numLayers = 2,
                            epochs = 3)
 
 plpResults <- PatientLevelPrediction::runPlp(plpData = plpData,
-                                             outcomeId = 3,
-                                             modelSettings = modelSettings,
-                                             analysisId = 'Test',
-                                             analysisName = 'Testing DeepPlp',
-                                             populationSettings = populationSettings,
-                                             splitSettings = createDefaultSplitSetting(),
-                                             sampleSettings = createSampleSettings(),  # none
-                                             featureEngineeringSettings = createFeatureEngineeringSettings(), # none
-                                             preprocessSettings = createPreprocessSettings(),
-                                             logSettings = createLogSettings(),
-                                             executeSettings = createExecuteSettings(runSplitData = T,
-                                                                                     runSampleData = F,
-                                                                                     runfeatureEngineering = F,
-                                                                                     runPreprocessData = T,
-                                                                                     runModelDevelopment = T,
-                                                                                     runCovariateSummary = T
-                                                                                     ))
+               outcomeId = 3,
+               modelSettings = modelSettings,
+               analysisId = 'Test',
+               analysisName = 'Testing DeepPlp',
+               populationSettings = populationSettings,
+               splitSettings = createDefaultSplitSetting(),
+               sampleSettings = createSampleSettings(), 
+               featureEngineeringSettings = createFeatureEngineeringSettings(), 
+               preprocessSettings = createPreprocessSettings(),
+               logSettings = createLogSettings(),
+               executeSettings = createExecuteSettings(runSplitData = T,
+                                                      runSampleData = F,
+                                                      runfeatureEngineering = F,
+                                                      runPreprocessData = T,
+                                                      runModelDevelopment = T,
+                                                      runCovariateSummary = T
+                                                      ))
 ```
 
 # Acknowledgments
