@@ -90,22 +90,46 @@ We implemented the following non-temporal (2D data matrix) architectures:
 ### Overall concept
 A multilayer perceptron (MLP) model is a directed graph consisting of an input layer, one or more hidden layers and an output layer.  The model takes in the input feature values and feeds these forward through the graph to determine the output class.  A process known as 'backpropogation' is used to train the model.  Backpropogation requires labelled data and involves iteratively calculating the error between the MLP model's predictions and ground truth to learn how to adjust the model.
 
-### Examples
+### Example
+
+#### Set Fuction
 
 To use the package to fit a MLP model you can use the `setDeepNNTorch()` function to specify the hyper-parameter settings for the MLP.
+
+#### Inputs
+
+The `units` input defines the network topology via the number of nodes per layer in the networks hidden layers.  A list of different topologies can be investigated `list(c(10,63), 128)` means two different topologies will be fit, the first has two hidden layers with 10 nodes in the first hidden layer and 63 in the second hidden layer.  The second just has one hidden layer with 128 nodes.
+
+The `layer_dropout` input specifies the probability that a layer randomly sets input units to 0 at each step during training time.  A value of `0.2` means that 20\% of the time the layer input units will be set to 0.  This is used to reduce overfitting.
+
+The `lr` input is the learning rate which is a hyperparameter that controls how much to change the model in response to the estimated error each time the model weights are updated.  The smaller the `lr` the longer it will take to fit the model and the model weights may get stuck, but if the `lr` is too large, the weights may sub-optimally converge too fast.
+
+The `decay` input corresponds to the weight decay in the objective function.  During model fitting the aim is to minimize the objective function.  The objective function is made up of the prediction error (the difference between the prediction vs the truth) plus the square of the weights multiplied by the weight decay.  The larger the weight decay, the more you penalize having large weights.  If you set the weight decay too large, the model will never fit well enough, if you set it too low, you need to be careful of overfitting (so try to stop model fitting earlier).
+
+The `outcome_weight` specifies whether to add more weight to misclassifying one class (e.g., with outcome during TAR) vs the other (e.g., without outcome during TAR).  This can be useful if there is imbalance between the classes (e.g., the outcome rarely occurs during TAR).
+
+The `batch_size` corresponds to the number of data points (patients) used per iteration to estimate the network error during model fitting.
+
+The `epochs` corresponds to how many time to run through the entire training data while fitting the model.
+
+The `seed` lets the user reproduce the same network given the same training data and hyper-parameter settings if they use the same seed.
+
+#### Example Code
+
+For example, the following code will try two different network topologies and pick the topology that obtains the greatest AUROC via cross validation in the training data and then fit the model with that topology using all the training data.  The standard output of `runPlp()` will be returned - this contains the MLP model along with the performance details and settings.
 
 ```{r, eval=FALSE}
 
 #singleLayerNN(inputN = 10, layer1 = 100, outputN = 2, layer_dropout = 0.1)
 deepset <- setDeepNNTorch(
-  units=list(c(10,63), 128), 
-  layer_dropout=c(0.2),
-  lr =c(1e-4), 
-  decay=c(1e-5), 
+  units = list(c(10,63), 128), 
+  layer_dropout = c(0.2),
+  lr = c(1e-4), 
+  decay = c(1e-5), 
   outcome_weight = c(1.0), 
   batch_size = c(100), 
-  epochs= c(5),  
-  seed=NULL  
+  epochs = c(5),  
+  seed = 12  
   )
 
 mlpResult <- PatientLevelPrediction::runPlp(
