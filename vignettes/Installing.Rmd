@@ -44,7 +44,7 @@ This vignette describes how you need to install the Observational Health Data Sc
 
 Under Windows the OHDSI Deep Patient Level Prediction (DeepPLP) package requires installing:
 
--   R (<https://cran.cnr.berkeley.edu/> ) - (R \>= 3.5.0, but latest is recommended)
+-   R (<https://cran.cnr.berkeley.edu/> ) - (R \>= 3.3.0, but latest is recommended)
 -   Rstudio (<https://www.rstudio.com/> )
 -   Java (<http://www.java.com> )
 -   RTools (<https://cran.r-project.org/bin/windows/Rtools/>)
@@ -53,7 +53,7 @@ Under Windows the OHDSI Deep Patient Level Prediction (DeepPLP) package requires
 
 Under Mac and Linux the OHDSI deepPLP package requires installing:
 
--   R (<https://cran.cnr.berkeley.edu/> ) - (R \>= 3.5.0, but latest is recommended)
+-   R (<https://cran.cnr.berkeley.edu/> ) - (R \>= 3.3.0, but latest is recommended)
 -   Rstudio (<https://www.rstudio.com/> )
 -   Java (<http://www.java.com> )
 -   Xcode command line tools(run in terminal: xcode-select --install) [MAC USERS ONLY]
@@ -85,22 +85,63 @@ library(torch)
 
 This will download the required libtorch and lantern binaries for your operating system and copy them to the required locations for torch to use.
 
-If you are using DeepPLP in an offline environment the function `torch::install_torch_from_file()` can be used. See [torch installation guide](https://torch.mlverse.org/docs/articles/installation.html) for more detailed instructions.
+If you are using DeepPLP in an offline environment the function `torch::install_torch_from_file()` can be used. This will first require to download and move the correct binaries to the offline environment. See [torch installation guide](https://torch.mlverse.org/docs/articles/installation.html) for more detailed instructions.
 
 When installing make sure to close any other Rstudio sessions that are using `DeepPatientLevelPrediction` or any dependency. Keeping Rstudio sessions open can cause locks that prevent the package installing.
 
 # Testing Installation
 
--add simple test code
+```{r, echo = TRUE, message = FALSE, warning = FALSE,tidy=FALSE,eval=FALSE}
+library(PatientLevelPrediction)
+library(DeepPatientLevelPrediction)
+
+data(plpDataSimulationProfile)
+sampleSize <- 1e4
+plpData <- simulatePlpData(
+  plpDataSimulationProfile,
+  n = sampleSize 
+)
+
+populationSettings <- PatientLevelPrediction::createStudyPopulationSettings(
+                                                          requireTimeAtRisk = F, 
+                                                          riskWindowStart = 1, 
+                                                          riskWindowEnd = 365)
+# a very simple resnet
+modelSettings <- setResNet(numLayers = 2, 
+                           sizeHidden = 64, 
+                           hiddenFactor = 1,
+                           residualDropout = 0, 
+                           hiddenDropout = 0.2, 
+                           normalization = 'BatchNorm',
+                           activation = 'RelU', 
+                           sizeEmbedding = 64, 
+                           weightDecay = 1e-6,
+                           learningRate = 3e-4, 
+                           seed = 42, 
+                           hyperParamSearch = 'random',
+                           randomSample = 1, device = 'cpu',batchSize = 128,
+                           epochs = 3)
+
+plpResults <- PatientLevelPrediction::runPlp(plpData = plpData,
+                                             outcomeId = 3,
+                                             modelSettings = modelSettings,
+                                             analysisId = 'Test',
+                                             analysisName = 'Testing DeepPlp',
+                                             populationSettings = populationSettings,
+                                             splitSettings = createDefaultSplitSetting(),
+                                             sampleSettings = createSampleSettings(),  # none
+                                             featureEngineeringSettings = createFeatureEngineeringSettings(), # none
+                                             preprocessSettings = createPreprocessSettings(),
+                                             logSettings = createLogSettings(),
+                                             executeSettings = createExecuteSettings(runSplitData = T,
+                                                                                     runSampleData = F,
+                                                                                     runfeatureEngineering = F,
+                                                                                     runPreprocessData = T,
+                                                                                     runModelDevelopment = T,
+                                                                                     runCovariateSummary = T
+                                                                                     ))
+```
 
 # Acknowledgments
 
-Considerable work has been dedicated to provide the `DeepPatientLevelPrediction` package.
-
-```{r tidy=TRUE,eval=TRUE}
-citation("PatientLevelPrediction")
-```
-
-**Please reference this paper if you use the DeepPLP Package in your work:**
-
-[Reps JM, Schuemie MJ, Suchard MA, Ryan PB, Rijnbeek PR. Design and implementation of a standardized framework to generate and evaluate patient-level prediction models using observational healthcare data. J Am Med Inform Assoc. 2018;25(8):969-975.](http://dx.doi.org/10.1093/jamia/ocy032)
+Considerable work has been dedicated to provide the `DeepPatientLevelPrediction` package. 
