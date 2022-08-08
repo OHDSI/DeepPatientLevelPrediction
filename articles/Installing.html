@@ -195,23 +195,23 @@
 <span>                           epochs <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">plpResults</span> <span class="op">&lt;-</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/runPlp.html" class="external-link">runPlp</a></span><span class="op">(</span>plpData <span class="op">=</span> <span class="va">plpData</span>,</span>
-<span>                                             outcomeId <span class="op">=</span> <span class="fl">3</span>,</span>
-<span>                                             modelSettings <span class="op">=</span> <span class="va">modelSettings</span>,</span>
-<span>                                             analysisId <span class="op">=</span> <span class="st">'Test'</span>,</span>
-<span>                                             analysisName <span class="op">=</span> <span class="st">'Testing DeepPlp'</span>,</span>
-<span>                                             populationSettings <span class="op">=</span> <span class="va">populationSettings</span>,</span>
-<span>                                             splitSettings <span class="op">=</span> <span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createDefaultSplitSetting.html" class="external-link">createDefaultSplitSetting</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>                                             sampleSettings <span class="op">=</span> <span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createSampleSettings.html" class="external-link">createSampleSettings</a></span><span class="op">(</span><span class="op">)</span>,  <span class="co"># none</span></span>
-<span>                                             featureEngineeringSettings <span class="op">=</span> <span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createFeatureEngineeringSettings.html" class="external-link">createFeatureEngineeringSettings</a></span><span class="op">(</span><span class="op">)</span>, <span class="co"># none</span></span>
-<span>                                             preprocessSettings <span class="op">=</span> <span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createPreprocessSettings.html" class="external-link">createPreprocessSettings</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>                                             logSettings <span class="op">=</span> <span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createLogSettings.html" class="external-link">createLogSettings</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>                                             executeSettings <span class="op">=</span> <span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createExecuteSettings.html" class="external-link">createExecuteSettings</a></span><span class="op">(</span>runSplitData <span class="op">=</span> <span class="cn">T</span>,</span>
-<span>                                                                                     runSampleData <span class="op">=</span> <span class="cn">F</span>,</span>
-<span>                                                                                     runfeatureEngineering <span class="op">=</span> <span class="cn">F</span>,</span>
-<span>                                                                                     runPreprocessData <span class="op">=</span> <span class="cn">T</span>,</span>
-<span>                                                                                     runModelDevelopment <span class="op">=</span> <span class="cn">T</span>,</span>
-<span>                                                                                     runCovariateSummary <span class="op">=</span> <span class="cn">T</span></span>
-<span>                                                                                     <span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<span>               outcomeId <span class="op">=</span> <span class="fl">3</span>,</span>
+<span>               modelSettings <span class="op">=</span> <span class="va">modelSettings</span>,</span>
+<span>               analysisId <span class="op">=</span> <span class="st">'Test'</span>,</span>
+<span>               analysisName <span class="op">=</span> <span class="st">'Testing DeepPlp'</span>,</span>
+<span>               populationSettings <span class="op">=</span> <span class="va">populationSettings</span>,</span>
+<span>               splitSettings <span class="op">=</span> <span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createDefaultSplitSetting.html" class="external-link">createDefaultSplitSetting</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>               sampleSettings <span class="op">=</span> <span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createSampleSettings.html" class="external-link">createSampleSettings</a></span><span class="op">(</span><span class="op">)</span>, </span>
+<span>               featureEngineeringSettings <span class="op">=</span> <span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createFeatureEngineeringSettings.html" class="external-link">createFeatureEngineeringSettings</a></span><span class="op">(</span><span class="op">)</span>, </span>
+<span>               preprocessSettings <span class="op">=</span> <span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createPreprocessSettings.html" class="external-link">createPreprocessSettings</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>               logSettings <span class="op">=</span> <span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createLogSettings.html" class="external-link">createLogSettings</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>               executeSettings <span class="op">=</span> <span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createExecuteSettings.html" class="external-link">createExecuteSettings</a></span><span class="op">(</span>runSplitData <span class="op">=</span> <span class="cn">T</span>,</span>
+<span>                                                      runSampleData <span class="op">=</span> <span class="cn">F</span>,</span>
+<span>                                                      runfeatureEngineering <span class="op">=</span> <span class="cn">F</span>,</span>
+<span>                                                      runPreprocessData <span class="op">=</span> <span class="cn">T</span>,</span>
+<span>                                                      runModelDevelopment <span class="op">=</span> <span class="cn">T</span>,</span>
+<span>                                                      runCovariateSummary <span class="op">=</span> <span class="cn">T</span></span>
+<span>                                                      <span class="op">)</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="acknowledgments">Acknowledgments<a class="anchor" aria-label="anchor" href="#acknowledgments"></a>
