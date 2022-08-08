@@ -93,7 +93,7 @@
       <h1 data-toc-skip>DeepPatientLevelPrediction Installation Guide</h1>
                         <h4 data-toc-skip class="author">Egill Fridgeirsson</h4>
             
-            <h4 data-toc-skip class="date">2022-07-25</h4>
+            <h4 data-toc-skip class="date">2022-08-08</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/OHDSI/DeepPatientLevelPrediction/blob/HEAD/vignettes/Installing.Rmd" class="external-link"><code>vignettes/Installing.Rmd</code></a></small>
       <div class="hidden name"><code>Installing.Rmd</code></div>
@@ -119,7 +119,7 @@
 </h3>
 <p>Under Windows the OHDSI Deep Patient Level Prediction (DeepPLP) package requires installing:</p>
 <ul>
-<li>R (<a href="https://cran.cnr.berkeley.edu/" class="external-link uri">https://cran.cnr.berkeley.edu/</a> ) - (R &gt;= 3.5.0, but latest is recommended)</li>
+<li>R (<a href="https://cran.cnr.berkeley.edu/" class="external-link uri">https://cran.cnr.berkeley.edu/</a> ) - (R &gt;= 3.3.0, but latest is recommended)</li>
 <li>Rstudio (<a href="https://www.rstudio.com/" class="external-link uri">https://www.rstudio.com/</a> )</li>
 <li>Java (<a href="http://www.java.com" class="external-link uri">http://www.java.com</a> )</li>
 <li>RTools (<a href="https://cran.r-project.org/bin/windows/Rtools/" class="external-link uri">https://cran.r-project.org/bin/windows/Rtools/</a>)</li>
@@ -130,7 +130,7 @@
 </h3>
 <p>Under Mac and Linux the OHDSI deepPLP package requires installing:</p>
 <ul>
-<li>R (<a href="https://cran.cnr.berkeley.edu/" class="external-link uri">https://cran.cnr.berkeley.edu/</a> ) - (R &gt;= 3.5.0, but latest is recommended)</li>
+<li>R (<a href="https://cran.cnr.berkeley.edu/" class="external-link uri">https://cran.cnr.berkeley.edu/</a> ) - (R &gt;= 3.3.0, but latest is recommended)</li>
 <li>Rstudio (<a href="https://www.rstudio.com/" class="external-link uri">https://www.rstudio.com/</a> )</li>
 <li>Java (<a href="http://www.java.com" class="external-link uri">http://www.java.com</a> )</li>
 <li>Xcode command line tools(run in terminal: xcode-select –install) [MAC USERS ONLY]</li>
@@ -156,45 +156,67 @@
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://torch.mlverse.org/docs" class="external-link">torch</a></span><span class="op">)</span></span></code></pre></div>
 <p>This will download the required libtorch and lantern binaries for your operating system and copy them to the required locations for torch to use.</p>
-<p>If you are using DeepPLP in an offline environment the function <code><a href="https://rdrr.io/pkg/torch/man/install_torch_from_file.html" class="external-link">torch::install_torch_from_file()</a></code> can be used. See <a href="https://torch.mlverse.org/docs/articles/installation.html" class="external-link">torch installation guide</a> for more detailed instructions.</p>
+<p>If you are using DeepPLP in an offline environment the function <code><a href="https://rdrr.io/pkg/torch/man/install_torch_from_file.html" class="external-link">torch::install_torch_from_file()</a></code> can be used. This will first require to download and move the correct binaries to the offline environment. See <a href="https://torch.mlverse.org/docs/articles/installation.html" class="external-link">torch installation guide</a> for more detailed instructions.</p>
 <p>When installing make sure to close any other Rstudio sessions that are using <code>DeepPatientLevelPrediction</code> or any dependency. Keeping Rstudio sessions open can cause locks that prevent the package installing.</p>
 </div>
 </div>
 <div class="section level2">
 <h2 id="testing-installation">Testing Installation<a class="anchor" aria-label="anchor" href="#testing-installation"></a>
 </h2>
-<p>-add simple test code</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ohdsi.github.io/PatientLevelPrediction" class="external-link">PatientLevelPrediction</a></span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ohdsi.github.io/PatientLevelPrediction" class="external-link">DeepPatientLevelPrediction</a></span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">plpDataSimulationProfile</span><span class="op">)</span></span>
+<span><span class="va">sampleSize</span> <span class="op">&lt;-</span> <span class="fl">1e4</span></span>
+<span><span class="va">plpData</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/simulatePlpData.html" class="external-link">simulatePlpData</a></span><span class="op">(</span></span>
+<span>  <span class="va">plpDataSimulationProfile</span>,</span>
+<span>  n <span class="op">=</span> <span class="va">sampleSize</span> </span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">populationSettings</span> <span class="op">&lt;-</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createStudyPopulationSettings.html" class="external-link">createStudyPopulationSettings</a></span><span class="op">(</span></span>
+<span>                                                          requireTimeAtRisk <span class="op">=</span> <span class="cn">F</span>, </span>
+<span>                                                          riskWindowStart <span class="op">=</span> <span class="fl">1</span>, </span>
+<span>                                                          riskWindowEnd <span class="op">=</span> <span class="fl">365</span><span class="op">)</span></span>
+<span><span class="co"># a very simple resnet</span></span>
+<span><span class="va">modelSettings</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/setResNet.html">setResNet</a></span><span class="op">(</span>numLayers <span class="op">=</span> <span class="fl">2</span>, </span>
+<span>                           sizeHidden <span class="op">=</span> <span class="fl">64</span>, </span>
+<span>                           hiddenFactor <span class="op">=</span> <span class="fl">1</span>,</span>
+<span>                           residualDropout <span class="op">=</span> <span class="fl">0</span>, </span>
+<span>                           hiddenDropout <span class="op">=</span> <span class="fl">0.2</span>, </span>
+<span>                           normalization <span class="op">=</span> <span class="st">'BatchNorm'</span>,</span>
+<span>                           activation <span class="op">=</span> <span class="st">'RelU'</span>, </span>
+<span>                           sizeEmbedding <span class="op">=</span> <span class="fl">64</span>, </span>
+<span>                           weightDecay <span class="op">=</span> <span class="fl">1e-6</span>,</span>
+<span>                           learningRate <span class="op">=</span> <span class="fl">3e-4</span>, </span>
+<span>                           seed <span class="op">=</span> <span class="fl">42</span>, </span>
+<span>                           hyperParamSearch <span class="op">=</span> <span class="st">'random'</span>,</span>
+<span>                           randomSample <span class="op">=</span> <span class="fl">1</span>, device <span class="op">=</span> <span class="st">'cpu'</span>,batchSize <span class="op">=</span> <span class="fl">128</span>,</span>
+<span>                           epochs <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">plpResults</span> <span class="op">&lt;-</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/runPlp.html" class="external-link">runPlp</a></span><span class="op">(</span>plpData <span class="op">=</span> <span class="va">plpData</span>,</span>
+<span>                                             outcomeId <span class="op">=</span> <span class="fl">3</span>,</span>
+<span>                                             modelSettings <span class="op">=</span> <span class="va">modelSettings</span>,</span>
+<span>                                             analysisId <span class="op">=</span> <span class="st">'Test'</span>,</span>
+<span>                                             analysisName <span class="op">=</span> <span class="st">'Testing DeepPlp'</span>,</span>
+<span>                                             populationSettings <span class="op">=</span> <span class="va">populationSettings</span>,</span>
+<span>                                             splitSettings <span class="op">=</span> <span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createDefaultSplitSetting.html" class="external-link">createDefaultSplitSetting</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>                                             sampleSettings <span class="op">=</span> <span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createSampleSettings.html" class="external-link">createSampleSettings</a></span><span class="op">(</span><span class="op">)</span>,  <span class="co"># none</span></span>
+<span>                                             featureEngineeringSettings <span class="op">=</span> <span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createFeatureEngineeringSettings.html" class="external-link">createFeatureEngineeringSettings</a></span><span class="op">(</span><span class="op">)</span>, <span class="co"># none</span></span>
+<span>                                             preprocessSettings <span class="op">=</span> <span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createPreprocessSettings.html" class="external-link">createPreprocessSettings</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>                                             logSettings <span class="op">=</span> <span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createLogSettings.html" class="external-link">createLogSettings</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>                                             executeSettings <span class="op">=</span> <span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createExecuteSettings.html" class="external-link">createExecuteSettings</a></span><span class="op">(</span>runSplitData <span class="op">=</span> <span class="cn">T</span>,</span>
+<span>                                                                                     runSampleData <span class="op">=</span> <span class="cn">F</span>,</span>
+<span>                                                                                     runfeatureEngineering <span class="op">=</span> <span class="cn">F</span>,</span>
+<span>                                                                                     runPreprocessData <span class="op">=</span> <span class="cn">T</span>,</span>
+<span>                                                                                     runModelDevelopment <span class="op">=</span> <span class="cn">T</span>,</span>
+<span>                                                                                     runCovariateSummary <span class="op">=</span> <span class="cn">T</span></span>
+<span>                                                                                     <span class="op">)</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="acknowledgments">Acknowledgments<a class="anchor" aria-label="anchor" href="#acknowledgments"></a>
 </h2>
 <p>Considerable work has been dedicated to provide the <code>DeepPatientLevelPrediction</code> package.</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/citation.html" class="external-link">citation</a></span><span class="op">(</span><span class="st">"PatientLevelPrediction"</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## </span></span>
-<span><span class="co">## To cite PatientLevelPrediction in publications use:</span></span>
-<span><span class="co">## </span></span>
-<span><span class="co">##   Reps JM, Schuemie MJ, Suchard MA, Ryan PB, Rijnbeek P (2018). "Design</span></span>
-<span><span class="co">##   and implementation of a standardized framework to generate and</span></span>
-<span><span class="co">##   evaluate patient-level prediction models using observational</span></span>
-<span><span class="co">##   healthcare data." _Journal of the American Medical Informatics</span></span>
-<span><span class="co">##   Association_, *25*(8), 969-975.</span></span>
-<span><span class="co">##   &lt;https://doi.org/10.1093/jamia/ocy032&gt;.</span></span>
-<span><span class="co">## </span></span>
-<span><span class="co">## A BibTeX entry for LaTeX users is</span></span>
-<span><span class="co">## </span></span>
-<span><span class="co">##   @Article{,</span></span>
-<span><span class="co">##     author = {J. M. Reps and M. J. Schuemie and M. A. Suchard and P. B. Ryan and P. Rijnbeek},</span></span>
-<span><span class="co">##     title = {Design and implementation of a standardized framework to generate and evaluate patient-level prediction models using observational healthcare data},</span></span>
-<span><span class="co">##     journal = {Journal of the American Medical Informatics Association},</span></span>
-<span><span class="co">##     volume = {25},</span></span>
-<span><span class="co">##     number = {8},</span></span>
-<span><span class="co">##     pages = {969-975},</span></span>
-<span><span class="co">##     year = {2018},</span></span>
-<span><span class="co">##     url = {https://doi.org/10.1093/jamia/ocy032},</span></span>
-<span><span class="co">##   }</span></span></code></pre>
-<p><strong>Please reference this paper if you use the DeepPLP Package in your work:</strong></p>
-<p><a href="http://dx.doi.org/10.1093/jamia/ocy032" class="external-link">Reps JM, Schuemie MJ, Suchard MA, Ryan PB, Rijnbeek PR. Design and implementation of a standardized framework to generate and evaluate patient-level prediction models using observational healthcare data. J Am Med Inform Assoc. 2018;25(8):969-975.</a></p>
 </div>
   </div>
 
