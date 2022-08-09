@@ -56,7 +56,7 @@ Note that training Deep Learning models is computationally intensive, our implem
 
 ## Requirements
 
-Full details about the package requirements and instructions on installing the package can be found [here](addlink).
+Full details about the package requirements and instructions on installing the package can be found [here](https://ohdsi.github.io/DeepPatientLevelPrediction/articles/Installing.html).
 
 ## Integration with PatientLevelPrediction
 
@@ -160,7 +160,70 @@ mlpResult <- PatientLevelPrediction::runPlp(
 ## ResNet 
 
 ### Overall concept
-### Examples
+
+Deep learning models are often trained via a process known as gradient descent during backpropogation.  During this process the network weights are updated based on the gradient of the error function for the current weights. However, as the number of layers in the network increase, there is a greater chance of experiencing an issue known as the vanishing or exploding gradient during this process. The vanishing or exploding gradient is when the gradient goes to 0 or infinity, which negatively impacts the model fitting.  
+
+The residual network (ResNet) was introduced to address the vanishing or exploding gradient issue.  It works by adding connections between non-adjacent layers, termed a 'skip connection'.  Using some form of regularization with these 'skip connections' enables the network to ignore any problematic layer that resulted due to gradient issues.
+
+### Example
+
+#### Set Fuction
+
+To use the package to fit a ResNet model you can use the `setResNet()` function to specify the hyper-parameter settings for the network.
+
+#### Inputs
+
+[add info about each input here]
+
+#### Example Code
+
+For example, the following code will ...
+
+```{r, eval=FALSE}
+
+resset <- setResNet(
+  numLayers = c(2), 
+  sizeHidden = c(32),
+  hiddenFactor = c(2),
+  residualDropout = c(0.1), 
+  hiddenDropout = c(0.1),
+  normalization = c('BatchNorm'), 
+  activation = c('RelU'),
+  sizeEmbedding = c(32), 
+  weightDecay = c(1e-6),
+  learningRate = c(3e-4), 
+  seed = 42, 
+  hyperParamSearch = 'random',
+  randomSample = 1, 
+  #device='cuda:0', 
+  batchSize = 128, 
+  epochs = 3
+)
+
+resResult <- PatientLevelPrediction::runPlp(
+    plpData = plpData, 
+    outcomeId = 3, 
+    modelSettings = resset,
+    analysisId = 'ResNet', 
+    analysisName = 'Testing ResNet', 
+    populationSettings = populationSet, 
+    splitSettings = PatientLevelPrediction::createDefaultSplitSetting(), 
+    sampleSettings = PatientLevelPrediction::createSampleSettings(),  # none 
+    featureEngineeringSettings = PatientLevelPrediction::createFeatureEngineeringSettings(), # none 
+    preprocessSettings = PatientLevelPrediction::createPreprocessSettings(), 
+    executeSettings = PatientLevelPrediction::createExecuteSettings(
+      runSplitData = T, 
+      runSampleData = F, 
+      runfeatureEngineering = F, 
+      runPreprocessData = T, 
+      runModelDevelopment = T, 
+      runCovariateSummary = F
+    ), 
+    saveDirectory = file.path(testLoc, 'ResNet')
+  )
+
+```
+
 
 ## TabNet
 
