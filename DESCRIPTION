@@ -32,7 +32,8 @@ Suggests:
     knitr,
     markdown,
     plyr,  
-    testthat
+    testthat,
+    Cyclops
 Remotes:
     ohdsi/PatientLevelPrediction,
     ohdsi/FeatureExtraction,
