@@ -62,7 +62,7 @@ Dataset <- torch::dataset(
     if (sum(numericalIndex) == 0) {
       self$num <- NULL
     } else  {
-      numericalData <- data %>% filter(columnId %in% !! which(numericalIndex)) %>% collect()
+      numericalData <- data %>% filter(columnId %in% !! which(numericalIndex)) %>% dplyr::collect()
       numericalData <-numericalData %>% group_by(columnId) %>% mutate(newId = dplyr::cur_group_id())
       indices <- torch::torch_tensor(cbind(numericalData$rowId, numericalData$newId), dtype=torch::torch_long())$t_()
       values <- torch::torch_tensor(numericalData$covariateValue,dtype=torch::torch_float32())

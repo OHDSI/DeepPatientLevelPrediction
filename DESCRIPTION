@@ -36,8 +36,7 @@ Suggests:
 Remotes:
     ohdsi/PatientLevelPrediction,
     ohdsi/FeatureExtraction,
-    ohdsi/Eunomia,
-    ohdsi/Cyclops
+    ohdsi/Eunomia
 RoxygenNote: 7.2.0
 Encoding: UTF-8
 Config/testthat/edition: 3
