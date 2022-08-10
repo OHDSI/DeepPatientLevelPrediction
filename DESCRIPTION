@@ -25,15 +25,15 @@ Imports:
     ParallelLogger (>= 2.0.0),
     PatientLevelPrediction,
     rlang,
-    torch (>= 0.8.0)
+    torch (>= 0.8.0),
+    Cyclops
 Suggests:
     devtools,
     Eunomia,
     knitr,
     markdown,
     plyr,  
-    testthat,
-    Cyclops
+    testthat
 Remotes:
     ohdsi/PatientLevelPrediction,
     ohdsi/FeatureExtraction,
