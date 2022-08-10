@@ -93,7 +93,7 @@
       <h1 data-toc-skip>Building Deep Learning Models</h1>
                         <h4 data-toc-skip class="author">Jenna Reps, Egill Fridgeirsson, Chungsoo Kim, Henrik John, Seng Chan You, Xiaoyong Pan</h4>
             
-            <h4 data-toc-skip class="date">2022-08-08</h4>
+            <h4 data-toc-skip class="date">2022-08-10</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/OHDSI/DeepPatientLevelPrediction/blob/HEAD/vignettes/BuildingDeepModels.Rmd" class="external-link"><code>vignettes/BuildingDeepModels.Rmd</code></a></small>
       <div class="hidden name"><code>BuildingDeepModels.Rmd</code></div>
@@ -127,7 +127,7 @@
 <div class="section level3">
 <h3 id="requirements">Requirements<a class="anchor" aria-label="anchor" href="#requirements"></a>
 </h3>
-<p>Full details about the package requirements and instructions on installing the package can be found <a href="addlink">here</a>.</p>
+<p>Full details about the package requirements and instructions on installing the package can be found <a href="https://ohdsi.github.io/DeepPatientLevelPrediction/articles/Installing.html" class="external-link">here</a>.</p>
 </div>
 <div class="section level3">
 <h3 id="integration-with-patientlevelprediction">Integration with PatientLevelPrediction<a class="anchor" aria-label="anchor" href="#integration-with-patientlevelprediction"></a>
@@ -229,10 +229,68 @@
 <div class="section level4">
 <h4 id="overall-concept-1">Overall concept<a class="anchor" aria-label="anchor" href="#overall-concept-1"></a>
 </h4>
+<p>Deep learning models are often trained via a process known as gradient descent during backpropogation. During this process the network weights are updated based on the gradient of the error function for the current weights. However, as the number of layers in the network increase, there is a greater chance of experiencing an issue known as the vanishing or exploding gradient during this process. The vanishing or exploding gradient is when the gradient goes to 0 or infinity, which negatively impacts the model fitting.</p>
+<p>The residual network (ResNet) was introduced to address the vanishing or exploding gradient issue. It works by adding connections between non-adjacent layers, termed a ‘skip connection’. Using some form of regularization with these ‘skip connections’ enables the network to ignore any problematic layer that resulted due to gradient issues.</p>
 </div>
 <div class="section level4">
-<h4 id="examples">Examples<a class="anchor" aria-label="anchor" href="#examples"></a>
+<h4 id="example-1">Example<a class="anchor" aria-label="anchor" href="#example-1"></a>
 </h4>
+<div class="section level5">
+<h5 id="set-fuction-1">Set Fuction<a class="anchor" aria-label="anchor" href="#set-fuction-1"></a>
+</h5>
+<p>To use the package to fit a ResNet model you can use the <code><a href="../reference/setResNet.html">setResNet()</a></code> function to specify the hyper-parameter settings for the network.</p>
+</div>
+<div class="section level5">
+<h5 id="inputs-1">Inputs<a class="anchor" aria-label="anchor" href="#inputs-1"></a>
+</h5>
+<p>[add info about each input here]</p>
+</div>
+<div class="section level5">
+<h5 id="example-code-1">Example Code<a class="anchor" aria-label="anchor" href="#example-code-1"></a>
+</h5>
+<p>For example, the following code will …</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">resset</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/setResNet.html">setResNet</a></span><span class="op">(</span></span>
+<span>  numLayers <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span>, </span>
+<span>  sizeHidden <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">32</span><span class="op">)</span>,</span>
+<span>  hiddenFactor <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span>,</span>
+<span>  residualDropout <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.1</span><span class="op">)</span>, </span>
+<span>  hiddenDropout <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.1</span><span class="op">)</span>,</span>
+<span>  normalization <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">'BatchNorm'</span><span class="op">)</span>, </span>
+<span>  activation <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">'RelU'</span><span class="op">)</span>,</span>
+<span>  sizeEmbedding <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">32</span><span class="op">)</span>, </span>
+<span>  weightDecay <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1e-6</span><span class="op">)</span>,</span>
+<span>  learningRate <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3e-4</span><span class="op">)</span>, </span>
+<span>  seed <span class="op">=</span> <span class="fl">42</span>, </span>
+<span>  hyperParamSearch <span class="op">=</span> <span class="st">'random'</span>,</span>
+<span>  randomSample <span class="op">=</span> <span class="fl">1</span>, </span>
+<span>  <span class="co">#device='cuda:0', </span></span>
+<span>  batchSize <span class="op">=</span> <span class="fl">128</span>, </span>
+<span>  epochs <span class="op">=</span> <span class="fl">3</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">resResult</span> <span class="op">&lt;-</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/runPlp.html" class="external-link">runPlp</a></span><span class="op">(</span></span>
+<span>    plpData <span class="op">=</span> <span class="va">plpData</span>, </span>
+<span>    outcomeId <span class="op">=</span> <span class="fl">3</span>, </span>
+<span>    modelSettings <span class="op">=</span> <span class="va">resset</span>,</span>
+<span>    analysisId <span class="op">=</span> <span class="st">'ResNet'</span>, </span>
+<span>    analysisName <span class="op">=</span> <span class="st">'Testing ResNet'</span>, </span>
+<span>    populationSettings <span class="op">=</span> <span class="va">populationSet</span>, </span>
+<span>    splitSettings <span class="op">=</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createDefaultSplitSetting.html" class="external-link">createDefaultSplitSetting</a></span><span class="op">(</span><span class="op">)</span>, </span>
+<span>    sampleSettings <span class="op">=</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createSampleSettings.html" class="external-link">createSampleSettings</a></span><span class="op">(</span><span class="op">)</span>,  <span class="co"># none </span></span>
+<span>    featureEngineeringSettings <span class="op">=</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createFeatureEngineeringSettings.html" class="external-link">createFeatureEngineeringSettings</a></span><span class="op">(</span><span class="op">)</span>, <span class="co"># none </span></span>
+<span>    preprocessSettings <span class="op">=</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createPreprocessSettings.html" class="external-link">createPreprocessSettings</a></span><span class="op">(</span><span class="op">)</span>, </span>
+<span>    executeSettings <span class="op">=</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createExecuteSettings.html" class="external-link">createExecuteSettings</a></span><span class="op">(</span></span>
+<span>      runSplitData <span class="op">=</span> <span class="cn">T</span>, </span>
+<span>      runSampleData <span class="op">=</span> <span class="cn">F</span>, </span>
+<span>      runfeatureEngineering <span class="op">=</span> <span class="cn">F</span>, </span>
+<span>      runPreprocessData <span class="op">=</span> <span class="cn">T</span>, </span>
+<span>      runModelDevelopment <span class="op">=</span> <span class="cn">T</span>, </span>
+<span>      runCovariateSummary <span class="op">=</span> <span class="cn">F</span></span>
+<span>    <span class="op">)</span>, </span>
+<span>    saveDirectory <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">testLoc</span>, <span class="st">'ResNet'</span><span class="op">)</span></span>
+<span>  <span class="op">)</span></span></code></pre></div>
+</div>
 </div>
 </div>
 <div class="section level3">
@@ -243,7 +301,7 @@
 </h4>
 </div>
 <div class="section level4">
-<h4 id="examples-1">Examples<a class="anchor" aria-label="anchor" href="#examples-1"></a>
+<h4 id="examples">Examples<a class="anchor" aria-label="anchor" href="#examples"></a>
 </h4>
 </div>
 </div>
@@ -255,7 +313,7 @@
 </h4>
 </div>
 <div class="section level4">
-<h4 id="examples-2">Examples<a class="anchor" aria-label="anchor" href="#examples-2"></a>
+<h4 id="examples-1">Examples<a class="anchor" aria-label="anchor" href="#examples-1"></a>
 </h4>
 </div>
 </div>
@@ -264,7 +322,7 @@
 <h2 id="acknowledgments">Acknowledgments<a class="anchor" aria-label="anchor" href="#acknowledgments"></a>
 </h2>
 <p>Considerable work has been dedicated to provide the <code>DeepPatientLevelPrediction</code> package.</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/citation.html" class="external-link">citation</a></span><span class="op">(</span><span class="st">"DeepPatientLevelPrediction"</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## </span></span>
 <span><span class="co">## To cite package 'DeepPatientLevelPrediction' in publications use:</span></span>
