@@ -69,7 +69,7 @@
       </ul>
 <ul class="nav navbar-nav navbar-right">
 <li>
-  <a href="https://ohdsi.github.io/Hades" class="external-link">hadesLogo</a>
+  <a href="https://ohdsi.github.io/Hades" class="external-link"><img src='https://ohdsi.github.io/Hades/images/hadesMini.png' width=80 height=17 style='vertical-align: top;'></a>
 </li>
 <li>
   <a href="https://github.com/OHDSI/DeepPatientLevelPrediction" class="external-link">
@@ -91,11 +91,9 @@
   <div class="col-md-9 contents">
     <div class="page-header toc-ignore">
       <h1 data-toc-skip>Building Deep Learning Models</h1>
-                        <h4 data-toc-skip class="author">Jenna Reps,
-Egill Fridgeirsson, Chungsoo Kim, Henrik John, Seng Chan You, Xiaoyong
-Pan</h4>
+                        <h4 data-toc-skip class="author">Jenna Reps, Egill Fridgeirsson, Chungsoo Kim, Henrik John, Seng Chan You, Xiaoyong Pan</h4>
             
-            <h4 data-toc-skip class="date">2022-07-25</h4>
+            <h4 data-toc-skip class="date">2022-08-09</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/OHDSI/DeepPatientLevelPrediction/blob/HEAD/vignettes/BuildingDeepModels.Rmd" class="external-link"><code>vignettes/BuildingDeepModels.Rmd</code></a></small>
       <div class="hidden name"><code>BuildingDeepModels.Rmd</code></div>
@@ -111,108 +109,240 @@ Pan</h4>
 <div class="section level2">
 <h2 id="introduction">Introduction<a class="anchor" aria-label="anchor" href="#introduction"></a>
 </h2>
-<p>Patient level prediction aims to use historic data to learn a
-function between an input (a patient’s features such as
-age/gender/comorbidities at index) and an output (whether the patient
-experienced an outcome during some time-at-risk). Deep learning is
-example of the the current state-of-the-art classifiers that can be
-implemented to learn the function between inputs and outputs.</p>
-<p>Deep Learning models are widely used to automatically learn
-high-level feature representations from the data, and have achieved
-remarkable results in image processing, speech recognition and
-computational biology. Recently, interesting results have been shown
-using large observational healthcare data (e.g., electronic healthcare
-data or claims data), but more extensive research is needed to assess
-the power of Deep Learning in this domain.</p>
-<p>This vignette describes how you can use the Observational Health Data
-Sciences and Informatics (OHDSI) <a href="http://github.com/OHDSI/PatientLevelPrediction" class="external-link"><code>PatientLevelPrediction</code></a>
-package and <a href="http://github.com/OHDSI/DeepPatientLevelPrediction" class="external-link"><code>DeepPatientLevelPrediction</code></a>
-package to build Deep Learning models. This vignette assumes you have
-read and are comfortable with building patient level prediction models
-as described in the <a href="https://github.com/OHDSI/PatientLevelPrediction/blob/main/inst/doc/BuildingPredictiveModels.pdf" class="external-link"><code>BuildingPredictiveModels</code>
-vignette</a>. Furthermore, this vignette assumes you are familiar with
-Deep Learning methods.</p>
+<div class="section level3">
+<h3 id="deeppatientlevelprediction">DeepPatientLevelPrediction<a class="anchor" aria-label="anchor" href="#deeppatientlevelprediction"></a>
+</h3>
+<p>Patient level prediction aims to use historic data to learn a function between an input (a patient’s features such as age/gender/comorbidities at index) and an output (whether the patient experienced an outcome during some time-at-risk). Deep learning is example of the the current state-of-the-art classifiers that can be implemented to learn the function between inputs and outputs.</p>
+<p>Deep Learning models are widely used to automatically learn high-level feature representations from the data, and have achieved remarkable results in image processing, speech recognition and computational biology. Recently, interesting results have been shown using large observational healthcare data (e.g., electronic healthcare data or claims data), but more extensive research is needed to assess the power of Deep Learning in this domain.</p>
+<p>This vignette describes how you can use the Observational Health Data Sciences and Informatics (OHDSI) <a href="http://github.com/OHDSI/PatientLevelPrediction" class="external-link"><code>PatientLevelPrediction</code></a> package and <a href="http://github.com/OHDSI/DeepPatientLevelPrediction" class="external-link"><code>DeepPatientLevelPrediction</code></a> package to build Deep Learning models. This vignette assumes you have read and are comfortable with building patient level prediction models as described in the <a href="https://github.com/OHDSI/PatientLevelPrediction/blob/main/inst/doc/BuildingPredictiveModels.pdf" class="external-link"><code>BuildingPredictiveModels</code> vignette</a>. Furthermore, this vignette assumes you are familiar with Deep Learning methods.</p>
 </div>
-<div class="section level2">
-<h2 id="background">Background<a class="anchor" aria-label="anchor" href="#background"></a>
-</h2>
-<p>Deep Learning models are build by stacking an often large number of
-neural network layers that perform feature engineering steps, e.g
-embedding, and are collapsed in a final softmax layer (basically a
-logistic regression layer). These algorithms need a lot of data to
-converge to a good representation, but currently the sizes of the large
-observational healthcare databases are growing fast which would make
-Deep Learning an interesting approach to test within OHDSI’s <a href="https://academic.oup.com/jamia/article/25/8/969/4989437" class="external-link">Patient-Level
-Prediction Framework</a>. The current implementation allows us to
-perform research at scale on the value and limitations of Deep Learning
-using observational healthcare data.</p>
-<p>In the package we have used <a href="https://cran.r-project.org/web/packages/torch/index.html" class="external-link">torch</a>
-and <a href="https://cran.r-project.org/web/packages/tabnet/index.html" class="external-link">tabnet</a>
-but we invite the community to add other backends.</p>
-<p>Many network architectures have recently been proposed and we have
-implemented a number of them, however, this list will grow in the near
-future. It is important to understand that some of these architectures
-require a 2D data matrix, i.e. |patient|x|feature|, and others use a 3D
-data matrix |patient|x|feature|x|time|. The <a href="www.github.com%5Cohdsi%5CFeatureExtraction">FeatureExtraction
-Package</a> has been extended to enable the extraction of both data
-formats as will be described with examples below.</p>
-<p>Note that training Deep Learning models is computationally intensive,
-our implementation therefore supports both GPU and CPU. It will
-automatically check whether there is GPU or not in your computer. A GPU
-is highly recommended for Deep Learning!</p>
+<div class="section level3">
+<h3 id="background">Background<a class="anchor" aria-label="anchor" href="#background"></a>
+</h3>
+<p>Deep Learning models are build by stacking an often large number of neural network layers that perform feature engineering steps, e.g embedding, and are collapsed in a final softmax layer (basically a logistic regression layer). These algorithms need a lot of data to converge to a good representation, but currently the sizes of the large observational healthcare databases are growing fast which would make Deep Learning an interesting approach to test within OHDSI’s <a href="https://academic.oup.com/jamia/article/25/8/969/4989437" class="external-link">Patient-Level Prediction Framework</a>. The current implementation allows us to perform research at scale on the value and limitations of Deep Learning using observational healthcare data.</p>
+<p>In the package we have used <a href="https://cran.r-project.org/web/packages/torch/index.html" class="external-link">torch</a> and <a href="https://cran.r-project.org/web/packages/tabnet/index.html" class="external-link">tabnet</a> but we invite the community to add other backends.</p>
+<p>Many network architectures have recently been proposed and we have implemented a number of them, however, this list will grow in the near future. It is important to understand that some of these architectures require a 2D data matrix, i.e. |patient|x|feature|, and others use a 3D data matrix |patient|x|feature|x|time|. The <a href="www.github.com%5Cohdsi%5CFeatureExtraction">FeatureExtraction Package</a> has been extended to enable the extraction of both data formats as will be described with examples below.</p>
+<p>Note that training Deep Learning models is computationally intensive, our implementation therefore supports both GPU and CPU. It will automatically check whether there is GPU or not in your computer. A GPU is highly recommended for Deep Learning!</p>
+</div>
+<div class="section level3">
+<h3 id="requirements">Requirements<a class="anchor" aria-label="anchor" href="#requirements"></a>
+</h3>
+<p>Full details about the package requirements and instructions on installing the package can be found <a href="https://ohdsi.github.io/DeepPatientLevelPrediction/articles/Installing.html" class="external-link">here</a>.</p>
+</div>
+<div class="section level3">
+<h3 id="integration-with-patientlevelprediction">Integration with PatientLevelPrediction<a class="anchor" aria-label="anchor" href="#integration-with-patientlevelprediction"></a>
+</h3>
+<p>The <code>DeepPatientLevelPrediction</code> package provides additional model settings that can be used within the <code>PatientLevelPrediction</code> package <code>runPlp()</code> function. To use both packages you first need to pick the deep learning architecture you wish to fit (see below) and then you specifiy this as the modelSettings inside <code>runPlp()</code>.</p>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># load the data</span></span>
+<span><span class="va">plpData</span> <span class="op">&lt;-</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/loadPlpData.html" class="external-link">loadPlpData</a></span><span class="op">(</span><span class="st">'locationOfData'</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># pick the set&lt;Model&gt; from  DeepPatientLevelPrediction</span></span>
+<span><span class="va">deepLearningModel</span> <span class="op">&lt;-</span> <span class="fu">DeepPatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="../reference/setResNet.html">setResNet</a></span><span class="op">(</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># use PatientLevelPrediction to fit model</span></span>
+<span><span class="va">deepLearningResult</span> <span class="op">&lt;-</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/runPlp.html" class="external-link">runPlp</a></span><span class="op">(</span></span>
+<span>    plpData <span class="op">=</span> <span class="va">plpData</span>, </span>
+<span>    outcomeId <span class="op">=</span> <span class="fl">1230</span>, </span>
+<span>    modelSettings <span class="op">=</span> <span class="va">deepLearningModel</span>,</span>
+<span>    analysisId <span class="op">=</span> <span class="st">'resNetTorch'</span>, </span>
+<span>    <span class="va">...</span></span>
+<span>  <span class="op">)</span></span></code></pre></div>
+</div>
 </div>
 <div class="section level2">
 <h2 id="non-temporal-architectures">Non-Temporal Architectures<a class="anchor" aria-label="anchor" href="#non-temporal-architectures"></a>
 </h2>
-<p>We implemented the following non-temporal (2D data matrix)
-architectures:</p>
-<pre><code>1) ...</code></pre>
-<p>For the above two methods, we implemented support for a stacked
-autoencoder and a variational autoencoder to reduce the feature
-dimension as a first step. These autoencoders learn efficient data
-encodings in an unsupervised manner by stacking multiple layers in a
-neural network. Compared to the standard implementations of LR and MLP
-these implementations can use the GPU power to speed up the gradient
-descent approach in the back propagation to optimize the weights of the
-classifier.</p>
-<p>##Example</p>
+<p>We implemented the following non-temporal (2D data matrix) architectures:</p>
+<div class="section level3">
+<h3 id="simple-mlp">Simple MLP<a class="anchor" aria-label="anchor" href="#simple-mlp"></a>
+</h3>
+<div class="section level4">
+<h4 id="overall-concept">Overall concept<a class="anchor" aria-label="anchor" href="#overall-concept"></a>
+</h4>
+<p>A multilayer perceptron (MLP) model is a directed graph consisting of an input layer, one or more hidden layers and an output layer. The model takes in the input feature values and feeds these forward through the graph to determine the output class. A process known as ‘backpropogation’ is used to train the model. Backpropogation requires labelled data and involves iteratively calculating the error between the MLP model’s predictions and ground truth to learn how to adjust the model.</p>
+</div>
+<div class="section level4">
+<h4 id="example">Example<a class="anchor" aria-label="anchor" href="#example"></a>
+</h4>
+<div class="section level5">
+<h5 id="set-fuction">Set Fuction<a class="anchor" aria-label="anchor" href="#set-fuction"></a>
+</h5>
+<p>To use the package to fit a MLP model you can use the <code><a href="../reference/setDeepNNTorch.html">setDeepNNTorch()</a></code> function to specify the hyper-parameter settings for the MLP.</p>
+</div>
+<div class="section level5">
+<h5 id="inputs">Inputs<a class="anchor" aria-label="anchor" href="#inputs"></a>
+</h5>
+<p>The <code>units</code> input defines the network topology via the number of nodes per layer in the networks hidden layers. A list of different topologies can be investigated <code>list(c(10,63), 128)</code> means two different topologies will be fit, the first has two hidden layers with 10 nodes in the first hidden layer and 63 in the second hidden layer. The second just has one hidden layer with 128 nodes.</p>
+<p>The <code>layer_dropout</code> input specifies the probability that a layer randomly sets input units to 0 at each step during training time. A value of <code>0.2</code> means that 20% of the time the layer input units will be set to 0. This is used to reduce overfitting.</p>
+<p>The <code>lr</code> input is the learning rate which is a hyperparameter that controls how much to change the model in response to the estimated error each time the model weights are updated. The smaller the <code>lr</code> the longer it will take to fit the model and the model weights may get stuck, but if the <code>lr</code> is too large, the weights may sub-optimally converge too fast.</p>
+<p>The <code>decay</code> input corresponds to the weight decay in the objective function. During model fitting the aim is to minimize the objective function. The objective function is made up of the prediction error (the difference between the prediction vs the truth) plus the square of the weights multiplied by the weight decay. The larger the weight decay, the more you penalize having large weights. If you set the weight decay too large, the model will never fit well enough, if you set it too low, you need to be careful of overfitting (so try to stop model fitting earlier).</p>
+<p>The <code>outcome_weight</code> specifies whether to add more weight to misclassifying one class (e.g., with outcome during TAR) vs the other (e.g., without outcome during TAR). This can be useful if there is imbalance between the classes (e.g., the outcome rarely occurs during TAR).</p>
+<p>The <code>batch_size</code> corresponds to the number of data points (patients) used per iteration to estimate the network error during model fitting.</p>
+<p>The <code>epochs</code> corresponds to how many time to run through the entire training data while fitting the model.</p>
+<p>The <code>seed</code> lets the user reproduce the same network given the same training data and hyper-parameter settings if they use the same seed.</p>
+</div>
+<div class="section level5">
+<h5 id="example-code">Example Code<a class="anchor" aria-label="anchor" href="#example-code"></a>
+</h5>
+<p>For example, the following code will try two different network topologies and pick the topology that obtains the greatest AUROC via cross validation in the training data and then fit the model with that topology using all the training data. The standard output of <code>runPlp()</code> will be returned - this contains the MLP model along with the performance details and settings.</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co">#singleLayerNN(inputN = 10, layer1 = 100, outputN = 2, layer_dropout = 0.1)</span></span>
+<span><span class="va">deepset</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/setDeepNNTorch.html">setDeepNNTorch</a></span><span class="op">(</span></span>
+<span>  units <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">10</span>,<span class="fl">63</span><span class="op">)</span>, <span class="fl">128</span><span class="op">)</span>, </span>
+<span>  layer_dropout <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.2</span><span class="op">)</span>,</span>
+<span>  lr <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1e-4</span><span class="op">)</span>, </span>
+<span>  decay <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1e-5</span><span class="op">)</span>, </span>
+<span>  outcome_weight <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1.0</span><span class="op">)</span>, </span>
+<span>  batch_size <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">100</span><span class="op">)</span>, </span>
+<span>  epochs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">5</span><span class="op">)</span>,  </span>
+<span>  seed <span class="op">=</span> <span class="fl">12</span>  </span>
+<span>  <span class="op">)</span></span>
+<span></span>
+<span><span class="va">mlpResult</span> <span class="op">&lt;-</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/runPlp.html" class="external-link">runPlp</a></span><span class="op">(</span></span>
+<span>    plpData <span class="op">=</span> <span class="va">plpData</span>, </span>
+<span>    outcomeId <span class="op">=</span> <span class="fl">3</span>, </span>
+<span>    modelSettings <span class="op">=</span> <span class="va">deepset</span>,</span>
+<span>    analysisId <span class="op">=</span> <span class="st">'DeepNNTorch'</span>, </span>
+<span>    analysisName <span class="op">=</span> <span class="st">'Testing Deep Learning'</span>, </span>
+<span>    populationSettings <span class="op">=</span> <span class="va">populationSet</span>, </span>
+<span>    splitSettings <span class="op">=</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createDefaultSplitSetting.html" class="external-link">createDefaultSplitSetting</a></span><span class="op">(</span><span class="op">)</span>, </span>
+<span>    sampleSettings <span class="op">=</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createSampleSettings.html" class="external-link">createSampleSettings</a></span><span class="op">(</span><span class="op">)</span>,  <span class="co"># none </span></span>
+<span>    featureEngineeringSettings <span class="op">=</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createFeatureEngineeringSettings.html" class="external-link">createFeatureEngineeringSettings</a></span><span class="op">(</span><span class="op">)</span>, <span class="co"># none </span></span>
+<span>    preprocessSettings <span class="op">=</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createPreprocessSettings.html" class="external-link">createPreprocessSettings</a></span><span class="op">(</span><span class="op">)</span>, </span>
+<span>    executeSettings <span class="op">=</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createExecuteSettings.html" class="external-link">createExecuteSettings</a></span><span class="op">(</span></span>
+<span>      runSplitData <span class="op">=</span> <span class="cn">T</span>, </span>
+<span>      runSampleData <span class="op">=</span> <span class="cn">F</span>, </span>
+<span>      runfeatureEngineering <span class="op">=</span> <span class="cn">F</span>, </span>
+<span>      runPreprocessData <span class="op">=</span> <span class="cn">T</span>, </span>
+<span>      runModelDevelopment <span class="op">=</span> <span class="cn">T</span>, </span>
+<span>      runCovariateSummary <span class="op">=</span> <span class="cn">F</span></span>
+<span>    <span class="op">)</span>, </span>
+<span>    saveDirectory <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">testLoc</span>, <span class="st">'DeepNNTorch'</span><span class="op">)</span></span>
+<span>  <span class="op">)</span></span></code></pre></div>
+</div>
+</div>
+</div>
+<div class="section level3">
+<h3 id="resnet">ResNet<a class="anchor" aria-label="anchor" href="#resnet"></a>
+</h3>
+<div class="section level4">
+<h4 id="overall-concept-1">Overall concept<a class="anchor" aria-label="anchor" href="#overall-concept-1"></a>
+</h4>
+<p>Deep learning models are often trained via a process known as gradient descent during backpropogation. During this process the network weights are updated based on the gradient of the error function for the current weights. However, as the number of layers in the network increase, there is a greater chance of experiencing an issue known as the vanishing or exploding gradient during this process. The vanishing or exploding gradient is when the gradient goes to 0 or infinity, which negatively impacts the model fitting.</p>
+<p>The residual network (ResNet) was introduced to address the vanishing or exploding gradient issue. It works by adding connections between non-adjacent layers, termed a ‘skip connection’. Using some form of regularization with these ‘skip connections’ enables the network to ignore any problematic layer that resulted due to gradient issues.</p>
+</div>
+<div class="section level4">
+<h4 id="example-1">Example<a class="anchor" aria-label="anchor" href="#example-1"></a>
+</h4>
+<div class="section level5">
+<h5 id="set-fuction-1">Set Fuction<a class="anchor" aria-label="anchor" href="#set-fuction-1"></a>
+</h5>
+<p>To use the package to fit a ResNet model you can use the <code><a href="../reference/setResNet.html">setResNet()</a></code> function to specify the hyper-parameter settings for the network.</p>
+</div>
+<div class="section level5">
+<h5 id="inputs-1">Inputs<a class="anchor" aria-label="anchor" href="#inputs-1"></a>
+</h5>
+<p>[add info about each input here]</p>
+</div>
+<div class="section level5">
+<h5 id="example-code-1">Example Code<a class="anchor" aria-label="anchor" href="#example-code-1"></a>
+</h5>
+<p>For example, the following code will …</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">resset</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/setResNet.html">setResNet</a></span><span class="op">(</span></span>
+<span>  numLayers <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span>, </span>
+<span>  sizeHidden <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">32</span><span class="op">)</span>,</span>
+<span>  hiddenFactor <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span>,</span>
+<span>  residualDropout <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.1</span><span class="op">)</span>, </span>
+<span>  hiddenDropout <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.1</span><span class="op">)</span>,</span>
+<span>  normalization <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">'BatchNorm'</span><span class="op">)</span>, </span>
+<span>  activation <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">'RelU'</span><span class="op">)</span>,</span>
+<span>  sizeEmbedding <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">32</span><span class="op">)</span>, </span>
+<span>  weightDecay <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1e-6</span><span class="op">)</span>,</span>
+<span>  learningRate <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3e-4</span><span class="op">)</span>, </span>
+<span>  seed <span class="op">=</span> <span class="fl">42</span>, </span>
+<span>  hyperParamSearch <span class="op">=</span> <span class="st">'random'</span>,</span>
+<span>  randomSample <span class="op">=</span> <span class="fl">1</span>, </span>
+<span>  <span class="co">#device='cuda:0', </span></span>
+<span>  batchSize <span class="op">=</span> <span class="fl">128</span>, </span>
+<span>  epochs <span class="op">=</span> <span class="fl">3</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">resResult</span> <span class="op">&lt;-</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/runPlp.html" class="external-link">runPlp</a></span><span class="op">(</span></span>
+<span>    plpData <span class="op">=</span> <span class="va">plpData</span>, </span>
+<span>    outcomeId <span class="op">=</span> <span class="fl">3</span>, </span>
+<span>    modelSettings <span class="op">=</span> <span class="va">resset</span>,</span>
+<span>    analysisId <span class="op">=</span> <span class="st">'ResNet'</span>, </span>
+<span>    analysisName <span class="op">=</span> <span class="st">'Testing ResNet'</span>, </span>
+<span>    populationSettings <span class="op">=</span> <span class="va">populationSet</span>, </span>
+<span>    splitSettings <span class="op">=</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createDefaultSplitSetting.html" class="external-link">createDefaultSplitSetting</a></span><span class="op">(</span><span class="op">)</span>, </span>
+<span>    sampleSettings <span class="op">=</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createSampleSettings.html" class="external-link">createSampleSettings</a></span><span class="op">(</span><span class="op">)</span>,  <span class="co"># none </span></span>
+<span>    featureEngineeringSettings <span class="op">=</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createFeatureEngineeringSettings.html" class="external-link">createFeatureEngineeringSettings</a></span><span class="op">(</span><span class="op">)</span>, <span class="co"># none </span></span>
+<span>    preprocessSettings <span class="op">=</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createPreprocessSettings.html" class="external-link">createPreprocessSettings</a></span><span class="op">(</span><span class="op">)</span>, </span>
+<span>    executeSettings <span class="op">=</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createExecuteSettings.html" class="external-link">createExecuteSettings</a></span><span class="op">(</span></span>
+<span>      runSplitData <span class="op">=</span> <span class="cn">T</span>, </span>
+<span>      runSampleData <span class="op">=</span> <span class="cn">F</span>, </span>
+<span>      runfeatureEngineering <span class="op">=</span> <span class="cn">F</span>, </span>
+<span>      runPreprocessData <span class="op">=</span> <span class="cn">T</span>, </span>
+<span>      runModelDevelopment <span class="op">=</span> <span class="cn">T</span>, </span>
+<span>      runCovariateSummary <span class="op">=</span> <span class="cn">F</span></span>
+<span>    <span class="op">)</span>, </span>
+<span>    saveDirectory <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">testLoc</span>, <span class="st">'ResNet'</span><span class="op">)</span></span>
+<span>  <span class="op">)</span></span></code></pre></div>
+</div>
+</div>
+</div>
+<div class="section level3">
+<h3 id="tabnet">TabNet<a class="anchor" aria-label="anchor" href="#tabnet"></a>
+</h3>
+<div class="section level4">
+<h4 id="overall-concept-2">Overall concept<a class="anchor" aria-label="anchor" href="#overall-concept-2"></a>
+</h4>
+</div>
+<div class="section level4">
+<h4 id="examples">Examples<a class="anchor" aria-label="anchor" href="#examples"></a>
+</h4>
+</div>
+</div>
+<div class="section level3">
+<h3 id="transformer">Transformer<a class="anchor" aria-label="anchor" href="#transformer"></a>
+</h3>
+<div class="section level4">
+<h4 id="overall-concept-3">Overall concept<a class="anchor" aria-label="anchor" href="#overall-concept-3"></a>
+</h4>
+</div>
+<div class="section level4">
+<h4 id="examples-1">Examples<a class="anchor" aria-label="anchor" href="#examples-1"></a>
+</h4>
+</div>
+</div>
 </div>
 <div class="section level2">
 <h2 id="acknowledgments">Acknowledgments<a class="anchor" aria-label="anchor" href="#acknowledgments"></a>
 </h2>
-<p>Considerable work has been dedicated to provide the
-<code>DeepPatientLevelPrediction</code> package.</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/citation.html" class="external-link">citation</a></span><span class="op">(</span><span class="st">"PatientLevelPrediction"</span><span class="op">)</span></span></code></pre></div>
+<p>Considerable work has been dedicated to provide the <code>DeepPatientLevelPrediction</code> package.</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/citation.html" class="external-link">citation</a></span><span class="op">(</span><span class="st">"DeepPatientLevelPrediction"</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## </span></span>
-<span><span class="co">## To cite PatientLevelPrediction in publications use:</span></span>
+<span><span class="co">## To cite package 'DeepPatientLevelPrediction' in publications use:</span></span>
 <span><span class="co">## </span></span>
-<span><span class="co">##   Reps JM, Schuemie MJ, Suchard MA, Ryan PB, Rijnbeek P (2018). "Design</span></span>
-<span><span class="co">##   and implementation of a standardized framework to generate and</span></span>
-<span><span class="co">##   evaluate patient-level prediction models using observational</span></span>
-<span><span class="co">##   healthcare data." _Journal of the American Medical Informatics</span></span>
-<span><span class="co">##   Association_, *25*(8), 969-975.</span></span>
-<span><span class="co">##   &lt;https://doi.org/10.1093/jamia/ocy032&gt;.</span></span>
+<span><span class="co">##   Reps J, Fridgeirsson E, Chan You S, Kim C, John H (2021).</span></span>
+<span><span class="co">##   _DeepPatientLevelPrediction: Deep learning function for patient level</span></span>
+<span><span class="co">##   prediction using data in the OMOP Common Data Model_.</span></span>
+<span><span class="co">##   https://ohdsi.github.io/PatientLevelPrediction,</span></span>
+<span><span class="co">##   https://github.com/OHDSI/DeepPatientLevelPrediction.</span></span>
 <span><span class="co">## </span></span>
 <span><span class="co">## A BibTeX entry for LaTeX users is</span></span>
 <span><span class="co">## </span></span>
-<span><span class="co">##   @Article{,</span></span>
-<span><span class="co">##     author = {J. M. Reps and M. J. Schuemie and M. A. Suchard and P. B. Ryan and P. Rijnbeek},</span></span>
-<span><span class="co">##     title = {Design and implementation of a standardized framework to generate and evaluate patient-level prediction models using observational healthcare data},</span></span>
-<span><span class="co">##     journal = {Journal of the American Medical Informatics Association},</span></span>
-<span><span class="co">##     volume = {25},</span></span>
-<span><span class="co">##     number = {8},</span></span>
-<span><span class="co">##     pages = {969-975},</span></span>
-<span><span class="co">##     year = {2018},</span></span>
-<span><span class="co">##     url = {https://doi.org/10.1093/jamia/ocy032},</span></span>
+<span><span class="co">##   @Manual{,</span></span>
+<span><span class="co">##     title = {DeepPatientLevelPrediction: Deep learning function for patient level prediction using data in the OMOP Common Data Model},</span></span>
+<span><span class="co">##     author = {Jenna Reps and Egill Fridgeirsson and Seng {Chan You} and Chungsoo Kim and Henrik John},</span></span>
+<span><span class="co">##     year = {2021},</span></span>
+<span><span class="co">##     note = {https://ohdsi.github.io/PatientLevelPrediction, https://github.com/OHDSI/DeepPatientLevelPrediction},</span></span>
 <span><span class="co">##   }</span></span></code></pre>
-<p><strong>Please reference this paper if you use the PLP Package in
-your work:</strong></p>
-<p><a href="http://dx.doi.org/10.1093/jamia/ocy032" class="external-link">Reps JM, Schuemie
-MJ, Suchard MA, Ryan PB, Rijnbeek PR. Design and implementation of a
-standardized framework to generate and evaluate patient-level prediction
-models using observational healthcare data. J Am Med Inform Assoc.
-2018;25(8):969-975.</a></p>
+<p><strong>Please reference this paper if you use the PLP Package in your work:</strong></p>
+<p><a href="http://dx.doi.org/10.1093/jamia/ocy032" class="external-link">Reps JM, Schuemie MJ, Suchard MA, Ryan PB, Rijnbeek PR. Design and implementation of a standardized framework to generate and evaluate patient-level prediction models using observational healthcare data. J Am Med Inform Assoc. 2018;25(8):969-975.</a></p>
 </div>
   </div>
 
@@ -233,7 +363,7 @@ models using observational healthcare data. J Am Med Inform Assoc.
 
 <div class="pkgdown">
   <p></p>
-<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.6.</p>
+<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.</p>
 </div>
 
       </footer>

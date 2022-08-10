@@ -36,13 +36,15 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Introduction
 
+## DeepPatientLevelPrediction
+
 Patient level prediction aims to use historic data to learn a function between an input (a patient's features such as age/gender/comorbidities at index) and an output (whether the patient experienced an outcome during some time-at-risk). Deep learning is example of the the current state-of-the-art classifiers that can be implemented to learn the function between inputs and outputs.
 
 Deep Learning models are widely used to automatically learn high-level feature representations from the data, and have achieved remarkable results in image processing, speech recognition and computational biology. Recently, interesting results have been shown using large observational healthcare data (e.g., electronic healthcare data or claims data), but more extensive research is needed to assess the power of Deep Learning in this domain.
 
 This vignette describes how you can use the Observational Health Data Sciences and Informatics (OHDSI) [`PatientLevelPrediction`](http://github.com/OHDSI/PatientLevelPrediction) package and [`DeepPatientLevelPrediction`](http://github.com/OHDSI/DeepPatientLevelPrediction) package to build Deep Learning models. This vignette assumes you have read and are comfortable with building patient level prediction models as described in the [`BuildingPredictiveModels` vignette](https://github.com/OHDSI/PatientLevelPrediction/blob/main/inst/doc/BuildingPredictiveModels.pdf). Furthermore, this vignette assumes you are familiar with Deep Learning methods.
 
-# Background
+## Background
 
 Deep Learning models are build by stacking an often large number of neural network layers that perform feature engineering steps, e.g embedding, and are collapsed in a final softmax layer (basically a logistic regression layer). These algorithms need a lot of data to converge to a good representation, but currently the sizes of the large observational healthcare databases are growing fast which would make Deep Learning an interesting approach to test within OHDSI's [Patient-Level Prediction Framework](https://academic.oup.com/jamia/article/25/8/969/4989437). The current implementation allows us to perform research at scale on the value and limitations of Deep Learning using observational healthcare data.
 
@@ -52,22 +54,196 @@ Many network architectures have recently been proposed and we have implemented a
 
 Note that training Deep Learning models is computationally intensive, our implementation therefore supports both GPU and CPU. It will automatically check whether there is GPU or not in your computer. A GPU is highly recommended for Deep Learning!
 
+## Requirements
+
+Full details about the package requirements and instructions on installing the package can be found [here](https://ohdsi.github.io/DeepPatientLevelPrediction/articles/Installing.html).
+
+## Integration with PatientLevelPrediction
+
+The `DeepPatientLevelPrediction` package provides additional model settings that can be used within the `PatientLevelPrediction` package `runPlp()` function.  To use both packages you first need to pick the deep learning architecture you wish to fit (see below) and then you specifiy this as the modelSettings inside `runPlp()`.
+
+```{r, eval=FALSE}
+
+# load the data
+plpData <- PatientLevelPrediction::loadPlpData('locationOfData')
+
+# pick the set<Model> from  DeepPatientLevelPrediction
+deepLearningModel <- DeepPatientLevelPrediction::setResNet()
+
+# use PatientLevelPrediction to fit model
+deepLearningResult <- PatientLevelPrediction::runPlp(
+    plpData = plpData, 
+    outcomeId = 1230, 
+    modelSettings = deepLearningModel,
+    analysisId = 'resNetTorch', 
+    ...
+  )
+
+```
+
 # Non-Temporal Architectures
 
 We implemented the following non-temporal (2D data matrix) architectures:
 
-    1) ...
+## Simple MLP
 
-For the above two methods, we implemented support for a stacked autoencoder and a variational autoencoder to reduce the feature dimension as a first step. These autoencoders learn efficient data encodings in an unsupervised manner by stacking multiple layers in a neural network. Compared to the standard implementations of LR and MLP these implementations can use the GPU power to speed up the gradient descent approach in the back propagation to optimize the weights of the classifier.
+### Overall concept
+A multilayer perceptron (MLP) model is a directed graph consisting of an input layer, one or more hidden layers and an output layer.  The model takes in the input feature values and feeds these forward through the graph to determine the output class.  A process known as 'backpropogation' is used to train the model.  Backpropogation requires labelled data and involves iteratively calculating the error between the MLP model's predictions and ground truth to learn how to adjust the model.
 
-##Example
+### Example
+
+#### Set Fuction
+
+To use the package to fit a MLP model you can use the `setDeepNNTorch()` function to specify the hyper-parameter settings for the MLP.
+
+#### Inputs
+
+The `units` input defines the network topology via the number of nodes per layer in the networks hidden layers.  A list of different topologies can be investigated `list(c(10,63), 128)` means two different topologies will be fit, the first has two hidden layers with 10 nodes in the first hidden layer and 63 in the second hidden layer.  The second just has one hidden layer with 128 nodes.
+
+The `layer_dropout` input specifies the probability that a layer randomly sets input units to 0 at each step during training time.  A value of `0.2` means that 20\% of the time the layer input units will be set to 0.  This is used to reduce overfitting.
+
+The `lr` input is the learning rate which is a hyperparameter that controls how much to change the model in response to the estimated error each time the model weights are updated.  The smaller the `lr` the longer it will take to fit the model and the model weights may get stuck, but if the `lr` is too large, the weights may sub-optimally converge too fast.
+
+The `decay` input corresponds to the weight decay in the objective function.  During model fitting the aim is to minimize the objective function.  The objective function is made up of the prediction error (the difference between the prediction vs the truth) plus the square of the weights multiplied by the weight decay.  The larger the weight decay, the more you penalize having large weights.  If you set the weight decay too large, the model will never fit well enough, if you set it too low, you need to be careful of overfitting (so try to stop model fitting earlier).
+
+The `outcome_weight` specifies whether to add more weight to misclassifying one class (e.g., with outcome during TAR) vs the other (e.g., without outcome during TAR).  This can be useful if there is imbalance between the classes (e.g., the outcome rarely occurs during TAR).
+
+The `batch_size` corresponds to the number of data points (patients) used per iteration to estimate the network error during model fitting.
+
+The `epochs` corresponds to how many time to run through the entire training data while fitting the model.
+
+The `seed` lets the user reproduce the same network given the same training data and hyper-parameter settings if they use the same seed.
+
+#### Example Code
+
+For example, the following code will try two different network topologies and pick the topology that obtains the greatest AUROC via cross validation in the training data and then fit the model with that topology using all the training data.  The standard output of `runPlp()` will be returned - this contains the MLP model along with the performance details and settings.
+
+```{r, eval=FALSE}
+
+#singleLayerNN(inputN = 10, layer1 = 100, outputN = 2, layer_dropout = 0.1)
+deepset <- setDeepNNTorch(
+  units = list(c(10,63), 128), 
+  layer_dropout = c(0.2),
+  lr = c(1e-4), 
+  decay = c(1e-5), 
+  outcome_weight = c(1.0), 
+  batch_size = c(100), 
+  epochs = c(5),  
+  seed = 12  
+  )
+
+mlpResult <- PatientLevelPrediction::runPlp(
+    plpData = plpData, 
+    outcomeId = 3, 
+    modelSettings = deepset,
+    analysisId = 'DeepNNTorch', 
+    analysisName = 'Testing Deep Learning', 
+    populationSettings = populationSet, 
+    splitSettings = PatientLevelPrediction::createDefaultSplitSetting(), 
+    sampleSettings = PatientLevelPrediction::createSampleSettings(),  # none 
+    featureEngineeringSettings = PatientLevelPrediction::createFeatureEngineeringSettings(), # none 
+    preprocessSettings = PatientLevelPrediction::createPreprocessSettings(), 
+    executeSettings = PatientLevelPrediction::createExecuteSettings(
+      runSplitData = T, 
+      runSampleData = F, 
+      runfeatureEngineering = F, 
+      runPreprocessData = T, 
+      runModelDevelopment = T, 
+      runCovariateSummary = F
+    ), 
+    saveDirectory = file.path(testLoc, 'DeepNNTorch')
+  )
+
+```
+
+
+## ResNet 
+
+### Overall concept
+
+Deep learning models are often trained via a process known as gradient descent during backpropogation.  During this process the network weights are updated based on the gradient of the error function for the current weights. However, as the number of layers in the network increase, there is a greater chance of experiencing an issue known as the vanishing or exploding gradient during this process. The vanishing or exploding gradient is when the gradient goes to 0 or infinity, which negatively impacts the model fitting.  
+
+The residual network (ResNet) was introduced to address the vanishing or exploding gradient issue.  It works by adding connections between non-adjacent layers, termed a 'skip connection'.  Using some form of regularization with these 'skip connections' enables the network to ignore any problematic layer that resulted due to gradient issues.
+
+### Example
+
+#### Set Fuction
+
+To use the package to fit a ResNet model you can use the `setResNet()` function to specify the hyper-parameter settings for the network.
+
+#### Inputs
+
+[add info about each input here]
+
+#### Example Code
+
+For example, the following code will ...
+
+```{r, eval=FALSE}
+
+resset <- setResNet(
+  numLayers = c(2), 
+  sizeHidden = c(32),
+  hiddenFactor = c(2),
+  residualDropout = c(0.1), 
+  hiddenDropout = c(0.1),
+  normalization = c('BatchNorm'), 
+  activation = c('RelU'),
+  sizeEmbedding = c(32), 
+  weightDecay = c(1e-6),
+  learningRate = c(3e-4), 
+  seed = 42, 
+  hyperParamSearch = 'random',
+  randomSample = 1, 
+  #device='cuda:0', 
+  batchSize = 128, 
+  epochs = 3
+)
+
+resResult <- PatientLevelPrediction::runPlp(
+    plpData = plpData, 
+    outcomeId = 3, 
+    modelSettings = resset,
+    analysisId = 'ResNet', 
+    analysisName = 'Testing ResNet', 
+    populationSettings = populationSet, 
+    splitSettings = PatientLevelPrediction::createDefaultSplitSetting(), 
+    sampleSettings = PatientLevelPrediction::createSampleSettings(),  # none 
+    featureEngineeringSettings = PatientLevelPrediction::createFeatureEngineeringSettings(), # none 
+    preprocessSettings = PatientLevelPrediction::createPreprocessSettings(), 
+    executeSettings = PatientLevelPrediction::createExecuteSettings(
+      runSplitData = T, 
+      runSampleData = F, 
+      runfeatureEngineering = F, 
+      runPreprocessData = T, 
+      runModelDevelopment = T, 
+      runCovariateSummary = F
+    ), 
+    saveDirectory = file.path(testLoc, 'ResNet')
+  )
+
+```
+
+
+## TabNet
+
+### Overall concept
+
+### Examples
+
+## Transformer
+
+### Overall concept
+
+### Examples
+
 
 # Acknowledgments
 
 Considerable work has been dedicated to provide the `DeepPatientLevelPrediction` package.
 
 ```{r tidy=TRUE,eval=TRUE}
-citation("PatientLevelPrediction")
+citation("DeepPatientLevelPrediction")
 ```
 
 **Please reference this paper if you use the PLP Package in your work:**
