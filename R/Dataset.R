@@ -52,7 +52,7 @@ Dataset <- torch::dataset(
     dt <- data.table::data.table(rows=dataCat$rowId, cols=dataCat$columnId)
     maxFeatures <- max(dt[, .N, by=rows][,N])
     start <- Sys.time()
-    tensorList <- lapply(1:max(dataCat$rowId), function(x) {
+    tensorList <- lapply(1:max(data %>% pull(rowId)), function(x) {
       torch::torch_tensor(dt[rows==x, cols])
       })
     self$lengths <- lengths
@@ -62,14 +62,16 @@ Dataset <- torch::dataset(
     if (sum(numericalIndex) == 0) {
       self$num <- NULL
     } else  {
-      numericalData <- data %>% filter(columnId %in% !! which(numericalIndex)) %>% dplyr::collect()
-      numericalData <-numericalData %>% group_by(columnId) %>% mutate(newId = dplyr::cur_group_id())
+      numericalData <- data %>% dplyr::filter(columnId %in% !! which(numericalIndex)) %>% dplyr::collect()
+      numericalData <-numericalData %>% dplyr::group_by(columnId) %>% dplyr::mutate(newId = dplyr::cur_group_id())
       indices <- torch::torch_tensor(cbind(numericalData$rowId, numericalData$newId), dtype=torch::torch_long())$t_()
       values <- torch::torch_tensor(numericalData$covariateValue,dtype=torch::torch_float32())
       self$num <- torch::torch_sparse_coo_tensor(indices=indices,
                                             values=values, 
                                             size=c(self$target$shape,sum(numericalIndex)))$to_dense()
-    }  
+    }
+    if (self$cat$shape[1] != self$num$shape[1])
+      browser()
   },
   
   getNumericalIndex = function() {
