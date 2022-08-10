@@ -25,8 +25,7 @@ Imports:
     ParallelLogger (>= 2.0.0),
     PatientLevelPrediction,
     rlang,
-    torch (>= 0.8.0),
-    Cyclops
+    torch (>= 0.8.0)
 Suggests:
     devtools,
     Eunomia,
@@ -37,8 +36,7 @@ Suggests:
 Remotes:
     ohdsi/PatientLevelPrediction,
     ohdsi/FeatureExtraction,
-    ohdsi/Eunomia,
-    Cyclops=ohdsi/Cyclops
+    ohdsi/Eunomia
 RoxygenNote: 7.2.0
 Encoding: UTF-8
 Config/testthat/edition: 3

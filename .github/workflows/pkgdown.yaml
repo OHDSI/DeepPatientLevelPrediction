@@ -28,10 +28,9 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: any::pkgdown, ohdsi/OhdsiRTools
+          extra-packages: any::pkgdown, ohdsi/OhdsiRTools, ohdsi/Cyclops
           needs: website
-          pak-version: devel
-          
+
       - name: Build site
         run: Rscript -e 'pkgdown::build_site_github_pages(new_process = FALSE, install = TRUE)'
         
