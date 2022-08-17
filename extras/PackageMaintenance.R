@@ -16,15 +16,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# recreate the html index when new documentation
-pkgdown::build_site()
-OhdsiRTools::fixHadesLogo()
-
 # Format and check code
-OhdsiRTools::formatRFolder()
+styler::style_pkg()
 OhdsiRTools::checkUsagePackage("DeepPatientLevelPrediction")
 OhdsiRTools::updateCopyrightYearFolder()
 devtools::spell_check()
+
 
 # Create manual and vignettes
 unlink("extras/DeepPatientLevelPrediction.pdf")
@@ -36,3 +33,12 @@ rmarkdown::render("vignettes/BuildingDeepModels.Rmd",
                                           toc = TRUE,
                                           toc_depth = 3,
                                           number_sections = TRUE))
+
+
+rmarkdown::render("vignettes/Installing.Rmd",
+                  output_file = "../inst/doc/Installing.pdf",
+                  rmarkdown::pdf_document(latex_engine = "pdflatex",
+                                          toc = TRUE,
+                                          toc_depth = 3,
+                                          number_sections = TRUE))
+
