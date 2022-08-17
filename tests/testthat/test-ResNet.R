@@ -5,8 +5,6 @@ resSet <- setResNet(
   hiddenFactor = c(2),
   residualDropout = c(0.1),
   hiddenDropout = c(0.1),
-  normalization = c("BatchNorm"),
-  activation = c("RelU"),
   sizeEmbedding = c(32),
   weightDecay = c(1e-6),
   learningRate = c(3e-4),
