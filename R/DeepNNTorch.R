@@ -96,7 +96,7 @@ fitDeepNNTorch <- function(trainData,
   labels <- mappedData$labels
   covariateRef <- mappedData$covariateRef
 
-  outLoc <- PatientLevelPrediction:::createTempModelLoc() # export
+  outLoc <- PatientLevelPrediction::createTempModelLoc()
 
   cvResult <- do.call(
     what = gridCvDeepNN,
@@ -321,7 +321,7 @@ gridCvDeepNN <- function(matrixData,
   # get best para (this could be modified to enable any metric instead of AUC, just need metric input in function)
 
   paramGridSearch <- lapply(gridSearchPredictons, function(x) {
-    do.call(PatientLevelPrediction:::computeGridPerformance, x)
+    do.call(PatientLevelPrediction::computeGridPerformance, x)
   }) # cvAUCmean, cvAUC, param
 
   optimalParamInd <- which.max(unlist(lapply(paramGridSearch, function(x) x$cvPerformance)))

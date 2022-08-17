@@ -82,7 +82,7 @@ trainData <- PatientLevelPrediction::splitData(
   splitSettings = PatientLevelPrediction::createDefaultSplitSetting()
 )
 
-mappedData <- PatientLevelPrediction:::MapIds(
+mappedData <- PatientLevelPrediction::MapIds(
   covariateData = trainData$Train$covariateData,
   cohort = trainData$Train$labels
 )

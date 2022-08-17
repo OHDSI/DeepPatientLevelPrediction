@@ -211,4 +211,4 @@ listCartesian <- function(allList) {
 
 
 # export this in PLP
-computeGridPerformance <- PatientLevelPrediction:::computeGridPerformance
+computeGridPerformance <- PatientLevelPrediction::computeGridPerformance

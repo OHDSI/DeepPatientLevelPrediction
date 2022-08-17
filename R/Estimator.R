@@ -45,14 +45,14 @@ fitEstimator <- function(trainData,
   if (!is.null(trainData$folds)) {
     trainData$labels <- merge(trainData$labels, trainData$fold, by = "rowId")
   }
-  mappedCovariateData <- PatientLevelPrediction:::MapIds(
+  mappedCovariateData <- PatientLevelPrediction::MapIds(
     covariateData = trainData$covariateData,
     cohort = trainData$labels
   )
 
   covariateRef <- mappedCovariateData$covariateRef
 
-  outLoc <- PatientLevelPrediction:::createTempModelLoc() # export
+  outLoc <- PatientLevelPrediction::createTempModelLoc()
   cvResult <- do.call(
     what = gridCvDeep,
     args = list(
@@ -136,7 +136,7 @@ predictDeepEstimator <- function(plpModel,
     attr(plpModel, "modelType") <- "binary"
   }
   if ("plpData" %in% class(data)) {
-    mappedData <- PatientLevelPrediction:::MapIds(data$covariateData,
+    mappedData <- PatientLevelPrediction::MapIds(data$covariateData,
       cohort = cohort,
       mapping = plpModel$covariateImportance %>%
         dplyr::select(
