@@ -30,7 +30,7 @@ Creates a new earlystopping object
 
 \item{\code{delta}}{How much does the loss need to improve to count as improvement}
 
-\item{\code{verbose}}{}
+\item{\code{verbose}}{If information should be printed out}
 }
 \if{html}{\out{</div>}}
 }

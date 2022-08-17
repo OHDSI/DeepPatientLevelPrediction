@@ -673,7 +673,7 @@ EarlyStopping <- R6::R6Class(
     #' Creates a new earlystopping object
     #' @param patience Stop after this number of epochs if loss doesn't improve
     #' @param delta    How much does the loss need to improve to count as improvement
-    #' @param verbose
+    #' @param verbose  If information should be printed out
     #' @return a new earlystopping object
     initialize = function(patience = 3, delta = 0, verbose = TRUE) {
       self$patience <- patience

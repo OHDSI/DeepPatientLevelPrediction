@@ -10,8 +10,6 @@ setResNet(
   hiddenFactor = c(1:4),
   residualDropout = c(seq(0, 0.5, 0.05)),
   hiddenDropout = c(seq(0, 0.5, 0.05)),
-  normalization = c("BatchNorm"),
-  activation = c("RelU"),
   sizeEmbedding = c(2^(6:9)),
   weightDecay = c(1e-06, 0.001),
   learningRate = c(0.01, 3e-04, 1e-05),
@@ -33,10 +31,6 @@ setResNet(
 \item{residualDropout}{How much dropout to apply after last linear layer in ResLayer, default: seq(0, 0.3, 0.05)}
 
 \item{hiddenDropout}{How much dropout to apply after first linear layer in ResLayer, default: seq(0, 0.3, 0.05)}
-
-\item{normalization}{Which type of normalization to use. Default: 'Batchnorm'}
-
-\item{activation}{What kind of activation to use. Default: 'RelU'}
 
 \item{sizeEmbedding}{Size of embedding layer, default: 2^(6:9) (64 to 512)}
 

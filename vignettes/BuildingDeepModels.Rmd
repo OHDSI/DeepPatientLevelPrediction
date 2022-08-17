@@ -329,8 +329,7 @@ random samples to use
 For example, the following code will fit a two layer ResNet where each
 layer has 32 neurons which increases by a factor of two before
 decreasing againg (hiddenFactor). 10% of inputs to each layer and
-residual connection within the layer are randomly zeroed. Batch
-normalization is used with a RelU activation function. The embedding
+residual connection within the layer are randomly zeroed. The embedding
 layer has 32 neurons. Learning rate of 3e-4 with weight decay of 1e-6 is
 used for the optimizer. No hyperparameter search is done since each
 input only includes one option.
@@ -343,8 +342,6 @@ resset <- setResNet(
   hiddenFactor = c(2),
   residualDropout = c(0.1), 
   hiddenDropout = c(0.1),
-  normalization = c('BatchNorm'), 
-  activation = c('RelU'),
   sizeEmbedding = c(32), 
   weightDecay = c(1e-6),
   learningRate = c(3e-4), 

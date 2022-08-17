@@ -4,7 +4,7 @@
 \alias{Estimator}
 \title{Estimator}
 \description{
-A generic R6 class that wraps around a torch nn module and can be used to 
+A generic R6 class that wraps around a torch nn module and can be used to
 fit and predict the model defined in that module.
 }
 \section{Methods}{
@@ -53,7 +53,7 @@ Creates a new estimator
 
 \item{\code{optimizer}}{A torch optimizer to use, default is Adam}
 
-\item{\code{criterion}}{The torch loss function to use, defaults to 
+\item{\code{criterion}}{The torch loss function to use, defaults to
 binary cross entropy with logits}
 
 \item{\code{scheduler}}{learning rate scheduler to use}
