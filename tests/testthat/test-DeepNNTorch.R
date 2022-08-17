@@ -52,7 +52,7 @@ test_that("setDeepNNTorch with runPlp working checks", {
   testthat::expect_true('performanceEvaluation' %in% names(res))
   
   # check prediction same size as pop
-  testthat::expect_equal(nrow(res$prediction %>% filter(evaluationType %in% c('Train', 'Test'))), 
+  testthat::expect_equal(nrow(res$prediction %>% dplyr::filter(evaluationType %in% c('Train', 'Test'))), 
                          nrow(population))
   
   # check prediction between 0 and 1
@@ -67,7 +67,7 @@ test_that("Triple layer-nn works", {
                             epochs= c(5),  seed=NULL)
   
   sink(nullfile())
-  results <- fitDeepNNTorch(trainData$Train, deepset$param, analysisId=1)
+  results <- fitDeepNNTorch(trainData$Train, deepset, analysisId=1)
   sink()
   
   expect_equal(class(results), 'plpModel')

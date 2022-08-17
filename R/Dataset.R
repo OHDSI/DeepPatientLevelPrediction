@@ -52,7 +52,7 @@ Dataset <- torch::dataset(
     dt <- data.table::data.table(rows=dataCat$rowId, cols=dataCat$columnId)
     maxFeatures <- max(dt[, .N, by=rows][,N])
     start <- Sys.time()
-    tensorList <- lapply(1:max(data %>% pull(rowId)), function(x) {
+    tensorList <- lapply(1:max(data %>% dplyr::pull(rowId)), function(x) {
       torch::torch_tensor(dt[rows==x, cols])
       })
     self$lengths <- lengths

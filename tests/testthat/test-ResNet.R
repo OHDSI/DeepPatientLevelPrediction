@@ -66,7 +66,8 @@ test_that("ResNet with runPlp working checks", {
   testthat::expect_true('performanceEvaluation' %in% names(res2))
   
   # check prediction same size as pop
-  testthat::expect_equal(nrow(res2$prediction %>% filter(evaluationType %in% c('Train', 'Test'))), nrow(population))
+  testthat::expect_equal(nrow(res2$prediction %>% 
+                                dplyr::filter(evaluationType %in% c('Train', 'Test'))), nrow(population))
   
   # check prediction between 0 and 1
   testthat::expect_gte(min(res2$prediction$value), 0)

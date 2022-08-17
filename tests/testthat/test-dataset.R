@@ -6,7 +6,7 @@ test_that("length of index correct", {
   
 testthat::expect_equal(
 length(dataset$getNumericalIndex()),
-n_distinct(mappedData$covariates %>% pull(covariateId)))
+dplyr::n_distinct(mappedData$covariates %>% dplyr::pull(covariateId)))
 
 })
 
@@ -14,7 +14,7 @@ test_that("number of num and cat features sum correctly", {
   
 testthat::expect_equal(
   dataset$numNumFeatures()+dataset$numCatFeatures(), 
-  n_distinct(mappedData$covariates %>% pull(covariateId))
+  dplyr::n_distinct(mappedData$covariates %>% dplyr::pull(covariateId))
 )
 
 })
@@ -26,7 +26,7 @@ test_that("length of dataset correct", {
   expect_equal(length(dataset), dataset$num$shape[1])
   expect_equal(
     dataset$.length(), 
-    n_distinct(mappedData$covariates %>% pull(rowId))
+    dplyr::n_distinct(mappedData$covariates %>% dplyr::pull(rowId))
   )
   
 })
