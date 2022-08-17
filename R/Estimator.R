@@ -22,14 +22,14 @@
 #' fits a deep learning estimator to data.
 #' 
 #' @param trainData      the data to use
-#' @param param          model parameters
+#' @param modelSettings  modelSettings object
 #' @param analysisId     Id of the analysis
 #' @param ...            Extra inputs
 #'
 #' @export
 fitEstimator <- function(
   trainData, 
-  param, 
+  modelSettings, 
   analysisId,
   ...
 ) {
@@ -38,6 +38,8 @@ fitEstimator <- function(
   
   # check covariate data
   if(!FeatureExtraction::isCovariateData(trainData$covariateData)){stop("Needs correct covariateData")}
+  
+  param <- modelSettings$param
   
   # get the settings from the param
   settings <- attr(param, 'settings')

@@ -62,13 +62,13 @@ setDeepNNTorch <- function(
 
 #' Fits a deep neural network
 #' @param trainData     Training data object
-#' @param param         Hyperparameters to search over
+#' @param modelSettings modelSettings object
 #' @param search        Which kind of search strategy to use
 #' @param analysisId    Analysis Id
 #' @export
 fitDeepNNTorch <- function(
   trainData,
-  param, 
+  modelSettings, 
   search='grid', 
   analysisId)
   {
@@ -80,6 +80,7 @@ fitDeepNNTorch <- function(
     stop('DeepNNTorch requires correct covariateData')
   }
   
+  param <- modelSettings$param
   # get the settings from the param
   settings <- attr(param, 'settings')
   

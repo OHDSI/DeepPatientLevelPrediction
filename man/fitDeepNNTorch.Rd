@@ -4,12 +4,12 @@
 \alias{fitDeepNNTorch}
 \title{Fits a deep neural network}
 \usage{
-fitDeepNNTorch(trainData, param, search = "grid", analysisId)
+fitDeepNNTorch(trainData, modelSettings, search = "grid", analysisId)
 }
 \arguments{
 \item{trainData}{Training data object}
 
-\item{param}{Hyperparameters to search over}
+\item{modelSettings}{modelSettings object}
 
 \item{search}{Which kind of search strategy to use}
 

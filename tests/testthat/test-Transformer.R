@@ -12,7 +12,7 @@ test_that('Transformer settings work', {
 
 test_that('fitEstimator with Transformer works', {
   
-  results <- fitEstimator(trainData$Train, settings$param, analysisId=1)
+  results <- fitEstimator(trainData$Train, settings, analysisId=1)
   
   expect_equal(class(results), 'plpModel')
   expect_equal(attr(results, 'modelType'), 'binary')

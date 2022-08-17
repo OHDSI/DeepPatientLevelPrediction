@@ -102,7 +102,7 @@ modelSettings <- setResNet(numLayers=1, sizeHidden=16, hiddenFactor=1,
                            randomSample = 1, epochs=1)
 
 sink(nullfile())  
-results <- fitEstimator(trainData$Train, param = modelSettings$param, analysisId = 1)
+results <- fitEstimator(trainData$Train, modelSettings = modelSettings, analysisId = 1)
 sink()
 
 test_that('Estimator fit function works', {
