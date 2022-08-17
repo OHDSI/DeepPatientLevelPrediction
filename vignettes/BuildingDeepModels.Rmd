@@ -281,7 +281,7 @@ paper](https://arxiv.org/abs/2106.11959).
 
 ### Example
 
-#### Set Fuction
+#### Set Function
 
 To use the package to fit a ResNet model you can use the `setResNet()`
 function to specify the hyperparameter settings for the network.
@@ -298,11 +298,6 @@ function to specify the hyperparameter settings for the network.
 
 `residualDropout` and`hiddenDropout` : How much dropout to apply in
 hidden layer or residual connection
-
-`normalization` : which type of normalization to use (batch
-normalization or layer normalization)
-
-`activation` : which activation function to use
 
 `sizeEmbedding` : The size of the initial embedding layer
 

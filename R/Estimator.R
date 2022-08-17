@@ -320,7 +320,7 @@ gridCvDeep <- function(mappedData,
 
 
   # save torch code here
-  estimatorFile <- estimator$save(modelLocation, "DeepEstimatorModel.pt")
+  estimator$save(modelLocation, "DeepEstimatorModel.pt")
 
   return(
     list(
