@@ -1,6 +1,6 @@
 Package: DeepPatientLevelPrediction
 Type: Package
-Title: Deep learning function for patient level prediction using data in the OMOP Common Data Model
+Title: Deep Learning For Patient Level Prediction Using Data In The OMOP Common Data Model
 Version: 0.0.1
 Date: 2021-06-07
 Authors@R: c(
@@ -17,7 +17,7 @@ URL: https://ohdsi.github.io/PatientLevelPrediction, https://github.com/OHDSI/De
 BugReports: https://github.com/OHDSI/DeepPatientLevelPrediction/issues
 VignetteBuilder: knitr
 Depends:
-    R (>= 3.3.0)
+    R (>= 3.5.0)
 Imports:
     dplyr,
     data.table,
@@ -34,7 +34,7 @@ Suggests:
     plyr,  
     testthat
 Remotes:
-    ohdsi/PatientLevelPrediction,
+    ohdsi/PatientLevelPrediction@develop,
     ohdsi/FeatureExtraction,
     ohdsi/Eunomia
 RoxygenNote: 7.2.0
