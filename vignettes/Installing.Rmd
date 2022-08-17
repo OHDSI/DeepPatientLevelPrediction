@@ -144,4 +144,12 @@ plpResults <- PatientLevelPrediction::runPlp(plpData = plpData,
 
 # Acknowledgments
 
-Considerable work has been dedicated to provide the `DeepPatientLevelPrediction` package. 
+Considerable work has been dedicated to provide the `DeepPatientLevelPrediction` package.
+
+```{r tidy=TRUE,eval=TRUE}
+citation("DeepPatientLevelPrediction")
+```
+
+**Please reference this paper if you use the PLP Package in your work:**
+
+[Reps JM, Schuemie MJ, Suchard MA, Ryan PB, Rijnbeek PR. Design and implementation of a standardized framework to generate and evaluate patient-level prediction models using observational healthcare data. J Am Med Inform Assoc. 2018;25(8):969-975.](http://dx.doi.org/10.1093/jamia/ocy032)
