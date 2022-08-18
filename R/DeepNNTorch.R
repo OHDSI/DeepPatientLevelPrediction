@@ -1,30 +1,27 @@
 #' settings for a Deep neural network
 #' @param units           A list of vectors for neurons per layer
-#' @param layer_dropout   Dropout to use per layer
+#' @param layerDropout   Dropout to use per layer
 #' @param lr              Learning rate ot use
 #' @param decay           Weight decay to use
-#' @param outcome_weight  Weight for minority outcome in cost function
-#' @param batch_size      Batch size to use
+#' @param outcomeWeight  Weight for minority outcome in cost function
+#' @param batchSize      Batch size to use
 #' @param epochs          How many epochs to use
 #' @param device          Which device to use
 #' @param seed            A seed to make experiments more reproducible
 #' @export
 setDeepNNTorch <- function(units = list(c(128, 64), 128),
-                           layer_dropout = c(0.2),
+                           layerDropout = c(0.2),
                            lr = c(1e-4),
                            decay = c(1e-5),
-                           outcome_weight = c(1.0),
-                           batch_size = c(10000),
+                           outcomeWeight = c(1.0),
+                           batchSize = c(10000),
                            epochs = c(100),
                            device = "cpu",
                            seed = NULL) {
-
-  # ensure_installed("torch")
-
   param <- expand.grid(
     units = units,
-    layer_dropout = layer_dropout,
-    lr = lr, decay = decay, outcome_weight = outcome_weight, epochs = epochs,
+    layerDropout = layerDropout,
+    lr = lr, decay = decay, outcomeWeight = outcomeWeight, epochs = epochs,
     seed = ifelse(is.null(seed), "NULL", seed)
   )
 
@@ -34,17 +31,15 @@ setDeepNNTorch <- function(units = list(c(128, 64), 128),
   param$units <- NULL
 
   attr(param, "settings") <- list(
-    selectorType = "byPid", # is this correct?
-    crossValidationInPrior = T,
     modelType = "DeepNN",
     seed = seed[1],
     name = "DeepNNTorch",
     units = units,
-    layer_dropout = layer_dropout,
+    layerDropout = layerDropout,
     lr = lr,
     decay = decay,
-    outcome_weight = outcome_weight,
-    batch_size = batch_size,
+    outcomeWeight = outcomeWeight,
+    batchSize = batchSize,
     device = device,
     epochs = epochs
   )
@@ -171,13 +166,15 @@ fitDeepNNTorch <- function(trainData,
 #' @export
 predictDeepNN <- function(plpModel,
                           data,
-                          cohort) {
-  if (!"plpModel" %in% class(plpModel)) {
+                          cohort,
+                          batchSize=512,
+                          device='cpu') {
+  if (!inherits(plpModel, 'plpModel') & !inherits(plpModel, 'nn_module')) {
     plpModel <- list(model = plpModel)
     attr(plpModel, "modelType") <- "binary"
   }
 
-  if ("plpData" %in% class(data)) {
+  if (inherits(data, 'plpData')) {
     dataMat <- PatientLevelPrediction::toSparseM(
       plpData = data,
       cohort = cohort,
@@ -193,9 +190,23 @@ predictDeepNN <- function(plpModel,
 
   if (is.character(plpModel$model)) {
     model <- torch::torch_load(file.path(plpModel$model, "DeepNNTorchModel.pt"), device = "cpu")
+  } else {
+    model <- plpModel
   }
-  y_pred <- model(data$all)
-  prediction$value <- as.array(y_pred$to())[, 1]
+  model$to(device=device)
+  batchIndex <- 1:length(data)
+  batchIndex <- split(batchIndex, ceiling(seq_along(batchIndex) / batchSize))
+  torch::with_no_grad({
+    predictions <- c()
+    model$eval()
+    coro::loop(for (b in batchIndex) {
+      batch <- data[b]$batch$all$to(device=device)
+      target <- data[b]$target$to(device=device)
+      pred <- model(batch)
+      predictions <- c(predictions, as.array(torch::torch_sigmoid(pred[,1]$cpu())))
+    })
+  })
+  prediction$value <- predictions
 
   attr(prediction, "metaData")$modelType <- attr(plpModel, "modelType")
 
@@ -223,7 +234,7 @@ gridCvDeepNN <- function(matrixData,
   for (gridId in 1:nrow(paramSearch)) {
 
     # get the params
-    modelParamNames <- c("layer_dropout", "lr", "decay", "outcome_weight", "epochs", "units1", "units2", "units3")
+    modelParamNames <- c("layerDropout", "lr", "decay", "outcomeWeight", "epochs", "units1", "units2", "units3")
     modelParams <- paramSearch[gridId, modelParamNames]
 
     fitParams <- paramSearch[gridId, c("lr", "decay")]
@@ -247,7 +258,7 @@ gridCvDeepNN <- function(matrixData,
           inputN = ncol(matrixData),
           layer1 = modelParams$units1,
           outputN = 2,
-          layer_dropout = modelParams$layer_dropout
+          layer_dropout = modelParams$layerDropout
         )
       } else if (is.na(modelParams$units3)) {
         model <- doubleLayerNN(
@@ -255,7 +266,7 @@ gridCvDeepNN <- function(matrixData,
           layer1 = modelParams$units1,
           layer2 = modelParams$units2,
           outputN = 2,
-          layer_dropout = modelParams$layer_dropout
+          layer_dropout = modelParams$layerDropout
         )
       } else {
         model <- tripleLayerNN(
@@ -264,12 +275,14 @@ gridCvDeepNN <- function(matrixData,
           layer2 = modelParams$units2,
           layer3 = modelParams$units3,
           outputN = 2,
-          layer_dropout = modelParams$layer_dropout
+          layer_dropout = modelParams$layerDropout
         )
       }
-
+      
+      model$to(device=device)
       criterion <- torch::nn_bce_loss() # Binary crossentropy only
-      optimizer <- torch::optim_adam(model$parameters, lr = fitParams$lr)
+      optimizer <- torch::optim_adam(model$parameters, lr = fitParams$lr,
+                                     weight_decay = fitParams$decay)
 
       # Need earlyStopping
       # Need setting decay
@@ -278,30 +291,70 @@ gridCvDeepNN <- function(matrixData,
       trainDataset <- torch::dataset_subset(dataset, indices = which(fold != i))
       testDataset <- torch::dataset_subset(dataset, indices = which(fold == i))
 
-      # batches <- split(trainDataset, ceiling(seq_along(trainDataset)/batch_size))
-
+      batchIndex <- torch::torch_randperm(length(trainDataset)) + 1L
+      batchIndex <- split(batchIndex, ceiling(seq_along(batchIndex) / batchSize))
+      
+      testBatchIndex <- 1:length(testDataset)
+      testBatchIndex <- split(testBatchIndex, ceiling(seq_along(testBatchIndex) / batchSize))
       for (j in 1:epochs) {
-        # for(batchRowIds in batches){
-        optimizer$zero_grad()
-
-        # this is full batch training, won't work on real data
-        y_pred <- model(trainDataset$dataset$all[trainDataset$indices])
-        loss <- criterion(y_pred[, 1], trainDataset$dataset$target[trainDataset$indices])
-        loss$backward()
-        optimizer$step()
-
-        if (j %% 1 == 0) {
-          cat("Epoch:", j, "out of ", epochs, ": Loss:", loss$item(), "\n")
-        }
-        # }
+        startTime <- Sys.time()
+        trainLosses <- torch::torch_empty(length(batchIndex))
+        ix <- 1
+        model$train()
+        progressBar <- utils::txtProgressBar(style = 3)
+        coro::loop(for (b in batchIndex) {
+          optimizer$zero_grad()
+          batch <- trainDataset[b]$batch$all$to(device=device)
+          target <- trainDataset[b]$target$to(device=device)
+          y_pred <- model(batch)
+          loss <- criterion(y_pred[, 1], target)
+          loss$backward()
+          optimizer$step()
+          
+          trainLosses[ix] <- loss$detach()
+          utils::setTxtProgressBar(progressBar, ix / length(batchIndex))
+          ix <- ix + 1
+        })
+        close(progressBar)
+        trainLoss <- trainLosses$mean()$item()
+        torch::with_no_grad({
+          ix <- 1
+          testLosses <- torch::torch_empty(length(batchIndex))
+          model$eval()
+          predictions <- list()
+          targets <- list()
+          coro::loop(for (b in testBatchIndex) {
+            batch <- dataset[b]$batch$all$to(device=device)
+            target <- dataset[b]$target$to(device=device)
+            pred <- model(batch)
+            predictions <- c(predictions, pred[,1])
+            targets <- c(targets, target)
+            testLosses[ix] <- criterion(pred[,1], target)
+            ix <- ix + 1
+          })
+          testLoss <- loss$mean()$item()
+          predictionsClass <- data.frame(
+            value = as.matrix(torch::torch_sigmoid(torch::torch_cat(predictions)$cpu())),
+            outcomeCount = as.matrix(torch::torch_cat(targets)$cpu())
+          )
+          attr(predictionsClass, "metaData")$modelType <- "binary"
+          auc <- PatientLevelPrediction::computeAuc(predictionsClass)
+        })
+        
+        delta <- Sys.time() - startTime
+        ParallelLogger::logInfo(
+          "Epochs: ", j,
+          " | Val AUC: ", round(auc, 3),
+          " | Val Loss: ", round(testLoss, 3),
+          " | Train Loss: ", round(trainLoss, 3),
+          " | Time: ", round(delta, 3), " ",
+          units(delta)
+        )
+        
       }
-      model$eval()
-
-      ParallelLogger::logInfo("Calculating predictions on left out fold set...")
-
-      pred <- model(testDataset$dataset$all[testDataset$indices])
+      
       predictionTable <- labels[labels$index == i, ]
-      predictionTable$value <- as.array(pred$to())[, 1]
+      predictionTable$value <- predictionsClass$value
 
       if (!"plpModel" %in% class(model)) {
         model <- list(model = model)
@@ -319,7 +372,6 @@ gridCvDeepNN <- function(matrixData,
 
 
   # get best para (this could be modified to enable any metric instead of AUC, just need metric input in function)
-
   paramGridSearch <- lapply(gridSearchPredictons, function(x) {
     do.call(PatientLevelPrediction::computeGridPerformance, x)
   }) # cvAUCmean, cvAUC, param
@@ -332,9 +384,8 @@ gridCvDeepNN <- function(matrixData,
   cvPrediction$evaluationType <- "CV"
 
   ParallelLogger::logInfo("Training final model using optimal parameters")
-
+  
   # get the params
-  modelParamNames <- c("layer_dropout", "lr", "decay", "outcome_weight", "epochs", "units1", "units2", "units3")
   modelParams <- finalParam[modelParamNames]
   fitParams <- finalParam[c("lr", "decay")]
   fitParams$epochs <- epochs
@@ -360,7 +411,7 @@ gridCvDeepNN <- function(matrixData,
       inputN = ncol(matrixData),
       layer1 = modelParams$units1,
       outputN = 2,
-      layer_dropout = modelParams$layer_dropout
+      layer_dropout = modelParams$layerDropout
     )
   } else if (is.na(modelParams$units3)) {
     model <- doubleLayerNN(
@@ -368,7 +419,7 @@ gridCvDeepNN <- function(matrixData,
       layer1 = modelParams$units1,
       layer2 = modelParams$units2,
       outputN = 2,
-      layer_dropout = modelParams$layer_dropout
+      layer_dropout = modelParams$layerDropout
     )
   } else {
     model <- tripleLayerNN(
@@ -377,23 +428,42 @@ gridCvDeepNN <- function(matrixData,
       layer2 = modelParams$units2,
       layer3 = modelParams$units3,
       outputN = 2,
-      layer_dropout = modelParams$layer_dropout
+      layer_dropout = modelParams$layerDropout
     )
   }
 
+  model$to(device=device)
+  
   criterion <- torch::nn_bce_loss() # Binary crossentropy only
   optimizer <- torch::optim_adam(model$parameters, lr = fitParams$lr)
-  optimizer$zero_grad()
-  y_pred <- model(trainDataset$all)
-  loss <- criterion(y_pred[, 1], trainDataset$target)
-  loss$backward()
-  optimizer$step()
-  model$eval()
-
+  
+  batchIndex <- torch::torch_randperm(length(trainDataset)) + 1L
+  batchIndex <- split(batchIndex, ceiling(seq_along(batchIndex) / batchSize))
+  
+  for (epoch in 1:epochs) {
+    ix <- 1
+    model$train()
+    progressBar <- utils::txtProgressBar(style = 3)
+    coro::loop(for (b in batchIndex) {
+      optimizer$zero_grad()
+      batch <- dataset[b]$batch$all$to(device=device)
+      target <- dataset[b]$target$to(device=device)
+      out <- model(batch)
+      loss <- criterion(out[,1], target)
+      loss$backward()
+      
+      optimizer$step()
+      utils::setTxtProgressBar(progressBar, ix / length(batchIndex))
+      ix <- ix + 1
+    })
+    close(progressBar)
+  }
+  
+  browser()
   ParallelLogger::logInfo("Calculating predictions on all train data...")
 
-  prediction <- labels
-  prediction$value <- as.array(y_pred$to())[, 1]
+  prediction <- predictDeepNN(model, data=trainDataset, cohort=labels, 
+                              batchSize = batchSize, device = device)
   prediction$evaluationType <- "Train"
 
   prediction <- rbind(
