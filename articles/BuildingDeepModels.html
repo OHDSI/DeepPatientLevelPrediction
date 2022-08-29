@@ -33,7 +33,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">DeepPatientLevelPrediction</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.0.1</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.0.0</span>
       </span>
     </div>
 
@@ -93,7 +93,7 @@
       <h1 data-toc-skip>Building Deep Learning Models</h1>
                         <h4 data-toc-skip class="author">Jenna Reps, Egill Fridgeirsson, Chungsoo Kim, Henrik John, Seng Chan You, Xiaoyong Pan</h4>
             
-            <h4 data-toc-skip class="date">2022-08-17</h4>
+            <h4 data-toc-skip class="date">2022-08-29</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/OHDSI/DeepPatientLevelPrediction/blob/HEAD/vignettes/BuildingDeepModels.Rmd" class="external-link"><code>vignettes/BuildingDeepModels.Rmd</code></a></small>
       <div class="hidden name"><code>BuildingDeepModels.Rmd</code></div>
@@ -168,42 +168,46 @@
 <div class="section level5">
 <h5 id="set-function">Set Function<a class="anchor" aria-label="anchor" href="#set-function"></a>
 </h5>
-<p>To use the package to fit a MLP model you can use the <code><a href="../reference/setDeepNNTorch.html">setDeepNNTorch()</a></code> function to specify the hyper-parameter settings for the MLP.</p>
+<p>To use the package to fit a MLP model you can use the <code><a href="../reference/setMultiLayerPerceptron.html">setMultiLayerPerceptron()</a></code> function to specify the hyper-parameter settings for the MLP.</p>
 </div>
 <div class="section level5">
 <h5 id="inputs">Inputs<a class="anchor" aria-label="anchor" href="#inputs"></a>
 </h5>
-<p>The <code>units</code> input defines the network topology via the number of neurons per layer in the network’s hidden layers. A list of different topologies can be investigated. <code>list(c(10,63), 128)</code> means two different topologies will be fit, the first has two hidden layers with 10 neurons in the first hidden layer and 63 in the second hidden layer. The second just has one hidden layer with 128 neurons.</p>
-<p>The <code>layer_dropout</code> input specifies the probability that a layer randomly sets input units to 0 at each step during training time. A value of <code>0.2</code> means that 20% of the time the layer input will be set to 0. This is used to reduce overfitting.</p>
-<p>The <code>lr</code> input is the learning rate which is a hyperparameter that controls how much to change the model in response to the estimated error each time the model weights are updated. The smaller the <code>lr</code> the longer it will take to fit the model and the model weights may get stuck, but if the <code>lr</code> is too large, the weights may sub-optimally converge too fast.</p>
-<p>The <code>decay</code> input corresponds to the weight decay in the objective function. During model fitting the aim is to minimize the objective function. The objective function is made up of the prediction error (the difference between the prediction vs the truth) plus the square of the weights multiplied by the weight decay. The larger the weight decay, the more you penalize having large weights. If you set the weight decay too large, the model will never fit well enough, if you set it too low, you need to be careful of overfitting (so try to stop model fitting earlier).</p>
-<p>The <code>outcome_weight</code> specifies whether to add more weight to misclassifying one class (e.g., with outcome during TAR) vs the other (e.g., without outcome during TAR). This can be useful if there is imbalance between the classes (e.g., the outcome rarely occurs during TAR). However be careful since this will also result in miscalibrated models which need to be recalibrated.</p>
-<p>The <code>batch_size</code> corresponds to the number of data points (patients) used per iteration to estimate the network error during model fitting.</p>
+<p>The <code>numLayers</code> and <code>sizeHidden</code> inputs define the network topology via the number of layers and neurons in the network’s hidden layers.</p>
+<p>The <code>dropout</code> input specifies the probability that a layer randomly sets some inputs to 0 at each step during training time. A value of <code>0.2</code> means that 20% of the layers inputs will be set to 0. This is used to reduce overfitting.</p>
+<p>The <code>sizeEmbedding</code> input specifices the size of the embedding used. The first layer is an embedding layer which converts each sparse feature to a dense vector which it learns. An embedding is a lower dimensional projection of the features where distance between points is a measure of similarity.</p>
+<p>The <code>weightDecay</code> input corresponds to the weight decay in the objective function. During model fitting the aim is to minimize the objective function. The objective function is made up of the prediction error (the difference between the prediction vs the truth) plus the square of the weights multiplied by the weight decay. The larger the weight decay, the more you penalize having large weights. If you set the weight decay too large, the model will never fit well enough, if you set it too low, you need to be careful of overfitting (so try to stop model fitting earlier).</p>
+<p>The <code>learningRate</code> input is the learning rate which is a hyperparameter that controls how much to change the model in response to the estimated error each time the model weights are updated. The smaller the <code>learningRate</code> the longer it will take to fit the model and the model weights may get stuck, but if the <code>learningRate</code> is too large, the weights may sub-optimally converge too fast.</p>
+<p>The <code>seed</code> lets the user use the same random initialization of the network’s weights as a previous run.</p>
+<p>The <code>hyperParamSearch</code> chooses the strategy to find the best hyperparameters. Currently a random search and grid search are supported. Grid search searches every possible combination of hyperparameters while random search samples randomly from the combinations. Since neural networks can be very flexible and have many hyperparameter combinations it’s almost never feasible to do a full grid search unless the network is really small.</p>
+<p>The <code>randomSample</code> chooses how many random samples to use.</p>
+<p>The <code>device</code> specifies what device to use. Either <code>cpu</code> or <code>cuda</code>. Or if you have many GPU’s <code>cuda:x</code> where x is the gpu number as seen in <code>nvidia-smi</code>.</p>
+<p>The <code>batchSize</code> corresponds to the number of data points (patients) used per iteration to estimate the network error during model fitting.</p>
 <p>The <code>epochs</code> corresponds to how many time to run through the entire training data while fitting the model.</p>
-<p>The <code>seed</code> lets the user reproduce the same network given the same training data and hyper-parameter settings if they use the same seed.</p>
 </div>
 <div class="section level5">
 <h5 id="example-code">Example Code<a class="anchor" aria-label="anchor" href="#example-code"></a>
 </h5>
-<p>For example, the following code will try two different network topologies and pick the topology that obtains the greatest AUROC via cross validation in the training data and then fit the model with that topology using all the training data. The standard output of <code>runPlp()</code> will be returned - this contains the MLP model along with the performance details and settings.</p>
+<p>For example, the following code will try 10 different network configurations sampled from the possible combinations given and pick the one that obtains the greatest AUROC via cross validation in the training data and then fit the model with that configuration using all the training data. The standard output of <code>runPlp()</code> will be returned - this contains the MLP model along with the performance details and settings. Note that all possible combinations are 2<em>2</em>2*2 or 16 but specify <code>randomSample=10</code> to only try 10 of those.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co">#singleLayerNN(inputN = 10, layer1 = 100, outputN = 2, layer_dropout = 0.1)</span></span>
-<span><span class="va">deepset</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/setDeepNNTorch.html">setDeepNNTorch</a></span><span class="op">(</span></span>
-<span>  units <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">10</span>,<span class="fl">63</span><span class="op">)</span>, <span class="fl">128</span><span class="op">)</span>, </span>
-<span>  layer_dropout <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.2</span><span class="op">)</span>,</span>
-<span>  lr <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1e-4</span><span class="op">)</span>, </span>
-<span>  decay <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1e-5</span><span class="op">)</span>, </span>
-<span>  outcome_weight <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1.0</span><span class="op">)</span>, </span>
-<span>  batch_size <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">100</span><span class="op">)</span>, </span>
-<span>  epochs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">5</span><span class="op">)</span>,  </span>
-<span>  seed <span class="op">=</span> <span class="fl">12</span>  </span>
-<span>  <span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">modelSettings</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/setMultiLayerPerceptron.html">setMultiLayerPerceptron</a></span><span class="op">(</span></span>
+<span>                                numLayers <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">5</span><span class="op">)</span>,</span>
+<span>                                numHidden <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">64</span>, <span class="fl">128</span><span class="op">)</span>, </span>
+<span>                                dropout <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.2</span><span class="op">)</span>,</span>
+<span>                                sizeEmbedding <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">32</span>, <span class="fl">64</span><span class="op">)</span>,</span>
+<span>                                learningRate <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1e-3</span>, <span class="fl">1e-4</span><span class="op">)</span>, </span>
+<span>                                weightDecay <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1e-5</span><span class="op">)</span>, </span>
+<span>                                randomSample<span class="op">=</span><span class="fl">10</span>,</span>
+<span>                                batchSize <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">100</span><span class="op">)</span>, </span>
+<span>                                epochs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">5</span><span class="op">)</span>,  </span>
+<span>                                seed <span class="op">=</span> <span class="fl">12</span></span>
+<span>                                <span class="op">)</span></span>
 <span></span>
 <span><span class="va">mlpResult</span> <span class="op">&lt;-</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/runPlp.html" class="external-link">runPlp</a></span><span class="op">(</span></span>
 <span>    plpData <span class="op">=</span> <span class="va">plpData</span>, </span>
 <span>    outcomeId <span class="op">=</span> <span class="fl">3</span>, </span>
-<span>    modelSettings <span class="op">=</span> <span class="va">deepset</span>,</span>
-<span>    analysisId <span class="op">=</span> <span class="st">'DeepNNTorch'</span>, </span>
+<span>    modelSettings <span class="op">=</span> <span class="va">modelSettings</span>,</span>
+<span>    analysisId <span class="op">=</span> <span class="st">'MLP'</span>, </span>
 <span>    analysisName <span class="op">=</span> <span class="st">'Testing Deep Learning'</span>, </span>
 <span>    populationSettings <span class="op">=</span> <span class="va">populationSet</span>, </span>
 <span>    splitSettings <span class="op">=</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createDefaultSplitSetting.html" class="external-link">createDefaultSplitSetting</a></span><span class="op">(</span><span class="op">)</span>, </span>
@@ -301,8 +305,8 @@
 <span>    analysisName <span class="op">=</span> <span class="st">'Testing ResNet'</span>, </span>
 <span>    populationSettings <span class="op">=</span> <span class="va">populationSet</span>, </span>
 <span>    splitSettings <span class="op">=</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createDefaultSplitSetting.html" class="external-link">createDefaultSplitSetting</a></span><span class="op">(</span><span class="op">)</span>, </span>
-<span>    sampleSettings <span class="op">=</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createSampleSettings.html" class="external-link">createSampleSettings</a></span><span class="op">(</span><span class="op">)</span>,  <span class="co"># none </span></span>
-<span>    featureEngineeringSettings <span class="op">=</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createFeatureEngineeringSettings.html" class="external-link">createFeatureEngineeringSettings</a></span><span class="op">(</span><span class="op">)</span>, <span class="co"># none </span></span>
+<span>    sampleSettings <span class="op">=</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createSampleSettings.html" class="external-link">createSampleSettings</a></span><span class="op">(</span><span class="op">)</span>,  </span>
+<span>    featureEngineeringSettings <span class="op">=</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createFeatureEngineeringSettings.html" class="external-link">createFeatureEngineeringSettings</a></span><span class="op">(</span><span class="op">)</span>, </span>
 <span>    preprocessSettings <span class="op">=</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createPreprocessSettings.html" class="external-link">createPreprocessSettings</a></span><span class="op">(</span><span class="op">)</span>, </span>
 <span>    executeSettings <span class="op">=</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createExecuteSettings.html" class="external-link">createExecuteSettings</a></span><span class="op">(</span></span>
 <span>      runSplitData <span class="op">=</span> <span class="cn">T</span>, </span>
@@ -402,7 +406,7 @@
 <pre><code><span><span class="co">## </span></span>
 <span><span class="co">## To cite package 'DeepPatientLevelPrediction' in publications use:</span></span>
 <span><span class="co">## </span></span>
-<span><span class="co">##   Reps J, Fridgeirsson E, Chan You S, Kim C, John H (2021).</span></span>
+<span><span class="co">##   Reps J, Fridgeirsson E, Chan You S, Kim C, John H (29).</span></span>
 <span><span class="co">##   _DeepPatientLevelPrediction: Deep Learning For Patient Level</span></span>
 <span><span class="co">##   Prediction Using Data In The OMOP Common Data Model_.</span></span>
 <span><span class="co">##   https://ohdsi.github.io/PatientLevelPrediction,</span></span>
@@ -413,7 +417,7 @@
 <span><span class="co">##   @Manual{,</span></span>
 <span><span class="co">##     title = {DeepPatientLevelPrediction: Deep Learning For Patient Level Prediction Using Data In The OMOP Common Data Model},</span></span>
 <span><span class="co">##     author = {Jenna Reps and Egill Fridgeirsson and Seng {Chan You} and Chungsoo Kim and Henrik John},</span></span>
-<span><span class="co">##     year = {2021},</span></span>
+<span><span class="co">##     year = {29},</span></span>
 <span><span class="co">##     note = {https://ohdsi.github.io/PatientLevelPrediction, https://github.com/OHDSI/DeepPatientLevelPrediction},</span></span>
 <span><span class="co">##   }</span></span></code></pre>
 <p><strong>Please reference this paper if you use the PLP Package in your work:</strong></p>
