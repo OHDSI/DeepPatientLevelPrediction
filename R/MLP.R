@@ -1,4 +1,4 @@
-# @file ResNet.R
+# @file MLP.R
 #
 # Copyright 2022 Observational Health Data Sciences and Informatics
 #
@@ -16,20 +16,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#' setResNet
+#' setMultiLayerPerceptron
 #'
 #' @description
-#' Creates settings for a ResNet model
+#' Creates settings for a Multilayer perceptron model
 #'
 #' @details
-#' Model architecture from by https://arxiv.org/abs/2106.11959
+#' Model architecture
 #'
 #'
 #' @param numLayers         Number of layers in network, default: 1:16
 #' @param sizeHidden        Amount of neurons in each default layer, default: 2^(6:10) (64 to 1024)
-#' @param hiddenFactor      How much to grow the amount of neurons in each ResLayer, default: 1:4
-#' @param residualDropout   How much dropout to apply after last linear layer in ResLayer, default: seq(0, 0.3, 0.05)
-#' @param hiddenDropout     How much dropout to apply after first linear layer in ResLayer, default: seq(0, 0.3, 0.05)
+#' @param dropout           How much dropout to apply after first linear, default: seq(0, 0.3, 0.05)
 #' @param sizeEmbedding     Size of embedding layer, default: 2^(6:9) (64 to 512)
 #' @param weightDecay       Weight decay to apply, default: c(1e-6, 1e-3)
 #' @param learningRate      Learning rate to use. default: c(1e-2, 1e-5)
@@ -41,20 +39,18 @@
 #' @param epochs            Number of epochs to run, default: 10
 #'
 #' @export
-setResNet <- function(numLayers = c(1:8),
-                      sizeHidden = c(2^(6:9)),
-                      hiddenFactor = c(1:4),
-                      residualDropout = c(seq(0, 0.5, 0.05)),
-                      hiddenDropout = c(seq(0, 0.5, 0.05)),
-                      sizeEmbedding = c(2^(6:9)),
-                      weightDecay = c(1e-6, 1e-3),
-                      learningRate = c(1e-2, 3e-4, 1e-5),
-                      seed = NULL,
-                      hyperParamSearch = "random",
-                      randomSample = 100,
-                      device = "cpu",
-                      batchSize = 1024,
-                      epochs = 30) {
+setMultiLayerPerceptron <- function(numLayers = c(1:8),
+                                    sizeHidden = c(2^(6:9)),
+                                    dropout = c(seq(0, 0.5, 0.05)),
+                                    sizeEmbedding = c(2^(6:9)),
+                                    weightDecay = c(1e-6, 1e-3),
+                                    learningRate = c(1e-2, 3e-4, 1e-5),
+                                    seed = NULL,
+                                    hyperParamSearch = "random",
+                                    randomSample = 100,
+                                    device = "cpu",
+                                    batchSize = 1024,
+                                    epochs = 30) {
   if (is.null(seed)) {
     seed <- as.integer(sample(1e5, 1))
   }
@@ -62,9 +58,7 @@ setResNet <- function(numLayers = c(1:8),
   paramGrid <- list(
     numLayers = numLayers,
     sizeHidden = sizeHidden,
-    hiddenFactor = hiddenFactor,
-    residualDropout = residualDropout,
-    hiddenDropout = hiddenDropout,
+    dropout = dropout,
     sizeEmbedding = sizeEmbedding,
     weightDecay = weightDecay,
     learningRate = learningRate,
@@ -82,13 +76,13 @@ setResNet <- function(numLayers = c(1:8),
     device = device,
     batchSize = batchSize,
     epochs = epochs,
-    name = "ResNet",
+    name = "MLP",
     saveType = "file",
     modelParamNames = c(
-      "numLayers", "sizeHidden", "hiddenFactor",
-      "residualDropout", "hiddenDropout", "sizeEmbedding"
+      "numLayers", "sizeHidden",
+      "dropout", "sizeEmbedding"
     ),
-    baseModel = "ResNet"
+    baseModel = "MLP"
   )
 
   results <- list(
@@ -101,12 +95,13 @@ setResNet <- function(numLayers = c(1:8),
   return(results)
 }
 
-ResNet <- torch::nn_module(
-  name = "ResNet",
+
+MLP <- torch::nn_module(
+  name = "MLP",
   initialize = function(catFeatures, numFeatures = 0, sizeEmbedding, sizeHidden, numLayers,
-                        hiddenFactor, activation = torch::nn_relu,
-                        normalization = torch::nn_batch_norm1d, hiddenDropout = NULL,
-                        residualDropout = NULL, d_out = 1) {
+                        activation = torch::nn_relu,
+                        normalization = torch::nn_batch_norm1d, dropout = NULL,
+                        d_out = 1) {
     self$embedding <- torch::nn_embedding_bag(
       num_embeddings = catFeatures + 1,
       embedding_dim = sizeEmbedding,
@@ -118,16 +113,14 @@ ResNet <- torch::nn_module(
 
     self$first_layer <- torch::nn_linear(sizeEmbedding, sizeHidden)
 
-    resHidden <- sizeHidden * hiddenFactor
 
     self$layers <- torch::nn_module_list(lapply(
       1:numLayers,
       function(x) {
-        ResLayer(
-          sizeHidden, resHidden,
+        MLPLayer(
+          sizeHidden,
           normalization, activation,
-          hiddenDropout,
-          residualDropout
+          dropout
         )
       }
     ))
@@ -142,7 +135,6 @@ ResNet <- torch::nn_module(
     x_cat <- self$embedding(x_cat + 1L) # padding_idx is 1
     if (!is.null(x_num)) {
       x <- (x_cat + self$numEmbedding(x_num)$mean(dim = 2)) / 2
-      # x <- torch::torch_cat(list(x_cat, x_num), dim = 2L)
     } else {
       x <- x_cat
     }
@@ -159,36 +151,25 @@ ResNet <- torch::nn_module(
   }
 )
 
-ResLayer <- torch::nn_module(
-  name = "ResLayer",
-  initialize = function(sizeHidden, resHidden, normalization,
-                        activation, hiddenDropout = NULL, residualDropout = NULL) {
+MLPLayer <- torch::nn_module(
+  name = "MLPLayer",
+  initialize = function(sizeHidden = 64,
+                        normalization = torch::nn_batch_norm1d,
+                        activation = torch::nn_relu,
+                        dropout = 0.0, bias = TRUE) {
     self$norm <- normalization(sizeHidden)
-    self$linear0 <- torch::nn_linear(sizeHidden, resHidden)
-    self$linear1 <- torch::nn_linear(resHidden, sizeHidden)
-
-    if (!is.null(hiddenDropout)) {
-      self$hiddenDropout <- torch::nn_dropout(p = hiddenDropout)
-    }
-    if (!is.null(residualDropout)) {
-      self$residualDropout <- torch::nn_dropout(p = residualDropout)
-    }
-
     self$activation <- activation()
+    self$linear <- torch::nn_linear(sizeHidden, sizeHidden, bias = bias)
+
+    if (!is.null(dropout) | !dropout == 0.0) {
+      self$dropout <- torch::nn_dropout(p = dropout)
+    }
   },
   forward = function(x) {
-    z <- x
-    z <- self$norm(z)
-    z <- self$linear0(z)
-    z <- self$activation(z)
-    if (!is.null(self$hiddenDropout)) {
-      z <- self$hiddenDropout(z)
+    x <- self$linear(self$norm(x))
+    if (!is.null(self$dropout)) {
+      x <- self$dropout(x)
     }
-    z <- self$linear1(z)
-    if (!is.null(self$residualDropout)) {
-      z <- self$residualDropout(z)
-    }
-    x <- z + x
-    return(x)
+    return(self$activation(x))
   }
 )

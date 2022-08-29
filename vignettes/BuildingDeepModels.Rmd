@@ -157,31 +157,25 @@ model's parameters to reduce the error.
 
 #### Set Function
 
-To use the package to fit a MLP model you can use the `setDeepNNTorch()`
+To use the package to fit a MLP model you can use the `setMultiLayerPerceptron()`
 function to specify the hyper-parameter settings for the MLP.
 
 #### Inputs
 
-The `units` input defines the network topology via the number of neurons
-per layer in the network's hidden layers. A list of different topologies
-can be investigated. `list(c(10,63), 128)` means two different
-topologies will be fit, the first has two hidden layers with 10 neurons
-in the first hidden layer and 63 in the second hidden layer. The second
-just has one hidden layer with 128 neurons.
+The `numLayers` and `sizeHidden` inputs define the network topology via the number
+of layers and neurons in the network's hidden layers.
 
-The `layer_dropout` input specifies the probability that a layer
-randomly sets input units to 0 at each step during training time. A
-value of `0.2` means that 20% of the time the layer input will be set to
+The `dropout` input specifies the probability that a layer
+randomly sets some inputs to 0 at each step during training time. A
+value of `0.2` means that 20% of the layers inputs will be set to
 0. This is used to reduce overfitting.
 
-The `lr` input is the learning rate which is a hyperparameter that
-controls how much to change the model in response to the estimated error
-each time the model weights are updated. The smaller the `lr` the longer
-it will take to fit the model and the model weights may get stuck, but
-if the `lr` is too large, the weights may sub-optimally converge too
-fast.
+The `sizeEmbedding` input specifices the size of the embedding used. The first
+layer is an embedding layer which converts each sparse feature to a dense vector
+which it learns. An embedding is a lower dimensional projection of the features
+where distance between points is a measure of similarity.
 
-The `decay` input corresponds to the weight decay in the objective
+The `weightDecay` input corresponds to the weight decay in the objective
 function. During model fitting the aim is to minimize the objective
 function. The objective function is made up of the prediction error (the
 difference between the prediction vs the truth) plus the square of the
@@ -191,50 +185,67 @@ large, the model will never fit well enough, if you set it too low, you
 need to be careful of overfitting (so try to stop model fitting
 earlier).
 
-The `outcome_weight` specifies whether to add more weight to
-misclassifying one class (e.g., with outcome during TAR) vs the other
-(e.g., without outcome during TAR). This can be useful if there is
-imbalance between the classes (e.g., the outcome rarely occurs during
-TAR). However be careful since this will also result in miscalibrated
-models which need to be recalibrated.
+The `learningRate` input is the learning rate which is a hyperparameter that
+controls how much to change the model in response to the estimated error
+each time the model weights are updated. The smaller the `learningRate` the longer
+it will take to fit the model and the model weights may get stuck, but
+if the `learningRate` is too large, the weights may sub-optimally converge too
+fast.
 
-The `batch_size` corresponds to the number of data points (patients)
+The `seed` lets the user use the same random initialization of the network's
+weights as a previous run.
+
+The `hyperParamSearch` chooses the strategy to find the best hyperparameters. 
+Currently a random search and grid search are supported. Grid search searches
+every possible combination of hyperparameters while random search samples 
+randomly from the combinations. Since neural networks can be very flexible and
+have many hyperparameter combinations it's almost never feasible to do a full
+grid search unless the network is really small.
+
+The `randomSample` chooses how many random samples to use.
+
+The `device` specifies what device to use. Either `cpu` or `cuda`. Or if you 
+have many GPU's `cuda:x` where x is the gpu number as seen in `nvidia-smi`.
+
+The `batchSize` corresponds to the number of data points (patients)
 used per iteration to estimate the network error during model fitting.
 
 The `epochs` corresponds to how many time to run through the entire
 training data while fitting the model.
 
-The `seed` lets the user reproduce the same network given the same
-training data and hyper-parameter settings if they use the same seed.
+
 
 #### Example Code
 
-For example, the following code will try two different network
-topologies and pick the topology that obtains the greatest AUROC via
-cross validation in the training data and then fit the model with that
-topology using all the training data. The standard output of `runPlp()`
-will be returned - this contains the MLP model along with the
-performance details and settings.
+For example, the following code will try 10 different network
+configurations sampled from the possible combinations given and pick the one 
+that obtains the greatest AUROC via cross validation in the training data and 
+then fit the model with that configuration using all the training data. The 
+standard output of `runPlp()` will be returned - this contains the MLP model 
+along with the performance details and settings. Note that all possible
+combinations are 2*2*2*2 or 16 but specify ```randomSample=10``` to only try
+10 of those.
 
 ```{r, eval=FALSE}
 
-#singleLayerNN(inputN = 10, layer1 = 100, outputN = 2, layer_dropout = 0.1)
-deepset <- setDeepNNTorch(
-  units = list(c(10,63), 128), 
-  layer_dropout = c(0.2),
-  lr = c(1e-4), 
-  decay = c(1e-5), 
-  outcome_weight = c(1.0), 
-  batch_size = c(100), 
-  epochs = c(5),  
-  seed = 12  
-  )
+modelSettings <- setMultiLayerPerceptron(
+                                numLayers = c(3, 5),
+                                numHidden = c(64, 128), 
+                                dropout = c(0.2),
+                                sizeEmbedding = c(32, 64),
+                                learningRate = c(1e-3, 1e-4), 
+                                weightDecay = c(1e-5), 
+                                randomSample=10,
+                                batchSize = c(100), 
+                                epochs = c(5),  
+                                seed = 12
+                                )
 
 mlpResult <- PatientLevelPrediction::runPlp(
     plpData = plpData, 
     outcomeId = 3, 
-    modelSettings = deepset,
-    analysisId = 'DeepNNTorch', 
+    modelSettings = modelSettings,
+    analysisId = 'MLP', 
     analysisName = 'Testing Deep Learning', 
     populationSettings = populationSet, 
     splitSettings = PatientLevelPrediction::createDefaultSplitSetting(), 
@@ -361,8 +372,8 @@ resResult <- PatientLevelPrediction::runPlp(
     analysisName = 'Testing ResNet', 
     populationSettings = populationSet, 
     splitSettings = PatientLevelPrediction::createDefaultSplitSetting(), 
-    sampleSettings = PatientLevelPrediction::createSampleSettings(),  # none 
-    featureEngineeringSettings = PatientLevelPrediction::createFeatureEngineeringSettings(), # none 
+    sampleSettings = PatientLevelPrediction::createSampleSettings(),  
+    featureEngineeringSettings = PatientLevelPrediction::createFeatureEngineeringSettings(), 
     preprocessSettings = PatientLevelPrediction::createPreprocessSettings(), 
     executeSettings = PatientLevelPrediction::createExecuteSettings(
       runSplitData = T, 

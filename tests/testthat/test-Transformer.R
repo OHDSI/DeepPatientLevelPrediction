@@ -9,6 +9,10 @@ test_that("Transformer settings work", {
   testthat::expect_s3_class(object = settings, class = "modelSettings")
   testthat::expect_equal(settings$fitFunction, "fitEstimator")
   testthat::expect_true(length(settings$param) > 0)
+  testthat::expect_error(setTransformer(
+    numBlocks = 1, dimToken = 50,
+    numHeads = 7
+  ))
 })
 
 test_that("fitEstimator with Transformer works", {

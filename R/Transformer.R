@@ -27,7 +27,7 @@ setTransformer <- function(numBlocks = 3, dimToken = 96, dimOut = 1,
                            learningRate = 3e-4, batchSize = 1024,
                            epochs = 10, device = "cpu", hyperParamSearch = "random",
                            randomSamples = 100, seed = NULL) {
-  if (!is.null(seed)) {
+  if (is.null(seed)) {
     seed <- as.integer(sample(1e5, 1))
   }
 
@@ -52,7 +52,7 @@ setTransformer <- function(numBlocks = 3, dimToken = 96, dimOut = 1,
     seed = list(as.integer(seed[[1]]))
   )
 
-  param <- listCartesian(paramGrid)
+  param <- PatientLevelPrediction::listCartesian(paramGrid)
 
   if (hyperParamSearch == "random") {
     param <- param[sample(length(param), randomSamples)]

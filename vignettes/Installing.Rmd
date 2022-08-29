@@ -77,13 +77,9 @@ remotes::install_github("OHDSI/PatientLevelPrediction")
 remotes::install_github("OHDSI/DeepPatientLevelPrediction")
 ```
 
-DeepPLP relies on [torch for R](https://torch.mlverse.org/). When torch is installed for the first time the installation is not finished until you run:
-
-```{r, echo = TRUE, message = FALSE, warning = FALSE, tidy=FALSE,eval=FALSE}
-library(torch)
-```
-
-This will download the required libtorch and lantern binaries for your operating system and copy them to the required locations for torch to use.
+DeepPLP relies on [torch for R](https://torch.mlverse.org/). When torch is installed the user 
+will be prompted if libtorch and lantern binaries should be downloaded. These binaries are neccesary 
+for the package to run.
 
 If you are using DeepPLP in an offline environment the function `torch::install_torch_from_file()` can be used. This will first require to download and move the correct binaries to the offline environment. See [torch installation guide](https://torch.mlverse.org/docs/articles/installation.html) for more detailed instructions.
 

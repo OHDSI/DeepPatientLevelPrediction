@@ -6,10 +6,9 @@ Dataset <- torch::dataset(
   #' @param data           a dataframe like object with the covariates
   #' @param labels         a dataframe with the labels
   #' @param numericalIndex in what column numeric data is in (if any)
-  #' @param all            if True then returns all features instead of splitting num/cat
-  initialize = function(data, labels = NULL, numericalIndex = NULL, all = FALSE) {
+  initialize = function(data, labels = NULL, numericalIndex = NULL) {
     # determine numeric
-    if (is.null(numericalIndex) && all == FALSE) {
+    if (is.null(numericalIndex)) {
       numericalIndex <- data %>%
         dplyr::group_by(columnId) %>%
         dplyr::collect() %>%
@@ -24,23 +23,12 @@ Dataset <- torch::dataset(
     if (!is.null(labels)) {
       self$target <- torch::torch_tensor(labels)
     } else {
-      if (all == FALSE) {
-        self$target <- torch::torch_tensor(rep(0, data %>% dplyr::distinct(rowId)
-          %>% dplyr::collect() %>% nrow()))
-      } else {
-        self$target <- torch::torch_tensor(rep(0, dim(data)[[1]]))
-      }
+      self$target <- torch::torch_tensor(rep(0, data %>% dplyr::distinct(rowId)
+        %>% dplyr::collect() %>% nrow()))
     }
     # Weight to add in loss function to positive class
     self$posWeight <- (self$target == 0)$sum() / self$target$sum()
-    # for DeepNNTorch
-    self$useAll <- all
-    if (all) {
-      self$all <- torch::torch_tensor(as.matrix(data), dtype = torch::torch_float32())
-      self$cat <- NULL
-      self$num <- NULL
-      return()
-    }
+
     # add features
     catColumns <- which(!numericalIndex)
     dataCat <- dplyr::filter(data, columnId %in% catColumns) %>%
@@ -80,9 +68,6 @@ Dataset <- torch::dataset(
         size = c(self$target$shape, sum(numericalIndex))
       )$to_dense()
     }
-    if (self$cat$shape[1] != self$num$shape[1]) {
-      browser()
-    }
   },
   getNumericalIndex = function() {
     return(
@@ -110,26 +95,20 @@ Dataset <- torch::dataset(
   },
   .getBatchSingle = function(item) {
     # add leading singleton dimension since models expects 2d tensors
-    if (self$useAll) {
-      batch <- list(all = self$all[item]$unsqueeze(1))
-    } else {
-      batch <- list(cat = self$cat[item]$unsqueeze(1),
-                    num = self$num[item]$unsqueeze(1))
-    }
+    batch <- list(
+      cat = self$cat[item]$unsqueeze(1),
+      num = self$num[item]$unsqueeze(1)
+    )
     return(list(
       batch = batch,
       target = self$target[item]$unsqueeze(1)
     ))
   },
   .getBatchRegular = function(item) {
-    if (self$useAll) {
-      batch <- list(all = self$all[item])
-    } else {
-      batch = list(
-        cat = self$cat[item],
-        num = self$num[item]
-      )
-    }
+    batch <- list(
+      cat = self$cat[item],
+      num = self$num[item]
+    )
     return(list(
       batch = batch,
       target = self$target[item]

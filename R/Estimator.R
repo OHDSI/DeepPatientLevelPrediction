@@ -16,6 +16,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+#' setEstimator
+#'
+#' @description
+#' creates settings for the Estimator, which takes a model and trains it
+#'
+#' @name setEstimator
+#' @param learningRate          what learning rate to use
+#' @param weightDecay           what weight_decay to use
+#' @param optimizer             which optimizer to use
+#' @param scheduler             which learning rate scheduler to use
+#' @param criterion             loss function to use
+#' @param posWeight             If more weight should be added to positive labels during training - will result in miscalibrated models
+#' @param earlyStopping         If earlyStopping should be used which stops the training of your metric is not improving
+#' @param earlyStoppingMetric   Which parameter to use for early stopping
+#' @param patience              patience for earlyStopper
+#' @param hyperparameterMetric  which metric to use for hyperparameter, loss, auc, auprc or a custom function
+NULL
+
 #' fitEstimator
 #'
 #' @description
@@ -71,7 +89,8 @@ fitEstimator <- function(trainData,
     dplyr::collect() %>%
     dplyr::mutate(
       included = incs,
-      covariateValue = 0
+      covariateValue = 0,
+      isNumeric = cvResult$numericalIndex
     )
 
 
@@ -79,32 +98,33 @@ fitEstimator <- function(trainData,
   result <- list(
     model = cvResult$estimator, # file.path(outLoc),
 
-    prediction = prediction,
-    settings = list(
-      plpDataSettings = attr(trainData, "metaData")$plpDataSettings,
-      covariateSettings = attr(trainData, "metaData")$covariateSettings,
-      populationSettings = attr(trainData, "metaData")$populationSettings,
+    preprocessing = list(
       featureEngineering = attr(trainData$covariateData, "metaData")$featureEngineering,
       tidyCovariates = attr(trainData$covariateData, "metaData")$tidyCovariateDataSettings,
-      requireDenseMatrix = F,
-      modelSettings = list(
-        model = settings$name,
-        param = param,
-        finalModelParameters = cvResult$finalParam,
-        numericalIndex = cvResult$numericalIndex,
-        extraSettings = attr(param, "settings")
-      ),
+      requireDenseMatrix = settings$requiresDenseMatrix
+    ),
+    prediction = prediction,
+    modelDesign = PatientLevelPrediction::createModelDesign(
+      targetId = attr(trainData, "metaData")$targetId,
+      outcomeId = attr(trainData, "metaData")$outcomeId,
+      restrictPlpDataSettings = attr(trainData, "metaData")$restrictPlpDataSettings,
+      covariateSettings = attr(trainData, "metaData")$covariateSettings,
+      populationSettings = attr(trainData, "metaData")$populationSettings,
+      featureEngineeringSettings = attr(trainData$covariateData, "metaData")$featureEngineeringSettings,
+      preprocessSettings = attr(trainData$covariateData, "metaData")$preprocessSettings,
+      modelSettings = modelSettings,
       splitSettings = attr(trainData, "metaData")$splitSettings,
       sampleSettings = attr(trainData, "metaData")$sampleSettings
     ),
     trainDetails = list(
       analysisId = analysisId,
-      cdmDatabaseSchema = attr(trainData, "metaData")$cdmDatabaseSchema,
-      outcomeId = attr(trainData, "metaData")$outcomeId,
-      cohortId = attr(trainData, "metaData")$cohortId,
+      analysisSource = "",
+      developementDatabase = attr(trainData, "metaData")$cdmDatabaseSchema,
       attrition = attr(trainData, "metaData")$attrition,
-      trainingTime = comp,
+      trainingTime = paste(as.character(abs(comp)), attr(comp, "units")),
       trainingDate = Sys.Date(),
+      modelName = settings$name,
+      finalModelParameters = cvResult$finalParam,
       hyperParamSearch = hyperSummary
     ),
     covariateImportance = covariateRef
@@ -145,20 +165,19 @@ predictDeepEstimator <- function(plpModel,
         )
     )
     data <- Dataset(mappedData$covariates,
-      numericalIndex = plpModel$settings$modelSettings$numericalIndex
+      numericalIndex = plpModel$covariateImportance$isNumeric
     )
   }
 
   # get predictions
   prediction <- cohort
-
   if (is.character(plpModel$model)) {
     model <- torch::torch_load(file.path(plpModel$model, "DeepEstimatorModel.pt"), device = "cpu")
     estimator <- Estimator$new(
-      baseModel = plpModel$settings$modelSettings$model,
+      baseModel = attr(plpModel$modelDesign$modelSettings$param, "settings")$baseModel,
       modelParameters = model$modelParameters,
       fitParameters = model$fitParameters,
-      device = plpModel$settings$modelSettings$extraSettings$device
+      device = attr(plpModel$modelDesign$modelSettings$param, "settings")$device
     )
     estimator$model$load_state_dict(model$modelStateDict)
     prediction$value <- estimator$predictProba(data)
@@ -228,7 +247,7 @@ gridCvDeep <- function(mappedData,
       ParallelLogger::logInfo(paste0("Fold ", i))
       trainDataset <- torch::dataset_subset(dataset, indices = which(fold != i))
       testDataset <- torch::dataset_subset(dataset, indices = which(fold == i))
-      fitParams$posWeight <- trainDataset$dataset$posWeight
+      # fitParams$posWeight <- trainDataset$dataset$posWeight
       estimator <- Estimator$new(
         baseModel = baseModel,
         modelParameters = modelParams,
@@ -266,7 +285,7 @@ gridCvDeep <- function(mappedData,
   }
   # get best para (this could be modified to enable any metric instead of AUC, just need metric input in function)
   paramGridSearch <- lapply(gridSearchPredictons, function(x) {
-    do.call(computeGridPerformance, x)
+    do.call(PatientLevelPrediction::computeGridPerformance, x)
   }) # cvAUCmean, cvAUC, param
 
   optimalParamInd <- which.max(unlist(lapply(paramGridSearch, function(x) x$cvPerformance)))

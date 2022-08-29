@@ -4,7 +4,7 @@
 \alias{Dataset}
 \title{A torch dataset}
 \usage{
-Dataset(data, labels = NULL, numericalIndex = NULL, all = FALSE)
+Dataset(data, labels = NULL, numericalIndex = NULL)
 }
 \arguments{
 \item{data}{a dataframe like object with the covariates}
@@ -12,8 +12,6 @@ Dataset(data, labels = NULL, numericalIndex = NULL, all = FALSE)
 \item{labels}{a dataframe with the labels}
 
 \item{numericalIndex}{in what column numeric data is in (if any)}
-
-\item{all}{if True then returns all features instead of splitting num/cat}
 }
 \description{
 A torch dataset
