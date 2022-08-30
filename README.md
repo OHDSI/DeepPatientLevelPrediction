@@ -1,8 +1,8 @@
 DeepPatientLevelPrediction
 ======================
 
-[![Build Status](https://github.com/OHDSI/DeepPatientLevelPrediction/workflows/R-CMD-check/badge.svg)](https://github.com/OHDSI/DeepPatientLevelPrediction/actions?query=workflow%3AR-CMD-check)
-[![codecov.io](https://codecov.io/github/OHDSI/DeepPatientLevelPrediction/coverage.svg?branch=master)](https://codecov.io/github/OHDSI/DeepPatientLevelPrediction?branch=master)
+[![Build Status](https://github.com/OHDSI/DeepPatientLevelPrediction/workflows/R-CMD-check/badge.svg)](https://github.com/OHDSI/DeepPatientLevelPrediction/actions?query=workflow%3AR-CMD-check?branch=develop)
+[![codecov.io](https://codecov.io/github/OHDSI/DeepPatientLevelPrediction/coverage.svg?branch=master)](https://codecov.io/github/OHDSI/DeepPatientLevelPrediction?branch=main)
 
 
 Introduction
@@ -15,25 +15,27 @@ Reps JM, Schuemie MJ, Suchard MA, Ryan PB, Rijnbeek PR. [Design and implementati
 
 Features
 ========
-- add
-
+- Adds deep learning models to use in the OHDSI PatientLevelPrediction framework.
+- Allows to add custom deep learning models.
+- Includes an MLP, ResNet and a Transformer
+- Allows to use all the features of [PatientLevelPrediction](https://github.com/OHDSI/PatientLevelPrediction/) to validate and explore your model performance.
 
 
 Technology
 ==========
-DeepPatientLevelPrediction is an R package, with some functions implemented in C++ and python.
+DeepPatientLevelPrediction is an R package. It uses [torch in R](https://torch.mlverse.org/) to build deep learning models without using python.
 
 System Requirements
 ===================
-Requires R (version 3.3.0 or higher). Installation on Windows requires [RTools](http://cran.r-project.org/bin/windows/Rtools/). Libraries used in DeepPatientLevelPrediction require Java and Python.
+Requires R (version 3.5.0 or higher). Installation on Windows requires [RTools](http://cran.r-project.org/bin/windows/Rtools/). For training deep learning models in most cases an nvidia GPU is required using either Windows or Linux.
 
-The python installation is required for some of the machine learning algorithms. We advise to
-install Python 3.7 using Anaconda (https://www.continuum.io/downloads). 
 
 Getting Started
 ===============
 
-- add
+- To install the package please read the [Package installation guide]()
+- Please read the main vignette for the package:
+[Building Deep Learning Models](https://ohdsi.github.io/DeepPatientLevelPrediction/articles/BuildingDeepModels.html)
 
 User Documentation
 ==================

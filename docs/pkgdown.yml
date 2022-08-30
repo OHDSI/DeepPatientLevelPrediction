@@ -1,0 +1,8 @@
+pandoc: 2.14.0.3
+pkgdown: 2.0.5
+pkgdown_sha: ~
+articles:
+  BuildingDeepModels: BuildingDeepModels.html
+  Installing: Installing.html
+last_built: 2022-08-09T16:38Z
+
