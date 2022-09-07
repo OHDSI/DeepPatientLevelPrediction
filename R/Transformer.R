@@ -26,7 +26,11 @@ setTransformer <- function(numBlocks = 3, dimToken = 96, dimOut = 1,
                            resDropout = 0, dimHidden = 512, weightDecay = 1e-6,
                            learningRate = 3e-4, batchSize = 1024,
                            epochs = 10, device = "cpu", hyperParamSearch = "random",
+<<<<<<< HEAD
                            randomSample = 1, seed = NULL) {
+=======
+                           randomSamples = 1, seed = NULL) {
+>>>>>>> 4430e1358dfcb8af7f768cb790e09454bbf6dd94
   if (is.null(seed)) {
     seed <- as.integer(sample(1e5, 1))
   }
