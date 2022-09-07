@@ -26,7 +26,7 @@ setTransformer <- function(numBlocks = 3, dimToken = 96, dimOut = 1,
                            resDropout = 0, dimHidden = 512, weightDecay = 1e-6,
                            learningRate = 3e-4, batchSize = 1024,
                            epochs = 10, device = "cpu", hyperParamSearch = "random",
-                           randomSamples = 100, seed = NULL) {
+                           randomSample = 1, seed = NULL) {
   if (is.null(seed)) {
     seed <- as.integer(sample(1e5, 1))
   }
@@ -54,6 +54,12 @@ setTransformer <- function(numBlocks = 3, dimToken = 96, dimOut = 1,
 
   param <- PatientLevelPrediction::listCartesian(paramGrid)
 
+  if (randomSample>length(param)) {
+    stop(paste("\n Chosen amount of randomSamples is higher than the amount of possible hyperparameter combinations.", 
+               "\n randomSample:", randomSample,"\n Possible hyperparameter combinations:", length(param),
+               "\n Please lower the amount of randomSample"))
+  }
+  
   if (hyperParamSearch == "random") {
     param <- param[sample(length(param), randomSamples)]
   }
