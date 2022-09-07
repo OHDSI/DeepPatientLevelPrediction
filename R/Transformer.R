@@ -17,7 +17,7 @@
 #' @param epochs                  How many epochs to run the model for
 #' @param device                  Which device to use, cpu or cuda
 #' @param hyperParamSearch        what kind of hyperparameter search to do, default 'random'
-#' @param randomSamples           How many samples to use in hyperparameter search if random
+#' @param randomSample            How many samples to use in hyperparameter search if random
 #' @param seed                    Random seed to use
 #'
 #' @export
@@ -61,7 +61,7 @@ setTransformer <- function(numBlocks = 3, dimToken = 96, dimOut = 1,
   }
   
   if (hyperParamSearch == "random") {
-    param <- param[sample(length(param), randomSamples)]
+    param <- param[sample(length(param), randomSample)]
   }
 
   attr(param, "settings") <- list(

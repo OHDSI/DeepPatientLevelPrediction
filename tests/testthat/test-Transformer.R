@@ -2,7 +2,7 @@ settings <- setTransformer(
   numBlocks = 1, dimToken = 8, dimOut = 1,
   numHeads = 2, attDropout = 0.0, ffnDropout = 0.2,
   resDropout = 0.0, dimHidden = 32, batchSize = 64,
-  epochs = 1, randomSamples = 1
+  epochs = 1, randomSample = 1
 )
 
 test_that("Transformer settings work", {

@@ -54,7 +54,7 @@ setTransformer(
 
 \item{seed}{Random seed to use}
 
-\item{randomSamples}{How many samples to use in hyperparameter search if random}
+\item{randomSample}{How many samples to use in hyperparameter search if random}
 }
 \description{
 A transformer model
