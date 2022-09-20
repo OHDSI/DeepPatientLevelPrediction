@@ -382,7 +382,9 @@ Estimator <- R6::R6Class(
                           patience = 4) {
       self$device <- device
       self$model <- do.call(baseModel, modelParameters)
+      self$baseModel <- baseModel
       self$modelParameters <- modelParameters
+      fitParameters$baseModel <- baseModel
       self$fitParameters <- fitParameters
       self$epochs <- self$itemOrDefaults(fitParameters, "epochs", 10)
       self$learningRate <- self$itemOrDefaults(fitParameters, "learningRate", 1e-3)
