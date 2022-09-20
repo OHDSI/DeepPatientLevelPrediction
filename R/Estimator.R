@@ -56,6 +56,13 @@ fitEstimator <- function(trainData,
     stop("Needs correct covariateData")
   }
 
+  if (modelSettings$transferLearning) {
+    covariateMap <- read.csv(file.path(modelSettings$sourceModel, "covariateImportance.csv")) %>%
+      dplyr::select(c(covariateId, columnId))
+  } else {
+    covariateMap <- NULL
+  }
+  
   param <- modelSettings$param
 
   # get the settings from the param
@@ -63,9 +70,11 @@ fitEstimator <- function(trainData,
   if (!is.null(trainData$folds)) {
     trainData$labels <- merge(trainData$labels, trainData$fold, by = "rowId")
   }
+  
   mappedCovariateData <- PatientLevelPrediction::MapIds(
     covariateData = trainData$covariateData,
-    cohort = trainData$labels
+    cohort = trainData$labels,
+    mapping = covariateMap
   )
 
   covariateRef <- mappedCovariateData$covariateRef

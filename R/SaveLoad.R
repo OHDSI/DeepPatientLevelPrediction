@@ -21,7 +21,7 @@
 #' @description
 #' Load estimator model from disk.
 #'
-#' @param path Path to model directory.
+#' @param path Path to a \code{plpModel} directory.
 #' @param device Provide device. Can be \code{'cpu'} or \code{'cuda'}
 #' 
 #' @export

@@ -87,6 +87,57 @@ setTransformer <- function(numBlocks = 3, dimToken = 96, dimOut = 1,
   return(results)
 }
 
+#' settings for training a non-temporal transformer using transfer learning
+#'
+#' @description A transported transformer model
+#'
+#' @param path Path to a \code{plpModel} directory.
+#' 
+#' @export
+setTransformerTL <- function(path, learningRate = NULL, batchSize = NULL, epochs = NULL, device = "cpu") {
+  
+  estimator <- loadEstimator(path)
+  if ("Transformer" != estimator$baseModel) {
+    stop(paste0("Model is of type ", estimator$baseModel, ", but should be Transformer."))
+  }
+  
+  if (is.null(learningRate)) {
+    learningRate <- estimator$fitParameters$learningRate
+  }
+  
+  if (is.null(batchSize)) {
+    batchSize <- estimator$batchSize
+  }
+  
+  if (is.null(epochs)) {
+    epochs <- estimator$fitParameters$epochs
+  }
+  
+  settings <- list(
+    numBlocks = estimator$modelParameters$numBlocks,
+    dimToken = estimator$modelParameters$dimToken,
+    dimOut = estimator$modelParameters$dimOut,
+    numHeads = estimator$modelParameters$numHeads,
+    attDropout = estimator$modelParameters$attDropout,
+    ffnDropout = estimator$modelParameters$ffnDropout,
+    resDropout = estimator$modelParameters$resDropout,
+    dimHidden = estimator$modelParameters$dimHidden,
+    weightDecay = estimator$fitParameters$weightDecay,
+    learningRate = learningRate,
+    batchSize = batchSize,
+    epochs = epochs,
+    device = device,
+    hyperParamSearch = "random",
+    randomSample = 1,
+    seed = NULL
+  )
+  
+  modelSettings <- do.call(setTransformer, settings)
+  modelSettings$transferLearning <- T
+  modelSettings$sourceModel <- path
+  
+  return(modelSettings)
+}
 
 Transformer <- torch::nn_module(
   name = "Transformer",
