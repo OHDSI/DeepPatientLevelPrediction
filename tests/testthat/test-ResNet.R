@@ -87,7 +87,7 @@ test_that("ResNet nn-module works ", {
   pars <- sum(sapply(model$parameters, function(x) prod(x$shape)))
 
   # expected number of parameters
-  expect_equal(pars, 1289)
+  expect_equal(pars, 1295)
 
   input <- list()
   input$cat <- torch::torch_randint(0, 5, c(10, 5), dtype = torch::torch_long())

@@ -23,7 +23,7 @@ Imports:
     data.table,
     FeatureExtraction (>= 3.0.0),
     ParallelLogger (>= 2.0.0),
-    PatientLevelPrediction, (>= 6.0.4)
+    PatientLevelPrediction (>= 6.0.4),
     rlang,
     torch (>= 0.8.0)
 Suggests:
