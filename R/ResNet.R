@@ -112,14 +112,17 @@ ResNet <- torch::nn_module(
   initialize = function(catFeatures, numFeatures = 0, sizeEmbedding, sizeHidden, numLayers,
                         hiddenFactor, activation = torch::nn_relu,
                         normalization = torch::nn_batch_norm1d, hiddenDropout = NULL,
-                        residualDropout = NULL, d_out = 1) {
+                        residualDropout = NULL, d_out = 1, concatNum=TRUE) {
     self$embedding <- torch::nn_embedding_bag(
       num_embeddings = catFeatures + 1,
       embedding_dim = sizeEmbedding,
       padding_idx = 1
     )
-    if (numFeatures != 0) {
+    if (numFeatures != 0 & concatNum != TRUE) {
       self$numEmbedding <- numericalEmbedding(numFeatures, sizeEmbedding)
+    } else {
+      self$numEmbedding <- NULL
+      sizeEmbedding <- sizeEmbedding + numFeatures
     }
 
     self$first_layer <- torch::nn_linear(sizeEmbedding, sizeHidden)
@@ -146,9 +149,10 @@ ResNet <- torch::nn_module(
     x_cat <- x$cat
     x_num <- x$num
     x_cat <- self$embedding(x_cat + 1L) # padding_idx is 1
-    if (!is.null(x_num)) {
+    if (!is.null(x_num) & (!is.null(self$numEmbedding))) {
       x <- (x_cat + self$numEmbedding(x_num)$mean(dim = 2)) / 2
-      # x <- torch::torch_cat(list(x_cat, x_num), dim = 2L)
+    } else if (!is.null(x_num) & is.null(self$numEmbedding)) {
+      x <- torch::torch_cat(list(x_cat, x_num), dim = 2L)
     } else {
       x <- x_cat
     }
