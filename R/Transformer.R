@@ -1,3 +1,56 @@
+# @file Transformer.R
+#
+# Copyright 2022 Observational Health Data Sciences and Informatics
+#
+# This file is part of DeepPatientLevelPrediction
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+#' Create default settings for a non-temporal transformer
+#' 
+#' @description A transformer model with default hyperparameters
+#' @details from https://arxiv.org/abs/2106.11959
+#' Default hyperparameters from paper
+#' @param device   Which device to run analysis on, either 'cpu' or 'cuda', default: 'cpu'  
+#' @param batchSize Size of batch, default: 512
+#' @param epochs  Number of epochs to run, default: 10
+#' @param seed    random seed to use
+#' 
+#' @export
+setDefaultTransformer <- function(device='cpu',
+                                  batchSize=512,
+                                  epochs=10,
+                                  seed=NULL) {
+  transformerSettings <- setTransformer(numBlocks = 3,
+                                        dimToken = 192,
+                                        dimOut = 1,
+                                        numHeads = 8,
+                                        attDropout = 0.2,
+                                        ffnDropout = 0.1,
+                                        resDropout = 0.0,
+                                        dimHidden = 256,
+                                        weightDecay = 1e-5,
+                                        learningRate = 1e-4,
+                                        batchSize = 512,
+                                        epochs = 30,
+                                        device = device,
+                                        hyperParamSearch = 'random',
+                                        randomSample = 1,
+                                        seed = seed)
+  attr(transformerSettings, 'settings')$name <- 'defaultTransformer'
+  return(transformerSettings)
+}
+
 #' create settings for training a non-temporal transformer
 #'
 #' @description A transformer model

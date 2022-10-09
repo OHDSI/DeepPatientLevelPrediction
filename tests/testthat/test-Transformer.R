@@ -59,3 +59,18 @@ test_that("transformer nn-module works", {
   output <- model(input)
   expect_equal(output$shape, 10)
 })
+
+test_that("Default Transformer works", {
+  defaultTransformer <- setDefaultTransformer()
+  params <- defaultTransformer$param[[1]]
+  
+  expect_equal(params$numBlocks, 3)
+  expect_equal(params$dimToken, 192)
+  expect_equal(params$numHeads, 8)
+  expect_equal(params$resDropout, 0.0)
+  expect_equal(params$attDropout, 0.2)
+  
+  settings <- attr(defaultTransformer, 'settings')
+  
+  expect_equal(settings$name, 'defaultTransformer')
+}) 
