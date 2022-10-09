@@ -111,3 +111,16 @@ test_that("ResNet nn-module works ", {
   # model works without numeric variables
   expect_equal(output$shape, 10)
 })
+
+test_that("Default Resnet works", {
+  defaultResNet <- setDefaultResNet()
+  params <- defaultResNet$param[[1]]
+  
+  expect_equal(params$numLayers, 6)
+  expect_equal(params$sizeHidden, 512)
+  expect_equal(params$hiddenFactor, 2)
+  expect_equal(params$residualDropout, 0.1)
+  expect_equal(params$hiddenDropout, 0.4)
+  expect_equal(params$sizeEmbedding, 256)
+  
+}) 

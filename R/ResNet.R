@@ -16,6 +16,44 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+#' setDefaultResNet
+#'
+#' @description
+#' Creates settings for a default ResNet model
+#'
+#' @details
+#' Model architecture from by https://arxiv.org/abs/2106.11959 . 
+#' Hyperparameters chosen by a experience on a few prediction problems.
+#'
+#' @param device            Which device to run analysis on, either 'cpu' or 'cuda', default: 'cpu'
+#' @param batchSize         Size of batch, default: 1024
+#' @param epochs            Number of epochs to run, default: 10
+#' @param seed              Random seed to use
+
+#' @export
+setDefaultResNet <- function(device='cpu',
+                             batchSize=1024,
+                             epochs=10,
+                             seed=NULL) {
+  
+  resnetSettings <- setResNet(numLayers = 6,
+                              sizeHidden = 512,
+                              hiddenFactor = 2,
+                              residualDropout = 0.1,
+                              hiddenDropout = 0.4,
+                              sizeEmbedding = 256,
+                              weightDecay = 1e-6,
+                              learningRate = 0.01,
+                              hyperParamSearch = 'random',
+                              randomSample = 1,
+                              device = device,
+                              batchSize = batchSize,
+                              seed = seed)
+  attr(resnetSettings, 'settings')$name <- 'defaultResnet'
+  return(resnetSettings)
+}
+
+
 #' setResNet
 #'
 #' @description
@@ -42,7 +80,7 @@
 #'
 #' @export
 setResNet <- function(numLayers = c(1:8),
-                      sizeHidden = c(2^(6:9)),
+                      sizeHidden = c(2^(6:10)),
                       hiddenFactor = c(1:4),
                       residualDropout = c(seq(0, 0.5, 0.05)),
                       hiddenDropout = c(seq(0, 0.5, 0.05)),
