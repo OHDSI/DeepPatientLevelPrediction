@@ -46,6 +46,12 @@
     <loc>/reference/predictDeepEstimator.html</loc>
   </url>
   <url>
+    <loc>/reference/setDefaultResNet.html</loc>
+  </url>
+  <url>
+    <loc>/reference/setDefaultTransformer.html</loc>
+  </url>
+  <url>
     <loc>/reference/setEstimator.html</loc>
   </url>
   <url>
