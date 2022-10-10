@@ -124,3 +124,20 @@ test_that("Default Resnet works", {
   expect_equal(params$sizeEmbedding, 256)
   
 }) 
+
+test_that("Errors are produced by settings function", {
+  randomSample <- 2
+  
+  expect_error(setResNet(
+    numLayers = 1,
+    sizeHidden = 128,
+    hiddenFactor = 1,
+    residualDropout = 0.0,
+    hiddenDropout = 0.0,
+    sizeEmbedding = 128,
+    weightDecay = 1e-6,
+    learningRate = 0.01,
+    seed = 42,
+    hyperParamSearch = 'random',
+    randomSample = randomSample))
+})

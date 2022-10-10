@@ -74,3 +74,9 @@ test_that("Default Transformer works", {
   
   expect_equal(settings$name, 'defaultTransformer')
 }) 
+
+test_that("Errors are produced by settings function", {
+  randomSample <- 2
+  
+  expect_error(setTransformer(randomSample = randomSample))
+})
