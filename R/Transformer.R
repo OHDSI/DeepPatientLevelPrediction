@@ -1,3 +1,56 @@
+# @file Transformer.R
+#
+# Copyright 2022 Observational Health Data Sciences and Informatics
+#
+# This file is part of DeepPatientLevelPrediction
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+#' Create default settings for a non-temporal transformer
+#' 
+#' @description A transformer model with default hyperparameters
+#' @details from https://arxiv.org/abs/2106.11959
+#' Default hyperparameters from paper
+#' @param device   Which device to run analysis on, either 'cpu' or 'cuda', default: 'cpu'  
+#' @param batchSize Size of batch, default: 512
+#' @param epochs  Number of epochs to run, default: 10
+#' @param seed    random seed to use
+#' 
+#' @export
+setDefaultTransformer <- function(device='cpu',
+                                  batchSize=512,
+                                  epochs=10,
+                                  seed=NULL) {
+  transformerSettings <- setTransformer(numBlocks = 3,
+                                        dimToken = 192,
+                                        dimOut = 1,
+                                        numHeads = 8,
+                                        attDropout = 0.2,
+                                        ffnDropout = 0.1,
+                                        resDropout = 0.0,
+                                        dimHidden = 256,
+                                        weightDecay = 1e-5,
+                                        learningRate = 1e-4,
+                                        batchSize = 512,
+                                        epochs = 30,
+                                        device = device,
+                                        hyperParamSearch = 'random',
+                                        randomSample = 1,
+                                        seed = seed)
+  attr(transformerSettings, 'settings')$name <- 'defaultTransformer'
+  return(transformerSettings)
+}
+
 #' create settings for training a non-temporal transformer
 #'
 #' @description A transformer model
@@ -17,7 +70,7 @@
 #' @param epochs                  How many epochs to run the model for
 #' @param device                  Which device to use, cpu or cuda
 #' @param hyperParamSearch        what kind of hyperparameter search to do, default 'random'
-#' @param randomSamples           How many samples to use in hyperparameter search if random
+#' @param randomSample            How many samples to use in hyperparameter search if random
 #' @param seed                    Random seed to use
 #'
 #' @export
@@ -26,7 +79,7 @@ setTransformer <- function(numBlocks = 3, dimToken = 96, dimOut = 1,
                            resDropout = 0, dimHidden = 512, weightDecay = 1e-6,
                            learningRate = 3e-4, batchSize = 1024,
                            epochs = 10, device = "cpu", hyperParamSearch = "random",
-                           randomSamples = 100, seed = NULL) {
+                           randomSample = 1, seed = NULL) {
   if (is.null(seed)) {
     seed <- as.integer(sample(1e5, 1))
   }
@@ -54,8 +107,14 @@ setTransformer <- function(numBlocks = 3, dimToken = 96, dimOut = 1,
 
   param <- PatientLevelPrediction::listCartesian(paramGrid)
 
+  if (randomSample>length(param)) {
+    stop(paste("\n Chosen amount of randomSamples is higher than the amount of possible hyperparameter combinations.", 
+               "\n randomSample:", randomSample,"\n Possible hyperparameter combinations:", length(param),
+               "\n Please lower the amount of randomSample"))
+  }
+  
   if (hyperParamSearch == "random") {
-    param <- param[sample(length(param), randomSamples)]
+    param <- param[sample(length(param), randomSample)]
   }
 
   attr(param, "settings") <- list(

@@ -16,6 +16,44 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+#' setDefaultResNet
+#'
+#' @description
+#' Creates settings for a default ResNet model
+#'
+#' @details
+#' Model architecture from by https://arxiv.org/abs/2106.11959 . 
+#' Hyperparameters chosen by a experience on a few prediction problems.
+#'
+#' @param device            Which device to run analysis on, either 'cpu' or 'cuda', default: 'cpu'
+#' @param batchSize         Size of batch, default: 1024
+#' @param epochs            Number of epochs to run, default: 10
+#' @param seed              Random seed to use
+
+#' @export
+setDefaultResNet <- function(device='cpu',
+                             batchSize=1024,
+                             epochs=10,
+                             seed=NULL) {
+  
+  resnetSettings <- setResNet(numLayers = 6,
+                              sizeHidden = 512,
+                              hiddenFactor = 2,
+                              residualDropout = 0.1,
+                              hiddenDropout = 0.4,
+                              sizeEmbedding = 256,
+                              weightDecay = 1e-6,
+                              learningRate = 0.01,
+                              hyperParamSearch = 'random',
+                              randomSample = 1,
+                              device = device,
+                              batchSize = batchSize,
+                              seed = seed)
+  attr(resnetSettings, 'settings')$name <- 'defaultResnet'
+  return(resnetSettings)
+}
+
+
 #' setResNet
 #'
 #' @description
@@ -42,7 +80,7 @@
 #'
 #' @export
 setResNet <- function(numLayers = c(1:8),
-                      sizeHidden = c(2^(6:9)),
+                      sizeHidden = c(2^(6:10)),
                       hiddenFactor = c(1:4),
                       residualDropout = c(seq(0, 0.5, 0.05)),
                       hiddenDropout = c(seq(0, 0.5, 0.05)),
@@ -73,6 +111,12 @@ setResNet <- function(numLayers = c(1:8),
 
   param <- PatientLevelPrediction::listCartesian(paramGrid)
 
+  if (randomSample>length(param)) {
+    stop(paste("\n Chosen amount of randomSamples is higher than the amount of possible hyperparameter combinations.", 
+               "\n randomSample:", randomSample,"\n Possible hyperparameter combinations:", length(param),
+               "\n Please lower the amount of randomSamples"))
+  }
+  
   if (hyperParamSearch == "random") {
     param <- param[sample(length(param), randomSample)]
   }
@@ -106,14 +150,17 @@ ResNet <- torch::nn_module(
   initialize = function(catFeatures, numFeatures = 0, sizeEmbedding, sizeHidden, numLayers,
                         hiddenFactor, activation = torch::nn_relu,
                         normalization = torch::nn_batch_norm1d, hiddenDropout = NULL,
-                        residualDropout = NULL, d_out = 1) {
+                        residualDropout = NULL, d_out = 1, concatNum=TRUE) {
     self$embedding <- torch::nn_embedding_bag(
       num_embeddings = catFeatures + 1,
       embedding_dim = sizeEmbedding,
       padding_idx = 1
     )
-    if (numFeatures != 0) {
+    if (numFeatures != 0 & concatNum != TRUE) {
       self$numEmbedding <- numericalEmbedding(numFeatures, sizeEmbedding)
+    } else {
+      self$numEmbedding <- NULL
+      sizeEmbedding <- sizeEmbedding + numFeatures
     }
 
     self$first_layer <- torch::nn_linear(sizeEmbedding, sizeHidden)
@@ -140,9 +187,10 @@ ResNet <- torch::nn_module(
     x_cat <- x$cat
     x_num <- x$num
     x_cat <- self$embedding(x_cat + 1L) # padding_idx is 1
-    if (!is.null(x_num)) {
+    if (!is.null(x_num) & (!is.null(self$numEmbedding))) {
       x <- (x_cat + self$numEmbedding(x_num)$mean(dim = 2)) / 2
-      # x <- torch::torch_cat(list(x_cat, x_num), dim = 2L)
+    } else if (!is.null(x_num) & is.null(self$numEmbedding)) {
+      x <- torch::torch_cat(list(x_cat, x_num), dim = 2L)
     } else {
       x <- x_cat
     }

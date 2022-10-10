@@ -454,7 +454,7 @@ modelSettings <- setTransformer(numBlocks = 3,
                                 batchSize = 128,
                                 epochs = 10,
                                 device = 'cpu',  # or 'cuda' for GPU
-                                randomSamples = 1)
+                                randomSample = 1)
 
 
 TransformerResult <- PatientLevelPrediction::runPlp(

@@ -2,7 +2,7 @@ settings <- setTransformer(
   numBlocks = 1, dimToken = 8, dimOut = 1,
   numHeads = 2, attDropout = 0.0, ffnDropout = 0.2,
   resDropout = 0.0, dimHidden = 32, batchSize = 64,
-  epochs = 1, randomSamples = 1
+  epochs = 1, randomSample = 1
 )
 
 test_that("Transformer settings work", {
@@ -58,4 +58,25 @@ test_that("transformer nn-module works", {
   )
   output <- model(input)
   expect_equal(output$shape, 10)
+})
+
+test_that("Default Transformer works", {
+  defaultTransformer <- setDefaultTransformer()
+  params <- defaultTransformer$param[[1]]
+  
+  expect_equal(params$numBlocks, 3)
+  expect_equal(params$dimToken, 192)
+  expect_equal(params$numHeads, 8)
+  expect_equal(params$resDropout, 0.0)
+  expect_equal(params$attDropout, 0.2)
+  
+  settings <- attr(defaultTransformer, 'settings')
+  
+  expect_equal(settings$name, 'defaultTransformer')
+}) 
+
+test_that("Errors are produced by settings function", {
+  randomSample <- 2
+  
+  expect_error(setTransformer(randomSample = randomSample))
 })

@@ -6,7 +6,7 @@
 \usage{
 setResNet(
   numLayers = c(1:8),
-  sizeHidden = c(2^(6:9)),
+  sizeHidden = c(2^(6:10)),
   hiddenFactor = c(1:4),
   residualDropout = c(seq(0, 0.5, 0.05)),
   hiddenDropout = c(seq(0, 0.5, 0.05)),

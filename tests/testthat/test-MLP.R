@@ -108,3 +108,20 @@ test_that("MLP nn-module works ", {
   # model works without numeric variables
   expect_equal(output$shape, 10)
 })
+
+
+test_that("Errors are produced by settings function", {
+  randomSample <- 2
+  
+  expect_error(setMultiLayerPerceptron(
+    numLayers = 1,
+    sizeHidden = 128,
+    dropout = 0.0,
+    sizeEmbedding = 128,
+    weightDecay = 1e-6,
+    learningRate = 0.01,
+    seed = 42,
+    hyperParamSearch = 'random',
+    randomSample = randomSample))
+                           
+})
