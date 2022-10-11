@@ -133,7 +133,7 @@ Finally we define our epochs. This is how long we will train the model. One epoc
 
 Now all that is left is using the PLP to train our first deep learning model. If you have used the PLP this should look familiar to you.
 
-```{R}
+```{r, echo = TRUE, message = FALSE, warning = FALSE,tidy=FALSE,eval=FALSE}
 plpResults <- PatientLevelPrediction::runPlp(plpData = plpData,
                outcomeId = 3,
                modelSettings = modelSettings,
