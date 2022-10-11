@@ -43,12 +43,13 @@ setDefaultResNet <- function(device='cpu',
                               hiddenDropout = 0.4,
                               sizeEmbedding = 256,
                               weightDecay = 1e-6,
-                              learningRate = 0.01,
+                              learningRate = 0.001,
                               hyperParamSearch = 'random',
                               randomSample = 1,
                               device = device,
                               batchSize = batchSize,
-                              seed = seed)
+                              seed = seed,
+                              epochs = epochs)
   attr(resnetSettings, 'settings')$name <- 'defaultResnet'
   return(resnetSettings)
 }
