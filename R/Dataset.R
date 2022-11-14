@@ -11,7 +11,6 @@ Dataset <- torch::dataset(
     if (is.null(numericalIndex)) {
       numericalIndex <- data %>%
         dplyr::group_by(columnId) %>%
-        dplyr::collect() %>%
         dplyr::summarise(n = dplyr::n_distinct(.data$covariateValue)) %>%
         dplyr::pull(n) > 1
       self$numericalIndex <- numericalIndex
@@ -39,14 +38,12 @@ Dataset <- torch::dataset(
       dplyr::ungroup() %>%
       dplyr::select(c("rowId", "newColumnId")) %>%
       dplyr::rename(columnId = newColumnId)
-    # the fastest way I found so far to convert data using data.table
-    # 1.5 min for 100k rows :(
-    dt <- data.table::data.table(rows = dataCat$rowId, cols = dataCat$columnId)
-    maxFeatures <- max(dt[, .N, by = rows][, N])
     start <- Sys.time()
-    tensorList <- lapply(1:max(data %>% dplyr::pull(rowId)), function(x) {
-      torch::torch_tensor(dt[rows == x, cols])
-    })
+    catTensor <- torch::torch_tensor(cbind(dataCat$rowId, dataCat$columnId))
+    catTensor <- catTensor[catTensor[,1]$argsort(),]
+    tensorList <- torch::torch_split(catTensor[,2], 
+                                     as.numeric(torch::torch_unique_consecutive(catTensor[,1], 
+                                                                                return_counts = TRUE)[[3]]))
     self$lengths <- lengths
     self$cat <- torch::nn_utils_rnn_pad_sequence(tensorList, batch_first = T)
     delta <- Sys.time() - start
