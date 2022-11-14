@@ -1,3 +1,7 @@
+DeepPatientLevelPrediction (develop)
+======================
+- used vectorised torch operations to speed up data conversion in torch dataset
+
 DeepPatientLevelPrediction 1.0.1
 ======================
 - Added changelog to website
