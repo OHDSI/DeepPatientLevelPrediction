@@ -44,8 +44,13 @@ Dataset <- torch::dataset(
     tensorList <- torch::torch_split(catTensor[,2], 
                                      as.numeric(torch::torch_unique_consecutive(catTensor[,1], 
                                                                                 return_counts = TRUE)[[3]]))
+    
+    # because of subjects without cat features, I need to create a list with all zeroes and then insert
+    # my tensorList. That way I can still index the dataset correctly.
+    totalList <- as.list(numeric(length(self$target)))
+    totalList[unique(dataCat$rowId)] <- tensorList
     self$lengths <- lengths
-    self$cat <- torch::nn_utils_rnn_pad_sequence(tensorList, batch_first = T)
+    self$cat <- torch::nn_utils_rnn_pad_sequence(totalList, batch_first = T)
     delta <- Sys.time() - start
     ParallelLogger::logInfo("Data conversion for dataset took ", signif(delta, 3), " ", attr(delta, "units"))
     if (sum(numericalIndex) == 0) {
