@@ -47,7 +47,7 @@ Dataset <- torch::dataset(
     
     # because of subjects without cat features, I need to create a list with all zeroes and then insert
     # my tensorList. That way I can still index the dataset correctly.
-    totalList <- as.list(numeric(length(self$target)))
+    totalList <- as.list(integer(length(self$target)))
     totalList[unique(dataCat$rowId)] <- tensorList
     self$lengths <- lengths
     self$cat <- torch::nn_utils_rnn_pad_sequence(totalList, batch_first = T)
