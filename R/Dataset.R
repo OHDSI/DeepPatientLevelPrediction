@@ -123,7 +123,7 @@ TemporalDataset <- torch::dataset(
   #' @param data           a dataframe like object with the covariates
   #' @param labels         a dataframe with the labels
   #' @param numericalIndex in what column numeric data is in (if any)
-  initialize = function(data, labels = NULL, numericalIndex = NULL) {
+  initialize = function(data, labels = NULL, numericalIndex = NULL) { browser()
     
     # separate temporal and non-temporal
     nonTemporal <- data %>% dplyr::filter(is.na(timeId))
@@ -132,7 +132,6 @@ TemporalDataset <- torch::dataset(
     # separate nonTemporal into numeric and non-numeric
     nonTemporalNumericalIndex <- nonTemporal %>%
       dplyr::group_by(columnId) %>%
-      dplyr::collect() %>%
       dplyr::summarise(n = dplyr::n_distinct(.data$covariateValue)) %>%
       dplyr::pull(n) > 1
     index <- nonTemporal %>% dplyr::distinct(covariateId) %>% dplyr::pull()
