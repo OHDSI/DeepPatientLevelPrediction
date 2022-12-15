@@ -7,6 +7,9 @@
     <loc>/articles/BuildingDeepModels.html</loc>
   </url>
   <url>
+    <loc>/articles/FirstModel.html</loc>
+  </url>
+  <url>
     <loc>/articles/Installing.html</loc>
   </url>
   <url>
@@ -17,6 +20,9 @@
   </url>
   <url>
     <loc>/index.html</loc>
+  </url>
+  <url>
+    <loc>/news/index.html</loc>
   </url>
   <url>
     <loc>/reference/Dataset.html</loc>
@@ -53,6 +59,18 @@
   </url>
   <url>
     <loc>/reference/setDeepNNTorch.html</loc>
+  </url>
+  <url>
+    <loc>/reference/setDefaultResNet.html</loc>
+  </url>
+  <url>
+    <loc>/reference/setDefaultTransformer.html</loc>
+  </url>
+  <url>
+    <loc>/reference/setEstimator.html</loc>
+  </url>
+  <url>
+    <loc>/reference/setMultiLayerPerceptron.html</loc>
   </url>
   <url>
     <loc>/reference/setResNet.html</loc>

@@ -222,7 +222,9 @@ gridCvDeep <- function(mappedData,
 
   gridSearchPredictons <- list()
   length(gridSearchPredictons) <- length(paramSearch)
-  dataset <- Dataset(mappedData$covariates, labels$outcomeCount)
+  # dataset <- Dataset(mappedData$covariates, labels$outcomeCount)
+  browser()
+  dataset <- TemporalDataset(mappedData$covariates, labels$outcomeCount)
   for (gridId in 1:length(paramSearch)) {
     ParallelLogger::logInfo(paste0("Running hyperparameter combination no ", gridId))
     ParallelLogger::logInfo(paste0("HyperParameters: "))
