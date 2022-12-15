@@ -159,8 +159,8 @@ predictDeepEstimator <- function(plpModel,
       cohort = cohort,
       mapping = plpModel$covariateImportance %>%
         dplyr::select(
-          .data$columnId,
-          .data$covariateId
+          "columnId",
+          "covariateId"
         )
     )
     data <- Dataset(mappedData$covariates,
@@ -330,7 +330,7 @@ gridCvDeep <- function(mappedData,
   )
   # modify prediction
   prediction <- prediction %>%
-    dplyr::select(-.data$index)
+    dplyr::select(-"index")
 
   prediction$cohortStartDate <- as.Date(prediction$cohortStartDate, origin = "1970-01-01")
 

@@ -1,3 +1,9 @@
+DeepPatientLevelPrediction 1.0.2
+======================
+- Fix torch binaries issue when running tests from other github actions
+- Fix link on website
+- Fix tidyselect to silence warnings.
+
 DeepPatientLevelPrediction 1.0.1
 ======================
 - Added changelog to website
