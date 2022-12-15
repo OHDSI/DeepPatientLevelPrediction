@@ -33,7 +33,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">DeepPatientLevelPrediction</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.0.1</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.0.2</span>
       </span>
     </div>
 
@@ -99,10 +99,12 @@
       </header><div class="row">
   <div class="col-md-9 contents">
     <div class="page-header toc-ignore">
-      <h1 data-toc-skip>DeepPatientLevelPrediction Installation Guide</h1>
-                        <h4 data-toc-skip class="author">Egill Fridgeirsson</h4>
+      <h1 data-toc-skip>DeepPatientLevelPrediction Installation
+Guide</h1>
+                        <h4 data-toc-skip class="author">Egill
+Fridgeirsson</h4>
             
-            <h4 data-toc-skip class="date">2022-10-11</h4>
+            <h4 data-toc-skip class="date">2022-12-15</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/OHDSI/DeepPatientLevelPrediction/blob/HEAD/vignettes/Installing.Rmd" class="external-link"><code>vignettes/Installing.Rmd</code></a></small>
       <div class="hidden name"><code>Installing.Rmd</code></div>
@@ -118,7 +120,9 @@
 <div class="section level2">
 <h2 id="introduction">Introduction<a class="anchor" aria-label="anchor" href="#introduction"></a>
 </h2>
-<p>This vignette describes how you need to install the Observational Health Data Science and Informatics (OHDSI) DeepPatientLevelPrediction under Windows, Mac and Linux.</p>
+<p>This vignette describes how you need to install the Observational
+Health Data Science and Informatics (OHDSI) DeepPatientLevelPrediction
+under Windows, Mac and Linux.</p>
 </div>
 <div class="section level2">
 <h2 id="software-prerequisites">Software Prerequisites<a class="anchor" aria-label="anchor" href="#software-prerequisites"></a>
@@ -126,9 +130,11 @@
 <div class="section level3">
 <h3 id="windows-users">Windows Users<a class="anchor" aria-label="anchor" href="#windows-users"></a>
 </h3>
-<p>Under Windows the OHDSI Deep Patient Level Prediction (DeepPLP) package requires installing:</p>
+<p>Under Windows the OHDSI Deep Patient Level Prediction (DeepPLP)
+package requires installing:</p>
 <ul>
-<li>R (<a href="https://cran.cnr.berkeley.edu/" class="external-link uri">https://cran.cnr.berkeley.edu/</a> ) - (R &gt;= 3.5.0, but latest is recommended)</li>
+<li>R (<a href="https://cran.cnr.berkeley.edu/" class="external-link uri">https://cran.cnr.berkeley.edu/</a> ) - (R &gt;= 3.5.0, but
+latest is recommended)</li>
 <li>Rstudio (<a href="https://www.rstudio.com/" class="external-link uri">https://www.rstudio.com/</a> )</li>
 <li>Java (<a href="http://www.java.com" class="external-link uri">http://www.java.com</a> )</li>
 <li>RTools (<a href="https://cran.r-project.org/bin/windows/Rtools/" class="external-link uri">https://cran.r-project.org/bin/windows/Rtools/</a>)</li>
@@ -137,21 +143,28 @@
 <div class="section level3">
 <h3 id="maclinux-users">Mac/Linux Users<a class="anchor" aria-label="anchor" href="#maclinux-users"></a>
 </h3>
-<p>Under Mac and Linux the OHDSI deepPLP package requires installing:</p>
+<p>Under Mac and Linux the OHDSI deepPLP package requires
+installing:</p>
 <ul>
-<li>R (<a href="https://cran.cnr.berkeley.edu/" class="external-link uri">https://cran.cnr.berkeley.edu/</a> ) - (R &gt;= 3.3.0, but latest is recommended)</li>
+<li>R (<a href="https://cran.cnr.berkeley.edu/" class="external-link uri">https://cran.cnr.berkeley.edu/</a> ) - (R &gt;= 3.3.0, but
+latest is recommended)</li>
 <li>Rstudio (<a href="https://www.rstudio.com/" class="external-link uri">https://www.rstudio.com/</a> )</li>
 <li>Java (<a href="http://www.java.com" class="external-link uri">http://www.java.com</a> )</li>
-<li>Xcode command line tools(run in terminal: xcode-select –install) [MAC USERS ONLY]</li>
+<li>Xcode command line tools(run in terminal: xcode-select –install)
+[MAC USERS ONLY]</li>
 </ul>
 </div>
 </div>
 <div class="section level2">
 <h2 id="installing-the-package">Installing the Package<a class="anchor" aria-label="anchor" href="#installing-the-package"></a>
 </h2>
-<p>The preferred way to install the package is by using <code>remotes</code>, which will automatically install the latest release and all the latest dependencies.</p>
-<p>If you do not want the official release you could install the bleeding edge version of the package (latest develop branch).</p>
-<p>Note that the latest develop branch could contain bugs, please report them to us if you experience problems.</p>
+<p>The preferred way to install the package is by using
+<code>remotes</code>, which will automatically install the latest
+release and all the latest dependencies.</p>
+<p>If you do not want the official release you could install the
+bleeding edge version of the package (latest develop branch).</p>
+<p>Note that the latest develop branch could contain bugs, please report
+them to us if you experience problems.</p>
 <div class="section level3">
 <h3 id="installing-deeppatientlevelprediction-using-remotes">Installing DeepPatientLevelPrediction using remotes<a class="anchor" aria-label="anchor" href="#installing-deeppatientlevelprediction-using-remotes"></a>
 </h3>
@@ -161,9 +174,19 @@
 <span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"OHDSI/FeatureExtraction"</span><span class="op">)</span></span>
 <span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"OHDSI/PatientLevelPrediction"</span><span class="op">)</span></span>
 <span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"OHDSI/DeepPatientLevelPrediction"</span><span class="op">)</span></span></code></pre></div>
-<p>DeepPLP relies on <a href="https://torch.mlverse.org/" class="external-link">torch for R</a>. When torch is installed the user will be prompted if libtorch and lantern binaries should be downloaded. These binaries are neccesary for the package to run.</p>
-<p>If you are using DeepPLP in an offline environment the function <code><a href="https://rdrr.io/pkg/torch/man/install_torch_from_file.html" class="external-link">torch::install_torch_from_file()</a></code> can be used. This will first require to download and move the correct binaries to the offline environment. See <a href="https://torch.mlverse.org/docs/articles/installation.html" class="external-link">torch installation guide</a> for more detailed instructions.</p>
-<p>When installing make sure to close any other Rstudio sessions that are using <code>DeepPatientLevelPrediction</code> or any dependency. Keeping Rstudio sessions open can cause locks that prevent the package installing.</p>
+<p>DeepPLP relies on <a href="https://torch.mlverse.org/" class="external-link">torch for
+R</a>. When torch is installed the user will be prompted if libtorch and
+lantern binaries should be downloaded. These binaries are neccesary for
+the package to run.</p>
+<p>If you are using DeepPLP in an offline environment the function
+<code><a href="https://rdrr.io/pkg/torch/man/install_torch_from_file.html" class="external-link">torch::install_torch_from_file()</a></code> can be used. This will
+first require to download and move the correct binaries to the offline
+environment. See <a href="https://torch.mlverse.org/docs/articles/installation.html" class="external-link">torch
+installation guide</a> for more detailed instructions.</p>
+<p>When installing make sure to close any other Rstudio sessions that
+are using <code>DeepPatientLevelPrediction</code> or any dependency.
+Keeping Rstudio sessions open can cause locks that prevent the package
+installing.</p>
 </div>
 </div>
 <div class="section level2">
@@ -171,7 +194,7 @@
 </h2>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ohdsi.github.io/PatientLevelPrediction" class="external-link">PatientLevelPrediction</a></span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ohdsi.github.io/PatientLevelPrediction" class="external-link">DeepPatientLevelPrediction</a></span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/OHDSI/DeepPatientLevelPrediction" class="external-link">DeepPatientLevelPrediction</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">plpDataSimulationProfile</span><span class="op">)</span></span>
 <span><span class="va">sampleSize</span> <span class="op">&lt;-</span> <span class="fl">1e4</span></span>
@@ -220,28 +243,34 @@
 <div class="section level2">
 <h2 id="acknowledgments">Acknowledgments<a class="anchor" aria-label="anchor" href="#acknowledgments"></a>
 </h2>
-<p>Considerable work has been dedicated to provide the <code>DeepPatientLevelPrediction</code> package.</p>
+<p>Considerable work has been dedicated to provide the
+<code>DeepPatientLevelPrediction</code> package.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/citation.html" class="external-link">citation</a></span><span class="op">(</span><span class="st">"DeepPatientLevelPrediction"</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## </span></span>
 <span><span class="co">## To cite package 'DeepPatientLevelPrediction' in publications use:</span></span>
 <span><span class="co">## </span></span>
-<span><span class="co">##   Reps J, Fridgeirsson E, Chan You S, Kim C, John H (9).</span></span>
+<span><span class="co">##   Reps J, Fridgeirsson E, Chan You S, Kim C, John H (15).</span></span>
 <span><span class="co">##   _DeepPatientLevelPrediction: Deep Learning For Patient Level</span></span>
-<span><span class="co">##   Prediction Using Data In The OMOP Common Data Model_.</span></span>
-<span><span class="co">##   https://ohdsi.github.io/PatientLevelPrediction,</span></span>
-<span><span class="co">##   https://github.com/OHDSI/DeepPatientLevelPrediction.</span></span>
+<span><span class="co">##   Prediction Using Data In The OMOP Common Data Model_. R package</span></span>
+<span><span class="co">##   version 1.0.2, &lt;https://github.com/OHDSI/DeepPatientLevelPrediction&gt;.</span></span>
 <span><span class="co">## </span></span>
 <span><span class="co">## A BibTeX entry for LaTeX users is</span></span>
 <span><span class="co">## </span></span>
 <span><span class="co">##   @Manual{,</span></span>
 <span><span class="co">##     title = {DeepPatientLevelPrediction: Deep Learning For Patient Level Prediction Using Data In The OMOP Common Data Model},</span></span>
 <span><span class="co">##     author = {Jenna Reps and Egill Fridgeirsson and Seng {Chan You} and Chungsoo Kim and Henrik John},</span></span>
-<span><span class="co">##     year = {9},</span></span>
-<span><span class="co">##     note = {https://ohdsi.github.io/PatientLevelPrediction, https://github.com/OHDSI/DeepPatientLevelPrediction},</span></span>
+<span><span class="co">##     year = {15},</span></span>
+<span><span class="co">##     note = {R package version 1.0.2},</span></span>
+<span><span class="co">##     url = {https://github.com/OHDSI/DeepPatientLevelPrediction},</span></span>
 <span><span class="co">##   }</span></span></code></pre>
-<p><strong>Please reference this paper if you use the PLP Package in your work:</strong></p>
-<p><a href="http://dx.doi.org/10.1093/jamia/ocy032" class="external-link">Reps JM, Schuemie MJ, Suchard MA, Ryan PB, Rijnbeek PR. Design and implementation of a standardized framework to generate and evaluate patient-level prediction models using observational healthcare data. J Am Med Inform Assoc. 2018;25(8):969-975.</a></p>
+<p><strong>Please reference this paper if you use the PLP Package in
+your work:</strong></p>
+<p><a href="http://dx.doi.org/10.1093/jamia/ocy032" class="external-link">Reps JM, Schuemie
+MJ, Suchard MA, Ryan PB, Rijnbeek PR. Design and implementation of a
+standardized framework to generate and evaluate patient-level prediction
+models using observational healthcare data. J Am Med Inform Assoc.
+2018;25(8):969-975.</a></p>
 </div>
   </div>
 
@@ -262,7 +291,7 @@
 
 <div class="pkgdown">
   <p></p>
-<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.6.</p>
+<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.7.</p>
 </div>
 
       </footer>
