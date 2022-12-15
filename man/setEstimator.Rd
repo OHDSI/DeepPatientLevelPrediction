@@ -14,8 +14,6 @@
 
 \item{criterion}{loss function to use}
 
-\item{posWeight}{If more weight should be added to positive labels during training - will result in miscalibrated models}
-
 \item{earlyStopping}{If earlyStopping should be used which stops the training of your metric is not improving}
 
 \item{earlyStoppingMetric}{Which parameter to use for early stopping}

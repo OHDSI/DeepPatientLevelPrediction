@@ -87,7 +87,7 @@ test_that("ResNet nn-module works ", {
   pars <- sum(sapply(model$parameters, function(x) prod(x$shape)))
 
   # expected number of parameters
-  expect_equal(pars, 1289)
+  expect_equal(pars, 1295)
 
   input <- list()
   input$cat <- torch::torch_randint(0, 5, c(10, 5), dtype = torch::torch_long())
@@ -110,4 +110,34 @@ test_that("ResNet nn-module works ", {
   output <- model(input)
   # model works without numeric variables
   expect_equal(output$shape, 10)
+})
+
+test_that("Default Resnet works", {
+  defaultResNet <- setDefaultResNet()
+  params <- defaultResNet$param[[1]]
+  
+  expect_equal(params$numLayers, 6)
+  expect_equal(params$sizeHidden, 512)
+  expect_equal(params$hiddenFactor, 2)
+  expect_equal(params$residualDropout, 0.1)
+  expect_equal(params$hiddenDropout, 0.4)
+  expect_equal(params$sizeEmbedding, 256)
+  
+}) 
+
+test_that("Errors are produced by settings function", {
+  randomSample <- 2
+  
+  expect_error(setResNet(
+    numLayers = 1,
+    sizeHidden = 128,
+    hiddenFactor = 1,
+    residualDropout = 0.0,
+    hiddenDropout = 0.0,
+    sizeEmbedding = 128,
+    weightDecay = 1e-6,
+    learningRate = 0.01,
+    seed = 42,
+    hyperParamSearch = 'random',
+    randomSample = randomSample))
 })

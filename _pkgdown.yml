@@ -12,8 +12,10 @@ navbar:
     left:
     - home
     - intro
+    - firstModel
     - reference
     - articles
+    - news
     right: [hades, github]
   components:
     home:
@@ -25,6 +27,12 @@ navbar:
     intro:
       text: Get started
       href: articles/Installing.html
+    firstModel:
+      text: My first deep learning model
+      href: articles/FirstModel.html
+    news:
+      text: Changelog
+      href: news/index.html
     github:
       icon: fa-github fa-lg
       href: https://github.com/OHDSI/DeepPatientLevelPrediction

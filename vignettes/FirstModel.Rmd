@@ -1,0 +1,159 @@
+---
+title: "Developing your first DeepPLP model"
+author: "Egill Fridgeirsson"
+date: '`r Sys.Date()`'
+header-includes:
+  - \usepackage{fancyhdr}
+  - \pagestyle{fancy}
+  - \fancyhead{}
+  - \fancyfoot[CO,CE]{PatientLevelPrediction Package Version `r  utils::packageVersion("PatientLevelPrediction")`}
+  - \fancyfoot[CO,CE]{DeepPatientLevelPrediction Package Version `r  utils::packageVersion("DeepPatientLevelPrediction")`}
+  - \fancyfoot[LE,RO]{\thepage}
+  - \renewcommand{\headrulewidth}{0.4pt}
+  - \renewcommand{\footrulewidth}{0.4pt}
+output:
+  pdf_document:
+    includes:
+      in_header: preamble.tex
+    number_sections: yes
+    toc: yes
+  word_document:
+    toc: yes
+  html_document:
+    number_sections: yes
+    toc: yes
+---
+
+```{=html}
+<!--
+%\VignetteEngine{knitr}
+%\VignetteIndexEntry{Developing your first DeepPLP model}
+-->
+```
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+This vignette describes how you can develop your first deep learning model using the deepPLP package on OMOP-CDM data.
+
+First make sure you have everything installed correctly by following the [installation guide](https://ohdsi.github.io/DeepPatientLevelPrediction/articles/Installing.html)
+
+## The data
+
+Since there is no publicly available data we use a nifty little package called [Eunomia](https://github.com/OHDSI/Eunomia) which provides us with synthetic data in the OMOP-CDM.
+
+It can be installed with:
+
+```{r, echo = TRUE, message = FALSE, warning = FALSE,tidy=FALSE,eval=FALSE}
+install.packages('Eunomia')
+```
+
+To start with we have to define our cohorts of interest and extract a so called plpData object with the features we want to use.
+
+In Eunomia the cohorts have already been defined but we need to create them. This we can do by running:
+
+```{r, echo = TRUE, message = FALSE, warning = FALSE,tidy=FALSE,eval=FALSE}
+connectionDetails <- Eunomia::getEunomiaConnectionDetails()
+Eunomia::createCohorts(connectionDetails)
+```
+
+The first line gets the Eunomia connection details. The Eunomia data is stored in a sqlite database. The second line creates the cohorts. You should see output confirming that three target cohorts have been created, consisting of users of certain medications and one outcome cohort of gastrointestinal bleeding.
+
+## Our settings
+
+We define our covariate settings using [FeatureExtraction](https://github.com/OHDSI/FeatureExtraction)
+
+```{r, echo = TRUE, message = FALSE, warning = FALSE,tidy=FALSE,eval=FALSE}
+covariateSettings <- FeatureExtraction::createCovariateSettings(
+  useDemographicsGender = TRUE,
+  useDemographicsAge = TRUE,
+  useConditionOccurrenceLongTerm = TRUE
+)
+```
+
+This means we are extracing gender as a binary variable, age as a continuous variable and conditions occurring in the long term window, which is by default 365 days prior.
+
+Next we need to define our database details, which defines from which database we are getting which cohorts. Since we don't have a database we are using Eunomia.
+
+```{r, echo = TRUE, message = FALSE, warning = FALSE,tidy=FALSE,eval=FALSE}
+databaseDetails <- PatientLevelPrediction::createDatabaseDetails(
+  connectionDetails = connectionDetails, 
+  cdmDatabaseSchema = "main",
+  cdmDatabaseId = 1,
+  cohortDatabaseSchema = "main", 
+  cohortTable = "cohort", 
+  targetId= 4, 
+  outcomeIds = 3,
+  outcomeDatabaseSchema = "main", 
+  outcomeTable =  "cohort", 
+  cdmDatabaseName = 'eunomia'
+)
+```
+
+This means we are using cohort 4 as our target cohort, the population at risk, and 3 as the outcome cohort, those who experience the outcome. According to the previous Eunomia output we are predicting gastrointestinal bleeding in users of NSAIDs.
+
+Now we define our study population and get the plpData object from the database.
+
+```{r, echo = TRUE, message = FALSE, warning = FALSE,tidy=FALSE,eval=FALSE}
+populationSettings <- PatientLevelPrediction::createStudyPopulationSettings(
+                                                          requireTimeAtRisk = F, 
+                                                          riskWindowStart = 1, 
+                                                          riskWindowEnd = 365)
+plpData <- PatientLevelPrediction::getPlpData(
+  databaseDetails = databaseDetails,
+  covariateSettings = covariateSettings,
+  restrictPlpDataSettings = PatientLevelPrediction::createRestrictPlpDataSettings())
+```
+
+When defining our study population we define the time-at-risk. Which is when we are predicing if a certain patient gets the outcome or not. Here we predict the outcome from the day after the patient starts using NSAIDs until one year later.
+
+## The model
+
+Now it's time to define our deep learning model. It can be daunting for those not familiar with deep learning to define their first model since the models are very flexible and have many hyperparameters to define to get your model architecture. To help with this `deepPLP` has helper functions with a sensible set of hyperparameters for testing. Best practice is though to do an extensive hyperparameter tuning step using cross validation.
+
+We will use a simple ResNet for our example. ResNet are simple models that have so called skip connections between layers that allow for deeper models without overfitting. The default ResNet is a 6 layer model with 512 neurons per layer.
+
+```{r, echo = TRUE, message = FALSE, warning = FALSE,tidy=FALSE,eval=FALSE}
+library(DeepPatientLevelPrediction)
+modelSettings <- setDefaultResNet(
+  device = 'cpu',
+  batchSize = 256,
+  epochs=3
+)
+
+```
+
+We still need to define a few parameters though. Device defines on which device to train the model. Usually deep learning models are slow to train so they need a GPU. However this example is small enough that we can use a CPU If you have access to a GPU you can try changing the device to `'cuda'` and see how much faster it goes.
+
+We also need to define our batch size. Usually in deep learning the model sees only a small chunk of the data at a time, in this case 256 patients. After that the model is updated before seeing the next batch. This is called stochastic gradient descent.
+
+Finally we define our epochs. This is how long we will train the model. One epoch means the model has seen all the data once.
+
+Now all that is left is using the PLP to train our first deep learning model. If you have used the PLP this should look familiar to you.
+
+```{r, echo = TRUE, message = FALSE, warning = FALSE,tidy=FALSE,eval=FALSE}
+plpResults <- PatientLevelPrediction::runPlp(plpData = plpData,
+               outcomeId = 3,
+               modelSettings = modelSettings,
+               analysisId = 'ResNet',
+               analysisName = 'Testing DeepPlp',
+               populationSettings = populationSettings
+                                                      )
+```
+On my computer this takes about 20 seconds per epoch. While you probably won't see any kind of good performance using this model and this data, at least the training loss should be decreasing in the printed output.
+
+Congratulations you have just developed your first deep learning model!
+
+## Acknowledgments
+
+Considerable work has been dedicated to provide the `DeepPatientLevelPrediction` package.
+
+```{r tidy=TRUE,eval=TRUE}
+citation("DeepPatientLevelPrediction")
+```
+
+**Please reference this paper if you use the PLP Package in your work:**
+
+[Reps JM, Schuemie MJ, Suchard MA, Ryan PB, Rijnbeek PR. Design and implementation of a standardized framework to generate and evaluate patient-level prediction models using observational healthcare data. J Am Med Inform Assoc. 2018;25(8):969-975.](http://dx.doi.org/10.1093/jamia/ocy032)
