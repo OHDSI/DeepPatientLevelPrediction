@@ -1,5 +1,9 @@
 library(PatientLevelPrediction)
 
+if(Sys.getenv('GITHUB_ACTIONS') == 'true') {
+  torch::install_torch()
+}
+
 testLoc <- tempdir()
 
 # get connection and data from Eunomia
