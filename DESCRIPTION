@@ -1,8 +1,8 @@
 Package: DeepPatientLevelPrediction
 Type: Package
 Title: Deep Learning For Patient Level Prediction Using Data In The OMOP Common Data Model
-Version: 1.0.1
-Date: 09-10-2022
+Version: 1.0.2
+Date: 15-12-2022
 Authors@R: c(
     person("Jenna", "Reps", email = "jreps@its.jnj.com", role = c("aut")), 
     person("Egill", "Fridgeirsson", email = "e.fridgeirsson@erasmusmc.nl", role = c("aut", "cre")),
@@ -13,7 +13,7 @@ Authors@R: c(
 Maintainer: Egill Fridgeirsson <e.fridgeirsson@erasmusmc.nl>
 Description: A package for creating deep learning patient level prediction models following the OHDSI PatientLevelPrediction framework.
 License: Apache License 2.0
-URL: https://ohdsi.github.io/PatientLevelPrediction, https://github.com/OHDSI/DeepPatientLevelPrediction
+URL: https://github.com/OHDSI/DeepPatientLevelPrediction
 BugReports: https://github.com/OHDSI/DeepPatientLevelPrediction/issues
 VignetteBuilder: knitr
 Depends:
