@@ -128,7 +128,8 @@ setTransformer <- function(numBlocks = 3, dimToken = 96, dimOut = 1,
       "numBlocks", "dimToken", "dimOut", "numHeads",
       "attDropout", "ffnDropout", "resDropout", "dimHidden"
     ),
-    baseModel = "Transformer"
+    baseModel = "Transformer",
+    datasetCreator = Dataset
   )
 
   results <- list(

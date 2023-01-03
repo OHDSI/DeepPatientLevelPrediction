@@ -87,7 +87,8 @@ setMultiLayerPerceptron <- function(numLayers = c(1:8),
       "numLayers", "sizeHidden",
       "dropout", "sizeEmbedding"
     ),
-    baseModel = "MLP"
+    baseModel = "MLP",
+    datasetCreator = Dataset
   )
 
   results <- list(

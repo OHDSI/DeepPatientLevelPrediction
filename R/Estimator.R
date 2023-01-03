@@ -62,13 +62,23 @@ fitEstimator <- function(trainData,
   if (!is.null(trainData$folds)) {
     trainData$labels <- merge(trainData$labels, trainData$fold, by = "rowId")
   }
+
+  # remove rows that only have non-temporal features left 
+  if("timeId" %in% trainData$covariateData$covariates$schema$names) {
+    nonTemp <- trainData$covariateData$covariates %>% dplyr::filter(is.na(timeId)) %>% dplyr::distinct(rowId) %>% dplyr::collect()
+    temp <- trainData$covariateData$covariates %>% dplyr::filter(!is.na(timeId)) %>% dplyr::distinct(rowId) %>% dplyr::collect()
+    toRemove <- nonTemp$rowId[!nonTemp$rowId %in% temp$rowId]
+    trainData$covariateData$covariates <- trainData$covariateData$covariates %>%
+      dplyr::filter(!rowId %in% toRemove)
+    trainData$labels <- trainData$labels %>% dplyr::filter(!rowId %in% toRemove)
+  }
+
   mappedCovariateData <- PatientLevelPrediction::MapIds(
     covariateData = trainData$covariateData,
     cohort = trainData$labels
   )
 
   covariateRef <- mappedCovariateData$covariateRef
-
   outLoc <- PatientLevelPrediction::createTempModelLoc()
   cvResult <- do.call(
     what = gridCvDeep,
@@ -124,7 +134,8 @@ fitEstimator <- function(trainData,
       trainingDate = Sys.Date(),
       modelName = settings$name,
       finalModelParameters = cvResult$finalParam,
-      hyperParamSearch = hyperSummary
+      hyperParamSearch = hyperSummary,
+      datasetInfo = cvResult$datasetInfo
     ),
     covariateImportance = covariateRef
   )
@@ -163,9 +174,39 @@ predictDeepEstimator <- function(plpModel,
           .data$covariateId
         )
     )
-    data <- Dataset(mappedData$covariates,
-      numericalIndex = plpModel$covariateImportance$isNumeric
-    )
+    # remove subjects only with non-temporal data
+    if("timeId" %in% data$covariateData$covariates$schema$names) {
+      nonTemp <- mappedData$covariates %>% dplyr::filter(is.na(timeId)) %>% dplyr::distinct(rowId) %>% dplyr::collect()
+      temp <- mappedData$covariates %>% dplyr::filter(!is.na(timeId)) %>% dplyr::distinct(rowId) %>% dplyr::collect()
+      toRemove <- nonTemp$rowId[!nonTemp$rowId %in% temp$rowId]
+      mappedData$covariates <- mappedData$covariates %>%
+        dplyr::filter(!rowId %in% toRemove)
+      cohort <- mappedData$cohort %>% dplyr::filter(!rowId %in% toRemove) %>% dplyr::collect() %>% 
+        dplyr::select(-originalRowId)
+      
+      #reindex rows again in covariates
+      rowMap <- data.frame(
+        rowId = cohort %>% dplyr::select(.data$rowId)
+      )
+      rowMap$rowId <- as.integer(rowMap$rowId)
+      rowMap$xId <- 1:nrow(rowMap)
+      mappedData$covariates <- mappedData$covariates %>%
+        dplyr::inner_join(rowMap, by = 'rowId') %>% 
+        dplyr::select(- .data$rowId) %>%
+        dplyr::rename(rowId = .data$xId)
+      # and labels/cohort/population
+      cohort <- cohort %>%
+        dplyr::inner_join(rowMap, by = 'rowId') %>% 
+        dplyr::rename(
+          originalRowId = .data$rowId,
+          rowId = .data$xId
+        ) %>% dplyr::arrange(.data$rowId) %>% dplyr::select(-.data$originalRowId)
+      
+      
+      
+    }
+    datasetCreator <- attr(plpModel$modelDesign$modelSettings$param,'settings')$datasetCreator
+    data <- datasetCreator(mappedData$covariates, datasetInfo=plpModel$trainDetails$datasetInfo)
   }
 
   # get predictions
@@ -222,9 +263,7 @@ gridCvDeep <- function(mappedData,
 
   gridSearchPredictons <- list()
   length(gridSearchPredictons) <- length(paramSearch)
-  # dataset <- Dataset(mappedData$covariates, labels$outcomeCount)
-  browser()
-  dataset <- TemporalDataset(mappedData$covariates, labels$outcomeCount)
+  dataset <- settings$datasetCreator(mappedData$covariates, labels$outcomeCount)
   for (gridId in 1:length(paramSearch)) {
     ParallelLogger::logInfo(paste0("Running hyperparameter combination no ", gridId))
     ParallelLogger::logInfo(paste0("HyperParameters: "))
@@ -241,8 +280,7 @@ gridCvDeep <- function(mappedData,
 
     fold <- labels$index
     ParallelLogger::logInfo(paste0("Max fold: ", max(fold)))
-    modelParams$catFeatures <- dataset$numCatFeatures()
-    modelParams$numFeatures <- dataset$numNumFeatures()
+    modelParams <- c(modelParams,  dataset$getDatasetParams())
     learnRates <- list()
     for (i in 1:max(fold)) {
       ParallelLogger::logInfo(paste0("Fold ", i))
@@ -305,16 +343,15 @@ gridCvDeep <- function(mappedData,
   if (!dir.exists(file.path(modelLocation))) {
     dir.create(file.path(modelLocation), recursive = T)
   }
-  modelParams$catFeatures <- dataset$numCatFeatures()
-  modelParams$numFeatures <- dataset$numNumFeatures()
-
+  modelParams <- c(modelParams,  dataset$getDatasetParams())
+  
   estimator <- Estimator$new(
     baseModel = baseModel,
     modelParameters = modelParams,
     fitParameters = fitParams,
     device = device
   )
-  numericalIndex <- dataset$getNumericalIndex()
+  datasetInfo <- dataset$datasetInfo # store stuff needed to apply model
 
   estimator$fitWholeTrainingSet(dataset, finalParam$learnSchedule$LRs)
 
@@ -346,7 +383,7 @@ gridCvDeep <- function(mappedData,
       prediction = prediction,
       finalParam = finalParam,
       paramGridSearch = paramGridSearch,
-      numericalIndex = numericalIndex
+      datasetInfo = datasetInfo
     )
   )
 }

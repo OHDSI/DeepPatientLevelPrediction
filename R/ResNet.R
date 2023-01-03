@@ -133,7 +133,8 @@ setResNet <- function(numLayers = c(1:8),
       "numLayers", "sizeHidden", "hiddenFactor",
       "residualDropout", "hiddenDropout", "sizeEmbedding"
     ),
-    baseModel = "ResNet"
+    baseModel = "ResNet",
+    datasetCreator = Dataset
   )
 
   results <- list(
