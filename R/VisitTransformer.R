@@ -132,7 +132,8 @@ VisitTransformer <- torch::nn_module(
                         attentionDropout=0.05,
                         residualDropout=0.05
                         ) {
-    self$embedding <- torch::nn_linear(temporalFeatures, embeddingDim - staticFeatures, bias=FALSE)
+    # self$embedding <- torch::nn_linear(temporalFeatures, embeddingDim - staticFeatures, bias=FALSE)
+    self$embedding <- SparseLinear(temporalFeatures, embeddingDim - staticFeatures)
     self$posEncoding <- PositionalEncoding(embeddingDim - staticFeatures, maxTime)
     
     self$ffnDropout <- ffnDropout
@@ -182,11 +183,9 @@ VisitTransformer <- torch::nn_module(
     torch::nn_init_uniform_(self$embedding$weight, -initRange, initRange)
   },
   forward = function(input) {
-    seqs <- torch::torch_stack(input$sequences)
-    visits <- torch::torch_stack(input$visits)
     # rescale embeddings with sqrt(embeddingDim) , possible better to downscale timeEmbedding?
-    dataEmbedding <- self$embedding(seqs) * sqrt(self$embeddingDim)
-    timeEmbedding <- self$posEncoding(visits)
+    dataEmbedding <- self$embedding(input$sequences) * sqrt(self$embeddingDim)
+    timeEmbedding <- self$posEncoding(input$visits)
     embedding <- dataEmbedding + timeEmbedding
     # concat staticData to embeddings
     x <- torch::torch_cat(list(embedding, 
@@ -194,9 +193,8 @@ VisitTransformer <- torch::nn_module(
                           dim=3)
     # generate key padding mask
     mask <- torch::torch_arange(1, self$maxVisits, 
-                                device = seqs$device)[NULL,] >
+                                device = input$sequences$device)[NULL,] >
       input$lengths[,NULL]
-    
     for (i in 1:length(self$layers)) {
       isLastLayer <- i == length(self$layers)
       layer <- self$layers[[i]]
@@ -260,6 +258,35 @@ PositionalEncoding <- torch::nn_module(
     x <- torch::nnf_embedding(x, self$pe$squeeze(), padding_idx = 1)
   }
 )
+
+SparseLinear <- torch::nn_module(
+  name = 'SparseLinear',
+  initialize = function(inFeatures, outFeatures) {
+      self$inFeatures <- inFeatures
+      self$outFeatures <- outFeatures
+      self$weight <- torch::nn_parameter(torch::torch_empty(inFeatures, outFeatures))
+      self$resetParameters()
+  },
+  resetParameters = function() {
+    torch::nn_init_kaiming_uniform_(self$weight, a=sqrt(5))
+  },
+  forward = function(x) {
+    return(torch::torch_bmm(x, self$weight$unsqueeze(1)$expand(c(x$shape[[1]],-1,-1))))
+  }
+)
+
+# modelled after Karpathy's nanoGPT attention module
+CustomSelfAttention <- torch::nn_module(
+  name = 'CustomSelfAttention',
+  initialize = function() {
+    
+    
+  },
+  forward = function() {
+    
+  }
+)
+
 
 
 

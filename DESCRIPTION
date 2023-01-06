@@ -37,6 +37,6 @@ Remotes:
     ohdsi/PatientLevelPrediction,
     ohdsi/FeatureExtraction,
     ohdsi/Eunomia
-RoxygenNote: 7.2.1
+RoxygenNote: 7.2.3
 Encoding: UTF-8
 Config/testthat/edition: 3

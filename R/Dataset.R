@@ -182,10 +182,8 @@ TemporalDataset <- torch::dataset(
         dplyr::select(covariateId) %>% 
         dplyr::distinct() %>% dplyr::pull()
       self$datasetInfo$temporalFeatures <- temporalFeatures
-      browser()
     } else {
       temporalFeatures <- self$datasetInfo$temporalFeatures
-      browser()
     }
     map <- data.frame(covariateId = temporalFeatures,
                       newColumnId = 1:length(temporalFeatures))
@@ -270,7 +268,6 @@ TemporalDataset <- torch::dataset(
         dplyr::collect()
       self$datasetInfo$staticFeatures <- list(features=uniqueFeatures,
                                               map=map)
-      browser()
     } else {
       uniqueFeatures <- self$datasetInfo$staticFeatures$features
       uniqueFeaturesCount <- length(uniqueFeatures)
@@ -278,7 +275,6 @@ TemporalDataset <- torch::dataset(
       map <- self$datasetInfo$staticFeatures$map
       data <- data %>% dplyr::inner_join(map, by="covariateId") %>% 
         dplyr::collect()
-      browser()
       # what if test set has more/less non-temporal features? 
     }
     self$numStaticFeatures <- uniqueFeaturesCount
@@ -327,10 +323,10 @@ TemporalDataset <- torch::dataset(
   },
   .getbatch = function(item) {
     batch <- list(
-      sequences = lapply(self$sequences[item], function(x) x$to_dense()),
+      sequences = torch::torch_stack(self$sequences[item]),
       static = self$staticData$index_select(item, dim=1),
       lengths = self$lengths[item],
-      visits = self$visits[item]
+      visits = torch::torch_stack(self$visits[item])
     )
     return(list(
       batch = batch,
