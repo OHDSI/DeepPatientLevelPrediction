@@ -37,7 +37,8 @@ Dataset <- torch::dataset(
       dplyr::mutate(newColumnId = dplyr::cur_group_id()) %>%
       dplyr::ungroup() %>%
       dplyr::select(c("rowId", "newColumnId")) %>%
-      dplyr::rename(columnId = newColumnId)
+      dplyr::rename(columnId = newColumnId) %>% 
+      dplyr::arrange(rowId)
     start <- Sys.time()
     catTensor <- torch::torch_tensor(cbind(dataCat$rowId, dataCat$columnId))
     catTensor <- catTensor[catTensor[,1]$argsort(),]
