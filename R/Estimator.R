@@ -83,7 +83,9 @@ fitEstimator <- function(trainData,
 
   hyperSummary <- do.call(rbind, lapply(cvResult$paramGridSearch, function(x) x$hyperSummary))
   prediction <- cvResult$prediction
-  incs <- rep(1, covariateRef %>% dplyr::tally() %>% dplyr::pull())
+  incs <- rep(1, covariateRef %>% dplyr::tally() %>% 
+                dplyr::collect ()
+              %>% dplyr::pull())
   covariateRef <- covariateRef %>%
     dplyr::collect() %>%
     dplyr::mutate(

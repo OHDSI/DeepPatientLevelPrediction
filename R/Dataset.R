@@ -10,8 +10,10 @@ Dataset <- torch::dataset(
     # determine numeric
     if (is.null(numericalIndex)) {
       numericalIndex <- data %>%
+        dplyr::arrange(columnId) %>% 
         dplyr::group_by(columnId) %>%
         dplyr::summarise(n = dplyr::n_distinct(.data$covariateValue)) %>%
+        dplyr::collect() %>%
         dplyr::pull(n) > 1
       self$numericalIndex <- numericalIndex
     } else {
