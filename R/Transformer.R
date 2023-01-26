@@ -84,7 +84,7 @@ setTransformer <- function(numBlocks = 3, dimToken = 96, dimOut = 1,
     seed <- as.integer(sample(1e5, 1))
   }
 
-  if (dimToken %% numHeads != 0) {
+  if (any(dimToken %% numHeads != 0)) {
     stop(paste(
       "dimToken needs to divisble by numHeads. dimToken =", dimToken,
       "is not divisible by numHeads =", numHeads
