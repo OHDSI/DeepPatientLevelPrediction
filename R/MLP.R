@@ -81,13 +81,12 @@ setMultiLayerPerceptron <- function(numLayers = c(1:8),
     device = device,
     batchSize = batchSize,
     epochs = epochs,
-    name = "MLP",
+    name = baseModel = modelType = "MLP",
     saveType = "file",
     modelParamNames = c(
       "numLayers", "sizeHidden",
       "dropout", "sizeEmbedding"
-    ),
-    baseModel = "MLP"
+    )
   )
 
   results <- list(
