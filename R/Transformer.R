@@ -122,13 +122,12 @@ setTransformer <- function(numBlocks = 3, dimToken = 96, dimOut = 1,
     device = device,
     batchSize = batchSize,
     epochs = epochs,
-    name = "Transformer",
+    modelType = "Transformer",
     saveType = "file",
     modelParamNames = c(
       "numBlocks", "dimToken", "dimOut", "numHeads",
       "attDropout", "ffnDropout", "resDropout", "dimHidden"
-    ),
-    baseModel = "Transformer"
+    )
   )
 
   results <- list(

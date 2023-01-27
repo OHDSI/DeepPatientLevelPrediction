@@ -127,13 +127,12 @@ setResNet <- function(numLayers = c(1:8),
     device = device,
     batchSize = batchSize,
     epochs = epochs,
-    name = "ResNet",
+    modelType ="ResNet",
     saveType = "file",
     modelParamNames = c(
       "numLayers", "sizeHidden", "hiddenFactor",
       "residualDropout", "hiddenDropout", "sizeEmbedding"
-    ),
-    baseModel = "ResNet"
+    )
   )
 
   results <- list(

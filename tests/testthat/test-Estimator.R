@@ -2,7 +2,7 @@ catFeatures <- dataset$numCatFeatures()
 numFeatures <- dataset$numNumFeatures()
 
 fitParams <- list()
-baseModel <- ResNet
+modelType <- ResNet
 
 modelParameters <- list(
   catFeatures = catFeatures,
@@ -14,7 +14,7 @@ modelParameters <- list(
 )
 
 estimator <- Estimator$new(
-  baseModel = baseModel,
+  modelType = modelType,
   modelParameters = modelParameters,
   fitParameters = fitParams,
   device = "cpu"
@@ -25,7 +25,7 @@ test_that("Estimator initialization works", {
   # count parameters in both instances
   testthat::expect_equal(
     sum(sapply(estimator$model$parameters, function(x) prod(x$shape))),
-    sum(sapply(do.call(baseModel, modelParameters)$parameters, function(x) prod(x$shape)))
+    sum(sapply(do.call(modelType, modelParameters)$parameters, function(x) prod(x$shape)))
   )
 
   testthat::expect_equal(
