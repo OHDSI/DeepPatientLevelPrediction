@@ -27,8 +27,8 @@ Estimator <- R6::R6Class(
   public = list(
     #' @description
     #' Creates a new estimator
-    #' @param baseModel       The torch nn module to use as model
-    #' @param modelParameters Parameters to initialize the baseModel
+    #' @param modelType       The torch nn module to use as model
+    #' @param modelParameters Parameters to initialize the model
     #' @param fitParameters   Parameters required for the estimator fitting
     #' @param optimizer       A torch optimizer to use, default is Adam
     #' @param criterion       The torch loss function to use, defaults to
@@ -36,7 +36,7 @@ Estimator <- R6::R6Class(
     #' @param scheduler       learning rate scheduler to use
     #' @param device           Which device to use for fitting, default is cpu
     #' @param patience         Patience to use for early stopping
-    initialize = function(baseModel,
+    initialize = function(modelType,
                           modelParameters,
                           fitParameters,
                           optimizer = torch::optim_adam,
@@ -45,7 +45,7 @@ Estimator <- R6::R6Class(
                           device = "cpu",
                           patience = 4) {
       self$device <- device
-      self$model <- do.call(baseModel, modelParameters)
+      self$model <- do.call(modelType, modelParameters)
       self$modelParameters <- modelParameters
       self$fitParameters <- fitParameters
       self$epochs <- self$itemOrDefaults(fitParameters, "epochs", 10)

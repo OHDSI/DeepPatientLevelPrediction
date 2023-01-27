@@ -31,7 +31,7 @@ fit and predict the model defined in that module.
 Creates a new estimator
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Estimator$new(
-  baseModel,
+  modelType,
   modelParameters,
   fitParameters,
   optimizer = torch::optim_adam,
@@ -45,9 +45,9 @@ Creates a new estimator
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{baseModel}}{The torch nn module to use as model}
+\item{\code{modelType}}{The torch nn module to use as model}
 
-\item{\code{modelParameters}}{Parameters to initialize the baseModel}
+\item{\code{modelParameters}}{Parameters to initialize the model}
 
 \item{\code{fitParameters}}{Parameters required for the estimator fitting}
 

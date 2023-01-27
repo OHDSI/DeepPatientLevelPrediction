@@ -175,7 +175,7 @@ predictDeepEstimator <- function(plpModel,
   if (is.character(plpModel$model)) {
     model <- torch::torch_load(file.path(plpModel$model, "DeepEstimatorModel.pt"), device = "cpu")
     estimator <- Estimator$new(
-      baseModel = attr(plpModel$modelDesign$modelSettings$param, "settings")$baseModel,
+      modelType = attr(plpModel$modelDesign$modelSettings$param, "settings")$modelType,
       modelParameters = model$modelParameters,
       fitParameters = model$fitParameters,
       device = attr(plpModel$modelDesign$modelSettings$param, "settings")$device
@@ -210,15 +210,14 @@ gridCvDeep <- function(mappedData,
                        settings,
                        modelLocation,
                        paramSearch) {
-  modelName <- settings$modelName
   modelParamNames <- settings$modelParamNames
   fitParamNames <- c("weightDecay", "learningRate")
   epochs <- settings$epochs
   batchSize <- settings$batchSize
-  baseModel <- settings$baseModel
+  modelType <- settings$modelType
   device <- settings$device
 
-  ParallelLogger::logInfo(paste0("Running CV for ", modelName, " model"))
+  ParallelLogger::logInfo(paste0("Running CV for ", modelType, " model"))
 
   ###########################################################################
 
@@ -249,7 +248,7 @@ gridCvDeep <- function(mappedData,
       trainDataset <- torch::dataset_subset(dataset, indices = which(fold != i))
       testDataset <- torch::dataset_subset(dataset, indices = which(fold == i))
       estimator <- Estimator$new(
-        baseModel = baseModel,
+        modelType = modelType,
         modelParameters = modelParams,
         fitParameters = fitParams,
         device = device
@@ -309,7 +308,7 @@ gridCvDeep <- function(mappedData,
   modelParams$numFeatures <- dataset$numNumFeatures()
 
   estimator <- Estimator$new(
-    baseModel = baseModel,
+    modelType = modelType,
     modelParameters = modelParams,
     fitParameters = fitParams,
     device = device
