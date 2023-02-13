@@ -24,12 +24,16 @@
 #' @param device   Which device to run analysis on, either 'cpu' or 'cuda', default: 'cpu'  
 #' @param batchSize Size of batch, default: 512
 #' @param epochs  Number of epochs to run, default: 10
+#' @param learningRate The learning rate to use
+#' @param weightDecay The weight decay to use
 #' @param seed    random seed to use
 #' 
 #' @export
 setDefaultTransformer <- function(device='cpu',
                                   batchSize=512,
                                   epochs=10,
+                                  learningRate=1e-4,
+                                  weightDecay=1e-5,
                                   seed=NULL) {
   transformerSettings <- setTransformer(numBlocks = 3,
                                         dimToken = 192,
@@ -39,8 +43,8 @@ setDefaultTransformer <- function(device='cpu',
                                         ffnDropout = 0.1,
                                         resDropout = 0.0,
                                         dimHidden = 256,
-                                        weightDecay = 1e-5,
-                                        learningRate = 1e-4,
+                                        weightDecay = weightDecay,
+                                        learningRate = learningRate,
                                         batchSize = batchSize,
                                         epochs = epochs,
                                         device = device,

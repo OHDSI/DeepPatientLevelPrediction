@@ -28,12 +28,16 @@
 #' @param device            Which device to run analysis on, either 'cpu' or 'cuda', default: 'cpu'
 #' @param batchSize         Size of batch, default: 1024
 #' @param epochs            Number of epochs to run, default: 10
+#' @param learningRate      Learning rate to use, default: 0.001
+#' @param weightDecay       The weight decay to use
 #' @param seed              Random seed to use
 
 #' @export
 setDefaultResNet <- function(device='cpu',
                              batchSize=1024,
                              epochs=10,
+                             learningRate=0.001,
+                             weightDecay=1e-6,
                              seed=NULL) {
   
   resnetSettings <- setResNet(numLayers = 6,
@@ -42,8 +46,8 @@ setDefaultResNet <- function(device='cpu',
                               residualDropout = 0.1,
                               hiddenDropout = 0.4,
                               sizeEmbedding = 256,
-                              weightDecay = 1e-6,
-                              learningRate = 0.001,
+                              weightDecay = weightDecay,
+                              learningRate = learningRate,
                               hyperParamSearch = 'random',
                               randomSample = 1,
                               device = device,

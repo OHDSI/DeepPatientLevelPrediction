@@ -8,6 +8,8 @@ setDefaultTransformer(
   device = "cpu",
   batchSize = 512,
   epochs = 10,
+  learningRate = 1e-04,
+  weightDecay = 1e-05,
   seed = NULL
 )
 }
@@ -17,6 +19,10 @@ setDefaultTransformer(
 \item{batchSize}{Size of batch, default: 512}
 
 \item{epochs}{Number of epochs to run, default: 10}
+
+\item{learningRate}{The learning rate to use}
+
+\item{weightDecay}{The weight decay to use}
 
 \item{seed}{random seed to use}
 }
