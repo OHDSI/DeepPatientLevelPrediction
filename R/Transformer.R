@@ -119,7 +119,7 @@ setTransformer <- function(numBlocks = 3, dimToken = 96, dimOut = 1,
   }
   
   if (hyperParamSearch == "random") {
-    withr::with_seed(randomSampleSeed, {param <- param[sample(length(param), randomSample)]}) 
+    suppressWarnings(withr::with_seed(randomSampleSeed, {param <- param[sample(length(param), randomSample)]}))
   }
 
   attr(param, "settings") <- list(
