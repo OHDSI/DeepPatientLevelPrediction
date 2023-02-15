@@ -79,6 +79,7 @@ setDefaultResNet <- function(device='cpu',
 #' @param seed              Seed to use for sampling hyperparameter space
 #' @param hyperParamSearch  Which kind of hyperparameter search to use random sampling or exhaustive grid search. default: 'random'
 #' @param randomSample      How many random samples from hyperparameter space to use
+#' @param randomSampleSeed  Random seed to sample hyperparameter combinations
 #' @param device            Which device to run analysis on, either 'cpu' or 'cuda', default: 'cpu'
 #' @param batchSize         Size of batch, default: 1024
 #' @param epochs            Number of epochs to run, default: 10
@@ -95,6 +96,7 @@ setResNet <- function(numLayers = c(1:8),
                       seed = NULL,
                       hyperParamSearch = "random",
                       randomSample = 100,
+                      randomSampleSeed = NULL,
                       device = "cpu",
                       batchSize = 1024,
                       epochs = 30) {
@@ -123,7 +125,7 @@ setResNet <- function(numLayers = c(1:8),
   }
   
   if (hyperParamSearch == "random") {
-    param <- param[sample(length(param), randomSample)]
+    suppressWarnings(withr::with_seed(randomSampleSeed, {param <- param[sample(length(param), randomSample)]}))
   }
 
   attr(param, "settings") <- list(

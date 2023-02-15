@@ -20,6 +20,7 @@ setTransformer(
   device = "cpu",
   hyperParamSearch = "random",
   randomSample = 1,
+  randomSampleSeed = NULL,
   seed = NULL
 )
 }
@@ -53,6 +54,8 @@ setTransformer(
 \item{hyperParamSearch}{what kind of hyperparameter search to do, default 'random'}
 
 \item{randomSample}{How many samples to use in hyperparameter search if random}
+
+\item{randomSampleSeed}{Random seed to sample hyperparameter combinations}
 
 \item{seed}{Random seed to use}
 }
