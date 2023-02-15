@@ -14,6 +14,7 @@ setMultiLayerPerceptron(
   seed = NULL,
   hyperParamSearch = "random",
   randomSample = 100,
+  randomSampleSeed = NULL,
   device = "cpu",
   batchSize = 1024,
   epochs = 30
@@ -37,6 +38,8 @@ setMultiLayerPerceptron(
 \item{hyperParamSearch}{Which kind of hyperparameter search to use random sampling or exhaustive grid search. default: 'random'}
 
 \item{randomSample}{How many random samples from hyperparameter space to use}
+
+\item{randomSampleSeed}{Random seed to sample hyperparameter combinations}
 
 \item{device}{Which device to run analysis on, either 'cpu' or 'cuda', default: 'cpu'}
 

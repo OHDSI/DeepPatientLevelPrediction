@@ -75,6 +75,7 @@ setDefaultTransformer <- function(device='cpu',
 #' @param device                  Which device to use, cpu or cuda
 #' @param hyperParamSearch        what kind of hyperparameter search to do, default 'random'
 #' @param randomSample            How many samples to use in hyperparameter search if random
+#' @param randomSampleSeed        Random seed to sample hyperparameter combinations
 #' @param seed                    Random seed to use
 #'
 #' @export
@@ -83,7 +84,7 @@ setTransformer <- function(numBlocks = 3, dimToken = 96, dimOut = 1,
                            resDropout = 0, dimHidden = 512, weightDecay = 1e-6,
                            learningRate = 3e-4, batchSize = 1024,
                            epochs = 10, device = "cpu", hyperParamSearch = "random",
-                           randomSample = 1, seed = NULL) {
+                           randomSample = 1, randomSampleSeed = NULL, seed = NULL) {
   if (is.null(seed)) {
     seed <- as.integer(sample(1e5, 1))
   }
@@ -118,7 +119,7 @@ setTransformer <- function(numBlocks = 3, dimToken = 96, dimOut = 1,
   }
   
   if (hyperParamSearch == "random") {
-    param <- param[sample(length(param), randomSample)]
+    withr::with_seed(randomSampleSeed, {param <- param[sample(length(param), randomSample)]}) 
   }
 
   attr(param, "settings") <- list(
