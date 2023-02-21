@@ -115,7 +115,11 @@ setResNet <- function(numLayers = c(1:8),
     learningRate = learningRate,
     seed = list(as.integer(seed[[1]]))
   )
-
+  
+  if (learningRate=='auto') {
+    paramGrid[['learningRate']] <- NULL
+  }
+  
   param <- PatientLevelPrediction::listCartesian(paramGrid)
 
   if (randomSample>length(param)) {
@@ -138,7 +142,8 @@ setResNet <- function(numLayers = c(1:8),
     modelParamNames = c(
       "numLayers", "sizeHidden", "hiddenFactor",
       "residualDropout", "hiddenDropout", "sizeEmbedding"
-    )
+    ),
+    lrFinder = if (learningRate=='auto') TRUE else FALSE
   )
 
   results <- list(

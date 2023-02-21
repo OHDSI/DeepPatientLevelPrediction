@@ -211,12 +211,17 @@ gridCvDeep <- function(mappedData,
                        modelLocation,
                        paramSearch) {
   modelParamNames <- settings$modelParamNames
-  fitParamNames <- c("weightDecay", "learningRate")
+  if (settings$lrFinder) {
+    fitParamNames <- c("weightDecay")
+  } else {
+    fitParamNames <- c("weightDecay", "learningRate")
+  }
   epochs <- settings$epochs
   batchSize <- settings$batchSize
   modelType <- settings$modelType
   device <- settings$device
 
+  
   ParallelLogger::logInfo(paste0("Running CV for ", modelType, " model"))
 
   ###########################################################################
@@ -233,6 +238,10 @@ gridCvDeep <- function(mappedData,
     fitParams <- paramSearch[[gridId]][fitParamNames]
     fitParams$epochs <- epochs
     fitParams$batchSize <- batchSize
+    fitParams$optimizer <- torchopt::optim_adamw
+    fitParams$criterion <- torch::nn_bce_with_logits_loss
+    fitParams$scheduler <- torch::lr_reduce_on_plateau
+    fitParams$device <- device
 
 
     # initiate prediction
@@ -242,6 +251,17 @@ gridCvDeep <- function(mappedData,
     ParallelLogger::logInfo(paste0("Max fold: ", max(fold)))
     modelParams$catFeatures <- dataset$numCatFeatures()
     modelParams$numFeatures <- dataset$numNumFeatures()
+    
+    if (settings$lrFinder) {
+      lr <- lrFinder(dataset=dataset, 
+               model = modelType,
+               modelParams = modelParams,
+               fitParams = fitParams)
+      ParallelLogger::logInfo(paste0("Auto learning rate selected as: ", lr))
+      fitParams$learningRate <- lr
+    }
+    
+    
     learnRates <- list()
     for (i in 1:max(fold)) {
       ParallelLogger::logInfo(paste0("Fold ", i))
@@ -250,8 +270,7 @@ gridCvDeep <- function(mappedData,
       estimator <- Estimator$new(
         modelType = modelType,
         modelParameters = modelParams,
-        fitParameters = fitParams,
-        device = device
+        fitParameters = fitParams
       )
 
       estimator$fit(

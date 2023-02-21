@@ -30,21 +30,12 @@ Estimator <- R6::R6Class(
     #' @param modelType       The torch nn module to use as model
     #' @param modelParameters Parameters to initialize the model
     #' @param fitParameters   Parameters required for the estimator fitting
-    #' @param optimizer       A torch optimizer to use, default is Adam
-    #' @param criterion       The torch loss function to use, defaults to
-    #'                        binary cross entropy with logits
-    #' @param scheduler       learning rate scheduler to use
-    #' @param device           Which device to use for fitting, default is cpu
     #' @param patience         Patience to use for early stopping
     initialize = function(modelType,
                           modelParameters,
                           fitParameters,
-                          optimizer = torch::optim_adam,
-                          criterion = torch::nn_bce_with_logits_loss,
-                          scheduler = torch::lr_reduce_on_plateau,
-                          device = "cpu",
                           patience = 4) {
-      self$device <- device
+      self$device <- fitParameters$device
       self$model <- do.call(modelType, modelParameters)
       self$modelParameters <- modelParameters
       self$fitParameters <- fitParameters
@@ -57,16 +48,17 @@ Estimator <- R6::R6Class(
       self$previousEpochs <- self$itemOrDefaults(fitParameters, "previousEpochs", 0)
       self$model$to(device = self$device)
       
-      self$optimizer <- optimizer(
+      self$optimizer <- fitParameters$optimizer(
         params = self$model$parameters,
         lr = self$learningRate,
         weight_decay = self$l2Norm
       )
-      self$criterion <- criterion()
+      self$criterion <- fitParameters$criterion()
       
-      self$scheduler <- scheduler(self$optimizer,
-                                  patience = 1,
-                                  verbose = FALSE, mode = "max"
+      self$scheduler <- fitParameters$scheduler(self$optimizer,
+                                                patience = 1,
+                                                verbose = FALSE, 
+                                                mode = "max"
       )
       
       # gradient accumulation is useful when training large numbers where
