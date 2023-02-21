@@ -30,16 +30,7 @@ fit and predict the model defined in that module.
 \subsection{Method \code{new()}}{
 Creates a new estimator
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{Estimator$new(
-  modelType,
-  modelParameters,
-  fitParameters,
-  optimizer = torch::optim_adam,
-  criterion = torch::nn_bce_with_logits_loss,
-  scheduler = torch::lr_reduce_on_plateau,
-  device = "cpu",
-  patience = 4
-)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{Estimator$new(modelType, modelParameters, fitParameters, patience = 4)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
@@ -50,15 +41,6 @@ Creates a new estimator
 \item{\code{modelParameters}}{Parameters to initialize the model}
 
 \item{\code{fitParameters}}{Parameters required for the estimator fitting}
-
-\item{\code{optimizer}}{A torch optimizer to use, default is Adam}
-
-\item{\code{criterion}}{The torch loss function to use, defaults to
-binary cross entropy with logits}
-
-\item{\code{scheduler}}{learning rate scheduler to use}
-
-\item{\code{device}}{Which device to use for fitting, default is cpu}
 
 \item{\code{patience}}{Patience to use for early stopping}
 }
