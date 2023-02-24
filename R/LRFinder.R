@@ -52,7 +52,7 @@ lrFinder <- function(dataset, modelType, modelParams, estimatorSettings,
                      divergenceThreshold=4) {
     torch::torch_manual_seed(seed=estimatorSettings$seed)
     model <- do.call(modelType, modelParams)
-    model$to(device='cuda:0')
+    model$to(device=estimatorSettings$device)
     
     optimizer <- estimatorSettings$optimizer(model$parameters, lr=minLR)
     
@@ -75,9 +75,9 @@ lrFinder <- function(dataset, modelType, modelParams, estimatorSettings,
       optimizer$zero_grad()
       
       batch <- dataset[sample(batchIndex, estimatorSettings$batchSize)]
-      batch$batch$cat <- batch$batch$cat$to(device='cuda:0')
-      batch$batch$num <- batch$batch$num$to(device='cuda:0')
-      batch$target <- batch$target$to(device='cuda:0')
+      batch$batch$cat <- batch$batch$cat$to(device=estimatorSettings$device)
+      batch$batch$num <- batch$batch$num$to(device=estimatorSettings$device)
+      batch$target <- batch$target$to(device=estimatorSettings$device)
       
       output <- model(batch$batch)
       
