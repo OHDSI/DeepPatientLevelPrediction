@@ -1,5 +1,4 @@
 #'  A torch dataset
-#' @import data.table
 #' @export
 Dataset <- torch::dataset(
   name = "myDataset",

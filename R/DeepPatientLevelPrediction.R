@@ -23,6 +23,5 @@
 #' @docType package
 #' @name DeepPatientLevelPrediction
 #' @importFrom dplyr %>%
-#' @importFrom data.table :=
 #' @importFrom rlang .data
 NULL

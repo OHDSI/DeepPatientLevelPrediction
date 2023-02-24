@@ -29,23 +29,16 @@
 #' @param sizeHidden        Amount of neurons in each default layer, default: 2^(6:10) (64 to 1024)
 #' @param dropout           How much dropout to apply after first linear, default: seq(0, 0.3, 0.05)
 #' @param sizeEmbedding     Size of embedding layer, default: 2^(6:9) (64 to 512)
-#' @param weightDecay       Weight decay to apply, default: c(1e-6, 1e-3)
-#' @param learningRate      Learning rate to use. default: c(1e-2, 1e-5)
-#' @param seed              Seed to use for sampling hyperparameter space
+#' @param estimatorSettings settings of Estimator created with `setEstimator`
 #' @param hyperParamSearch  Which kind of hyperparameter search to use random sampling or exhaustive grid search. default: 'random'
 #' @param randomSample      How many random samples from hyperparameter space to use
 #' @param randomSampleSeed  Random seed to sample hyperparameter combinations
-#' @param device            Which device to run analysis on, either 'cpu' or 'cuda', default: 'cpu'
-#' @param batchSize         Size of batch, default: 1024
-#' @param epochs            Number of epochs to run, default: 10
 #'
 #' @export
 setMultiLayerPerceptron <- function(numLayers = c(1:8),
                                     sizeHidden = c(2^(6:9)),
                                     dropout = c(seq(0, 0.5, 0.05)),
                                     sizeEmbedding = c(2^(6:9)),
-                                    weightDecay = c(1e-6, 1e-3),
-                                    learningRate = c(1e-2, 3e-4, 1e-5),
                                     estimatorSettings = setEstimator(
                                       learningRate = 'auto',
                                       weightDecay = c(1e-6, 1e-3),

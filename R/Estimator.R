@@ -287,7 +287,7 @@ gridCvDeep <- function(mappedData,
     
     if (estimatorSettings$findLR) {
       lr <- lrFinder(dataset=dataset, 
-                     model = modelSettings$modelType,
+                     modelType = modelSettings$modelType,
                      modelParams = modelParams,
                      estimatorSettings = estimatorSettings)
       ParallelLogger::logInfo(paste0("Auto learning rate selected as: ", lr))
