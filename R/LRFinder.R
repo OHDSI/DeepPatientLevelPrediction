@@ -33,24 +33,39 @@ lrPerBatch <- torch::lr_scheduler(
   
 )
 
-lrFinder <- function(dataset, modelType, modelParams, fitParams,
+#' Find learning rate that decreases loss the most
+#' @description Method originated from https://arxiv.org/abs/1506.01186 but this
+#' implementation draws inspiration from various other implementations such as
+#' pytorch lightning, fastai, luz and pytorch-lr-finder.
+#' @param dataset torch dataset, training dataset
+#' @param modelType the function used to initialize the model
+#' @param modelParams parameters used to initialize model
+#' @param estimatorSettings settings for estimator to fit model
+#' @param minLR lower bound of learning rates to search through
+#' @param maxLR upper bound of learning rates to search through
+#' @param numLR number of learning rates to go through
+#' @param smooth smoothing to use on losses 
+#' @param divergenceThreshold if loss increases this amount above the minimum, stop.
+#' @export
+lrFinder <- function(dataset, modelType, modelParams, estimatorSettings,
                      minLR=1e-7, maxLR=1, numLR=100, smooth=0.05,
                      divergenceThreshold=4) {
-    
+    torch::torch_manual_seed(seed=estimatorSettings$seed)
     model <- do.call(modelType, modelParams)
     model$to(device='cuda:0')
     
-    optimizer <- torch::optim_adam(model$parameters, lr=minLR)
+    optimizer <- estimatorSettings$optimizer(model$parameters, lr=minLR)
     
+    # made a special lr scheduler for this task
     scheduler <- lrPerBatch(optimizer = optimizer,
                             startLR = minLR,
                             endLR = maxLR,
                             nIters = numLR)
     
-    criterion <- torch::nn_bce_with_logits_loss()
+    criterion <- estimatorSettings$criterion()
     
     batchIndex <- seq(length(dataset))
-    
+    set.seed(estimatorSettings$seed)
     
     losses <- numeric(numLR)
     lrs <- numeric(numLR)
@@ -59,7 +74,7 @@ lrFinder <- function(dataset, modelType, modelParams, fitParams,
     for (i in seq(numLR)) {
       optimizer$zero_grad()
       
-      batch <- dataset[sample(batchIndex, fitParams$batchSize)]
+      batch <- dataset[sample(batchIndex, estimatorSettings$batchSize)]
       batch$batch$cat <- batch$batch$cat$to(device='cuda:0')
       batch$batch$num <- batch$batch$num$to(device='cuda:0')
       batch$target <- batch$target$to(device='cuda:0')
@@ -94,7 +109,10 @@ lrFinder <- function(dataset, modelType, modelParams, fitParams,
       
     }
     
-    grad <- as.numeric(torch::torch_diff(torch::torch_tensor(losses[1:i])))
+    # find LR where gradient is highest but before global minimum is reached
+    # I added -5 to make sure it is not still in the minimum
+    globalMinimum <- which.min(losses)
+    grad <- as.numeric(torch::torch_diff(torch::torch_tensor(losses[1:(globalMinimum-5)])))
     smallestGrad <- which.min(grad)
     
     suggestedLR <- lrs[smallestGrad]

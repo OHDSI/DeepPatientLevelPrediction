@@ -11,13 +11,11 @@ setMultiLayerPerceptron(
   sizeEmbedding = c(2^(6:9)),
   weightDecay = c(1e-06, 0.001),
   learningRate = c(0.01, 3e-04, 1e-05),
-  seed = NULL,
+  estimatorSettings = setEstimator(learningRate = "auto", weightDecay = c(1e-06, 0.001),
+    batchSize = 1024, epochs = 30, device = "cpu"),
   hyperParamSearch = "random",
   randomSample = 100,
-  randomSampleSeed = NULL,
-  device = "cpu",
-  batchSize = 1024,
-  epochs = 30
+  randomSampleSeed = NULL
 )
 }
 \arguments{
@@ -33,13 +31,13 @@ setMultiLayerPerceptron(
 
 \item{learningRate}{Learning rate to use. default: c(1e-2, 1e-5)}
 
-\item{seed}{Seed to use for sampling hyperparameter space}
-
 \item{hyperParamSearch}{Which kind of hyperparameter search to use random sampling or exhaustive grid search. default: 'random'}
 
 \item{randomSample}{How many random samples from hyperparameter space to use}
 
 \item{randomSampleSeed}{Random seed to sample hyperparameter combinations}
+
+\item{seed}{Seed to use for sampling hyperparameter space}
 
 \item{device}{Which device to run analysis on, either 'cpu' or 'cuda', default: 'cpu'}
 

@@ -1,7 +1,6 @@
 catFeatures <- dataset$numCatFeatures()
 numFeatures <- dataset$numNumFeatures()
 
-fitParams <- list()
 modelType <- ResNet
 
 modelParameters <- list(
@@ -13,11 +12,16 @@ modelParameters <- list(
   hiddenFactor = 2
 )
 
+estimatorSettings <- setEstimator(learningRate = 3e-4,
+                                 weightDecay = 0.0,
+                                 batchSize = 128,
+                                 epochs = 1,
+                                 device = 'cpu')
+
 estimator <- Estimator$new(
   modelType = modelType,
   modelParameters = modelParameters,
-  fitParameters = fitParams,
-  device = "cpu"
+  estimatorSettings = estimatorSettings
 )
 
 test_that("Estimator initialization works", {
@@ -98,7 +102,9 @@ modelSettings <- setResNet(
   numLayers = 1, sizeHidden = 16, hiddenFactor = 1,
   residualDropout = 0, hiddenDropout = 0,
   sizeEmbedding = 16, hyperParamSearch = "random",
-  randomSample = 1, epochs = 1
+  randomSample = 1,
+  setEstimator(epochs=1,
+               learningRate = 3e-4)
 )
 
 sink(nullfile())

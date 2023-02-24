@@ -27,46 +27,44 @@ Estimator <- R6::R6Class(
   public = list(
     #' @description
     #' Creates a new estimator
-    #' @param modelType       The torch nn module to use as model
+    #' @param modelType The torch nn module to use as model
     #' @param modelParameters Parameters to initialize the model
-    #' @param fitParameters   Parameters required for the estimator fitting
-    #' @param patience         Patience to use for early stopping
+    #' @param estimatorSettings Parameters required for the estimator fitting
     initialize = function(modelType,
                           modelParameters,
-                          fitParameters,
-                          patience = 4) {
-      self$device <- fitParameters$device
+                          estimatorSettings) {
+      self$seed <- estimatorSettings$seed
+      self$device <- estimatorSettings$device
+      torch::torch_manual_seed(seed=self$seed)
       self$model <- do.call(modelType, modelParameters)
       self$modelParameters <- modelParameters
-      self$fitParameters <- fitParameters
-      self$epochs <- self$itemOrDefaults(fitParameters, "epochs", 10)
-      self$learningRate <- self$itemOrDefaults(fitParameters, "learningRate", 1e-3)
-      self$l2Norm <- self$itemOrDefaults(fitParameters, "weightDecay", 1e-5)
-      self$batchSize <- self$itemOrDefaults(fitParameters, "batchSize", 1024)
-      self$prefix <- self$itemOrDefaults(fitParameters, "prefix", self$model$name)
+      self$estimatorSettings <- estimatorSettings
+      self$epochs <- self$itemOrDefaults(estimatorSettings, "epochs", 10)
+      self$learningRate <- self$itemOrDefaults(estimatorSettings, "learningRate", 1e-3)
+      self$l2Norm <- self$itemOrDefaults(estimatorSettings, "weightDecay", 1e-5)
+      self$batchSize <- self$itemOrDefaults(estimatorSettings, "batchSize", 1024)
+      self$prefix <- self$itemOrDefaults(estimatorSettings, "prefix", self$model$name)
       
-      self$previousEpochs <- self$itemOrDefaults(fitParameters, "previousEpochs", 0)
+      self$previousEpochs <- self$itemOrDefaults(estimatorSettings, "previousEpochs", 0)
       self$model$to(device = self$device)
       
-      self$optimizer <- fitParameters$optimizer(
+      self$optimizer <- estimatorSettings$optimizer(
         params = self$model$parameters,
         lr = self$learningRate,
         weight_decay = self$l2Norm
       )
-      self$criterion <- fitParameters$criterion()
+      self$criterion <- estimatorSettings$criterion()
       
-      self$scheduler <- fitParameters$scheduler(self$optimizer,
-                                                patience = 1,
-                                                verbose = FALSE, 
-                                                mode = "max"
-      )
+      self$scheduler <- do.call(estimatorSettings$scheduler$fun,
+                                c(self$optimizer, estimatorSettings$scheduler$params))
       
       # gradient accumulation is useful when training large numbers where
       # you can only fit few samples on the GPU in each batch.
       self$gradAccumulationIter <- 1
       
-      if (!is.null(patience)) {
-        self$earlyStopper <- EarlyStopping$new(patience = patience)
+      if (estimatorSettings$earlyStopping$useEarlyStopping) {
+        self$earlyStopper <- EarlyStopping$new(patience = estimatorSettings$earlyStopping$params$patience,
+                                               metric=estimatorSettings$earlyStopping$params$metric)
       } else {
         self$earlyStopper <- NULL
       }
@@ -116,7 +114,11 @@ Estimator <- R6::R6Class(
         learnRates <- c(learnRates, lr)
         times <- c(times, round(delta, 3))
         if (!is.null(self$earlyStopper)) {
-          self$earlyStopper$call(scores$auc)
+          if (self$earlyStopper$metric=='auc') {
+            self$earlyStopper$call(scores$auc)
+          } else {
+            self$earlyStopper$call(scores$loss)
+          }
           if (self$earlyStopper$improved) {
             # here it saves the results to lists rather than files
             modelStateDict[[epochI]] <- lapply(self$model$state_dict(), function(x) x$detach()$cpu())
@@ -222,16 +224,16 @@ Estimator <- R6::R6Class(
     
     #' @description
     #' Fits whole training set on a specific number of epochs
-    #' TODO What happens when learning rate changes per epochs?
-    #' Ideally I would copy the learning rate strategy from before
-    #' and adjust for different sizes ie more iterations/updates???
     #' @param dataset torch dataset
     #' @param learnRates learnRateSchedule from CV
     fitWholeTrainingSet = function(dataset, learnRates = NULL) {
-      if (is.null(self$bestEpoch)) {
+      if (length(learnRates) > 1) {
+        self$bestEpoch <- length(learnRates)
+      } else if (is.null(self$bestEpoch)) {
         self$bestEpoch <- self$epochs
       }
-      
+      # TODO constant LR
+
       batchIndex <- torch::torch_randperm(length(dataset)) + 1L
       batchIndex <- split(batchIndex, ceiling(seq_along(batchIndex) / self$batchSize))
       for (epoch in 1:self$bestEpoch) {
@@ -251,7 +253,7 @@ Estimator <- R6::R6Class(
         list(
           modelStateDict = self$model$state_dict(),
           modelParameters = self$modelParameters,
-          fitParameters = self$fitParameters,
+          estimatorSettings = self$estimatorSettings,
           epoch = self$epochs
         ),
         savePath
@@ -352,8 +354,10 @@ EarlyStopping <- R6::R6Class(
     #' @param patience Stop after this number of epochs if loss doesn't improve
     #' @param delta    How much does the loss need to improve to count as improvement
     #' @param verbose  If information should be printed out
+    #' @param metric  What metric to use to stop, either `loss` or `auc`
     #' @return a new earlystopping object
-    initialize = function(patience = 3, delta = 0, verbose = TRUE) {
+    initialize = function(patience = 3, delta = 0, verbose = TRUE,
+                          metric='auc') {
       self$patience <- patience
       self$counter <- 0
       self$verbose <- verbose
@@ -362,13 +366,23 @@ EarlyStopping <- R6::R6Class(
       self$improved <- FALSE
       self$delta <- delta
       self$previousScore <- 0
+      self$metric <- metric
+      if (metric=='auc') {
+        self$mode <- 'max'
+      } else {
+        self$mode <- 'min'
+      }
     },
     #' @description
     #' call the earlystopping object and increment a counter if loss is not
     #' improving
     #' @param metric the current metric value
     call = function(metric) {
-      score <- metric
+      if (self$mode=='max') {
+        score <- metric
+      } else {
+        score <- -1 * metric
+      }
       if (is.null(self$bestScore)) {
         self$bestScore <- score
         self$improved <- TRUE

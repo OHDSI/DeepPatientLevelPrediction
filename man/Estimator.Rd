@@ -30,7 +30,7 @@ fit and predict the model defined in that module.
 \subsection{Method \code{new()}}{
 Creates a new estimator
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{Estimator$new(modelType, modelParameters, fitParameters, patience = 4)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{Estimator$new(modelType, modelParameters, estimatorSettings)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
@@ -40,9 +40,7 @@ Creates a new estimator
 
 \item{\code{modelParameters}}{Parameters to initialize the model}
 
-\item{\code{fitParameters}}{Parameters required for the estimator fitting}
-
-\item{\code{patience}}{Patience to use for early stopping}
+\item{\code{estimatorSettings}}{Parameters required for the estimator fitting}
 }
 \if{html}{\out{</div>}}
 }
@@ -137,9 +135,6 @@ operations that run when fitting is finished
 \if{latex}{\out{\hypertarget{method-Estimator-fitWholeTrainingSet}{}}}
 \subsection{Method \code{fitWholeTrainingSet()}}{
 Fits whole training set on a specific number of epochs
-TODO What happens when learning rate changes per epochs?
-Ideally I would copy the learning rate strategy from before
-and adjust for different sizes ie more iterations/updates???
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Estimator$fitWholeTrainingSet(dataset, learnRates = NULL)}\if{html}{\out{</div>}}
 }

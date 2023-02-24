@@ -46,27 +46,25 @@ setMultiLayerPerceptron <- function(numLayers = c(1:8),
                                     sizeEmbedding = c(2^(6:9)),
                                     weightDecay = c(1e-6, 1e-3),
                                     learningRate = c(1e-2, 3e-4, 1e-5),
-                                    seed = NULL,
+                                    estimatorSettings = setEstimator(
+                                      learningRate = 'auto',
+                                      weightDecay = c(1e-6, 1e-3),
+                                      batchSize = 1024,
+                                      epochs = 30,
+                                      device="cpu"),                              
                                     hyperParamSearch = "random",
                                     randomSample = 100,
-                                    randomSampleSeed = NULL,
-                                    device = "cpu",
-                                    batchSize = 1024,
-                                    epochs = 30) {
-  if (is.null(seed)) {
-    seed <- as.integer(sample(1e5, 1))
-  }
+                                    randomSampleSeed = NULL) {
 
   paramGrid <- list(
     numLayers = numLayers,
     sizeHidden = sizeHidden,
     dropout = dropout,
-    sizeEmbedding = sizeEmbedding,
-    weightDecay = weightDecay,
-    learningRate = learningRate,
-    seed = list(as.integer(seed[[1]]))
+    sizeEmbedding = sizeEmbedding
   )
-
+  
+  paramGrid <- c(paramGrid, estimatorSettings$paramsToTune)
+  
   param <- PatientLevelPrediction::listCartesian(paramGrid)
   if (randomSample>length(param)) {
     stop(paste("\n Chosen amount of randomSamples is higher than the amount of possible hyperparameter combinations.", 
@@ -78,22 +76,16 @@ setMultiLayerPerceptron <- function(numLayers = c(1:8),
     suppressWarnings(withr::with_seed(randomSampleSeed, {param <- param[sample(length(param), randomSample)]}))
   }
 
-  attr(param, "settings") <- list(
-    seed = seed[1],
-    device = device,
-    batchSize = batchSize,
-    epochs = epochs,
+  results <- list(
+    fitFunction = "fitEstimator",
+    param = param,
+    estimatorSettings = estimatorSettings,
     modelType = "MLP",
     saveType = "file",
     modelParamNames = c(
       "numLayers", "sizeHidden",
       "dropout", "sizeEmbedding"
     )
-  )
-
-  results <- list(
-    fitFunction = "fitEstimator",
-    param = param
   )
 
   class(results) <- "modelSettings"

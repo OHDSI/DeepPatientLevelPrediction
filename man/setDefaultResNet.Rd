@@ -5,26 +5,12 @@
 \title{setDefaultResNet}
 \usage{
 setDefaultResNet(
-  device = "cpu",
-  batchSize = 1024,
-  epochs = 10,
-  learningRate = 0.001,
-  weightDecay = 1e-06,
-  seed = NULL
+  estimatorSettings = setEstimator(learningRate = "auto", weightDecay = 1e-06, device =
+    "cpu", batchSize = 1024, epochs = 50, seed = NULL)
 )
 }
 \arguments{
-\item{device}{Which device to run analysis on, either 'cpu' or 'cuda', default: 'cpu'}
-
-\item{batchSize}{Size of batch, default: 1024}
-
-\item{epochs}{Number of epochs to run, default: 10}
-
-\item{learningRate}{Learning rate to use, default: 0.001}
-
-\item{weightDecay}{The weight decay to use}
-
-\item{seed}{Random seed to use}
+\item{estimatorSettings}{created with ```setEstimator```}
 }
 \description{
 Creates settings for a default ResNet model

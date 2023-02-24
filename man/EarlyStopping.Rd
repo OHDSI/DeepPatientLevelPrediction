@@ -20,7 +20,7 @@ Stops training if a loss or metric has stopped improving
 \subsection{Method \code{new()}}{
 Creates a new earlystopping object
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{EarlyStopping$new(patience = 3, delta = 0, verbose = TRUE)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{EarlyStopping$new(patience = 3, delta = 0, verbose = TRUE, metric = "auc")}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
@@ -31,6 +31,8 @@ Creates a new earlystopping object
 \item{\code{delta}}{How much does the loss need to improve to count as improvement}
 
 \item{\code{verbose}}{If information should be printed out}
+
+\item{\code{metric}}{What metric to use to stop, either `loss` or `auc`}
 }
 \if{html}{\out{</div>}}
 }
