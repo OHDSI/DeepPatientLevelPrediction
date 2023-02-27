@@ -33,7 +33,8 @@ Suggests:
     knitr,
     markdown,
     plyr,  
-    testthat
+    testthat,
+    PRROC
 Remotes:
     ohdsi/PatientLevelPrediction,
     ohdsi/FeatureExtraction,
