@@ -55,16 +55,36 @@ Estimator <- R6::R6Class(
       )
       self$criterion <- estimatorSettings$criterion()
       
-      self$scheduler <- do.call(estimatorSettings$scheduler$fun,
-                                c(self$optimizer, estimatorSettings$scheduler$params))
+      if (!is.null(estimatorSettings$metric)) {
+        self$metric <- estimatorSettings$metric
+        if (is.character(self$metric)) {
+          if (self$metric == "auc") {
+            self$metric <- list(name="auc",
+                                mode="max")
+          } else if (self$metric == "loss") {
+            self$metric <- list(name="loss",
+                                mode="min")
+          }
+        }
+        if (!is.null(estimatorSettings$scheduler)) {
+          estimatorSettings$scheduler$params$mode <- self$metrix$mode 
+        }
+        if (!is.null(estimatorSettings$earlyStopping)) {
+          estimatorSettings$earlyStopping$params$mode <- self$metric$mode
+        }
+      }
+      
+      if (!is.null(estimatorSettings$scheduler)) {
+        self$scheduler <- do.call(estimatorSettings$scheduler$fun,
+                                  c(self$optimizer, estimatorSettings$scheduler$params))
+      }
       
       # gradient accumulation is useful when training large numbers where
       # you can only fit few samples on the GPU in each batch.
       self$gradAccumulationIter <- 1
       
-      if (estimatorSettings$earlyStopping$useEarlyStopping) {
-        self$earlyStopper <- EarlyStopping$new(patience = estimatorSettings$earlyStopping$params$patience,
-                                               metric=estimatorSettings$earlyStopping$params$metric)
+      if (!is.null(estimatorSettings$earlyStopping) && estimatorSettings$earlyStopping$useEarlyStopping) {
+        self$earlyStopper <- do.call(EarlyStopping$new, estimatorSettings$earlyStopping$params)
       } else {
         self$earlyStopper <- NULL
       }
@@ -77,8 +97,7 @@ Estimator <- R6::R6Class(
     #' @param dataset     a torch dataset to use for model fitting
     #' @param testDataset a torch dataset to use for early stopping
     fit = function(dataset, testDataset) {
-      valLosses <- c()
-      valAUCs <- c()
+      allScores <- list()
       batchIndex <- torch::torch_randperm(length(dataset)) + 1L
       batchIndex <- split(batchIndex, ceiling(seq_along(batchIndex) / self$batchSize))
       
@@ -99,35 +118,22 @@ Estimator <- R6::R6Class(
         delta <- endTime - startTime
         currentEpoch <- epochI + self$previousEpochs
         lr <- self$optimizer$param_groups[[1]]$lr
-        ParallelLogger::logInfo(
-          "Epochs: ", currentEpoch,
-          " | Val AUC: ", round(scores$auc, 3),
-          " | Val Loss: ", round(scores$loss, 3),
-          " | Train Loss: ", round(trainLoss, 3),
-          " | Time: ", round(delta, 3), " ",
-          units(delta),
-          " | LR: ", lr
-        )
-        self$scheduler$step(scores$auc)
-        valLosses <- c(valLosses, scores$loss)
-        valAUCs <- c(valAUCs, scores$auc)
+        self$printProgress(scores, trainLoss, delta, currentEpoch)
+        self$scheduler$step(scores$metric)
+        allScores[[epochI]] <- scores
         learnRates <- c(learnRates, lr)
         times <- c(times, round(delta, 3))
         if (!is.null(self$earlyStopper)) {
-          if (self$earlyStopper$metric=='auc') {
-            self$earlyStopper$call(scores$auc)
-          } else {
-            self$earlyStopper$call(scores$loss)
-          }
+          self$earlyStopper$call(scores$metric)
           if (self$earlyStopper$improved) {
             # here it saves the results to lists rather than files
             modelStateDict[[epochI]] <- lapply(self$model$state_dict(), function(x) x$detach()$cpu())
             epoch[[epochI]] <- currentEpoch
           }
           if (self$earlyStopper$earlyStop) {
-            ParallelLogger::logInfo("Early stopping, validation AUC stopped improving")
+            ParallelLogger::logInfo("Early stopping, validation metric stopped improving")
             ParallelLogger::logInfo("Average time per epoch was: ", round(mean(as.numeric(times)), 3), " ", units(delta))
-            self$finishFit(valAUCs, modelStateDict, valLosses, epoch, learnRates)
+            self$finishFit(allScores, modelStateDict, epoch, learnRates)
             return(invisible(self))
           }
         } else {
@@ -136,7 +142,7 @@ Estimator <- R6::R6Class(
         }
       }
       ParallelLogger::logInfo("Average time per epoch was: ", round(mean(as.numeric(times)), 3), " ", units(delta))
-      self$finishFit(valAUCs, modelStateDict, valLosses, epoch, learnRates)
+      self$finishFit(allScores, modelStateDict, epoch, learnRates)
       invisible(self)
     },
     
@@ -149,9 +155,9 @@ Estimator <- R6::R6Class(
       ix <- 1
       self$model$train()
       progressBar <- utils::txtProgressBar(style = 3)
-      coro::loop(for (b in batchIndex) {
+      for (b in batchIndex) {
         self$optimizer$zero_grad()
-        batch <- self$batchToDevice(dataset[b])
+        batch <- batchToDevice(dataset[b], device=self$device)
         out <- self$model(batch[[1]])
         loss <- self$criterion(out, batch[[2]])
         loss$backward()
@@ -160,7 +166,7 @@ Estimator <- R6::R6Class(
         trainLosses[ix] <- loss$detach()
         utils::setTxtProgressBar(progressBar, ix / length(batchIndex))
         ix <- ix + 1
-      })
+      }
       close(progressBar)
       trainLosses$mean()$item()
     },
@@ -177,14 +183,14 @@ Estimator <- R6::R6Class(
         targets <- list()
         self$model$eval()
         ix <- 1
-        coro::loop(for (b in batchIndex) {
-          batch <- self$batchToDevice(dataset[b])
+        for (b in batchIndex) {
+          batch <- batchToDevice(dataset[b], device=self$device)
           pred <- self$model(batch[[1]])
           predictions <- c(predictions, pred)
           targets <- c(targets, batch[[2]])
           loss[ix] <- self$criterion(pred, batch[[2]])
           ix <- ix + 1
-        })
+        }
         mean_loss <- loss$mean()$item()
         predictionsClass <- data.frame(
           value = as.matrix(torch::torch_sigmoid(torch::torch_cat(predictions)$cpu())),
@@ -192,19 +198,36 @@ Estimator <- R6::R6Class(
         )
         attr(predictionsClass, "metaData")$modelType <- "binary"
         auc <- PatientLevelPrediction::computeAuc(predictionsClass)
+        scores <- list()
+        if (!is.null(self$metric)) {
+          if (self$metric$name == "auc") {
+            scores$metric <- auc
+          } else if (self$metric$name == "loss") {
+            scores$metric <- mean_loss
+          } else {
+            metric <- self$metric$fun(predictionsClass$value, predictionsClass$outcomeCount)
+            scores$metric <- metric
+          }
+        }
+        scores$auc <- auc
+        scores$loss <- mean_loss
       })
-      return(list(loss = mean_loss, auc = auc))
+      return(scores)
     },
     
     #' @description
     #' operations that run when fitting is finished
-    #' @param valAUCs         validation AUC values
+    #' @param scores          validation scores
     #' @param modelStateDict  fitted model parameters
-    #' @param valLosses       validation losses
     #' @param epoch           list of epochs fit
     #' @param learnRates      learning rate sequence used so far
-    finishFit = function(valAUCs, modelStateDict, valLosses, epoch, learnRates) {
-      bestEpochInd <- which.max(valAUCs) # change this if a different metric is used
+    finishFit = function(scores, modelStateDict, epoch, learnRates) {
+      if (self$metric$mode=="max") {
+        bestEpochInd <- which.max(unlist(lapply(scores, function(x) x$metric)))
+      }
+      else if (self$metric$mode=="min") {
+        bestEpochInd <- which.min(unlist(lapply(scores, function(x) x$metric)))
+      }
       
       bestModelStateDict <- lapply(modelStateDict[[bestEpochInd]], function(x) x$to(device = self$device))
       self$model$load_state_dict(bestModelStateDict)
@@ -212,14 +235,48 @@ Estimator <- R6::R6Class(
       bestEpoch <- epoch[[bestEpochInd]]
       self$bestEpoch <- bestEpoch
       self$bestScore <- list(
-        loss = valLosses[bestEpochInd],
-        auc = valAUCs[bestEpochInd]
+        loss = scores[[bestEpochInd]]$loss,
+        auc = scores[[bestEpochInd]]$auc
       )
       self$learnRateSchedule <- learnRates[1:bestEpochInd]
       
       ParallelLogger::logInfo("Loaded best model (based on AUC) from epoch ", bestEpoch)
       ParallelLogger::logInfo("ValLoss: ", self$bestScore$loss)
       ParallelLogger::logInfo("valAUC: ", self$bestScore$auc)
+      if (!is.null(self$metric) && (!self$metric$name=='auc') && (!self$metric$name=='loss')) {
+        self$bestScore[[self$metric$name]] <- scores[[bestEpochInd]]$metric
+        ParallelLogger::logInfo(self$metric$name,": ", self$bestScore[[self$metric$name]])
+      }
+    },
+    
+    #' @description Print out training progress per epoch
+    #' @param scores scores returned by `self$score`
+    #' @param trainLoss training loss
+    #' @param delta how long did the epoch take
+    #' @param currentEpoch the current epoch number
+    printProgress = function(scores, trainLoss, delta, currentEpoch) {
+      if (!is.null(self$metric) && (!self$metric$name=='auc') && (!self$metric$name=='loss')) {
+        ParallelLogger::logInfo(
+          "Epochs: ", currentEpoch,
+          " | Val ", self$metric$name, ": ", round(scores$metric, 3),
+          " | Val AUC: ", round(scores$auc, 3),
+          " | Val Loss: ", round(scores$loss, 3),
+          " | Train Loss: ", round(trainLoss, 3),
+          " | Time: ", round(delta, 3), " ",
+          units(delta),
+          " | LR: ", self$optimizer$param_groups[[1]]$lr
+        )
+      } else {
+      ParallelLogger::logInfo(
+        "Epochs: ", currentEpoch,
+        " | Val AUC: ", round(scores$auc, 3),
+        " | Val Loss: ", round(scores$loss, 3),
+        " | Train Loss: ", round(trainLoss, 3),
+        " | Time: ", round(delta, 3), " ",
+        units(delta),
+        " | LR: ", self$optimizer$param_groups[[1]]$lr
+      )
+      }
     },
     
     #' @description
@@ -275,7 +332,7 @@ Estimator <- R6::R6Class(
         progressBar <- utils::txtProgressBar(style = 3)
         ix <- 1
         coro::loop(for (b in batchIndex) {
-          batch <- self$batchToDevice(dataset[b])
+          batch <- batchToDevice(dataset[b], self$device)
           target <- batch$target
           pred <- self$model(batch$batch)
           predictions[b] <- torch::torch_sigmoid(pred)
@@ -305,31 +362,6 @@ Estimator <- R6::R6Class(
     },
     
     #' @description
-    #' sends a batch of data to device
-    #' assumes batch includes lists of tensors to arbitrary nested depths
-    #' @param batch the batch to send, usually a list of torch tensors
-    #' @return the batch on the required device
-    batchToDevice = function(batch) {
-      if (class(batch)[1] == "torch_tensor") {
-        batch <- batch$to(device = self$device)
-      } else {
-        ix <- 1
-        for (b in batch) {
-          if (class(b)[1] == "torch_tensor") {
-            b <- b$to(device = self$device)
-          } else {
-            b <- self$batchToDevice(b)
-          }
-          if (!is.null(b)) {
-            batch[[ix]] <- b
-          }
-          ix <- ix + 1
-        }
-      }
-      return(batch)
-    },
-    
-    #' @description
     #' select item from list, and if it's null sets a default
     #' @param list A list with items
     #' @param item Which list item to retrieve
@@ -350,14 +382,14 @@ EarlyStopping <- R6::R6Class(
   lock_objects = FALSE,
   public = list(
     #' @description
-    #' Creates a new earlystopping object
+    #' Creates a new earlyStopping object
     #' @param patience Stop after this number of epochs if loss doesn't improve
     #' @param delta    How much does the loss need to improve to count as improvement
     #' @param verbose  If information should be printed out
-    #' @param metric  What metric to use to stop, either `loss` or `auc`
+    #' @param mode    either `min` or `max` depending on metric to be used for earlyStopping
     #' @return a new earlystopping object
     initialize = function(patience = 3, delta = 0, verbose = TRUE,
-                          metric='auc') {
+                          mode='max') {
       self$patience <- patience
       self$counter <- 0
       self$verbose <- verbose
@@ -366,12 +398,7 @@ EarlyStopping <- R6::R6Class(
       self$improved <- FALSE
       self$delta <- delta
       self$previousScore <- 0
-      self$metric <- metric
-      if (metric=='auc') {
-        self$mode <- 'max'
-      } else {
-        self$mode <- 'min'
-      }
+      self$mode <- mode
     },
     #' @description
     #' call the earlystopping object and increment a counter if loss is not
@@ -407,3 +434,30 @@ EarlyStopping <- R6::R6Class(
     }
   )
 )
+
+#' sends a batch of data to device
+#' @description 
+#' sends a batch of data to device
+#' assumes batch includes lists of tensors to arbitrary nested depths
+#' @param batch the batch to send, usually a list of torch tensors
+#' @param device which device to send batch to
+#' @return the batch on the required device
+batchToDevice = function(batch, device) {
+  if (class(batch)[1] == "torch_tensor") {
+    batch <- batch$to(device = device)
+  } else {
+    ix <- 1
+    for (b in batch) {
+      if (class(b)[1] == "torch_tensor") {
+        b <- b$to(device = device)
+      } else {
+        b <- batchToDevice(b, device)
+      }
+      if (!is.null(b)) {
+        batch[[ix]] <- b
+      }
+      ix <- ix + 1
+    }
+  }
+  return(batch)
+}

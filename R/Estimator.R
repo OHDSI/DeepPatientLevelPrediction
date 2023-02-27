@@ -31,6 +31,9 @@
 #' @param scheduler which learning rate scheduler to use
 #' @param criterion loss function to use
 #' @param earlyStopping If earlyStopping should be used which stops the training of your metric is not improving
+#' @param metric either `auc` or `loss` or a custom metric to use. This is the metric used for scheduler and earlyStopping. 
+#' Needs to be a list with function `fun`, mode either `min` or `max` and a `name`,
+#' `fun` needs to be a function that takes in prediction and labels and outputs a score.
 #' @param seed seed to initialize weights of model with
 #' @export
 setEstimator <- function(learningRate='auto',
@@ -40,15 +43,14 @@ setEstimator <- function(learningRate='auto',
                          device='cpu',
                          optimizer = torchopt::optim_adamw,
                          scheduler = list(fun=torch::lr_reduce_on_plateau,
-                                          params=list(patience=1,
-                                                      mode='max')),
+                                          params=list(patience=1)),
                          criterion = torch::nn_bce_with_logits_loss,
                          earlyStopping = list(useEarlyStopping=TRUE,
-                                              params = list(metric=c('auc'), 
-                                                            patience=4)),
+                                              params = list(patience=4)),
+                         metric = "auc",
                          seed = NULL
 ) {
-  if (learningRate=='auto') {findLR <- TRUE} else {findLR <- FALSE}
+  if (length(learningRate)==1 && learningRate=='auto') {findLR <- TRUE} else {findLR <- FALSE}
   if (is.null(seed)) {
     seed <- as.integer(sample(1e5, 1))
   }
@@ -64,12 +66,13 @@ setEstimator <- function(learningRate='auto',
                             criterion=criterion,
                             earlyStopping=earlyStopping,
                             findLR=findLR,
+                            metric=metric,
                             seed=seed[1] 
   )
   paramsToTune <- list()
   for (name in names(estimatorSettings)) {
     param <- estimatorSettings[[name]]
-    if (length(param) > 1 && is.numeric(param)) {
+    if (length(param) > 1 && is.atomic(param)) {
       paramsToTune[[paste0('estimator.',name)]] <- param
     }
     if ("params" %in% names(param)) {

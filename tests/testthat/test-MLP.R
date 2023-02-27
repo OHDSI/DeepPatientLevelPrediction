@@ -21,6 +21,13 @@ test_that("setMultiLayerPerceptron works", {
   testthat::expect_equal(modelSettings$fitFunction, "fitEstimator")
 
   testthat::expect_true(length(modelSettings$param) > 0)
+  
+  expect_error(setMultiLayerPerceptron(numLayers=1,
+                                       sizeHidden = 128,
+                                       dropout= 0.2,
+                                       sizeEmbedding = 128,
+                                       estimatorSettings = setEstimator(learningRate=3e-4),
+                                       randomSample = 2))
 })
 
 sink(nullfile())

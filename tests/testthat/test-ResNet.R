@@ -6,7 +6,7 @@ resSet <- setResNet(
   residualDropout = c(0.1),
   hiddenDropout = c(0.1),
   sizeEmbedding = c(32),
-  estimatorSettings = setEstimator(learningRate=c(3e-4),
+  estimatorSettings = setEstimator(learningRate="auto",
                                    weightDecay = c(1e-6),
                                    seed=42,
                                    batchSize = 128,
@@ -21,6 +21,20 @@ test_that("setResNet works", {
   testthat::expect_equal(resSet$fitFunction, "fitEstimator")
 
   testthat::expect_true(length(resSet$param) > 0)
+  
+  expect_error(setResNet(numLayers = c(2),
+                sizeHidden = c(32),
+                hiddenFactor = c(2),
+                residualDropout = c(0.1),
+                hiddenDropout = c(0.1),
+                sizeEmbedding = c(32),
+                estimatorSettings = setEstimator(learningRate=c(3e-4),
+                                                 weightDecay = c(1e-6),
+                                                 seed=42,
+                                                 batchSize = 128,
+                                                 epochs=1),
+                hyperParamSearch = "random",
+                randomSample = 2))
 })
 
 sink(nullfile())

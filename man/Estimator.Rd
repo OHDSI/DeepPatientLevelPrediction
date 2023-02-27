@@ -15,11 +15,11 @@ fit and predict the model defined in that module.
 \item \href{#method-Estimator-fitEpoch}{\code{Estimator$fitEpoch()}}
 \item \href{#method-Estimator-score}{\code{Estimator$score()}}
 \item \href{#method-Estimator-finishFit}{\code{Estimator$finishFit()}}
+\item \href{#method-Estimator-printProgress}{\code{Estimator$printProgress()}}
 \item \href{#method-Estimator-fitWholeTrainingSet}{\code{Estimator$fitWholeTrainingSet()}}
 \item \href{#method-Estimator-save}{\code{Estimator$save()}}
 \item \href{#method-Estimator-predictProba}{\code{Estimator$predictProba()}}
 \item \href{#method-Estimator-predict}{\code{Estimator$predict()}}
-\item \href{#method-Estimator-batchToDevice}{\code{Estimator$batchToDevice()}}
 \item \href{#method-Estimator-itemOrDefaults}{\code{Estimator$itemOrDefaults()}}
 \item \href{#method-Estimator-clone}{\code{Estimator$clone()}}
 }
@@ -111,21 +111,42 @@ list with average loss and auc in the dataset
 \subsection{Method \code{finishFit()}}{
 operations that run when fitting is finished
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{Estimator$finishFit(valAUCs, modelStateDict, valLosses, epoch, learnRates)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{Estimator$finishFit(scores, modelStateDict, epoch, learnRates)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{valAUCs}}{validation AUC values}
+\item{\code{scores}}{validation scores}
 
 \item{\code{modelStateDict}}{fitted model parameters}
-
-\item{\code{valLosses}}{validation losses}
 
 \item{\code{epoch}}{list of epochs fit}
 
 \item{\code{learnRates}}{learning rate sequence used so far}
+}
+\if{html}{\out{</div>}}
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-Estimator-printProgress"></a>}}
+\if{latex}{\out{\hypertarget{method-Estimator-printProgress}{}}}
+\subsection{Method \code{printProgress()}}{
+Print out training progress per epoch
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{Estimator$printProgress(scores, trainLoss, delta, currentEpoch)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{scores}}{scores returned by `self$score`}
+
+\item{\code{trainLoss}}{training loss}
+
+\item{\code{delta}}{how long did the epoch take}
+
+\item{\code{currentEpoch}}{the current epoch number}
 }
 \if{html}{\out{</div>}}
 }
@@ -211,27 +232,6 @@ predicts and outputs the class
 }
 \subsection{Returns}{
 The predicted class for the data in the dataset
-}
-}
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-Estimator-batchToDevice"></a>}}
-\if{latex}{\out{\hypertarget{method-Estimator-batchToDevice}{}}}
-\subsection{Method \code{batchToDevice()}}{
-sends a batch of data to device
-assumes batch includes lists of tensors to arbitrary nested depths
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{Estimator$batchToDevice(batch)}\if{html}{\out{</div>}}
-}
-
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{batch}}{the batch to send, usually a list of torch tensors}
-}
-\if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-the batch on the required device
 }
 }
 \if{html}{\out{<hr>}}

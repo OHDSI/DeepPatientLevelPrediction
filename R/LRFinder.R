@@ -69,15 +69,13 @@ lrFinder <- function(dataset, modelType, modelParams, estimatorSettings,
     
     losses <- numeric(numLR)
     lrs <- numeric(numLR)
-    ParallelLogger::logInfo('Searching for best learning rate')
+    ParallelLogger::logInfo('\nSearching for best learning rate')
     progressBar <- utils::txtProgressBar(style = 3)
     for (i in seq(numLR)) {
       optimizer$zero_grad()
       
       batch <- dataset[sample(batchIndex, estimatorSettings$batchSize)]
-      batch$batch$cat <- batch$batch$cat$to(device=estimatorSettings$device)
-      batch$batch$num <- batch$batch$num$to(device=estimatorSettings$device)
-      batch$target <- batch$target$to(device=estimatorSettings$device)
+      batch <- batchToDevice(batch, device=estimatorSettings$device)
       
       output <- model(batch$batch)
       
@@ -103,7 +101,7 @@ lrFinder <- function(dataset, modelType, modelParams, estimatorSettings,
       }
       
       if (losses[i] > (divergenceThreshold * bestLoss)) {
-        ParallelLogger::logInfo("Loss diverged - stopped early")
+        ParallelLogger::logInfo("\nLoss diverged - stopped early")
         break
       }
       
