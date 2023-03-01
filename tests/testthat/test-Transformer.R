@@ -1,8 +1,11 @@
 settings <- setTransformer(
   numBlocks = 1, dimToken = 8, dimOut = 1,
   numHeads = 2, attDropout = 0.0, ffnDropout = 0.2,
-  resDropout = 0.0, dimHidden = 32, batchSize = 64,
-  epochs = 1, randomSample = 1
+  resDropout = 0.0, dimHidden = 32, 
+  estimatorSettings = setEstimator(learningRate = 3e-4,
+                                   batchSize=64,
+                                   epochs=1),
+  randomSample = 1
 )
 
 test_that("Transformer settings work", {
@@ -42,7 +45,6 @@ test_that("transformer nn-module works", {
   input <- list()
   input$cat <- torch::torch_randint(0, 5, c(10, 5), dtype = torch::torch_long())
   input$num <- torch::torch_randn(10, 1, dtype = torch::torch_float32())
-
 
   output <- model(input)
 

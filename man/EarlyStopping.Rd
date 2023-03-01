@@ -18,9 +18,9 @@ Stops training if a loss or metric has stopped improving
 \if{html}{\out{<a id="method-EarlyStopping-new"></a>}}
 \if{latex}{\out{\hypertarget{method-EarlyStopping-new}{}}}
 \subsection{Method \code{new()}}{
-Creates a new earlystopping object
+Creates a new earlyStopping object
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{EarlyStopping$new(patience = 3, delta = 0, verbose = TRUE)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{EarlyStopping$new(patience = 3, delta = 0, verbose = TRUE, mode = "max")}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
@@ -31,6 +31,8 @@ Creates a new earlystopping object
 \item{\code{delta}}{How much does the loss need to improve to count as improvement}
 
 \item{\code{verbose}}{If information should be printed out}
+
+\item{\code{mode}}{either `min` or `max` depending on metric to be used for earlyStopping}
 }
 \if{html}{\out{</div>}}
 }

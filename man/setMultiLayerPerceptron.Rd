@@ -9,15 +9,11 @@ setMultiLayerPerceptron(
   sizeHidden = c(2^(6:9)),
   dropout = c(seq(0, 0.5, 0.05)),
   sizeEmbedding = c(2^(6:9)),
-  weightDecay = c(1e-06, 0.001),
-  learningRate = c(0.01, 3e-04, 1e-05),
-  seed = NULL,
+  estimatorSettings = setEstimator(learningRate = "auto", weightDecay = c(1e-06, 0.001),
+    batchSize = 1024, epochs = 30, device = "cpu"),
   hyperParamSearch = "random",
   randomSample = 100,
-  randomSampleSeed = NULL,
-  device = "cpu",
-  batchSize = 1024,
-  epochs = 30
+  randomSampleSeed = NULL
 )
 }
 \arguments{
@@ -29,23 +25,13 @@ setMultiLayerPerceptron(
 
 \item{sizeEmbedding}{Size of embedding layer, default: 2^(6:9) (64 to 512)}
 
-\item{weightDecay}{Weight decay to apply, default: c(1e-6, 1e-3)}
-
-\item{learningRate}{Learning rate to use. default: c(1e-2, 1e-5)}
-
-\item{seed}{Seed to use for sampling hyperparameter space}
+\item{estimatorSettings}{settings of Estimator created with `setEstimator`}
 
 \item{hyperParamSearch}{Which kind of hyperparameter search to use random sampling or exhaustive grid search. default: 'random'}
 
 \item{randomSample}{How many random samples from hyperparameter space to use}
 
 \item{randomSampleSeed}{Random seed to sample hyperparameter combinations}
-
-\item{device}{Which device to run analysis on, either 'cpu' or 'cuda', default: 'cpu'}
-
-\item{batchSize}{Size of batch, default: 1024}
-
-\item{epochs}{Number of epochs to run, default: 10}
 }
 \description{
 Creates settings for a Multilayer perceptron model

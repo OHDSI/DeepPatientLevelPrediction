@@ -17,15 +17,15 @@ URL: https://github.com/OHDSI/DeepPatientLevelPrediction
 BugReports: https://github.com/OHDSI/DeepPatientLevelPrediction/issues
 VignetteBuilder: knitr
 Depends:
-    R (>= 3.5.0)
+    R (>= 4.0.0)
 Imports:
     dplyr,
-    data.table,
     FeatureExtraction (>= 3.0.0),
     ParallelLogger (>= 2.0.0),
     PatientLevelPrediction (>= 6.0.4),
     rlang,
     torch (>= 0.8.0),
+    torchopt,
     withr
 Suggests:
     devtools,
@@ -33,7 +33,8 @@ Suggests:
     knitr,
     markdown,
     plyr,  
-    testthat
+    testthat,
+    PRROC
 Remotes:
     ohdsi/PatientLevelPrediction,
     ohdsi/FeatureExtraction,

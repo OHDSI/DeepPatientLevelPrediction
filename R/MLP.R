@@ -29,46 +29,37 @@
 #' @param sizeHidden        Amount of neurons in each default layer, default: 2^(6:10) (64 to 1024)
 #' @param dropout           How much dropout to apply after first linear, default: seq(0, 0.3, 0.05)
 #' @param sizeEmbedding     Size of embedding layer, default: 2^(6:9) (64 to 512)
-#' @param weightDecay       Weight decay to apply, default: c(1e-6, 1e-3)
-#' @param learningRate      Learning rate to use. default: c(1e-2, 1e-5)
-#' @param seed              Seed to use for sampling hyperparameter space
+#' @param estimatorSettings settings of Estimator created with `setEstimator`
 #' @param hyperParamSearch  Which kind of hyperparameter search to use random sampling or exhaustive grid search. default: 'random'
 #' @param randomSample      How many random samples from hyperparameter space to use
 #' @param randomSampleSeed  Random seed to sample hyperparameter combinations
-#' @param device            Which device to run analysis on, either 'cpu' or 'cuda', default: 'cpu'
-#' @param batchSize         Size of batch, default: 1024
-#' @param epochs            Number of epochs to run, default: 10
 #'
 #' @export
 setMultiLayerPerceptron <- function(numLayers = c(1:8),
                                     sizeHidden = c(2^(6:9)),
                                     dropout = c(seq(0, 0.5, 0.05)),
                                     sizeEmbedding = c(2^(6:9)),
-                                    weightDecay = c(1e-6, 1e-3),
-                                    learningRate = c(1e-2, 3e-4, 1e-5),
-                                    seed = NULL,
+                                    estimatorSettings = setEstimator(
+                                      learningRate = 'auto',
+                                      weightDecay = c(1e-6, 1e-3),
+                                      batchSize = 1024,
+                                      epochs = 30,
+                                      device="cpu"),                              
                                     hyperParamSearch = "random",
                                     randomSample = 100,
-                                    randomSampleSeed = NULL,
-                                    device = "cpu",
-                                    batchSize = 1024,
-                                    epochs = 30) {
-  if (is.null(seed)) {
-    seed <- as.integer(sample(1e5, 1))
-  }
+                                    randomSampleSeed = NULL) {
 
   paramGrid <- list(
     numLayers = numLayers,
     sizeHidden = sizeHidden,
     dropout = dropout,
-    sizeEmbedding = sizeEmbedding,
-    weightDecay = weightDecay,
-    learningRate = learningRate,
-    seed = list(as.integer(seed[[1]]))
+    sizeEmbedding = sizeEmbedding
   )
-
+  
+  paramGrid <- c(paramGrid, estimatorSettings$paramsToTune)
+  
   param <- PatientLevelPrediction::listCartesian(paramGrid)
-  if (randomSample>length(param)) {
+  if (hyperParamSearch == "random" && randomSample>length(param)) {
     stop(paste("\n Chosen amount of randomSamples is higher than the amount of possible hyperparameter combinations.", 
                "\n randomSample:", randomSample,"\n Possible hyperparameter combinations:", length(param),
                "\n Please lower the amount of randomSamples"))
@@ -78,22 +69,16 @@ setMultiLayerPerceptron <- function(numLayers = c(1:8),
     suppressWarnings(withr::with_seed(randomSampleSeed, {param <- param[sample(length(param), randomSample)]}))
   }
 
-  attr(param, "settings") <- list(
-    seed = seed[1],
-    device = device,
-    batchSize = batchSize,
-    epochs = epochs,
+  results <- list(
+    fitFunction = "fitEstimator",
+    param = param,
+    estimatorSettings = estimatorSettings,
     modelType = "MLP",
     saveType = "file",
     modelParamNames = c(
       "numLayers", "sizeHidden",
       "dropout", "sizeEmbedding"
     )
-  )
-
-  results <- list(
-    fitFunction = "fitEstimator",
-    param = param
   )
 
   class(results) <- "modelSettings"
