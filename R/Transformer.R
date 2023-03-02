@@ -60,6 +60,7 @@ setDefaultTransformer <- function(estimatorSettings=setEstimator(
 #' @param ffnDropout              dropout to use in feedforward block
 #' @param resDropout              dropout to use in residual connections
 #' @param dimHidden               dimension of the feedworward block
+#' @param dimHiddenRatio          dimension of the feedforward block as a ratio of dimToken (embedding size)
 #' @param estimatorSettings       created with `setEstimator`
 #' @param hyperParamSearch        what kind of hyperparameter search to do, default 'random'
 #' @param randomSample            How many samples to use in hyperparameter search if random
@@ -68,7 +69,7 @@ setDefaultTransformer <- function(estimatorSettings=setEstimator(
 #' @export
 setTransformer <- function(numBlocks = 3, dimToken = 96, dimOut = 1,
                            numHeads = 8, attDropout = 0.25, ffnDropout = 0.25,
-                           resDropout = 0, dimHidden = 512, 
+                           resDropout = 0, dimHidden = 512, dimHiddenRatio = NULL,
                            estimatorSettings=setEstimator(weightDecay = 1e-6,
                                                           batchSize=1024,
                                                           epochs=10,
@@ -83,6 +84,17 @@ setTransformer <- function(numBlocks = 3, dimToken = 96, dimOut = 1,
     ))
   }
 
+  if (is.null(dimHidden) && is.null(dimHiddenRatio)
+      || !is.null(dimHidden) && !is.null(dimHiddenRatio)) {
+    stop(paste(
+      "dimHidden and dimHiddenRatio cannot be both set or both NULL"
+    ))
+  } else {
+    if (!is.null(dimHiddenRatio)) {
+      dimHidden <- round(dimToken*dimHiddenRatio, digits = 0)
+    }
+  }
+  
   paramGrid <- list(
     numBlocks = numBlocks,
     dimToken = dimToken,
