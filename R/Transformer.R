@@ -78,8 +78,8 @@ setTransformer <- function(numBlocks = 3, dimToken = 96, dimOut = 1,
 
   if (any(with(expand.grid(dimToken = dimToken, numHeads = numHeads), dimToken %% numHeads != 0))) {
     stop(paste(
-      "dimToken needs to be divisble by, and larger than numHeads.
-      dimToken =", dimToken, "is not divisible by numHeads =", numHeads
+      "dimToken needs to divisible by numHeads. dimToken =", dimToken,
+      "is not divisible by numHeads =", numHeads
     ))
   }
 

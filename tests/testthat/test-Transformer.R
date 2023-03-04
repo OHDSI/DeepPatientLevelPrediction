@@ -16,6 +16,14 @@ test_that("Transformer settings work", {
     numBlocks = 1, dimToken = 50,
     numHeads = 7
   ))
+  testthat::expect_error(setTransformer(
+    numBlocks = 1, dimToken = c(2, 4),
+    numHeads = c(2, 4)
+  ))
+  testthat::expect_error(setTransformer(
+    numBlocks = 1, dimToken = c(4, 6),
+    numHeads = c(2, 4)
+  ))
 })
 
 test_that("fitEstimator with Transformer works", {
