@@ -13,6 +13,7 @@ setTransformer(
   ffnDropout = 0.25,
   resDropout = 0,
   dimHidden = 512,
+  dimHiddenRatio = NULL,
   estimatorSettings = setEstimator(weightDecay = 1e-06, batchSize = 1024, epochs = 10,
     seed = NULL),
   hyperParamSearch = "random",
@@ -36,6 +37,8 @@ setTransformer(
 \item{resDropout}{dropout to use in residual connections}
 
 \item{dimHidden}{dimension of the feedworward block}
+
+\item{dimHiddenRatio}{dimension of the feedforward block as a ratio of dimToken (embedding size)}
 
 \item{estimatorSettings}{created with `setEstimator`}
 
