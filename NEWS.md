@@ -1,5 +1,12 @@
 DeepPatientLevelPrediction (develop)
 ======================
+- Check for if number of heads is compatible with embedding dimension fixed (#55)
+- Now transformer width can be specified as a ratio of the embedding dimensions (dimToken), (#53)
+- A custom metric can now be defined for earlyStopping and learning rate schedule (#51)
+- Added a setEstimator function to configure the estimator (#51)
+- Seed added for model weight initialization to improve reproducibility (#51)
+- Added a learning rate finder for automatic calculatio of learning rate (#51)
+- Add seed for sampling hyperparameters (#50)
 - used vectorised torch operations to speed up data conversion in torch dataset
 
 DeepPatientLevelPrediction 1.0.2
