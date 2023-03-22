@@ -73,7 +73,7 @@ covariateSettings <- FeatureExtraction::createCovariateSettings(
 )
 ```
 
-This means we are extracing gender as a binary variable, age as a continuous variable and conditions occurring in the long term window, which is by default 365 days prior.
+This means we are extracting gender as a binary variable, age as a continuous variable and conditions occurring in the long term window, which is by default 365 days prior.
 
 Next we need to define our database details, which defines from which database we are getting which cohorts. Since we don't have a database we are using Eunomia.
 
@@ -81,7 +81,7 @@ Next we need to define our database details, which defines from which database w
 databaseDetails <- PatientLevelPrediction::createDatabaseDetails(
   connectionDetails = connectionDetails, 
   cdmDatabaseSchema = "main",
-  cdmDatabaseId = 1,
+  cdmDatabaseId = "1",
   cohortDatabaseSchema = "main", 
   cohortTable = "cohort", 
   targetId= 4, 
@@ -111,23 +111,24 @@ When defining our study population we define the time-at-risk. Which is when we 
 
 ## The model
 
-Now it's time to define our deep learning model. It can be daunting for those not familiar with deep learning to define their first model since the models are very flexible and have many hyperparameters to define to get your model architecture. To help with this `deepPLP` has helper functions with a sensible set of hyperparameters for testing. Best practice is though to do an extensive hyperparameter tuning step using cross validation.
+Now it's time to define our deep learning model. It can be daunting for those not familiar with deep learning to define their first model since the models are very flexible and have many hyperparameters to define for your model architecture. To help with this `deepPLP` has helper functions with a sensible set of hyperparameters for testing. Best practice is though to do an extensive hyperparameter tuning step using cross validation.
 
-We will use a simple ResNet for our example. ResNet are simple models that have so called skip connections between layers that allow for deeper models without overfitting. The default ResNet is a 6 layer model with 512 neurons per layer.
+We will use a simple ResNet for our example. ResNet are simple models that have skip connections between layers that allow for deeper models without overfitting. The default ResNet is a 6 layer model with 512 neurons per layer.
 
 ```{r, echo = TRUE, message = FALSE, warning = FALSE,tidy=FALSE,eval=FALSE}
 library(DeepPatientLevelPrediction)
 modelSettings <- setDefaultResNet(
-  device = 'cpu',
-  batchSize = 256,
-  epochs=3
+  estimatorSettings = setEstimator(learningRate=3e-4,
+                                   device="cpu",
+                                   batchSize=256,
+                                   epochs=3)
 )
 
 ```
 
-We still need to define a few parameters though. Device defines on which device to train the model. Usually deep learning models are slow to train so they need a GPU. However this example is small enough that we can use a CPU If you have access to a GPU you can try changing the device to `'cuda'` and see how much faster it goes.
+We still need to define a few parameters. Device defines on which device to train the model. Usually deep learning models are slow to train so they need a GPU. However this example is small enough that we can use a CPU If you have access to a GPU you can try changing the device to `'cuda'` and see how much faster it goes.
 
-We also need to define our batch size. Usually in deep learning the model sees only a small chunk of the data at a time, in this case 256 patients. After that the model is updated before seeing the next batch. This is called stochastic gradient descent.
+We also need to define our batch size. Usually in deep learning the model sees only a small chunk of the data at a time, in this case 256 patients. After that the model is updated before seeing the next batch. The batch order is random. This is called stochastic gradient descent.
 
 Finally we define our epochs. This is how long we will train the model. One epoch means the model has seen all the data once.
 

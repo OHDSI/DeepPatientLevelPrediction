@@ -32,14 +32,14 @@ jobs:
           needs: website
 
       - name: Build site
-        run: Rscript -e 'pkgdown::build_site_github_pages(new_process = FALSE, install = TRUE)'
+        run: Rscript -e 'pkgdown::build_site_github_pages(new_process = FALSE)'
         
       - name: Fix Hades Logo
         run: Rscript -e 'OhdsiRTools::fixHadesLogo()'
 
       - name: Deploy to GitHub pages 🚀
         if: github.event_name != 'pull_request'
-        uses: JamesIves/github-pages-deploy-action@4.1.4
+        uses: JamesIves/github-pages-deploy-action@4.4.1
         with:
           clean: false
           branch: gh-pages
