@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">DeepPatientLevelPrediction</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.0.2</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">1.1.0</span>
       </span>
     </div>
 
@@ -85,29 +85,15 @@
 
     <div id="ref-usage">
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">setDefaultTransformer</span><span class="op">(</span></span>
-<span>  device <span class="op">=</span> <span class="st">"cpu"</span>,</span>
-<span>  batchSize <span class="op">=</span> <span class="fl">512</span>,</span>
-<span>  epochs <span class="op">=</span> <span class="fl">10</span>,</span>
-<span>  seed <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  estimatorSettings <span class="op">=</span> <span class="fu"><a href="setEstimator.html">setEstimator</a></span><span class="op">(</span>learningRate <span class="op">=</span> <span class="st">"auto"</span>, weightDecay <span class="op">=</span> <span class="fl">1e-04</span>, batchSize</span>
+<span>    <span class="op">=</span> <span class="fl">512</span>, epochs <span class="op">=</span> <span class="fl">10</span>, seed <span class="op">=</span> <span class="cn">NULL</span>, device <span class="op">=</span> <span class="st">"cpu"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
     <h2>Arguments</h2>
-    <dl><dt>device</dt>
-<dd><p>Which device to run analysis on, either 'cpu' or 'cuda', default: 'cpu'</p></dd>
-
-
-<dt>batchSize</dt>
-<dd><p>Size of batch, default: 512</p></dd>
-
-
-<dt>epochs</dt>
-<dd><p>Number of epochs to run, default: 10</p></dd>
-
-
-<dt>seed</dt>
-<dd><p>random seed to use</p></dd>
+    <dl><dt>estimatorSettings</dt>
+<dd><p>created with `setEstimator`</p></dd>
 
 </dl></div>
     <div id="details">
@@ -124,7 +110,7 @@ Default hyperparameters from paper</p>
 
 
       <footer><div class="copyright">
-  <p></p><p>Developed by Jenna Reps, Egill Fridgeirsson, Seng Chan You, Chungsoo Kim, Henrik John.</p>
+  <p></p><p>Developed by Egill Fridgeirsson, Jenna Reps, Seng Chan You, Chungsoo Kim, Henrik John.</p>
 </div>
 
 <div class="pkgdown">

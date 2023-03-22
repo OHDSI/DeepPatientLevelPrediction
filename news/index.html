@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">DeepPatientLevelPrediction</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.0.2</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">1.1.0</span>
       </span>
     </div>
 
@@ -79,6 +79,17 @@
     </div>
 
     <div class="section level2">
+<h2 class="page-header" data-toc-text="1.1" id="deeppatientlevelprediction-11">DeepPatientLevelPrediction 1.1<a class="anchor" aria-label="anchor" href="#deeppatientlevelprediction-11"></a></h2>
+<ul><li>Check for if number of heads is compatible with embedding dimension fixed (<a href="https://github.com/OHDSI/DeepPatientLevelPrediction/issues/55" class="external-link">#55</a>)</li>
+<li>Now transformer width can be specified as a ratio of the embedding dimensions (dimToken), (<a href="https://github.com/OHDSI/DeepPatientLevelPrediction/issues/53" class="external-link">#53</a>)</li>
+<li>A custom metric can now be defined for earlyStopping and learning rate schedule (<a href="https://github.com/OHDSI/DeepPatientLevelPrediction/issues/51" class="external-link">#51</a>)</li>
+<li>Added a setEstimator function to configure the estimator (<a href="https://github.com/OHDSI/DeepPatientLevelPrediction/issues/51" class="external-link">#51</a>)</li>
+<li>Seed added for model weight initialization to improve reproducibility (<a href="https://github.com/OHDSI/DeepPatientLevelPrediction/issues/51" class="external-link">#51</a>)</li>
+<li>Added a learning rate finder for automatic calculatio of learning rate (<a href="https://github.com/OHDSI/DeepPatientLevelPrediction/issues/51" class="external-link">#51</a>)</li>
+<li>Add seed for sampling hyperparameters (<a href="https://github.com/OHDSI/DeepPatientLevelPrediction/issues/50" class="external-link">#50</a>)</li>
+<li>used vectorised torch operations to speed up data conversion in torch dataset</li>
+</ul></div>
+    <div class="section level2">
 <h2 class="page-header" data-toc-text="1.0.2" id="deeppatientlevelprediction-102">DeepPatientLevelPrediction 1.0.2<a class="anchor" aria-label="anchor" href="#deeppatientlevelprediction-102"></a></h2>
 <ul><li>Fix torch binaries issue when running tests from other github actions</li>
 <li>Fix link on website</li>
@@ -107,7 +118,7 @@
 
 
       <footer><div class="copyright">
-  <p></p><p>Developed by Jenna Reps, Egill Fridgeirsson, Seng Chan You, Chungsoo Kim, Henrik John.</p>
+  <p></p><p>Developed by Egill Fridgeirsson, Jenna Reps, Seng Chan You, Chungsoo Kim, Henrik John.</p>
 </div>
 
 <div class="pkgdown">

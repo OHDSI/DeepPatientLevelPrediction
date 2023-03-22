@@ -33,7 +33,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">DeepPatientLevelPrediction</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.0.2</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">1.1.0</span>
       </span>
     </div>
 
@@ -103,7 +103,7 @@
                         <h4 data-toc-skip class="author">Egill
 Fridgeirsson</h4>
             
-            <h4 data-toc-skip class="date">2023-03-15</h4>
+            <h4 data-toc-skip class="date">2023-03-22</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/OHDSI/DeepPatientLevelPrediction/blob/HEAD/vignettes/FirstModel.Rmd" class="external-link"><code>vignettes/FirstModel.Rmd</code></a></small>
       <div class="hidden name"><code>FirstModel.Rmd</code></div>
@@ -157,7 +157,7 @@ cohort of gastrointestinal bleeding.</p>
 <span>  useDemographicsAge <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  useConditionOccurrenceLongTerm <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p>This means we are extracing gender as a binary variable, age as a
+<p>This means we are extracting gender as a binary variable, age as a
 continuous variable and conditions occurring in the long term window,
 which is by default 365 days prior.</p>
 <p>Next we need to define our database details, which defines from which
@@ -167,7 +167,7 @@ are using Eunomia.</p>
 <code class="sourceCode R"><span><span class="va">databaseDetails</span> <span class="op">&lt;-</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createDatabaseDetails.html" class="external-link">createDatabaseDetails</a></span><span class="op">(</span></span>
 <span>  connectionDetails <span class="op">=</span> <span class="va">connectionDetails</span>, </span>
 <span>  cdmDatabaseSchema <span class="op">=</span> <span class="st">"main"</span>,</span>
-<span>  cdmDatabaseId <span class="op">=</span> <span class="fl">1</span>,</span>
+<span>  cdmDatabaseId <span class="op">=</span> <span class="st">"1"</span>,</span>
 <span>  cohortDatabaseSchema <span class="op">=</span> <span class="st">"main"</span>, </span>
 <span>  cohortTable <span class="op">=</span> <span class="st">"cohort"</span>, </span>
 <span>  targetId<span class="op">=</span> <span class="fl">4</span>, </span>
@@ -202,30 +202,32 @@ NSAIDs until one year later.</p>
 <p>Now it’s time to define our deep learning model. It can be daunting
 for those not familiar with deep learning to define their first model
 since the models are very flexible and have many hyperparameters to
-define to get your model architecture. To help with this
+define for your model architecture. To help with this
 <code>deepPLP</code> has helper functions with a sensible set of
 hyperparameters for testing. Best practice is though to do an extensive
 hyperparameter tuning step using cross validation.</p>
 <p>We will use a simple ResNet for our example. ResNet are simple models
-that have so called skip connections between layers that allow for
-deeper models without overfitting. The default ResNet is a 6 layer model
-with 512 neurons per layer.</p>
+that have skip connections between layers that allow for deeper models
+without overfitting. The default ResNet is a 6 layer model with 512
+neurons per layer.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/OHDSI/DeepPatientLevelPrediction" class="external-link">DeepPatientLevelPrediction</a></span><span class="op">)</span></span>
 <span><span class="va">modelSettings</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/setDefaultResNet.html">setDefaultResNet</a></span><span class="op">(</span></span>
-<span>  device <span class="op">=</span> <span class="st">'cpu'</span>,</span>
-<span>  batchSize <span class="op">=</span> <span class="fl">256</span>,</span>
-<span>  epochs<span class="op">=</span><span class="fl">3</span></span>
+<span>  estimatorSettings <span class="op">=</span> <span class="fu"><a href="../reference/setEstimator.html">setEstimator</a></span><span class="op">(</span>learningRate<span class="op">=</span><span class="fl">3e-4</span>,</span>
+<span>                                   device<span class="op">=</span><span class="st">"cpu"</span>,</span>
+<span>                                   batchSize<span class="op">=</span><span class="fl">256</span>,</span>
+<span>                                   epochs<span class="op">=</span><span class="fl">3</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p>We still need to define a few parameters though. Device defines on
-which device to train the model. Usually deep learning models are slow
-to train so they need a GPU. However this example is small enough that
-we can use a CPU If you have access to a GPU you can try changing the
+<p>We still need to define a few parameters. Device defines on which
+device to train the model. Usually deep learning models are slow to
+train so they need a GPU. However this example is small enough that we
+can use a CPU If you have access to a GPU you can try changing the
 device to <code>'cuda'</code> and see how much faster it goes.</p>
 <p>We also need to define our batch size. Usually in deep learning the
 model sees only a small chunk of the data at a time, in this case 256
 patients. After that the model is updated before seeing the next batch.
-This is called stochastic gradient descent.</p>
+The batch order is random. This is called stochastic gradient
+descent.</p>
 <p>Finally we define our epochs. This is how long we will train the
 model. One epoch means the model has seen all the data once.</p>
 <p>Now all that is left is using the PLP to train our first deep
@@ -256,18 +258,19 @@ model!</p>
 <pre><code><span><span class="co">## </span></span>
 <span><span class="co">## To cite package 'DeepPatientLevelPrediction' in publications use:</span></span>
 <span><span class="co">## </span></span>
-<span><span class="co">##   Reps J, Fridgeirsson E, Chan You S, Kim C, John H (15).</span></span>
+<span><span class="co">##   Fridgeirsson E, Reps J, Chan You S, Kim C, John H (15).</span></span>
 <span><span class="co">##   _DeepPatientLevelPrediction: Deep Learning For Patient Level</span></span>
 <span><span class="co">##   Prediction Using Data In The OMOP Common Data Model_. R package</span></span>
-<span><span class="co">##   version 1.0.2, &lt;https://github.com/OHDSI/DeepPatientLevelPrediction&gt;.</span></span>
+<span><span class="co">##   version 1.1.0, &lt;https://github.com/OHDSI/DeepPatientLevelPrediction&gt;.</span></span>
 <span><span class="co">## </span></span>
 <span><span class="co">## A BibTeX entry for LaTeX users is</span></span>
 <span><span class="co">## </span></span>
 <span><span class="co">##   @Manual{,</span></span>
-<span><span class="co">##     title = {DeepPatientLevelPrediction: Deep Learning For Patient Level Prediction Using Data In The OMOP Common Data Model},</span></span>
-<span><span class="co">##     author = {Jenna Reps and Egill Fridgeirsson and Seng {Chan You} and Chungsoo Kim and Henrik John},</span></span>
+<span><span class="co">##     title = {DeepPatientLevelPrediction: Deep Learning For Patient Level Prediction Using Data In The</span></span>
+<span><span class="co">## OMOP Common Data Model},</span></span>
+<span><span class="co">##     author = {Egill Fridgeirsson and Jenna Reps and Seng {Chan You} and Chungsoo Kim and Henrik John},</span></span>
 <span><span class="co">##     year = {15},</span></span>
-<span><span class="co">##     note = {R package version 1.0.2},</span></span>
+<span><span class="co">##     note = {R package version 1.1.0},</span></span>
 <span><span class="co">##     url = {https://github.com/OHDSI/DeepPatientLevelPrediction},</span></span>
 <span><span class="co">##   }</span></span></code></pre>
 <p><strong>Please reference this paper if you use the PLP Package in
@@ -292,7 +295,7 @@ models using observational healthcare data. J Am Med Inform Assoc.
 
       <footer><div class="copyright">
   <p></p>
-<p>Developed by Jenna Reps, Egill Fridgeirsson, Seng Chan You, Chungsoo Kim, Henrik John.</p>
+<p>Developed by Egill Fridgeirsson, Jenna Reps, Seng Chan You, Chungsoo Kim, Henrik John.</p>
 </div>
 
 <div class="pkgdown">

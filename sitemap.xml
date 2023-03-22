@@ -37,6 +37,9 @@
     <loc>/reference/Estimator.html</loc>
   </url>
   <url>
+    <loc>/reference/batchToDevice.html</loc>
+  </url>
+  <url>
     <loc>/reference/fitEstimator.html</loc>
   </url>
   <url>
@@ -44,6 +47,9 @@
   </url>
   <url>
     <loc>/reference/index.html</loc>
+  </url>
+  <url>
+    <loc>/reference/lrFinder.html</loc>
   </url>
   <url>
     <loc>/reference/predictDeepEstimator.html</loc>

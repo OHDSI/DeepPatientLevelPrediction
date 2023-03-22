@@ -18,7 +18,7 @@ fit and predict the model defined in that module."><!-- mathjax --><script src="
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">DeepPatientLevelPrediction</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.0.2</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">1.1.0</span>
       </span>
     </div>
 
@@ -97,62 +97,32 @@ fit and predict the model defined in that module.</p>
 <li><p><a href="#method-Estimator-fitEpoch"><code>Estimator$fitEpoch()</code></a></p></li>
 <li><p><a href="#method-Estimator-score"><code>Estimator$score()</code></a></p></li>
 <li><p><a href="#method-Estimator-finishFit"><code>Estimator$finishFit()</code></a></p></li>
+<li><p><a href="#method-Estimator-printProgress"><code>Estimator$printProgress()</code></a></p></li>
 <li><p><a href="#method-Estimator-fitWholeTrainingSet"><code>Estimator$fitWholeTrainingSet()</code></a></p></li>
 <li><p><a href="#method-Estimator-save"><code>Estimator$save()</code></a></p></li>
 <li><p><a href="#method-Estimator-predictProba"><code>Estimator$predictProba()</code></a></p></li>
 <li><p><a href="#method-Estimator-predict"><code>Estimator$predict()</code></a></p></li>
-<li><p><a href="#method-Estimator-batchToDevice"><code>Estimator$batchToDevice()</code></a></p></li>
 <li><p><a href="#method-Estimator-itemOrDefaults"><code>Estimator$itemOrDefaults()</code></a></p></li>
 <li><p><a href="#method-Estimator-clone"><code>Estimator$clone()</code></a></p></li>
 </ul></div><p></p><hr><a id="method-Estimator-new"></a><div class="section">
 <h3 id="method-new-">Method <code>new()</code><a class="anchor" aria-label="anchor" href="#method-new-"></a></h3>
 <p>Creates a new estimator</p><div class="section">
 <h4 id="usage">Usage<a class="anchor" aria-label="anchor" href="#usage"></a></h4>
-<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va"><a href="../reference/Estimator.html">Estimator</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span></span>
-<span>  <span class="va">baseModel</span>,</span>
-<span>  <span class="va">modelParameters</span>,</span>
-<span>  <span class="va">fitParameters</span>,</span>
-<span>  optimizer <span class="op">=</span> <span class="fu">torch</span><span class="fu">::</span><span class="va"><a href="https://rdrr.io/pkg/torch/man/optim_adam.html" class="external-link">optim_adam</a></span>,</span>
-<span>  criterion <span class="op">=</span> <span class="fu">torch</span><span class="fu">::</span><span class="va"><a href="https://rdrr.io/pkg/torch/man/nn_bce_with_logits_loss.html" class="external-link">nn_bce_with_logits_loss</a></span>,</span>
-<span>  scheduler <span class="op">=</span> <span class="fu">torch</span><span class="fu">::</span><span class="va"><a href="https://rdrr.io/pkg/torch/man/lr_reduce_on_plateau.html" class="external-link">lr_reduce_on_plateau</a></span>,</span>
-<span>  device <span class="op">=</span> <span class="st">"cpu"</span>,</span>
-<span>  patience <span class="op">=</span> <span class="fl">4</span></span>
-<span><span class="op">)</span></span></code></pre></div><p></p></div>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va"><a href="../reference/Estimator.html">Estimator</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span><span class="va">modelType</span>, <span class="va">modelParameters</span>, <span class="va">estimatorSettings</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
 <h4 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h4>
-<p></p><div class="arguments"><dl><dt><code>baseModel</code></dt>
+<p></p><div class="arguments"><dl><dt><code>modelType</code></dt>
 <dd><p>The torch nn module to use as model</p></dd>
 
 
 <dt><code>modelParameters</code></dt>
-<dd><p>Parameters to initialize the baseModel</p></dd>
+<dd><p>Parameters to initialize the model</p></dd>
 
 
-<dt><code>fitParameters</code></dt>
+<dt><code>estimatorSettings</code></dt>
 <dd><p>Parameters required for the estimator fitting</p></dd>
-
-
-<dt><code>optimizer</code></dt>
-<dd><p>A torch optimizer to use, default is Adam</p></dd>
-
-
-<dt><code>criterion</code></dt>
-<dd><p>The torch loss function to use, defaults to
-binary cross entropy with logits</p></dd>
-
-
-<dt><code>scheduler</code></dt>
-<dd><p>learning rate scheduler to use</p></dd>
-
-
-<dt><code>device</code></dt>
-<dd><p>Which device to use for fitting, default is cpu</p></dd>
-
-
-<dt><code>patience</code></dt>
-<dd><p>Patience to use for early stopping</p></dd>
 
 
 </dl><p></p></div>
@@ -226,21 +196,17 @@ binary cross entropy with logits</p></dd>
 <h3 id="method-finishfit-">Method <code>finishFit()</code><a class="anchor" aria-label="anchor" href="#method-finishfit-"></a></h3>
 <p>operations that run when fitting is finished</p><div class="section">
 <h4 id="usage-4">Usage<a class="anchor" aria-label="anchor" href="#usage-4"></a></h4>
-<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Estimator</span><span class="op">$</span><span class="fu">finishFit</span><span class="op">(</span><span class="va">valAUCs</span>, <span class="va">modelStateDict</span>, <span class="va">valLosses</span>, <span class="va">epoch</span>, <span class="va">learnRates</span><span class="op">)</span></span></code></pre></div><p></p></div>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Estimator</span><span class="op">$</span><span class="fu">finishFit</span><span class="op">(</span><span class="va">scores</span>, <span class="va">modelStateDict</span>, <span class="va">epoch</span>, <span class="va">learnRates</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
 <h4 id="arguments-4">Arguments<a class="anchor" aria-label="anchor" href="#arguments-4"></a></h4>
-<p></p><div class="arguments"><dl><dt><code>valAUCs</code></dt>
-<dd><p>validation AUC values</p></dd>
+<p></p><div class="arguments"><dl><dt><code>scores</code></dt>
+<dd><p>validation scores</p></dd>
 
 
 <dt><code>modelStateDict</code></dt>
 <dd><p>fitted model parameters</p></dd>
-
-
-<dt><code>valLosses</code></dt>
-<dd><p>validation losses</p></dd>
 
 
 <dt><code>epoch</code></dt>
@@ -254,18 +220,43 @@ binary cross entropy with logits</p></dd>
 </dl><p></p></div>
 </div>
 
-</div><p></p><hr><a id="method-Estimator-fitWholeTrainingSet"></a><div class="section">
-<h3 id="method-fitwholetrainingset-">Method <code>fitWholeTrainingSet()</code><a class="anchor" aria-label="anchor" href="#method-fitwholetrainingset-"></a></h3>
-<p>Fits whole training set on a specific number of epochs
-TODO What happens when learning rate changes per epochs?
-Ideally I would copy the learning rate strategy from before
-and adjust for different sizes ie more iterations/updates???</p><div class="section">
+</div><p></p><hr><a id="method-Estimator-printProgress"></a><div class="section">
+<h3 id="method-printprogress-">Method <code>printProgress()</code><a class="anchor" aria-label="anchor" href="#method-printprogress-"></a></h3>
+<p>Print out training progress per epoch</p><div class="section">
 <h4 id="usage-5">Usage<a class="anchor" aria-label="anchor" href="#usage-5"></a></h4>
-<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Estimator</span><span class="op">$</span><span class="fu">fitWholeTrainingSet</span><span class="op">(</span><span class="va">dataset</span>, learnRates <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Estimator</span><span class="op">$</span><span class="fu">printProgress</span><span class="op">(</span><span class="va">scores</span>, <span class="va">trainLoss</span>, <span class="va">delta</span>, <span class="va">currentEpoch</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
 <h4 id="arguments-5">Arguments<a class="anchor" aria-label="anchor" href="#arguments-5"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>scores</code></dt>
+<dd><p>scores returned by `self$score`</p></dd>
+
+
+<dt><code>trainLoss</code></dt>
+<dd><p>training loss</p></dd>
+
+
+<dt><code>delta</code></dt>
+<dd><p>how long did the epoch take</p></dd>
+
+
+<dt><code>currentEpoch</code></dt>
+<dd><p>the current epoch number</p></dd>
+
+
+</dl><p></p></div>
+</div>
+
+</div><p></p><hr><a id="method-Estimator-fitWholeTrainingSet"></a><div class="section">
+<h3 id="method-fitwholetrainingset-">Method <code>fitWholeTrainingSet()</code><a class="anchor" aria-label="anchor" href="#method-fitwholetrainingset-"></a></h3>
+<p>Fits whole training set on a specific number of epochs</p><div class="section">
+<h4 id="usage-6">Usage<a class="anchor" aria-label="anchor" href="#usage-6"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Estimator</span><span class="op">$</span><span class="fu">fitWholeTrainingSet</span><span class="op">(</span><span class="va">dataset</span>, learnRates <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div>
+
+<div class="section">
+<h4 id="arguments-6">Arguments<a class="anchor" aria-label="anchor" href="#arguments-6"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>dataset</code></dt>
 <dd><p>torch dataset</p></dd>
 
@@ -280,12 +271,12 @@ and adjust for different sizes ie more iterations/updates???</p><div class="sect
 </div><p></p><hr><a id="method-Estimator-save"></a><div class="section">
 <h3 id="method-save-">Method <code><a href="https://rdrr.io/r/base/save.html" class="external-link">save()</a></code><a class="anchor" aria-label="anchor" href="#method-save-"></a></h3>
 <p>save model and those parameters needed to reconstruct it</p><div class="section">
-<h4 id="usage-6">Usage<a class="anchor" aria-label="anchor" href="#usage-6"></a></h4>
+<h4 id="usage-7">Usage<a class="anchor" aria-label="anchor" href="#usage-7"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Estimator</span><span class="op">$</span><span class="fu">save</span><span class="op">(</span><span class="va">path</span>, <span class="va">name</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
-<h4 id="arguments-6">Arguments<a class="anchor" aria-label="anchor" href="#arguments-6"></a></h4>
+<h4 id="arguments-7">Arguments<a class="anchor" aria-label="anchor" href="#arguments-7"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>path</code></dt>
 <dd><p>where to save the model</p></dd>
 
@@ -304,12 +295,12 @@ and adjust for different sizes ie more iterations/updates???</p><div class="sect
 </div><p></p><hr><a id="method-Estimator-predictProba"></a><div class="section">
 <h3 id="method-predictproba-">Method <code>predictProba()</code><a class="anchor" aria-label="anchor" href="#method-predictproba-"></a></h3>
 <p>predicts and outputs the probabilities</p><div class="section">
-<h4 id="usage-7">Usage<a class="anchor" aria-label="anchor" href="#usage-7"></a></h4>
+<h4 id="usage-8">Usage<a class="anchor" aria-label="anchor" href="#usage-8"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Estimator</span><span class="op">$</span><span class="fu">predictProba</span><span class="op">(</span><span class="va">dataset</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
-<h4 id="arguments-7">Arguments<a class="anchor" aria-label="anchor" href="#arguments-7"></a></h4>
+<h4 id="arguments-8">Arguments<a class="anchor" aria-label="anchor" href="#arguments-8"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>dataset</code></dt>
 <dd><p>Torch dataset to create predictions for</p></dd>
 
@@ -324,12 +315,12 @@ and adjust for different sizes ie more iterations/updates???</p><div class="sect
 </div><p></p><hr><a id="method-Estimator-predict"></a><div class="section">
 <h3 id="method-predict-">Method <code><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict()</a></code><a class="anchor" aria-label="anchor" href="#method-predict-"></a></h3>
 <p>predicts and outputs the class</p><div class="section">
-<h4 id="usage-8">Usage<a class="anchor" aria-label="anchor" href="#usage-8"></a></h4>
+<h4 id="usage-9">Usage<a class="anchor" aria-label="anchor" href="#usage-9"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Estimator</span><span class="op">$</span><span class="fu">predict</span><span class="op">(</span><span class="va">dataset</span>, threshold <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
-<h4 id="arguments-8">Arguments<a class="anchor" aria-label="anchor" href="#arguments-8"></a></h4>
+<h4 id="arguments-9">Arguments<a class="anchor" aria-label="anchor" href="#arguments-9"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>dataset</code></dt>
 <dd><p>A torch dataset to create predictions for</p></dd>
 
@@ -343,27 +334,6 @@ and adjust for different sizes ie more iterations/updates???</p><div class="sect
 <div class="section">
 <h4 id="returns-3">Returns<a class="anchor" aria-label="anchor" href="#returns-3"></a></h4>
 <p>The predicted class for the data in the dataset</p>
-</div>
-
-</div><p></p><hr><a id="method-Estimator-batchToDevice"></a><div class="section">
-<h3 id="method-batchtodevice-">Method <code>batchToDevice()</code><a class="anchor" aria-label="anchor" href="#method-batchtodevice-"></a></h3>
-<p>sends a batch of data to device
-assumes batch includes lists of tensors to arbitrary nested depths</p><div class="section">
-<h4 id="usage-9">Usage<a class="anchor" aria-label="anchor" href="#usage-9"></a></h4>
-<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Estimator</span><span class="op">$</span><span class="fu">batchToDevice</span><span class="op">(</span><span class="va">batch</span><span class="op">)</span></span></code></pre></div><p></p></div>
-</div>
-
-<div class="section">
-<h4 id="arguments-9">Arguments<a class="anchor" aria-label="anchor" href="#arguments-9"></a></h4>
-<p></p><div class="arguments"><dl><dt><code>batch</code></dt>
-<dd><p>the batch to send, usually a list of torch tensors</p></dd>
-
-
-</dl><p></p></div>
-</div>
-<div class="section">
-<h4 id="returns-4">Returns<a class="anchor" aria-label="anchor" href="#returns-4"></a></h4>
-<p>the batch on the required device</p>
 </div>
 
 </div><p></p><hr><a id="method-Estimator-itemOrDefaults"></a><div class="section">
@@ -390,7 +360,7 @@ assumes batch includes lists of tensors to arbitrary nested depths</p><div class
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-5">Returns<a class="anchor" aria-label="anchor" href="#returns-5"></a></h4>
+<h4 id="returns-4">Returns<a class="anchor" aria-label="anchor" href="#returns-4"></a></h4>
 <p>the list item or default</p>
 </div>
 
@@ -422,7 +392,7 @@ assumes batch includes lists of tensors to arbitrary nested depths</p><div class
 
 
       <footer><div class="copyright">
-  <p></p><p>Developed by Jenna Reps, Egill Fridgeirsson, Seng Chan You, Chungsoo Kim, Henrik John.</p>
+  <p></p><p>Developed by Egill Fridgeirsson, Jenna Reps, Seng Chan You, Chungsoo Kim, Henrik John.</p>
 </div>
 
 <div class="pkgdown">

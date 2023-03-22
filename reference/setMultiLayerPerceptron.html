@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">DeepPatientLevelPrediction</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.0.2</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">1.1.0</span>
       </span>
     </div>
 
@@ -89,14 +89,11 @@
 <span>  sizeHidden <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span><span class="op">^</span><span class="op">(</span><span class="fl">6</span><span class="op">:</span><span class="fl">9</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>  dropout <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">0.5</span>, <span class="fl">0.05</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>  sizeEmbedding <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span><span class="op">^</span><span class="op">(</span><span class="fl">6</span><span class="op">:</span><span class="fl">9</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>  weightDecay <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1e-06</span>, <span class="fl">0.001</span><span class="op">)</span>,</span>
-<span>  learningRate <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.01</span>, <span class="fl">3e-04</span>, <span class="fl">1e-05</span><span class="op">)</span>,</span>
-<span>  seed <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  estimatorSettings <span class="op">=</span> <span class="fu"><a href="setEstimator.html">setEstimator</a></span><span class="op">(</span>learningRate <span class="op">=</span> <span class="st">"auto"</span>, weightDecay <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1e-06</span>, <span class="fl">0.001</span><span class="op">)</span>,</span>
+<span>    batchSize <span class="op">=</span> <span class="fl">1024</span>, epochs <span class="op">=</span> <span class="fl">30</span>, device <span class="op">=</span> <span class="st">"cpu"</span><span class="op">)</span>,</span>
 <span>  hyperParamSearch <span class="op">=</span> <span class="st">"random"</span>,</span>
 <span>  randomSample <span class="op">=</span> <span class="fl">100</span>,</span>
-<span>  device <span class="op">=</span> <span class="st">"cpu"</span>,</span>
-<span>  batchSize <span class="op">=</span> <span class="fl">1024</span>,</span>
-<span>  epochs <span class="op">=</span> <span class="fl">30</span></span>
+<span>  randomSampleSeed <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -118,16 +115,8 @@
 <dd><p>Size of embedding layer, default: 2^(6:9) (64 to 512)</p></dd>
 
 
-<dt>weightDecay</dt>
-<dd><p>Weight decay to apply, default: c(1e-6, 1e-3)</p></dd>
-
-
-<dt>learningRate</dt>
-<dd><p>Learning rate to use. default: c(1e-2, 1e-5)</p></dd>
-
-
-<dt>seed</dt>
-<dd><p>Seed to use for sampling hyperparameter space</p></dd>
+<dt>estimatorSettings</dt>
+<dd><p>settings of Estimator created with `setEstimator`</p></dd>
 
 
 <dt>hyperParamSearch</dt>
@@ -138,16 +127,8 @@
 <dd><p>How many random samples from hyperparameter space to use</p></dd>
 
 
-<dt>device</dt>
-<dd><p>Which device to run analysis on, either 'cpu' or 'cuda', default: 'cpu'</p></dd>
-
-
-<dt>batchSize</dt>
-<dd><p>Size of batch, default: 1024</p></dd>
-
-
-<dt>epochs</dt>
-<dd><p>Number of epochs to run, default: 10</p></dd>
+<dt>randomSampleSeed</dt>
+<dd><p>Random seed to sample hyperparameter combinations</p></dd>
 
 </dl></div>
     <div id="details">
@@ -163,7 +144,7 @@
 
 
       <footer><div class="copyright">
-  <p></p><p>Developed by Jenna Reps, Egill Fridgeirsson, Seng Chan You, Chungsoo Kim, Henrik John.</p>
+  <p></p><p>Developed by Egill Fridgeirsson, Jenna Reps, Seng Chan You, Chungsoo Kim, Henrik John.</p>
 </div>
 
 <div class="pkgdown">
