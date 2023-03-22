@@ -3,10 +3,31 @@
 \name{setEstimator}
 \alias{setEstimator}
 \title{setEstimator}
+\usage{
+setEstimator(
+  learningRate = "auto",
+  weightDecay = 0,
+  batchSize = 512,
+  epochs = 30,
+  device = "cpu",
+  optimizer = torchopt::optim_adamw,
+  scheduler = list(fun = torch::lr_reduce_on_plateau, params = list(patience = 1)),
+  criterion = torch::nn_bce_with_logits_loss,
+  earlyStopping = list(useEarlyStopping = TRUE, params = list(patience = 4)),
+  metric = "auc",
+  seed = NULL
+)
+}
 \arguments{
 \item{learningRate}{what learning rate to use}
 
 \item{weightDecay}{what weight_decay to use}
+
+\item{batchSize}{batchSize to use}
+
+\item{epochs}{how many epochs to train for}
+
+\item{device}{what device to train on}
 
 \item{optimizer}{which optimizer to use}
 
@@ -16,11 +37,11 @@
 
 \item{earlyStopping}{If earlyStopping should be used which stops the training of your metric is not improving}
 
-\item{earlyStoppingMetric}{Which parameter to use for early stopping}
+\item{metric}{either `auc` or `loss` or a custom metric to use. This is the metric used for scheduler and earlyStopping. 
+Needs to be a list with function `fun`, mode either `min` or `max` and a `name`,
+`fun` needs to be a function that takes in prediction and labels and outputs a score.}
 
-\item{patience}{patience for earlyStopper}
-
-\item{hyperparameterMetric}{which metric to use for hyperparameter, loss, auc, auprc or a custom function}
+\item{seed}{seed to initialize weights of model with}
 }
 \description{
 creates settings for the Estimator, which takes a model and trains it

@@ -22,21 +22,6 @@ covSet <- FeatureExtraction::createCovariateSettings(
 )
 
 
-covSetT <- FeatureExtraction::createTemporalSequenceCovariateSettings(
-  useDemographicsGender = T,
-  useDemographicsAge = T,
-  useDemographicsRace = T,
-  useDemographicsEthnicity = T,
-  useDemographicsAgeGroup = T,
-  useConditionEraGroupStart = T,
-  useDrugEraStart = T,
-  timePart = "month",
-  timeInterval = 1,
-  sequenceEndDay = -1,
-  sequenceStartDay = -365 * 5
-)
-
-
 databaseDetails <- PatientLevelPrediction::createDatabaseDetails(
   connectionDetails = connectionDetails,
   cdmDatabaseSchema = "main",
@@ -58,13 +43,6 @@ plpData <- PatientLevelPrediction::getPlpData(
   databaseDetails = databaseDetails,
   restrictPlpDataSettings = restrictPlpDataSettings,
   covariateSettings = covSet
-)
-
-
-plpDataT <- PatientLevelPrediction::getPlpData(
-  databaseDetails = databaseDetails,
-  restrictPlpDataSettings = restrictPlpDataSettings,
-  covariateSettings = covSetT
 )
 
 
@@ -91,8 +69,13 @@ mappedData <- PatientLevelPrediction::MapIds(
   cohort = trainData$Train$labels
 )
 
+
+
 dataset <- Dataset(
   data = mappedData$covariates,
   labels = trainData$Train$labels$outcomeCount,
   numericalIndex = NULL
 )
+
+small_dataset <- torch::dataset_subset(dataset, (1:round(length(dataset)/3)))
+

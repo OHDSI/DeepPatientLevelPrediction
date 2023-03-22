@@ -4,13 +4,15 @@ modelSettings <- setMultiLayerPerceptron(
   sizeHidden = c(32),
   dropout = c(0.1),
   sizeEmbedding = c(32),
-  weightDecay = c(1e-6),
-  learningRate = c(3e-4),
-  seed = 42,
+  estimatorSettings = setEstimator(
+    learningRate=c(3e-4),
+    weightDecay = c(1e-6),
+    seed=42,
+    batchSize=128,
+    epochs=1
+  ),
   hyperParamSearch = "random",
-  randomSample = 1,
-  batchSize = 128,
-  epochs = 3
+  randomSample = 1
 )
 
 test_that("setMultiLayerPerceptron works", {
@@ -19,6 +21,13 @@ test_that("setMultiLayerPerceptron works", {
   testthat::expect_equal(modelSettings$fitFunction, "fitEstimator")
 
   testthat::expect_true(length(modelSettings$param) > 0)
+  
+  expect_error(setMultiLayerPerceptron(numLayers=1,
+                                       sizeHidden = 128,
+                                       dropout= 0.2,
+                                       sizeEmbedding = 128,
+                                       estimatorSettings = setEstimator(learningRate=3e-4),
+                                       randomSample = 2))
 })
 
 sink(nullfile())

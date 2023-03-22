@@ -5,20 +5,12 @@
 \title{Create default settings for a non-temporal transformer}
 \usage{
 setDefaultTransformer(
-  device = "cpu",
-  batchSize = 512,
-  epochs = 10,
-  seed = NULL
+  estimatorSettings = setEstimator(learningRate = "auto", weightDecay = 1e-04, batchSize
+    = 512, epochs = 10, seed = NULL, device = "cpu")
 )
 }
 \arguments{
-\item{device}{Which device to run analysis on, either 'cpu' or 'cuda', default: 'cpu'}
-
-\item{batchSize}{Size of batch, default: 512}
-
-\item{epochs}{Number of epochs to run, default: 10}
-
-\item{seed}{random seed to use}
+\item{estimatorSettings}{created with `setEstimator`}
 }
 \description{
 A transformer model with default hyperparameters

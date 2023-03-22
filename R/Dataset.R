@@ -1,5 +1,4 @@
 #'  A torch dataset
-#' @import data.table
 #' @export
 Dataset <- torch::dataset(
   name = "myDataset",
@@ -10,9 +9,10 @@ Dataset <- torch::dataset(
     # determine numeric
     if (is.null(numericalIndex)) {
       numericalIndex <- data %>%
+        dplyr::arrange(columnId) %>% 
         dplyr::group_by(columnId) %>%
-        dplyr::collect() %>%
         dplyr::summarise(n = dplyr::n_distinct(.data$covariateValue)) %>%
+        dplyr::collect() %>%
         dplyr::pull(n) > 1
       self$numericalIndex <- numericalIndex
     } else {
@@ -38,17 +38,21 @@ Dataset <- torch::dataset(
       dplyr::mutate(newColumnId = dplyr::cur_group_id()) %>%
       dplyr::ungroup() %>%
       dplyr::select(c("rowId", "newColumnId")) %>%
-      dplyr::rename(columnId = newColumnId)
-    # the fastest way I found so far to convert data using data.table
-    # 1.5 min for 100k rows :(
-    dt <- data.table::data.table(rows = dataCat$rowId, cols = dataCat$columnId)
-    maxFeatures <- max(dt[, .N, by = rows][, N])
+      dplyr::rename(columnId = newColumnId) %>% 
+      dplyr::arrange(rowId)
     start <- Sys.time()
-    tensorList <- lapply(1:max(data %>% dplyr::pull(rowId)), function(x) {
-      torch::torch_tensor(dt[rows == x, cols])
-    })
+    catTensor <- torch::torch_tensor(cbind(dataCat$rowId, dataCat$columnId))
+    catTensor <- catTensor[catTensor[,1]$argsort(),]
+    tensorList <- torch::torch_split(catTensor[,2], 
+                                     as.numeric(torch::torch_unique_consecutive(catTensor[,1], 
+                                                                                return_counts = TRUE)[[3]]))
+    
+    # because of subjects without cat features, I need to create a list with all zeroes and then insert
+    # my tensorList. That way I can still index the dataset correctly.
+    totalList <- as.list(integer(length(self$target)))
+    totalList[unique(dataCat$rowId)] <- tensorList
     self$lengths <- lengths
-    self$cat <- torch::nn_utils_rnn_pad_sequence(tensorList, batch_first = T)
+    self$cat <- torch::nn_utils_rnn_pad_sequence(totalList, batch_first = T)
     delta <- Sys.time() - start
     ParallelLogger::logInfo("Data conversion for dataset took ", signif(delta, 3), " ", attr(delta, "units"))
     if (sum(numericalIndex) == 0) {

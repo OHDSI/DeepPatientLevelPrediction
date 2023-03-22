@@ -21,16 +21,17 @@
 #' @description A transformer model with default hyperparameters
 #' @details from https://arxiv.org/abs/2106.11959
 #' Default hyperparameters from paper
-#' @param device   Which device to run analysis on, either 'cpu' or 'cuda', default: 'cpu'  
-#' @param batchSize Size of batch, default: 512
-#' @param epochs  Number of epochs to run, default: 10
-#' @param seed    random seed to use
+#' @param estimatorSettings created with `setEstimator`
 #' 
 #' @export
-setDefaultTransformer <- function(device='cpu',
-                                  batchSize=512,
-                                  epochs=10,
-                                  seed=NULL) {
+setDefaultTransformer <- function(estimatorSettings=setEstimator(
+  learningRate = 'auto',
+  weightDecay = 1e-4,
+  batchSize=512,
+  epochs=10,
+  seed=NULL,
+  device='cpu')
+) {
   transformerSettings <- setTransformer(numBlocks = 3,
                                         dimToken = 192,
                                         dimOut = 1,
@@ -39,14 +40,9 @@ setDefaultTransformer <- function(device='cpu',
                                         ffnDropout = 0.1,
                                         resDropout = 0.0,
                                         dimHidden = 256,
-                                        weightDecay = 1e-5,
-                                        learningRate = 1e-4,
-                                        batchSize = batchSize,
-                                        epochs = epochs,
-                                        device = device,
+                                        estimatorSettings=estimatorSettings,
                                         hyperParamSearch = 'random',
-                                        randomSample = 1,
-                                        seed = seed)
+                                        randomSample = 1)
   attr(transformerSettings, 'settings')$name <- 'defaultTransformer'
   return(transformerSettings)
 }
@@ -64,33 +60,41 @@ setDefaultTransformer <- function(device='cpu',
 #' @param ffnDropout              dropout to use in feedforward block
 #' @param resDropout              dropout to use in residual connections
 #' @param dimHidden               dimension of the feedworward block
-#' @param weightDecay             weightdecay to use
-#' @param learningRate            learning rate to use
-#' @param batchSize               batchSize to use
-#' @param epochs                  How many epochs to run the model for
-#' @param device                  Which device to use, cpu or cuda
+#' @param dimHiddenRatio          dimension of the feedforward block as a ratio of dimToken (embedding size)
+#' @param estimatorSettings       created with `setEstimator`
 #' @param hyperParamSearch        what kind of hyperparameter search to do, default 'random'
 #' @param randomSample            How many samples to use in hyperparameter search if random
-#' @param seed                    Random seed to use
+#' @param randomSampleSeed        Random seed to sample hyperparameter combinations
 #'
 #' @export
 setTransformer <- function(numBlocks = 3, dimToken = 96, dimOut = 1,
                            numHeads = 8, attDropout = 0.25, ffnDropout = 0.25,
-                           resDropout = 0, dimHidden = 512, weightDecay = 1e-6,
-                           learningRate = 3e-4, batchSize = 1024,
-                           epochs = 10, device = "cpu", hyperParamSearch = "random",
-                           randomSample = 1, seed = NULL) {
-  if (is.null(seed)) {
-    seed <- as.integer(sample(1e5, 1))
-  }
+                           resDropout = 0, dimHidden = 512, dimHiddenRatio = NULL,
+                           estimatorSettings=setEstimator(weightDecay = 1e-6,
+                                                          batchSize=1024,
+                                                          epochs=10,
+                                                          seed=NULL),
+                           hyperParamSearch = "random",
+                           randomSample = 1, randomSampleSeed = NULL) {
 
-  if (dimToken %% numHeads != 0) {
+  if (any(with(expand.grid(dimToken = dimToken, numHeads = numHeads), dimToken %% numHeads != 0))) {
     stop(paste(
-      "dimToken needs to divisble by numHeads. dimToken =", dimToken,
+      "dimToken needs to divisible by numHeads. dimToken =", dimToken,
       "is not divisible by numHeads =", numHeads
     ))
   }
 
+  if (is.null(dimHidden) && is.null(dimHiddenRatio)
+      || !is.null(dimHidden) && !is.null(dimHiddenRatio)) {
+    stop(paste(
+      "dimHidden and dimHiddenRatio cannot be both set or both NULL"
+    ))
+  } else {
+    if (!is.null(dimHiddenRatio)) {
+      dimHidden <- round(dimToken*dimHiddenRatio, digits = 0)
+    }
+  }
+  
   paramGrid <- list(
     numBlocks = numBlocks,
     dimToken = dimToken,
@@ -99,41 +103,33 @@ setTransformer <- function(numBlocks = 3, dimToken = 96, dimOut = 1,
     dimHidden = dimHidden,
     attDropout = attDropout,
     ffnDropout = ffnDropout,
-    resDropout = resDropout,
-    weightDecay = weightDecay,
-    learningRate = learningRate,
-    seed = list(as.integer(seed[[1]]))
+    resDropout = resDropout
   )
-
+  
+  paramGrid <- c(paramGrid, estimatorSettings$paramsToTune)
+  
   param <- PatientLevelPrediction::listCartesian(paramGrid)
 
-  if (randomSample>length(param)) {
+  if (hyperParamSearch == "random" && randomSample>length(param)) {
     stop(paste("\n Chosen amount of randomSamples is higher than the amount of possible hyperparameter combinations.", 
                "\n randomSample:", randomSample,"\n Possible hyperparameter combinations:", length(param),
                "\n Please lower the amount of randomSample"))
   }
   
   if (hyperParamSearch == "random") {
-    param <- param[sample(length(param), randomSample)]
+    suppressWarnings(withr::with_seed(randomSampleSeed, {param <- param[sample(length(param), randomSample)]}))
   }
 
-  attr(param, "settings") <- list(
-    seed = seed[1],
-    device = device,
-    batchSize = batchSize,
-    epochs = epochs,
-    name = "Transformer",
+  results <- list(
+    fitFunction = "fitEstimator",
+    param = param,
+    estimatorSettings = estimatorSettings,
+    modelType = "Transformer",
     saveType = "file",
     modelParamNames = c(
       "numBlocks", "dimToken", "dimOut", "numHeads",
       "attDropout", "ffnDropout", "resDropout", "dimHidden"
-    ),
-    baseModel = "Transformer"
-  )
-
-  results <- list(
-    fitFunction = "fitEstimator",
-    param = param
+    )
   )
 
   class(results) <- "modelSettings"

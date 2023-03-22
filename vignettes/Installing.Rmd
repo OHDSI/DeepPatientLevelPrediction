@@ -44,7 +44,7 @@ This vignette describes how you need to install the Observational Health Data Sc
 
 Under Windows the OHDSI Deep Patient Level Prediction (DeepPLP) package requires installing:
 
--   R (<https://cran.cnr.berkeley.edu/> ) - (R \>= 3.5.0, but latest is recommended)
+-   R (<https://cran.cnr.berkeley.edu/> ) - (R \>= 4.0.0, but latest is recommended)
 -   Rstudio (<https://www.rstudio.com/> )
 -   Java (<http://www.java.com> )
 -   RTools (<https://cran.r-project.org/bin/windows/Rtools/>)
@@ -53,7 +53,7 @@ Under Windows the OHDSI Deep Patient Level Prediction (DeepPLP) package requires
 
 Under Mac and Linux the OHDSI deepPLP package requires installing:
 
--   R (<https://cran.cnr.berkeley.edu/> ) - (R \>= 3.3.0, but latest is recommended)
+-   R (<https://cran.cnr.berkeley.edu/> ) - (R \>= 4.0.0, but latest is recommended)
 -   Rstudio (<https://www.rstudio.com/> )
 -   Java (<http://www.java.com> )
 -   Xcode command line tools(run in terminal: xcode-select --install) [MAC USERS ONLY]
@@ -78,12 +78,12 @@ remotes::install_github("OHDSI/DeepPatientLevelPrediction")
 ```
 
 DeepPLP relies on [torch for R](https://torch.mlverse.org/). When torch is installed the user 
-will be prompted if libtorch and lantern binaries should be downloaded. These binaries are neccesary 
+will be prompted if libtorch and lantern binaries should be downloaded. These binaries are necessary 
 for the package to run.
 
 If you are using DeepPLP in an offline environment the function `torch::install_torch_from_file()` can be used. This will first require to download and move the correct binaries to the offline environment. See [torch installation guide](https://torch.mlverse.org/docs/articles/installation.html) for more detailed instructions.
 
-When installing make sure to close any other Rstudio sessions that are using `DeepPatientLevelPrediction` or any dependency. Keeping Rstudio sessions open can cause locks that prevent the package installing.
+When installing make sure to close any other Rstudio sessions that are using `DeepPatientLevelPrediction` or any dependency. Keeping Rstudio sessions open can cause locks on windows that prevent the package installing.
 
 # Testing Installation
 
@@ -109,12 +109,14 @@ modelSettings <- setResNet(numLayers = 2,
                            residualDropout = 0, 
                            hiddenDropout = 0.2, 
                            sizeEmbedding = 64, 
-                           weightDecay = 1e-6,
-                           learningRate = 3e-4, 
-                           seed = 42, 
+                           estimatorSettings = setEstimator(learningRate = 3e-4,
+                                                            weightDecay = 1e-6,
+                                                            device='cpu',
+                                                            batchSize=128,
+                                                            epochs=3,
+                                                            seed = 42),
                            hyperParamSearch = 'random',
-                           randomSample = 1, device = 'cpu',batchSize = 128,
-                           epochs = 3)
+                           randomSample = 1)
 
 plpResults <- PatientLevelPrediction::runPlp(plpData = plpData,
                outcomeId = 3,

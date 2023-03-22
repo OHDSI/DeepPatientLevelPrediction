@@ -13,14 +13,12 @@ setTransformer(
   ffnDropout = 0.25,
   resDropout = 0,
   dimHidden = 512,
-  weightDecay = 1e-06,
-  learningRate = 3e-04,
-  batchSize = 1024,
-  epochs = 10,
-  device = "cpu",
+  dimHiddenRatio = NULL,
+  estimatorSettings = setEstimator(weightDecay = 1e-06, batchSize = 1024, epochs = 10,
+    seed = NULL),
   hyperParamSearch = "random",
   randomSample = 1,
-  seed = NULL
+  randomSampleSeed = NULL
 )
 }
 \arguments{
@@ -40,21 +38,15 @@ setTransformer(
 
 \item{dimHidden}{dimension of the feedworward block}
 
-\item{weightDecay}{weightdecay to use}
+\item{dimHiddenRatio}{dimension of the feedforward block as a ratio of dimToken (embedding size)}
 
-\item{learningRate}{learning rate to use}
-
-\item{batchSize}{batchSize to use}
-
-\item{epochs}{How many epochs to run the model for}
-
-\item{device}{Which device to use, cpu or cuda}
+\item{estimatorSettings}{created with `setEstimator`}
 
 \item{hyperParamSearch}{what kind of hyperparameter search to do, default 'random'}
 
 \item{randomSample}{How many samples to use in hyperparameter search if random}
 
-\item{seed}{Random seed to use}
+\item{randomSampleSeed}{Random seed to sample hyperparameter combinations}
 }
 \description{
 A transformer model

@@ -97,8 +97,7 @@ enable the extraction of both data formats as will be described with
 examples below.
 
 Note that training Deep Learning models is computationally intensive,
-our implementation therefore supports both GPU and CPU. It will
-automatically check whether there is GPU or not in your computer. A GPU
+our implementation therefore supports both GPU and CPU. A GPU
 is highly recommended for Deep Learning!
 
 ## Requirements
@@ -170,7 +169,7 @@ randomly sets some inputs to 0 at each step during training time. A
 value of `0.2` means that 20% of the layers inputs will be set to
 0. This is used to reduce overfitting.
 
-The `sizeEmbedding` input specifices the size of the embedding used. The first
+The `sizeEmbedding` input specifies the size of the embedding used. The first
 layer is an embedding layer which converts each sparse feature to a dense vector
 which it learns. An embedding is a lower dimensional projection of the features
 where distance between points is a measure of similarity.
@@ -229,17 +228,19 @@ combinations are 2*2*2*2 or 16 but specify ```randomSample=10``` to only try
 ```{r, eval=FALSE}
 
 modelSettings <- setMultiLayerPerceptron(
-                                numLayers = c(3, 5),
-                                numHidden = c(64, 128), 
-                                dropout = c(0.2),
-                                sizeEmbedding = c(32, 64),
-                                learningRate = c(1e-3, 1e-4), 
-                                weightDecay = c(1e-5), 
-                                randomSample=10,
-                                batchSize = c(100), 
-                                epochs = c(5),  
-                                seed = 12
-                                )
+  numLayers = c(3, 5),
+  sizeHidden = c(64, 128), 
+  dropout = c(0.2),
+  sizeEmbedding = c(32, 64),
+  estimatorSettings = setEstimator(
+    learningRate = c(1e-3, 1e-4),
+    weightDecay = c(1e-5),
+    batchSize = c(128),
+    epochs=c(5),
+    seed=12
+  ),
+  randomSample=10
+)
 
 mlpResult <- PatientLevelPrediction::runPlp(
     plpData = plpData, 
@@ -249,8 +250,6 @@ mlpResult <- PatientLevelPrediction::runPlp(
     analysisName = 'Testing Deep Learning', 
     populationSettings = populationSet, 
     splitSettings = PatientLevelPrediction::createDefaultSplitSetting(), 
-    sampleSettings = PatientLevelPrediction::createSampleSettings(),  # none 
-    featureEngineeringSettings = PatientLevelPrediction::createFeatureEngineeringSettings(), # none 
     preprocessSettings = PatientLevelPrediction::createPreprocessSettings(), 
     executeSettings = PatientLevelPrediction::createExecuteSettings(
       runSplitData = T, 
@@ -280,9 +279,7 @@ impacts the model fitting.
 
 The residual network (ResNet) was introduced to address the vanishing or
 exploding gradient issue. It works by adding connections between
-non-adjacent layers, termed a 'skip connection'. Using some form of
-regularization with these 'skip connections' enables the network to
-ignore any problematic layer that resulted due to gradient issues.
+non-adjacent layers, termed a 'skip connection'.
 
 The ResNet calculates embeddings for every feature and then averages
 them to compute an embedding per patient.
@@ -312,16 +309,16 @@ hidden layer or residual connection
 
 `sizeEmbedding` : The size of the initial embedding layer
 
-##### Training process inputs:
+##### Estimator inputs:
 
 `weightDecay` : How much weight decay to apply, which penalizes bigger
 weights
 
 `learningRate` : Which learning rate to use
 
-`seed` : Use a seed for reproducibility
+`seed` : seed for weight initialization
 
-`device` : Which device to use, such as a cpu or a gpu
+`device` : Which device to use, such as a `cpu` or a `gpu`
 
 `batchSize` : Size of batch of data used per iteration during training
 
@@ -334,6 +331,8 @@ random sampling or exhaustive (grid) search
 
 `randomSample`: If doing a random search for hyperparameters, how many
 random samples to use
+
+`randomSampleSeed`: Seed to make hyperparameter search reproducible
 
 #### Example Code
 
@@ -353,15 +352,15 @@ resset <- setResNet(
   hiddenFactor = c(2),
   residualDropout = c(0.1), 
   hiddenDropout = c(0.1),
-  sizeEmbedding = c(32), 
-  weightDecay = c(1e-6),
-  learningRate = c(3e-4), 
-  seed = 42, 
+  sizeEmbedding = c(32),
+  estimatorSettings = setEstimator(learningRate = c(3e-4),
+                                   weightDecay = c(1e-6),
+                                   #device='cuda:0', # uncomment to use GPU
+                                   batchSize = 128, 
+                                   epochs = 3,
+                                   seed = 42),
   hyperParamSearch = 'random',
-  randomSample = 1, 
-  #device='cuda:0', # uncomment to use GPU
-  batchSize = 128, 
-  epochs = 3
+  randomSample = 1
 )
 
 resResult <- PatientLevelPrediction::runPlp(
@@ -372,8 +371,6 @@ resResult <- PatientLevelPrediction::runPlp(
     analysisName = 'Testing ResNet', 
     populationSettings = populationSet, 
     splitSettings = PatientLevelPrediction::createDefaultSplitSetting(), 
-    sampleSettings = PatientLevelPrediction::createSampleSettings(),  
-    featureEngineeringSettings = PatientLevelPrediction::createFeatureEngineeringSettings(), 
     preprocessSettings = PatientLevelPrediction::createPreprocessSettings(), 
     executeSettings = PatientLevelPrediction::createExecuteSettings(
       runSplitData = T, 
@@ -405,7 +402,7 @@ longer sequence length. In this case the sequence is the amount of
 features each patient has. Users need to be aware of how many features
 they are feeding to the model since this will effect the computation
 time heavily. This is something you control in `FeatureExtraction` when
-you create your covariate settings.
+you create your `covariateSettings`.
 
 ### Examples
 
@@ -449,12 +446,15 @@ modelSettings <- setTransformer(numBlocks = 3,
                                 ffnDropout = 0.25,
                                 resDropout = 0,
                                 dimHidden = 128,
-                                weightDecay = 1e-06,
-                                learningRate = 3e-04
-                                batchSize = 128,
-                                epochs = 10,
-                                device = 'cpu',  # or 'cuda' for GPU
-                                randomSample = 1)
+                                estimatorSettings = setEstimator(
+                                  learningRate = 3e-4,
+                                  weightDecay = 1e-6,
+                                  batchSize = 128,
+                                  epochs = 10,
+                                  device = 'cpu'
+                                ),
+                                randomSample=1)
+                              
 
 
 TransformerResult <- PatientLevelPrediction::runPlp(
@@ -465,8 +465,6 @@ TransformerResult <- PatientLevelPrediction::runPlp(
     analysisName = 'Testing transformer', 
     populationSettings = populationSet, 
     splitSettings = PatientLevelPrediction::createDefaultSplitSetting(), 
-    sampleSettings = PatientLevelPrediction::createSampleSettings(),  # none 
-    featureEngineeringSettings = PatientLevelPrediction::createFeatureEngineeringSettings(), # none 
     preprocessSettings = PatientLevelPrediction::createPreprocessSettings(), 
     executeSettings = PatientLevelPrediction::createExecuteSettings(
       runSplitData = T, 
