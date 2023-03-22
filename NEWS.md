@@ -1,4 +1,4 @@
-DeepPatientLevelPrediction (develop)
+DeepPatientLevelPrediction 1.1
 ======================
 - Check for if number of heads is compatible with embedding dimension fixed (#55)
 - Now transformer width can be specified as a ratio of the embedding dimensions (dimToken), (#53)

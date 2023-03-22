@@ -387,7 +387,7 @@ gridCvDeep <- function(mappedData,
   # modify prediction
   prediction <- prediction %>%
     dplyr::select(-"index")
-  
+
   prediction$cohortStartDate <- as.Date(prediction$cohortStartDate, origin = "1970-01-01")
   
   
