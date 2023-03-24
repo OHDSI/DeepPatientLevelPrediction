@@ -39,7 +39,7 @@ Suggests:
 Remotes:
     ohdsi/PatientLevelPrediction,
     ohdsi/FeatureExtraction,
-    ohdsi/Eunomia
+    ohdsi/Eunomia,
     ohdsi/ResultModelManager
 RoxygenNote: 7.2.3
 Encoding: UTF-8
