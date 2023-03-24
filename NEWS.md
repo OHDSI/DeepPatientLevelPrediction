@@ -1,3 +1,6 @@
+DeepPatientLevelPrediction 1.1.1
+- Fix bug introduced by removing modelType from attributes (#59)
+
 DeepPatientLevelPrediction 1.1
 ======================
 - Check for if number of heads is compatible with embedding dimension fixed (#55)

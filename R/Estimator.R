@@ -144,7 +144,7 @@ fitEstimator <- function(trainData,
       isNumeric = cvResult$numericalIndex
     )
   
-  
+  attr(modelSettings$param, 'settings')$modelType <- modelSettings$modelType  
   comp <- start - Sys.time()
   result <- list(
     model = cvResult$estimator, # file.path(outLoc),

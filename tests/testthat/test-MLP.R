@@ -37,7 +37,7 @@ results <- tryCatch(
       plpData = plpData,
       outcomeId = 3,
       modelSettings = modelSettings,
-      analysisId = "MLP",
+      analysisId = "Analysis_MLP",
       analysisName = "Testing Deep Learning",
       populationSettings = populationSet,
       splitSettings = PatientLevelPrediction::createDefaultSplitSetting(),
@@ -133,4 +133,35 @@ test_that("Errors are produced by settings function", {
     hyperParamSearch = 'random',
     randomSample = randomSample))
                            
+})
+
+test_that("Can upload results to database", {
+  cohortDefinitions = data.frame(
+    cohortName = c('blank1'), 
+    cohortId = c(1), 
+    json = c('json')
+  )
+  
+  sink(nullfile())
+  sqliteFile <- insertResultsToSqlite(resultLocation = file.path(testLoc, "MLP"),
+                           cohortDefinitions = cohortDefinitions)
+  sink()
+  
+  testthat::expect_true(file.exists(sqliteFile))
+  
+  cdmDatabaseSchema <- 'main'
+  ohdsiDatabaseSchema <- 'main'
+  connectionDetails <- DatabaseConnector::createConnectionDetails(
+    dbms = 'sqlite',
+    server = sqliteFile
+  )
+  conn <- DatabaseConnector::connect(connectionDetails = connectionDetails)
+  targetDialect <- 'sqlite'
+  
+  # check the results table is populated
+  sql <- 'select count(*) as N from main.performances;'
+  res <- DatabaseConnector::querySql(conn, sql)
+  testthat::expect_true(res$N[1]>0)
+  
+  
 })
