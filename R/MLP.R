@@ -68,7 +68,6 @@ setMultiLayerPerceptron <- function(numLayers = c(1:8),
   if (hyperParamSearch == "random") {
     suppressWarnings(withr::with_seed(randomSampleSeed, {param <- param[sample(length(param), randomSample)]}))
   }
-
   results <- list(
     fitFunction = "fitEstimator",
     param = param,

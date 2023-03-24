@@ -17,24 +17,24 @@ resSet <- setResNet(
 
 test_that("setResNet works", {
   testthat::expect_s3_class(object = resSet, class = "modelSettings")
-
+  
   testthat::expect_equal(resSet$fitFunction, "fitEstimator")
-
+  
   testthat::expect_true(length(resSet$param) > 0)
   
   expect_error(setResNet(numLayers = c(2),
-                sizeHidden = c(32),
-                hiddenFactor = c(2),
-                residualDropout = c(0.1),
-                hiddenDropout = c(0.1),
-                sizeEmbedding = c(32),
-                estimatorSettings = setEstimator(learningRate=c(3e-4),
-                                                 weightDecay = c(1e-6),
-                                                 seed=42,
-                                                 batchSize = 128,
-                                                 epochs=1),
-                hyperParamSearch = "random",
-                randomSample = 2))
+                         sizeHidden = c(32),
+                         hiddenFactor = c(2),
+                         residualDropout = c(0.1),
+                         hiddenDropout = c(0.1),
+                         sizeEmbedding = c(32),
+                         estimatorSettings = setEstimator(learningRate=c(3e-4),
+                                                          weightDecay = c(1e-6),
+                                                          seed=42,
+                                                          batchSize = 128,
+                                                          epochs=1),
+                         hyperParamSearch = "random",
+                         randomSample = 2))
 })
 
 sink(nullfile())
@@ -44,7 +44,7 @@ res2 <- tryCatch(
       plpData = plpData,
       outcomeId = 3,
       modelSettings = resSet,
-      analysisId = "ResNet",
+      analysisId = "Analysis_ResNet",
       analysisName = "Testing Deep Learning",
       populationSettings = populationSet,
       splitSettings = PatientLevelPrediction::createDefaultSplitSetting(),
@@ -59,7 +59,7 @@ res2 <- tryCatch(
         runModelDevelopment = T,
         runCovariateSummary = F
       ),
-      saveDirectory = file.path(testLoc, "Deep")
+      saveDirectory = file.path(testLoc, "ResNet")
     )
   },
   error = function(e) {
@@ -71,17 +71,17 @@ sink()
 
 test_that("ResNet with runPlp working checks", {
   testthat::expect_false(is.null(res2))
-
+  
   # check structure
   testthat::expect_true("prediction" %in% names(res2))
   testthat::expect_true("model" %in% names(res2))
   testthat::expect_true("covariateSummary" %in% names(res2))
   testthat::expect_true("performanceEvaluation" %in% names(res2))
-
+  
   # check prediction same size as pop
   testthat::expect_equal(nrow(res2$prediction %>%
-    dplyr::filter(evaluationType %in% c("Train", "Test"))), nrow(population))
-
+                                dplyr::filter(evaluationType %in% c("Train", "Test"))), nrow(population))
+  
   # check prediction between 0 and 1
   testthat::expect_gte(min(res2$prediction$value), 0)
   testthat::expect_lte(max(res2$prediction$value), 1)
@@ -96,22 +96,22 @@ test_that("ResNet nn-module works ", {
     normalization = torch::nn_batch_norm1d, hiddenDropout = 0.3,
     residualDropout = 0.3, d_out = 1
   )
-
+  
   pars <- sum(sapply(model$parameters, function(x) prod(x$shape)))
-
+  
   # expected number of parameters
   expect_equal(pars, 1295)
-
+  
   input <- list()
   input$cat <- torch::torch_randint(0, 5, c(10, 5), dtype = torch::torch_long())
   input$num <- torch::torch_randn(10, 1, dtype = torch::torch_float32())
-
-
+  
+  
   output <- model(input)
-
+  
   # output is correct shape
   expect_equal(output$shape, 10)
-
+  
   input$num <- NULL
   model <- ResNet(
     catFeatures = 5, numFeatures = 0, sizeEmbedding = 5,
@@ -154,3 +154,34 @@ test_that("Errors are produced by settings function", {
     hyperParamSearch = 'random',
     randomSample = randomSample))
 })
+
+
+test_that("Can upload results to database", { 
+  cohortDefinitions = data.frame(
+    cohortName = c('blank1'), 
+    cohortId = c(1), 
+    json = c('json')
+  )
+  
+  sink(nullfile())
+  sqliteFile <- insertResultsToSqlite(resultLocation = file.path(testLoc, "ResNet"),
+                                      cohortDefinitions = cohortDefinitions)
+  sink()
+  
+  testthat::expect_true(file.exists(sqliteFile))
+  
+  cdmDatabaseSchema <- 'main'
+  ohdsiDatabaseSchema <- 'main'
+  connectionDetails <- DatabaseConnector::createConnectionDetails(
+    dbms = 'sqlite',
+    server = sqliteFile
+  )
+  conn <- DatabaseConnector::connect(connectionDetails = connectionDetails)
+  targetDialect <- 'sqlite'
+  
+  # check the results table is populated
+  sql <- 'select count(*) as N from main.performances;'
+  res <- DatabaseConnector::querySql(conn, sql)
+  testthat::expect_true(res$N[1]>0)
+})
+
