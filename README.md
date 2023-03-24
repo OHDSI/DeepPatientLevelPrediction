@@ -33,7 +33,7 @@ Requires R (version 4.0.0 or higher). Installation on Windows requires [RTools](
 Getting Started
 ===============
 
-- To install the package please read the [Package installation guide]()
+- To install the package please read the [Package installation guide](https://ohdsi.github.io/DeepPatientLevelPrediction/articles/Installing.html)
 - Please read the main vignette for the package:
 [Building Deep Learning Models](https://ohdsi.github.io/DeepPatientLevelPrediction/articles/BuildingDeepModels.html)
 
