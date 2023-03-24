@@ -34,11 +34,13 @@ Suggests:
     markdown,
     plyr,  
     testthat,
-    PRROC
+    PRROC,
+    ResultModelManager (>= 0.2.0)
 Remotes:
     ohdsi/PatientLevelPrediction,
     ohdsi/FeatureExtraction,
     ohdsi/Eunomia
+    ohdsi/ResultModelManager
 RoxygenNote: 7.2.3
 Encoding: UTF-8
 Config/testthat/edition: 3
