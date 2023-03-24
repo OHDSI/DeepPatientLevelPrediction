@@ -1,4 +1,5 @@
-DeepPatientLevelPrediction 1.1.1
+DeepPatientLevelPrediction 1.1.2
+======================
 - Fix bug introduced by removing modelType from attributes (#59)
 
 DeepPatientLevelPrediction 1.1
