@@ -268,7 +268,7 @@ gridCvDeep <- function(mappedData,
   paramSearch <- modelSettings$param
   trainCache <- TrainingCache$new(analysisPath)
   
-  if (trainCache$isPersistent(paramSearch)) {
+  if (trainCache$isParamGridIdentical(paramSearch)) {
     gridSearchPredictons <- trainCache$getGridSearchPredictions()
   } else {
     gridSearchPredictons <- list()
