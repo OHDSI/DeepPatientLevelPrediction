@@ -46,10 +46,10 @@ TrainingCache <- R6::R6Class(
     #' @description
     #' Checks whether the parameter grid in the model settings is identical to
     #' the cached parameters.
-    #' @param inDir Path to the analysis directory
+    #' @param inModelParams Parameter grid from the model settings
     #' @returns Whether the provided and cached parameter grid is identical
-    isParamGridIdentical = function(searchParam) {
-      return(identical(searchParam, private$.paramPersistence$modelParams))
+    isParamGridIdentical = function(inModelParams) {
+      return(identical(inModelParams, private$.paramPersistence$modelParams))
     },
     
     #' @description
@@ -63,9 +63,9 @@ TrainingCache <- R6::R6Class(
     
     #' @description
     #' Saves the parameter grid to the training cache
-    #' @param modelParams Parameter grid
-    saveModelParams = function(modelParams) {
-      private$.paramPersistence$modelParams <- modelParams
+    #' @param inModelParams Parameter grid from the model settings
+    saveModelParams = function(inModelParams) {
+      private$.paramPersistence$modelParams <- inModelParams
       private$writeToFile()
     },
     
@@ -83,12 +83,7 @@ TrainingCache <- R6::R6Class(
       if (is.null(private$.paramPersistence$gridSearchPredictions)) {
         return(1)
       } else {
-        return(which(
-          sapply(
-            private$.paramPersistence$gridSearchPredictions,
-            is.null
-          )
-        )[1])
+        return(which(sapply(private$.paramPersistence$gridSearchPredictions, is.null))[1])
       }
     },
     
