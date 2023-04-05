@@ -1,7 +1,7 @@
 #' TrainingCache
 #' @description
 #' Parameter caching for training persistence and continuity
-#' 
+#' @export
 TrainingCache <- R6::R6Class(
   "TrainingCache",
   
@@ -18,14 +18,7 @@ TrainingCache <- R6::R6Class(
     },
     
     readFromFile = function() {
-      tryCatch({
         private$.paramPersistence <- readRDS(file.path(private$.saveDir))
-      },
-      error=function(cond) {
-        message(paste("Cannot load ", file.path(private$.saveDir)))
-      },
-      finally = {
-      })
     }
   ),
   
@@ -80,11 +73,7 @@ TrainingCache <- R6::R6Class(
     #' Gets the last index from the cached grid search
     #' @returns Last grid search index
     getLastGridSearchIndex = function() {
-      if (is.null(private$.paramPersistence$gridSearchPredictions)) {
-        return(1)
-      } else {
-        return(which(sapply(private$.paramPersistence$gridSearchPredictions, is.null))[1])
-      }
+      return(which(sapply(private$.paramPersistence$gridSearchPredictions, is.null))[1])
     },
     
     #' @description
