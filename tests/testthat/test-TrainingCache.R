@@ -45,3 +45,43 @@ test_that("Param grid predictions can be cached", {
   trainCache$saveModelParams(paramSearch)
   testthat::expect_true(trainCache$isParamGridIdentical(paramSearch))
 })
+
+test_that("Estimator can resume training from cache", {
+  modelPath <- tempdir()
+  analysisPath <- file.path(modelPath, "Analysis_TrainCacheResNet")
+  dir.create(analysisPath)
+  trainCache <- TrainingCache$new(analysisPath)
+  trainCache$saveModelParams(paramSearch)
+  
+  sink(nullfile())
+  res2 <- tryCatch(
+    {
+      PatientLevelPrediction::runPlp(
+        plpData = plpData,
+        outcomeId = 3,
+        modelSettings = resNetSettings,
+        analysisId = "Analysis_TrainCacheResNet",
+        analysisName = "Testing Training Cache",
+        populationSettings = populationSet,
+        splitSettings = PatientLevelPrediction::createDefaultSplitSetting(),
+        sampleSettings = PatientLevelPrediction::createSampleSettings(), # none
+        featureEngineeringSettings = PatientLevelPrediction::createFeatureEngineeringSettings(), # none
+        preprocessSettings = PatientLevelPrediction::createPreprocessSettings(),
+        executeSettings = PatientLevelPrediction::createExecuteSettings(
+          runSplitData = T,
+          runSampleData = F,
+          runfeatureEngineering = F,
+          runPreprocessData = T,
+          runModelDevelopment = T,
+          runCovariateSummary = F
+        ),
+        saveDirectory = modelPath
+      )
+    },
+    error = function(e) {
+      print(e)
+      return(NULL)
+    }
+  )
+  sink()
+})

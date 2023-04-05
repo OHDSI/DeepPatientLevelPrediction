@@ -73,7 +73,12 @@ TrainingCache <- R6::R6Class(
     #' Gets the last index from the cached grid search
     #' @returns Last grid search index
     getLastGridSearchIndex = function() {
-      return(which(sapply(private$.paramPersistence$gridSearchPredictions, is.null))[1])
+      if (is.null(private$.paramPersistence$gridSearchPredictions)) {
+        return(1)
+      } else {
+        return(which(sapply(private$.paramPersistence$gridSearchPredictions,
+            is.null))[1])
+      }
     },
     
     #' @description
