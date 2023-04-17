@@ -1,6 +1,6 @@
 library(PatientLevelPrediction)
 
-if(Sys.getenv('GITHUB_ACTIONS') == 'true') {
+if(Sys.getenv('GITHUB_ACTIONS') == 'true' & torch::torch_is_installed() != FALSE) {
   torch::install_torch()
 }
 
