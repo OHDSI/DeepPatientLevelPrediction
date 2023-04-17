@@ -47,6 +47,7 @@ jobs:
       WEBAPI_TEST_SECURE_WEBAPI_URL: ${{ secrets.WEBAPI_TEST_SECURE_WEBAPI_URL }}
       WEBAPI_TEST_ADMIN_USER_NAME: ${{ secrets.WEBAPI_TEST_ADMIN_USER_NAME }}
       WEBAPI_TEST_ADMIN_USER_PASSWORD: ${{ secrets.WEBAPI_TEST_ADMIN_USER_PASSWORD }}
+      TORCH_INSTALL: '1'
 
     steps:
       - uses: actions/checkout@v3

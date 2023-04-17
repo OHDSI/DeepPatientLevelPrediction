@@ -1,3 +1,7 @@
+DeepPatientLevelPrediction 1.1.3
+======================
+- Fix actions after torch updated to v0.10 (#65)
+
 DeepPatientLevelPrediction 1.1.2
 ======================
 - Fix bug introduced by removing modelType from attributes (#59)
