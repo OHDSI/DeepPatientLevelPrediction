@@ -70,9 +70,6 @@ jobs:
           extra-packages: any::rcmdcheck
           needs: check
 
-      - name: Setup upterm session
-        uses: lhotari/action-upterm@v1
-
       - uses: r-lib/actions/check-r-package@v2
         with:
           args: 'c("--no-manual", "--as-cran")'
