@@ -10,7 +10,7 @@ setEstimator(
   batchSize = 512,
   epochs = 30,
   device = "cpu",
-  optimizer = torchopt::optim_adamw,
+  optimizer = torch::optim_adamw,
   scheduler = list(fun = torch::lr_reduce_on_plateau, params = list(patience = 1)),
   criterion = torch::nn_bce_with_logits_loss,
   earlyStopping = list(useEarlyStopping = TRUE, params = list(patience = 4)),
