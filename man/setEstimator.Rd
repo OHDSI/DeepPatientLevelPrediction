@@ -27,7 +27,8 @@ setEstimator(
 
 \item{epochs}{how many epochs to train for}
 
-\item{device}{what device to train on}
+\item{device}{what device to train on, can be a string or a function to that evaluates
+to the device during runtime}
 
 \item{optimizer}{which optimizer to use}
 

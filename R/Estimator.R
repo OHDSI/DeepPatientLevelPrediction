@@ -26,7 +26,8 @@
 #' @param weightDecay what weight_decay to use
 #' @param batchSize batchSize to use
 #' @param epochs  how many epochs to train for
-#' @param device  what device to train on
+#' @param device  what device to train on, can be a string or a function to that evaluates
+#' to the device during runtime
 #' @param optimizer which optimizer to use
 #' @param scheduler which learning rate scheduler to use
 #' @param criterion loss function to use
