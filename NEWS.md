@@ -1,3 +1,9 @@
+DeepPatientLevelPrediction 1.1.4
+======================
+ - Remove torchopt dependancy since adamw is now in torch
+ - Update torch dependency to >=0.10.0
+ - Allow device to be a function that resolves during Estimator initialization
+
 DeepPatientLevelPrediction 1.1.3
 ======================
 - Fix actions after torch updated to v0.10 (#65)
