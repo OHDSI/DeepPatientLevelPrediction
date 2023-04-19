@@ -52,7 +52,10 @@ lrFinder <- function(dataset, modelType, modelParams, estimatorSettings,
                      divergenceThreshold=4) {
     torch::torch_manual_seed(seed=estimatorSettings$seed)
     model <- do.call(modelType, modelParams)
-    model$to(device=estimatorSettings$device)
+    if (is.function(estimatorSettings$device)) {
+      device = estimatorSettings$device()
+    } else {device = estimatorSettings$device}
+    model$to(device=device)
     
     optimizer <- estimatorSettings$optimizer(model$parameters, lr=minLR)
     
