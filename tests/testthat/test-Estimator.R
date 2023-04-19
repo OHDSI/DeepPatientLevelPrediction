@@ -299,3 +299,41 @@ test_that("setEstimator with paramsToTune is correctly added to hyperparameters"
   expect_equal(as.character(estimatorSettings2$metric), "auprc")
   expect_equal(estimatorSettings2$earlyStopping$params$patience, 10)
 })
+
+test_that("device as a function argument works", {
+  getDevice <- function() {
+    dev <- Sys.getenv("testDeepPLPDevice") 
+    if (dev == ""){
+      dev = "cpu"
+    } else{
+      dev
+    }
+  }
+  
+  estimatorSettings <- setEstimator(device=getDevice)
+  
+  model <- setDefaultResNet(estimatorSettings = estimatorSettings) 
+  model$param[[1]]$catFeatures <- 10
+  
+  estimator <- Estimator$new(modelType="ResNet",
+                             modelParameters = model$param[[1]],
+                             estimatorSettings = estimatorSettings)
+  
+  expect_equal(estimator$device, "cpu")
+  
+  Sys.setenv("testDeepPLPDevice" = "meta")
+  
+  estimatorSettings <- setEstimator(device=getDevice)
+  
+  model <- setDefaultResNet(estimatorSettings = estimatorSettings) 
+  model$param[[1]]$catFeatures <- 10
+  
+  estimator <- Estimator$new(modelType="ResNet",
+                             modelParameters = model$param[[1]],
+                             estimatorSettings = estimatorSettings)
+  
+  expect_equal(estimator$device, "meta")
+  
+  Sys.unsetenv("testDeepPLPDevice")
+  
+  })

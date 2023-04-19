@@ -34,7 +34,12 @@ Estimator <- R6::R6Class(
                           modelParameters,
                           estimatorSettings) {
       self$seed <- estimatorSettings$seed
-      self$device <- estimatorSettings$device
+      if (is.function(estimatorSettings$device)) {
+        device <- estimatorSettings$device()
+      } else {
+        device <- estimatorSettings$device
+      }
+      self$device <- device
       torch::torch_manual_seed(seed=self$seed)
       self$model <- do.call(modelType, modelParameters)
       self$modelParameters <- modelParameters

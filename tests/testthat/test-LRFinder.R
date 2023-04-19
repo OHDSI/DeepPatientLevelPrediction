@@ -3,7 +3,7 @@ test_that("LR scheduler that changes per batch works", {
   model <- ResNet(catFeatures = 10, numFeatures = 1,
                   sizeEmbedding = 32, sizeHidden = 64,
                   numLayers = 1, hiddenFactor = 1)
-  optimizer <- torchopt::optim_adamw(model$parameters, lr=1e-7)
+  optimizer <- torch::optim_adamw(model$parameters, lr=1e-7)
   
   scheduler <- lrPerBatch(optimizer,
                           startLR = 1e-7,

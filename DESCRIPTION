@@ -1,8 +1,8 @@
 Package: DeepPatientLevelPrediction
 Type: Package
 Title: Deep Learning For Patient Level Prediction Using Data In The OMOP Common Data Model
-Version: 1.1.3
-Date: 15-12-2022
+Version: 1.1.4
+Date: 18-04-2023
 Authors@R: c(
     person("Egill", "Fridgeirsson", email = "e.fridgeirsson@erasmusmc.nl", role = c("aut", "cre")),
     person("Jenna", "Reps", email = "jreps@its.jnj.com", role = c("aut")), 
@@ -24,8 +24,7 @@ Imports:
     ParallelLogger (>= 2.0.0),
     PatientLevelPrediction (>= 6.0.4),
     rlang,
-    torch (>= 0.9.0),
-    torchopt,
+    torch (>= 0.10.0),
     withr
 Suggests:
     devtools,

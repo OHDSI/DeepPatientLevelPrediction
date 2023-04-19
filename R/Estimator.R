@@ -26,7 +26,8 @@
 #' @param weightDecay what weight_decay to use
 #' @param batchSize batchSize to use
 #' @param epochs  how many epochs to train for
-#' @param device  what device to train on
+#' @param device  what device to train on, can be a string or a function to that evaluates
+#' to the device during runtime
 #' @param optimizer which optimizer to use
 #' @param scheduler which learning rate scheduler to use
 #' @param criterion loss function to use
@@ -41,7 +42,7 @@ setEstimator <- function(learningRate='auto',
                          batchSize = 512,
                          epochs = 30,
                          device='cpu',
-                         optimizer = torchopt::optim_adamw,
+                         optimizer = torch::optim_adamw,
                          scheduler = list(fun=torch::lr_reduce_on_plateau,
                                           params=list(patience=1)),
                          criterion = torch::nn_bce_with_logits_loss,
