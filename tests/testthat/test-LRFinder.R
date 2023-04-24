@@ -39,6 +39,28 @@ test_that("LR finder works", {
   
   expect_true(lr<=10.0)
   expect_true(lr>=3e-4)
+})
+
+test_that("LR finder works with device specified by a function", {
+  
+  deviceFun <- function(){
+    dev = "cpu"
+  }
+  lr <- lrFinder(dataset, modelType = ResNet, modelParams = list(catFeatures=dataset$numCatFeatures(),
+                                                                 numFeatures=dataset$numNumFeatures(),
+                                                                 sizeEmbedding=8,
+                                                                 sizeHidden=16,
+                                                                 numLayers=1,
+                                                                 hiddenFactor=1),
+                 estimatorSettings = setEstimator(batchSize=32,
+                                                  seed = 42,
+                                                  device = deviceFun),
+                 minLR = 3e-4,
+                 maxLR = 10.0,
+                 numLR = 20,
+                 divergenceThreshold = 1.1)
+  expect_true(lr<=10.0)
+  expect_true(lr>=3e-4)
   
   
 })

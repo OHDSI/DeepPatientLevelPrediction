@@ -75,7 +75,7 @@ lrFinder <- function(dataset, modelType, modelParams, estimatorSettings,
       optimizer$zero_grad()
       
       batch <- dataset[sample(batchIndex, estimatorSettings$batchSize)]
-      batch <- batchToDevice(batch, device=estimatorSettings$device)
+      batch <- batchToDevice(batch, device=device)
       
       output <- model(batch$batch)
       
