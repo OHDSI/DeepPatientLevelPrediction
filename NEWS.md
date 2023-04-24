@@ -1,3 +1,7 @@
+DeepPatientLevelPrediction 1.1.5
+======================
+  - Fix bug where device function was not working for LRFinder
+
 DeepPatientLevelPrediction 1.1.4
 ======================
  - Remove torchopt dependancy since adamw is now in torch
