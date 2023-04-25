@@ -1,3 +1,6 @@
+DeepPatientLevelPrediction 1.1.5.9000
+======================
+
 DeepPatientLevelPrediction 1.1.5
 ======================
   - Fix bug where device function was not working for LRFinder
