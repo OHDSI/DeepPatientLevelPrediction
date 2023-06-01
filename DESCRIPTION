@@ -24,7 +24,6 @@ Imports:
     ParallelLogger (>= 2.0.0),
     PatientLevelPrediction (>= 6.0.4),
     rlang,
-    torch (>= 0.10.0),
     withr
 Suggests:
     devtools,

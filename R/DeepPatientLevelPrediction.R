@@ -23,5 +23,6 @@
 #' @docType package
 #' @name DeepPatientLevelPrediction
 #' @importFrom dplyr %>%
+#' @importFrom reticulate r_to_py py_to_r
 #' @importFrom rlang .data
 NULL

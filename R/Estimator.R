@@ -42,10 +42,10 @@ setEstimator <- function(learningRate='auto',
                          batchSize = 512,
                          epochs = 30,
                          device='cpu',
-                         optimizer = torch::optim_adamw,
-                         scheduler = list(fun=torch::lr_reduce_on_plateau,
+                         optimizer = "optim_adamw",
+                         scheduler = list(fun="lr_reduce_on_plateau",
                                           params=list(patience=1)),
-                         criterion = torch::nn_bce_with_logits_loss,
+                         criterion = "nn_bce_with_logits_loss",
                          earlyStopping = list(useEarlyStopping=TRUE,
                                               params = list(patience=4)),
                          metric = "auc",
@@ -223,7 +223,7 @@ predictDeepEstimator <- function(plpModel,
   # get predictions
   prediction <- cohort
   if (is.character(plpModel$model)) {
-    model <- torch::torch_load(file.path(plpModel$model, "DeepEstimatorModel.pt"), device = "cpu")
+    model <- torch$load(file.path(plpModel$model, "DeepEstimatorModel.pt"), device = "cpu")
     estimator <- Estimator$new(
       modelType = plpModel$modelDesign$modelSettings$modelType,
       modelParameters = model$modelParameters,
@@ -264,7 +264,9 @@ gridCvDeep <- function(mappedData,
   paramSearch <- modelSettings$param
   gridSearchPredictons <- list()
   length(gridSearchPredictons) <- length(paramSearch)
-  dataset <- Dataset(mappedData$covariates, labels$outcomeCount)
+  path <- system.file("python", package = "DeepPatientLevelPrediction")
+  Dataset <- reticulate::import_from_path("Dataset", path = path)
+  dataset <- Dataset$Data(r_to_py(attributes(mappedData)$path), r_to_py(labels$outcomeCount))
   
   estimatorSettings <- modelSettings$estimatorSettings
   
@@ -275,7 +277,6 @@ gridCvDeep <- function(mappedData,
     ParallelLogger::logInfo(paste0("HyperParameters: "))
     ParallelLogger::logInfo(paste(names(paramSearch[[gridId]]), paramSearch[[gridId]], collapse = " | "))
     modelParams <- paramSearch[[gridId]][modelSettings$modelParamNames]
-    
     
     estimatorSettings <- fillEstimatorSettings(estimatorSettings, fitParams, 
                                                paramSearch[[gridId]])
