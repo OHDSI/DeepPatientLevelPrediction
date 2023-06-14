@@ -26,3 +26,10 @@
 #' @importFrom reticulate r_to_py py_to_r
 #' @importFrom rlang .data
 NULL
+
+.onLoad <- function(libname, pkgname) {
+  # use superassignment to update global reference 
+  torch <<- reticulate::import("torch", delay_load = TRUE)
+}
+
+

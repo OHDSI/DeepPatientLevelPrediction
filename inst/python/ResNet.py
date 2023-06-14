@@ -20,7 +20,7 @@ class ResNet(nn.Module):
                  dim_out=1,
                  concat_num=True):
         super(ResNet, self).__init__()
-
+        self.name = 'ResNet'
         self.embedding = nn.EmbeddingBag(
             num_embeddings=cat_features,
             embedding_dim=size_embedding,
@@ -79,7 +79,7 @@ class ResLayer(nn.Module):
                  residual_dropout=None):
         super(ResLayer, self).__init__()
 
-        self.norm = normalization
+        self.norm = normalization(size_hidden)
         self.linear0 = nn.Linear(size_hidden, res_hidden)
         self.linear1 = nn.Linear(res_hidden, size_hidden)
 
@@ -124,5 +124,6 @@ class NumericalEmbedding(nn.Module):
         if self.bias is not None:
             x = x + self.bias.unsqueeze(-1)
         return x
+
 
 

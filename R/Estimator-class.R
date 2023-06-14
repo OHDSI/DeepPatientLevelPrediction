@@ -49,17 +49,17 @@
 #'       self$l2Norm <- self$itemOrDefaults(estimatorSettings, "weightDecay", 1e-5)
 #'       self$batchSize <- self$itemOrDefaults(estimatorSettings, "batchSize", 1024)
 #'       self$prefix <- self$itemOrDefaults(estimatorSettings, "prefix", self$model$name)
-#'       
+#' 
 #'       self$previousEpochs <- self$itemOrDefaults(estimatorSettings, "previousEpochs", 0)
 #'       self$model$to(device = self$device)
-#'       
+#' 
 #'       self$optimizer <- estimatorSettings$optimizer(
 #'         params = self$model$parameters,
 #'         lr = self$learningRate,
 #'         weight_decay = self$l2Norm
 #'       )
 #'       self$criterion <- estimatorSettings$criterion()
-#'       
+#' 
 #'       if (!is.null(estimatorSettings$metric)) {
 #'         self$metric <- estimatorSettings$metric
 #'         if (is.character(self$metric)) {
@@ -72,32 +72,32 @@
 #'           }
 #'         }
 #'         if (!is.null(estimatorSettings$scheduler)) {
-#'           estimatorSettings$scheduler$params$mode <- self$metrix$mode 
+#'           estimatorSettings$scheduler$params$mode <- self$metrix$mode
 #'         }
 #'         if (!is.null(estimatorSettings$earlyStopping)) {
 #'           estimatorSettings$earlyStopping$params$mode <- self$metric$mode
 #'         }
 #'       }
-#'       
+#' 
 #'       if (!is.null(estimatorSettings$scheduler)) {
 #'         self$scheduler <- do.call(estimatorSettings$scheduler$fun,
 #'                                   c(self$optimizer, estimatorSettings$scheduler$params))
 #'       }
-#'       
+#' 
 #'       # gradient accumulation is useful when training large numbers where
 #'       # you can only fit few samples on the GPU in each batch.
 #'       self$gradAccumulationIter <- 1
-#'       
+#' 
 #'       if (!is.null(estimatorSettings$earlyStopping) && estimatorSettings$earlyStopping$useEarlyStopping) {
 #'         self$earlyStopper <- do.call(EarlyStopping$new, estimatorSettings$earlyStopping$params)
 #'       } else {
 #'         self$earlyStopper <- NULL
 #'       }
-#'       
+#' 
 #'       self$bestScore <- NULL
 #'       self$bestEpoch <- NULL
 #'     },
-#'     
+#' 
 #'     #' @description fits the estimator
 #'     #' @param dataset     a torch dataset to use for model fitting
 #'     #' @param testDataset a torch dataset to use for early stopping
@@ -105,10 +105,10 @@
 #'       allScores <- list()
 #'       batchIndex <- torch::torch_randperm(length(dataset)) + 1L
 #'       batchIndex <- split(batchIndex, ceiling(seq_along(batchIndex) / self$batchSize))
-#'       
+#' 
 #'       testBatchIndex <- 1:length(testDataset)
 #'       testBatchIndex <- split(testBatchIndex, ceiling(seq_along(testBatchIndex) / self$batchSize))
-#'       
+#' 
 #'       modelStateDict <- list()
 #'       epoch <- list()
 #'       times <- list()
@@ -117,13 +117,13 @@
 #'         startTime <- Sys.time()
 #'         trainLoss <- self$fitEpoch(dataset, batchIndex)
 #'         endTime <- Sys.time()
-#'         
+#' 
 #'         # predict on test data
 #'         scores <- self$score(testDataset, testBatchIndex)
 #'         delta <- endTime - startTime
 #'         currentEpoch <- epochI + self$previousEpochs
 #'         lr <- self$optimizer$param_groups[[1]]$lr
-#'         self$printProgress(scores, trainLoss, delta, currentEpoch)
+#'         # self$printProgress(scores, trainLoss, delta, currentEpoch)
 #'         self$scheduler$step(scores$metric)
 #'         allScores[[epochI]] <- scores
 #'         learnRates <- c(learnRates, lr)
@@ -150,7 +150,7 @@
 #'       self$finishFit(allScores, modelStateDict, epoch, learnRates)
 #'       invisible(self)
 #'     },
-#'     
+#' 
 #'     #' @description
 #'     #' fits estimator for one epoch (one round through the data)
 #'     #' @param dataset     torch dataset to use for fitting
@@ -166,7 +166,7 @@
 #'         out <- self$model(batch[[1]])
 #'         loss <- self$criterion(out, batch[[2]])
 #'         loss$backward()
-#'         
+#' 
 #'         self$optimizer$step()
 #'         trainLosses[ix] <- loss$detach()
 #'         utils::setTxtProgressBar(progressBar, ix / length(batchIndex))
@@ -175,7 +175,7 @@
 #'       close(progressBar)
 #'       trainLosses$mean()$item()
 #'     },
-#'     
+#' 
 #'     #' @description
 #'     #' calculates loss and auc after training for one epoch
 #'     #' @param dataset    The torch dataset to use to evaluate loss and auc
@@ -219,7 +219,7 @@
 #'       })
 #'       return(scores)
 #'     },
-#'     
+#' 
 #'     #' @description
 #'     #' operations that run when fitting is finished
 #'     #' @param scores          validation scores
@@ -233,10 +233,10 @@
 #'       else if (self$metric$mode=="min") {
 #'         bestEpochInd <- which.min(unlist(lapply(scores, function(x) x$metric)))
 #'       }
-#'       
+#' 
 #'       bestModelStateDict <- lapply(modelStateDict[[bestEpochInd]], function(x) x$to(device = self$device))
 #'       self$model$load_state_dict(bestModelStateDict)
-#'       
+#' 
 #'       bestEpoch <- epoch[[bestEpochInd]]
 #'       self$bestEpoch <- bestEpoch
 #'       self$bestScore <- list(
@@ -244,7 +244,7 @@
 #'         auc = scores[[bestEpochInd]]$auc
 #'       )
 #'       self$learnRateSchedule <- learnRates[1:bestEpochInd]
-#'       
+#' 
 #'       ParallelLogger::logInfo("Loaded best model (based on AUC) from epoch ", bestEpoch)
 #'       ParallelLogger::logInfo("ValLoss: ", self$bestScore$loss)
 #'       ParallelLogger::logInfo("valAUC: ", self$bestScore$auc)
@@ -253,7 +253,7 @@
 #'           ParallelLogger::logInfo(self$metric$name,": ", self$bestScore[[self$metric$name]])
 #'       }
 #'     },
-#'     
+#' 
 #'     #' @description Print out training progress per epoch
 #'     #' @param scores scores returned by `self$score`
 #'     #' @param trainLoss training loss
@@ -283,7 +283,7 @@
 #'       )
 #'       }
 #'     },
-#'     
+#' 
 #'     #' @description
 #'     #' Fits whole training set on a specific number of epochs
 #'     #' @param dataset torch dataset
@@ -303,7 +303,7 @@
 #'         self$fitEpoch(dataset, batchIndex)
 #'       }
 #'     },
-#'     
+#' 
 #'     #' @description
 #'     #' save model and those parameters needed to reconstruct it
 #'     #' @param path where to save the model
@@ -322,8 +322,8 @@
 #'       )
 #'       return(savePath)
 #'     },
-#'     
-#'     
+#' 
+#' 
 #'     #' @description
 #'     #' predicts and outputs the probabilities
 #'     #' @param dataset Torch dataset to create predictions for
@@ -349,7 +349,7 @@
 #'       })
 #'       return(predictions)
 #'     },
-#'     
+#' 
 #'     #' @description
 #'     #' predicts and outputs the class
 #'     #' @param   dataset A torch dataset to create predictions for
@@ -357,7 +357,7 @@
 #'     #' @return  The predicted class for the data in the dataset
 #'     predict = function(dataset, threshold = NULL) {
 #'       predictions <- self$predictProba(dataset)
-#'       
+#' 
 #'       if (is.null(threshold)) {
 #'         # use outcome rate
 #'         threshold <- dataset$target$sum()$item() / length(dataset)
@@ -365,7 +365,7 @@
 #'       predicted_class <- as.integer(predictions > threshold)
 #'       return(predicted_class)
 #'     },
-#'     
+#' 
 #'     #' @description
 #'     #' select item from list, and if it's null sets a default
 #'     #' @param list A list with items
@@ -441,7 +441,7 @@
 #' )
 #' 
 #' #' sends a batch of data to device
-#' #' @description 
+#' #' @description
 #' #' sends a batch of data to device
 #' #' assumes batch includes lists of tensors to arbitrary nested depths
 #' #' @param batch the batch to send, usually a list of torch tensors
