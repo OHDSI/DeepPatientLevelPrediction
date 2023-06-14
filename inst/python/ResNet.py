@@ -26,7 +26,7 @@ class ResNet(nn.Module):
             embedding_dim=size_embedding,
             padding_idx=0
         )
-        if num_features != 0 and concat_num:
+        if num_features != 0 and not concat_num:
             self.num_embedding = NumericalEmbedding(num_features, size_embedding)
         else:
             self.num_embedding = None
