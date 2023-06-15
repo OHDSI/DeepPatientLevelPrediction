@@ -292,7 +292,6 @@ gridCvDeep <- function(mappedData,
     ParallelLogger::logInfo(paste0("Max fold: ", max(fold)))
     modelParams$catFeatures <- dataset$get_cat_features()$shape[[1]]
     modelParams$numFeatures <- dataset$get_numerical_features()$shape[[1]]
-    browser()
     if (estimatorSettings$findLR) {
       model <- reticulate::import_from_path(modelSettings$modelType, path)
       names(modelParams) <- SqlRender::camelCaseToSnakeCase(names(modelParams))

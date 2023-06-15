@@ -5,7 +5,7 @@ from torch.optim.lr_scheduler import _LRScheduler
 from torch.utils.data import DataLoader, BatchSampler, RandomSampler
 from tqdm import tqdm
 
-from inst.python.Estimator import batch_to_device
+from Estimator import batch_to_device
 
 
 class ExponentialSchedulerPerBatch(_LRScheduler):
@@ -59,6 +59,7 @@ class LrFinder:
         losses = torch.empty(size=(self.num_lr,), dtype=torch.float)
         lrs = torch.empty(size=(self.num_lr,), dtype=torch.float)
         for i in tqdm(range(self.num_lr)):
+            self.optimizer.zero_grad()
             random_batch = random.sample(batch_index, 32)
             batch = dataset[random_batch]
             batch = batch_to_device(batch, self.device)
