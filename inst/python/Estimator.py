@@ -219,7 +219,7 @@ class Estimator:
         else:
             self.best_epoch = self.epochs
 
-        for epoch in range(self.best_epoch):
+        for epoch in tqdm(range(self.best_epoch)):
             self.optimizer.param_groups[0]['lr'] = learning_rates[epoch]
             self.fit_epoch(dataloader)
         return
@@ -246,7 +246,7 @@ class Estimator:
         with torch.no_grad():
             predictions = list()
             self.model.eval()
-            for batch in dataloader:
+            for batch in tqdm(dataloader):
                 batch = batch_to_device(batch, device=self.device)
                 pred = self.model(batch[0])
                 predictions.append(torch.sigmoid(pred))
