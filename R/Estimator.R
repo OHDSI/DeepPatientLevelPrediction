@@ -138,6 +138,7 @@ fitEstimator <- function(trainData,
                 dplyr::collect ()
               %>% dplyr::pull())
   covariateRef <- covariateRef %>%
+    dplyr::arrange(columnId) %>%
     dplyr::collect() %>%
     dplyr::mutate(
       included = incs,
@@ -271,12 +272,12 @@ gridCvDeep <- function(mappedData,
   
   estimatorSettings <- modelSettings$estimatorSettings
   if (is.function(estimatorSettings$device)) {
-    estimatorSettings$device = estimatorSettings$device()
-  } else {estimatorSettings$device = estimatorSettings$device}
+    estimatorSettings$device <- estimatorSettings$device()
+  } else {estimatorSettings$device <- estimatorSettings$device}
   
   fitParams <- names(paramSearch[[1]])[grepl("^estimator", names(paramSearch[[1]]))]
   
-  for (gridId in 1:length(paramSearch)) {
+  for (gridId in seq_along(paramSearch)) {
     ParallelLogger::logInfo(paste0("Running hyperparameter combination no ", gridId))
     ParallelLogger::logInfo(paste0("HyperParameters: "))
     ParallelLogger::logInfo(paste(names(paramSearch[[gridId]]), paramSearch[[gridId]], collapse = " | "))
@@ -286,7 +287,7 @@ gridCvDeep <- function(mappedData,
                                                paramSearch[[gridId]])
 
     # initiate prediction
-    prediction <- c()
+    prediction <- NULL
     
     fold <- labels$index
     ParallelLogger::logInfo(paste0("Max fold: ", max(fold)))
