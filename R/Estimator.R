@@ -269,7 +269,7 @@ gridCvDeep <- function(mappedData,
   path <- system.file("python", package = "DeepPatientLevelPrediction")
   Dataset <- reticulate::import_from_path("Dataset", path = path)
   dataset <- Dataset$Data(r_to_py(attributes(mappedData)$path), r_to_py(labels$outcomeCount))
-  
+  browser()
   estimatorSettings <- modelSettings$estimatorSettings
   if (is.function(estimatorSettings$device)) {
     estimatorSettings$device <- estimatorSettings$device()
@@ -316,6 +316,7 @@ gridCvDeep <- function(mappedData,
       model <- reticulate::import_from_path(modelSettings$modelType, path)
       names(modelParams) <- SqlRender::camelCaseToSnakeCase(names(modelParams))
       names(estimatorSettings) <- SqlRender::camelCaseToSnakeCase(names(estimatorSettings))
+    
       estimator <- Estimator$Estimator(model=model[modelSettings$modelType],
                                        model_parameters=modelParams,
                                        estimator_settings=estimatorSettings)
