@@ -202,7 +202,7 @@ class ClassToken(nn.Module):
 
     def expand(self, dims):
         new_dims = [1] * (len(dims) - 1)
-        return self.weight.view([new_dims, -1]).expand([dims, -1])
+        return self.weight.view(new_dims + [-1]).expand(dims +[-1])
 
     def forward(self, x):
         return torch.cat([x, self.expand([x.shape[0], 1])], dim=1)
