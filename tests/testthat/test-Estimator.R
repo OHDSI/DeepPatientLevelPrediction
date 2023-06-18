@@ -138,7 +138,7 @@ modelSettings <- setResNet(
 )
 
 sink(nullfile())
-results <- fitEstimator(trainData$Train, modelSettings = modelSettings, analysisId = 1)
+results <- fitEstimator(trainData$Train, modelSettings = modelSettings, analysisId = 1, analysisPath = testLoc)
 sink()
 
 test_that("Estimator fit function works", {
@@ -149,7 +149,7 @@ test_that("Estimator fit function works", {
   expect_equal(attr(results, "saveType"), "file")
   fakeTrainData <- trainData
   fakeTrainData$train$covariateData <- list(fakeCovData <- c("Fake"))
-  expect_error(fitEstimator(fakeTrainData$train, modelSettings, analysisId = 1))
+  expect_error(fitEstimator(fakeTrainData$train, modelSettings, analysisId = 1, analysisPath = testLoc))
 })
 
 test_that("predictDeepEstimator works", {
