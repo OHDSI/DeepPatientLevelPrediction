@@ -1,3 +1,7 @@
+DeepPatientLevelPrediction 1.1.6
+======================
+  - Caching and resuming of hyperparameter iterations
+
 DeepPatientLevelPrediction 1.1.5
 ======================
   - Fix bug where device function was not working for LRFinder

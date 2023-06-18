@@ -2,6 +2,7 @@
 
 export(Dataset)
 export(Estimator)
+export(TrainingCache)
 export(fitEstimator)
 export(gridCvDeep)
 export(lrFinder)

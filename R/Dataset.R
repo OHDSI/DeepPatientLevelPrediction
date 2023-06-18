@@ -23,8 +23,8 @@ Dataset <- torch::dataset(
     if (!is.null(labels)) {
       self$target <- torch::torch_tensor(labels)
     } else {
-      self$target <- torch::torch_tensor(rep(0, data %>% dplyr::distinct(rowId)
-        %>% dplyr::collect() %>% nrow()))
+      self$target <- torch::torch_tensor(rep(0, data %>% dplyr::summarize(m=max(rowId)) %>%
+                                               dplyr::collect() %>% dplyr::pull()))
     }
     # Weight to add in loss function to positive class
     self$posWeight <- (self$target == 0)$sum() / self$target$sum()
