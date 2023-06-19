@@ -18,7 +18,7 @@ class Data(Dataset):
         """
         start = time.time()
         data = pl.scan_ipc(pathlib.Path(data).joinpath('covariates/*.arrow'))
-        observations = data.select(pl.col('rowId').n_unique()).collect()[0, 0]
+        observations = data.select(pl.col('rowId').max()).collect()[0, 0]
         # detect features are numeric
         if not numerical_features:
             self.numerical_features = data.groupby(by='columnId') \
@@ -40,7 +40,7 @@ class Data(Dataset):
                                .is_in(self.numerical_features)) \
             .sort(by='columnId').with_row_count('newColumnId'). \
             with_columns(pl.col('newColumnId').first().over('columnId')
-                         .rank(method="dense") - 1) \
+                         .rank(method="dense")) \
             .select(pl.col('rowId'), pl.col('newColumnId').alias('columnId')).sort('rowId') \
             .with_columns(pl.col('rowId') - 1).collect()
         cat_tensor = torch.as_tensor(data_cat.to_numpy())
@@ -91,6 +91,6 @@ class Data(Dataset):
                      "num": None}
         if batch["cat"].dim() == 1:
             batch["cat"] = batch["cat"].unsqueeze(0)
-        if batch["num"].dim() == 1:
+        if batch["num"] is not None and batch["num"].dim() == 1:
             batch["num"] = batch["num"].unsqueeze(0)
         return [batch, self.target[item].squeeze()]

@@ -135,8 +135,8 @@ fitEstimator <- function(trainData,
   hyperSummary <- do.call(rbind, lapply(cvResult$paramGridSearch, function(x) x$hyperSummary))
   prediction <- cvResult$prediction
   incs <- rep(1, covariateRef %>% dplyr::tally() %>% 
-                dplyr::collect ()
-              %>% dplyr::pull())
+                dplyr::collect() %>%
+                as.integer())
   covariateRef <- covariateRef %>%
     dplyr::arrange(columnId) %>%
     dplyr::collect() %>%
@@ -269,7 +269,6 @@ gridCvDeep <- function(mappedData,
   path <- system.file("python", package = "DeepPatientLevelPrediction")
   Dataset <- reticulate::import_from_path("Dataset", path = path)
   dataset <- Dataset$Data(r_to_py(attributes(mappedData)$path), r_to_py(labels$outcomeCount))
-  browser()
   estimatorSettings <- modelSettings$estimatorSettings
   if (is.function(estimatorSettings$device)) {
     estimatorSettings$device <- estimatorSettings$device()

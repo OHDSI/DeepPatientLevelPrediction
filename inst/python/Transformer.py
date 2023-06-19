@@ -35,7 +35,7 @@ class Transformer(nn.Module):
                  att_norm=nn.LayerNorm):
         super(Transformer, self).__init__()
         self.name = "Transformer"
-        self.categorical_embedding = nn.Embedding(cat_features, dim_token)
+        self.categorical_embedding = nn.Embedding(cat_features + 1, dim_token, padding_idx=0)
 
         self.numerical_embedding = NumericalEmbedding(num_features, dim_token)
         self.class_token = ClassToken(dim_token)
@@ -56,6 +56,7 @@ class Transformer(nn.Module):
             })
             if layer_idx != 0:
                 layer["attention_norm"] = att_norm(dim_token)
+            self.layers.append(layer)
 
         self.head = Head(dim_token,
                          bias=True,
@@ -85,7 +86,7 @@ class Transformer(nn.Module):
         for i, layer in enumerate(self.layers):
             x_residual = self.start_residual(layer, "attention", x)
 
-            if i == len(self.layers):
+            if i == len(self.layers)-1:
                 dims = x_residual.shape
                 x_residual = layer["attention"](
                     x_residual[:, -1].view([dims[0], 1, dims[2]]).transpose(0, 1),
@@ -102,7 +103,7 @@ class Transformer(nn.Module):
                     x_residual.transpose(0, 1),
                     x_residual.transpose(0, 1),
                     mask
-                )[1]
+                )[0]
             x = self.end_residual(layer, "attention", x, x_residual.transpose(0, 1))
 
             x_residual = self.start_residual(layer, "ffn", x)
@@ -121,7 +122,7 @@ class Transformer(nn.Module):
 
     @staticmethod
     def end_residual(layer, stage, x, x_residual):
-        x_residual = layer[stage + "res_dropout"](x_residual)
+        x_residual = layer[f"{stage}_res_dropout"](x_residual)
         return x + x_residual
 
 

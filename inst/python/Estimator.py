@@ -219,7 +219,7 @@ class Estimator:
         else:
             self.best_epoch = self.epochs
 
-        for epoch in tqdm(range(self.best_epoch)):
+        for epoch in range(self.best_epoch):
             self.optimizer.param_groups[0]['lr'] = learning_rates[epoch]
             self.fit_epoch(dataloader)
         return
