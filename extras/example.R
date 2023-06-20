@@ -15,17 +15,18 @@ library(DeepPatientLevelPrediction)
 plpData <- loadPlpData('~/cohorts/dementia/')
 
 fix64bit <- function(plpData) {
-  plpData$covariateData$covariateRef <- plpData$covariateData$covariateRef %>% 
+  plpData$covariateData$covariateRef <- plpData$covariateData$covariateRef |>
     dplyr::mutate(covariateId=bit64::as.integer64(covariateId))
-  plpData$covariateData$covariates <- plpData$covariateData$covariates %>%
+  plpData$covariateData$covariates <- plpData$covariateData$covariates |>
     dplyr::mutate(rowId = as.integer(rowId),
                   covariateId = bit64::as.integer64(covariateId))
-  plpData$cohorts <- plpData$cohorts %>% dplyr::mutate(rowId=as.integer(rowId))
-  plpData$outcomes <- plpData$outcomes %>% dplyr::mutate(rowId = as.integer(rowId))
+  plpData$cohorts <- plpData$cohorts |> dplyr::mutate(rowId=as.integer(rowId))
+  plpData$outcomes <- plpData$outcomes |> dplyr::mutate(rowId = as.integer(rowId))
   
   return(plpData)
 }
 
+plpData <- fix64bit(plpData)
 #downsample for speed
 # plpData$cohorts <- plpData$cohorts[sample.int(nrow(plpData$cohorts), 1e5),]
 
@@ -35,7 +36,7 @@ populationSet <- PatientLevelPrediction::createStudyPopulationSettings(
   riskWindowEnd = 365*5)
 
 
-modelSettings <- setResNet(numLayers = 4L, 
+modelSettings <- setResNet(numLayers = c(2L,4L), 
                            sizeHidden = 256L, 
                            hiddenFactor = 2L,
                            residualDropout = 0.2, 
@@ -45,10 +46,10 @@ modelSettings <- setResNet(numLayers = 4L,
                                                             weightDecay = 1e-06,
                                                             device='cuda:0',
                                                             batchSize=128L,
-                                                            epochs=3L,
+                                                            epochs=1L,
                                                             seed=42),
                            hyperParamSearch = 'random',
-                           randomSample = 1)
+                           randomSample = 2)
 
 # modelSettings <- setTransformer(numBlocks=1, dimToken = 33, dimOut = 1, numHeads = 3,
 #                                 attDropout = 0.2, ffnDropout = 0.2, resDropout = 0,

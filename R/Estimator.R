@@ -275,14 +275,14 @@ gridCvDeep <- function(mappedData,
   } else {estimatorSettings$device <- estimatorSettings$device}
   
   fitParams <- names(paramSearch[[1]])[grepl("^estimator", names(paramSearch[[1]]))]
-  
+  findLR <- estimatorSettings$findLR
   for (gridId in seq_along(paramSearch)) {
     ParallelLogger::logInfo(paste0("Running hyperparameter combination no ", gridId))
     ParallelLogger::logInfo(paste0("HyperParameters: "))
     ParallelLogger::logInfo(paste(names(paramSearch[[gridId]]), paramSearch[[gridId]], collapse = " | "))
-    modelParams <- paramSearch[[gridId]][modelSettings$modelParamNames]
+    currentModelParams <- paramSearch[[gridId]][modelSettings$modelParamNames]
     
-    estimatorSettings <- fillEstimatorSettings(estimatorSettings, fitParams, 
+    currentEstimatorSettings <- fillEstimatorSettings(estimatorSettings, fitParams, 
                                                paramSearch[[gridId]])
 
     # initiate prediction
@@ -290,19 +290,19 @@ gridCvDeep <- function(mappedData,
     
     fold <- labels$index
     ParallelLogger::logInfo(paste0("Max fold: ", max(fold)))
-    modelParams$catFeatures <- dataset$get_cat_features()$shape[[1]]
-    modelParams$numFeatures <- dataset$get_numerical_features()$shape[[1]]
+    currentModelParams$catFeatures <- dataset$get_cat_features()$shape[[1]]
+    currentModelParams$numFeatures <- dataset$get_numerical_features()$shape[[1]]
     if (estimatorSettings$findLR) {
       model <- reticulate::import_from_path(modelSettings$modelType, path)
-      names(modelParams) <- SqlRender::camelCaseToSnakeCase(names(modelParams))
-      names(estimatorSettings) <- SqlRender::camelCaseToSnakeCase(names(estimatorSettings))
+      names(currentModelParams) <- SqlRender::camelCaseToSnakeCase(names(currentModelParams))
+      names(currentEstimatorSettings) <- SqlRender::camelCaseToSnakeCase(names(currentEstimatorSettings))
       LrFinderClass <- reticulate::import_from_path('LrFinder', path)$LrFinder
       LrFinder <- LrFinderClass(model = model[modelSettings$modelType],
-                                model_parameters = modelParams,
-                                estimator_settings =estimatorSettings)
+                                model_parameters = currentModelParams,
+                                estimator_settings = currentEstimatorSettings)
       lr <- LrFinder$get_lr(dataset)
       ParallelLogger::logInfo(paste0("Auto learning rate selected as: ", lr))
-      estimatorSettings$learningRate <- lr
+      currentEstimatorSettings$learningRate <- lr
     }
     
     
@@ -313,12 +313,12 @@ gridCvDeep <- function(mappedData,
       testDataset <- torch$utils$data$Subset(dataset, indices = as.integer(which(fold == i) -1)) # -1 for python 0-based indexing
       Estimator <- reticulate::import_from_path("Estimator", path=path)
       model <- reticulate::import_from_path(modelSettings$modelType, path)
-      names(modelParams) <- SqlRender::camelCaseToSnakeCase(names(modelParams))
-      names(estimatorSettings) <- SqlRender::camelCaseToSnakeCase(names(estimatorSettings))
+      names(currentModelParams) <- SqlRender::camelCaseToSnakeCase(names(currentModelParams))
+      names(currentEstimatorSettings) <- SqlRender::camelCaseToSnakeCase(names(currentEstimatorSettings))
     
       estimator <- Estimator$Estimator(model=model[modelSettings$modelType],
-                                       model_parameters=modelParams,
-                                       estimator_settings=estimatorSettings)
+                                       model_parameters=currentModelParams,
+                                       estimator_settings=currentEstimatorSettings)
       estimator$fit(
         trainDataset,
         testDataset
@@ -374,6 +374,7 @@ gridCvDeep <- function(mappedData,
   
   estimatorSettings <- fillEstimatorSettings(estimatorSettings, fitParams,
                                              finalParam)
+  estimatorSettings$learningRate <- finalParam$learnSchedule$LRs[[1]]
   model <- reticulate::import_from_path(modelSettings$modelType, path)
   names(modelParams) <- SqlRender::camelCaseToSnakeCase(names(modelParams))
   names(estimatorSettings) <- SqlRender::camelCaseToSnakeCase(names(estimatorSettings))
