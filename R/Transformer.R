@@ -91,7 +91,7 @@ setTransformer <- function(numBlocks = 3, dimToken = 96, dimOut = 1,
     ))
   } else {
     if (!is.null(dimHiddenRatio)) {
-      dimHidden <- round(dimToken*dimHiddenRatio, digits = 0)
+      dimHidden <- as.integer(round(dimToken*dimHiddenRatio, digits = 0))
     }
   }
 
