@@ -91,7 +91,7 @@ setTransformer <- function(numBlocks = 3, dimToken = 96, dimOut = 1,
     ))
   } else {
     if (!is.null(dimHiddenRatio)) {
-      dimHidden <- round(dimToken*dimHiddenRatio, digits = 0)
+      dimHidden <- dimHiddenRatio
     }
   }
   
@@ -110,6 +110,12 @@ setTransformer <- function(numBlocks = 3, dimToken = 96, dimOut = 1,
   
   param <- PatientLevelPrediction::listCartesian(paramGrid)
 
+  if (!is.null(dimHiddenRatio)) {
+    for (i in seq_along(param)) {
+      param[[i]]$dimHidden <- round(param[[i]]$dimToken*param[[i]]$dimHidden, digits = 0)
+    }
+  }
+  
   if (hyperParamSearch == "random" && randomSample>length(param)) {
     stop(paste("\n Chosen amount of randomSamples is higher than the amount of possible hyperparameter combinations.", 
                "\n randomSample:", randomSample,"\n Possible hyperparameter combinations:", length(param),
