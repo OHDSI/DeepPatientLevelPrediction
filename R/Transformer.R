@@ -111,9 +111,10 @@ setTransformer <- function(numBlocks = 3, dimToken = 96, dimOut = 1,
   param <- PatientLevelPrediction::listCartesian(paramGrid)
 
   if (!is.null(dimHiddenRatio)) {
-    for (i in seq_along(param)) {
-      param[[i]]$dimHidden <- round(param[[i]]$dimToken*param[[i]]$dimHidden, digits = 0)
-    }
+    param <- lapply(param, function(x) {
+      x$dimHidden <- round(x$dimToken*x$dimHidden, digits = 0)
+      return(x)
+    })
   }
   
   if (hyperParamSearch == "random" && randomSample>length(param)) {
