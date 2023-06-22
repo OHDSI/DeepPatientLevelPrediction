@@ -1,5 +1,10 @@
-DeepPatientLevelPrediction 1.1.5.9000
+DeepPatientLevelPrediction 1.1.6.9000
 ======================
+
+
+DeepPatientLevelPrediction 1.1.6
+======================
+  - Caching and resuming of hyperparameter iterations
 
 DeepPatientLevelPrediction 1.1.5
 ======================

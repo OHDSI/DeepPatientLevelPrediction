@@ -97,12 +97,14 @@ setEstimator <- function(learningRate='auto',
 #' @param trainData      the data to use
 #' @param modelSettings  modelSettings object
 #' @param analysisId     Id of the analysis
+#' @param analysisPath   Path of the analysis
 #' @param ...            Extra inputs
 #'
 #' @export
 fitEstimator <- function(trainData,
                          modelSettings,
                          analysisId,
+                         analysisPath,
                          ...) {
   start <- Sys.time()
   
@@ -128,7 +130,8 @@ fitEstimator <- function(trainData,
       mappedData = mappedCovariateData,
       labels = trainData$labels,
       modelSettings = modelSettings,
-      modelLocation = outLoc
+      modelLocation = outLoc,
+      analysisPath = analysisPath
     )
   )
   
@@ -253,22 +256,34 @@ predictDeepEstimator <- function(plpModel,
 #' @param labels        Dataframe with the outcomes
 #' @param modelSettings      Settings of the model
 #' @param modelLocation Where to save the model
+#' @param analysisPath  Path of the analysis
 #'
 #' @export
 gridCvDeep <- function(mappedData,
                        labels,
                        modelSettings,
-                       modelLocation) {
+                       modelLocation,
+                       analysisPath) {
   ParallelLogger::logInfo(paste0("Running hyperparameter search for ", modelSettings$modelType, " model"))
   
   ###########################################################################
   
   paramSearch <- modelSettings$param
-  gridSearchPredictons <- list()
-  length(gridSearchPredictons) <- length(paramSearch)
+  trainCache <- TrainingCache$new(analysisPath)
+  
+  if (trainCache$isParamGridIdentical(paramSearch)) {
+    gridSearchPredictons <- trainCache$getGridSearchPredictions()
+  } else {
+    gridSearchPredictons <- list()
+    length(gridSearchPredictons) <- length(paramSearch)
+    trainCache$saveGridSearchPredictions(gridSearchPredictons)
+    trainCache$saveModelParams(paramSearch)
+  }
+  
   path <- system.file("python", package = "DeepPatientLevelPrediction")
   Dataset <- reticulate::import_from_path("Dataset", path = path)
   dataset <- Dataset$Data(r_to_py(attributes(mappedData)$path), r_to_py(labels$outcomeCount))
+  
   estimatorSettings <- modelSettings$estimatorSettings
   if (is.function(estimatorSettings$device)) {
     estimatorSettings$device <- estimatorSettings$device()
@@ -276,7 +291,7 @@ gridCvDeep <- function(mappedData,
   
   fitParams <- names(paramSearch[[1]])[grepl("^estimator", names(paramSearch[[1]]))]
   findLR <- estimatorSettings$findLR
-  for (gridId in seq_along(paramSearch)) {
+  for (gridId in trainCache$getLastGridSearchIndex():length(paramSearch)) {
     ParallelLogger::logInfo(paste0("Running hyperparameter combination no ", gridId))
     ParallelLogger::logInfo(paste0("HyperParameters: "))
     ParallelLogger::logInfo(paste(names(paramSearch[[gridId]]), paramSearch[[gridId]], collapse = " | "))
@@ -346,7 +361,10 @@ gridCvDeep <- function(mappedData,
       prediction = prediction,
       param = paramSearch[[gridId]]
     )
+
+    trainCache$saveGridSearchPredictions(gridSearchPredictons)
   }
+  
   # get best para (this could be modified to enable any metric instead of AUC, just need metric input in function)
   paramGridSearch <- lapply(gridSearchPredictons, function(x) {
     do.call(PatientLevelPrediction::computeGridPerformance, x)

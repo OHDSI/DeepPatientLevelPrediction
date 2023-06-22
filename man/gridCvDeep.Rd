@@ -4,7 +4,7 @@
 \alias{gridCvDeep}
 \title{gridCvDeep}
 \usage{
-gridCvDeep(mappedData, labels, modelSettings, modelLocation)
+gridCvDeep(mappedData, labels, modelSettings, modelLocation, analysisPath)
 }
 \arguments{
 \item{mappedData}{Mapped data with covariates}
@@ -14,6 +14,8 @@ gridCvDeep(mappedData, labels, modelSettings, modelLocation)
 \item{modelSettings}{Settings of the model}
 
 \item{modelLocation}{Where to save the model}
+
+\item{analysisPath}{Path of the analysis}
 }
 \description{
 Performs grid search for a deep learning estimator

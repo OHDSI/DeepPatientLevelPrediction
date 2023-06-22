@@ -35,7 +35,6 @@ populationSet <- PatientLevelPrediction::createStudyPopulationSettings(
   riskWindowStart = 1, 
   riskWindowEnd = 365*5)
 
-
 modelSettings <- setResNet(numLayers = c(2L,4L), 
                            sizeHidden = 256L, 
                            hiddenFactor = 2L,

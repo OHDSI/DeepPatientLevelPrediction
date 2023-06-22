@@ -4,7 +4,7 @@
 \alias{fitEstimator}
 \title{fitEstimator}
 \usage{
-fitEstimator(trainData, modelSettings, analysisId, ...)
+fitEstimator(trainData, modelSettings, analysisId, analysisPath, ...)
 }
 \arguments{
 \item{trainData}{the data to use}
@@ -12,6 +12,8 @@ fitEstimator(trainData, modelSettings, analysisId, ...)
 \item{modelSettings}{modelSettings object}
 
 \item{analysisId}{Id of the analysis}
+
+\item{analysisPath}{Path of the analysis}
 
 \item{...}{Extra inputs}
 }
