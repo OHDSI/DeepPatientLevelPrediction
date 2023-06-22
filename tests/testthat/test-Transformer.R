@@ -90,3 +90,17 @@ test_that("Errors are produced by settings function", {
   
   expect_error(setTransformer(randomSample = randomSample))
 })
+
+test_that("dimHidden ratio works as expected", {
+  randomSample <- 4
+  dimToken <- c(64, 128, 256, 512)
+  dimHiddenRatio <- 2
+  modelSettings <- setTransformer(dimToken = dimToken,
+                                  dimHiddenRatio = dimHiddenRatio,
+                                  dimHidden = NULL,
+                                  randomSample = randomSample)
+  dimHidden <- unlist(lapply(modelSettings$param, function(x) x$dimHidden))
+  tokens <-   unlist(lapply(modelSettings$param, function(x) x$dimToken))
+  expect_true(all(dimHidden == dimHiddenRatio * tokens))
+
+})

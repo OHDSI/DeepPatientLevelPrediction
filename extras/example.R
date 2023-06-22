@@ -16,11 +16,9 @@ populationSet <- PatientLevelPrediction::createStudyPopulationSettings(
   riskWindowEnd = 365)
 
  
-modelSettings <- setResNet(numLayers = 2, sizeHidden = 64, hiddenFactor = 1,
-                          residualDropout = 0, hiddenDropout = 0.2, normalization = 'BatchNorm',
-                          activation = 'RelU', sizeEmbedding = 512, weightDecay = 1e-6,
-                          learningRate = 3e-4, seed = 42, hyperParamSearch = 'random',
-                          randomSample = 1, device = 'cuda:0',batchSize = 32,epochs = 10)
+modelSettings <- setDefaultResNet(estimatorSettings = setEstimator(epochs=1L,
+                                                                   device='cuda:0',
+                                                                   batchSize=128L))
 
 # modelSettings <- setTransformer(numBlocks=1, dimToken = 33, dimOut = 1, numHeads = 3,
 #                                 attDropout = 0.2, ffnDropout = 0.2, resDropout = 0,
