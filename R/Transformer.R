@@ -182,9 +182,10 @@ Transformer <- torch::nn_module(
     )
   },
   forward = function(x) {
-    mask <- torch::torch_where(x$cat == 0, TRUE, FALSE)
+    mask <- torch::torch_where(x$cat[, , 1] == 0, TRUE, FALSE)
     input <- x
-    cat <- self$Categoricalembedding(x$cat)
+    cat <- x$cat
+    # cat <- self$Categoricalembedding(x$cat)
     if (!is.null(input$num)) {
       num <- self$numericalEmbedding(input$num)
       x <- torch::torch_cat(list(cat, num), dim = 2L)

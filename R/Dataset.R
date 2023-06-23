@@ -18,7 +18,7 @@ Dataset <- torch::dataset(
     } else {
       self$numericalIndex <- NULL
     }
-
+    self$data <- data
     # add labels if training (make 0 vector for prediction)
     if (!is.null(labels)) {
       self$target <- torch::torch_tensor(labels)
@@ -50,9 +50,12 @@ Dataset <- torch::dataset(
     # because of subjects without cat features, I need to create a list with all zeroes and then insert
     # my tensorList. That way I can still index the dataset correctly.
     totalList <- as.list(integer(length(self$target)))
+    totalList <- lapply(totalList, function(x) torch::torch_tensor(x))
     totalList[unique(dataCat$rowId)] <- tensorList
     self$lengths <- lengths
     self$cat <- torch::nn_utils_rnn_pad_sequence(totalList, batch_first = T)
+    
+    self$createEmbeddings()
     delta <- Sys.time() - start
     ParallelLogger::logInfo("Data conversion for dataset took ", signif(delta, 3), " ", attr(delta, "units"))
     if (sum(numericalIndex) == 0) {
@@ -77,6 +80,43 @@ Dataset <- torch::dataset(
     return(
       self$numericalIndex
     )
+  },
+  createEmbeddings = function() {
+    
+    lab <- readr::read_tsv("D:/git/omop-poincare/output/tf_proj_lab.tsv", col_names = FALSE)
+    vec <- readr::read_tsv("D:/git/omop-poincare/output/tf_proj_vec.tsv", col_names = FALSE)
+    colnames(lab) <- c("covariateId")
+    colnames(vec) <- 1:ncol(vec)
+    
+    embedding <- dplyr::bind_cols(lab, vec)
+    embedding <- embedding %>%
+      dplyr::mutate(covariateId=paste0(covariateId,999)) %>%
+      dplyr::mutate(covariateId = bit64::as.integer64(covariateId))
+    
+    embedding <- self$data %>%
+      dplyr::select(-rowId) %>%
+      dplyr::distinct() %>%
+      dplyr::inner_join(embedding, by = "covariateId") %>%
+      dplyr::select(columnId, colnames(embedding)[-1]) %>%
+      dplyr::arrange(columnId) %>%
+      dplyr::collect()
+    
+    weights <- torch::torch_tensor(as.matrix(embedding[, -1]))
+    weights <- torch::torch_cat(tensors = list(torch::torch_zeros(c(1, weights$shape[2])),
+                                               weights), dim = 1L)
+    
+    embedding_sequence <- torch::nnf_embedding(input=self$cat + 1L, weight = weights,
+                                               padding_idx = 1L)
+    
+    self$cat <- embedding_sequence
+    # join with self$data on  covariateId 
+    # select columnId and embedding
+    
+    # create custom nn.Embedding in torch
+    # intialize with embeddings you have
+    
+    # use embedding layer to convert sequences of columnIds to sequences of embeddings
+    # dimension patients X embedding_size X sequence_length
   },
   numCatFeatures = function() {
     return(
