@@ -22,7 +22,7 @@ class ResNet(nn.Module):
         super(ResNet, self).__init__()
         self.name = 'ResNet'
         self.embedding = nn.EmbeddingBag(
-            num_embeddings=cat_features,
+            num_embeddings=cat_features + 1,
             embedding_dim=size_embedding,
             padding_idx=0
         )

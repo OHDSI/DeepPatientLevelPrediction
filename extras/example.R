@@ -11,8 +11,7 @@ library(DeepPatientLevelPrediction)
 #   n = sampleSize
 # )
 #
-
-plpData <- loadPlpData('~/cohorts/dementia/')
+plpData <- loadPlpData('~/cohorts/ComparisonStudy/DementiaResults/Dementia/')
 
 fix64bit <- function(plpData) {
   plpData$covariateData$covariateRef <- plpData$covariateData$covariateRef |>
@@ -30,43 +29,55 @@ plpData <- fix64bit(plpData)
 #downsample for speed
 # plpData$cohorts <- plpData$cohorts[sample.int(nrow(plpData$cohorts), 1e5),]
 
+
 populationSet <- PatientLevelPrediction::createStudyPopulationSettings(
   requireTimeAtRisk = F, 
   riskWindowStart = 1, 
   riskWindowEnd = 365*5)
 
-modelSettings <- setResNet(numLayers = c(2L,4L), 
-                           sizeHidden = 256L, 
-                           hiddenFactor = 2L,
-                           residualDropout = 0.2, 
-                           hiddenDropout = 0.2, 
-                           sizeEmbedding = 128L, 
-                           estimatorSettings = setEstimator(learningRate= "auto",
-                                                            weightDecay = 1e-06,
-                                                            device='cuda:0',
-                                                            batchSize=128L,
-                                                            epochs=1L,
-                                                            seed=42),
-                           hyperParamSearch = 'random',
-                           randomSample = 2)
+# 
+# modelSettings <- setDefaultTransformer(estimatorSettings = setEstimator(
+#   learningRate = "auto",
+#   batchSize=64L,
+#   device="cuda:0",
+#   epochs = 10L
+# ))
 
-# modelSettings <- setTransformer(numBlocks=1, dimToken = 33, dimOut = 1, numHeads = 3,
-#                                 attDropout = 0.2, ffnDropout = 0.2, resDropout = 0,
-#                                 dimHidden = 8, batchSize = 32, hyperParamSearch = 'random',
-#                                 weightDecay = 1e-6, learningRate = 3e-4, epochs = 10,
-#                                 device = 'cuda:0', randomSamples = 1, seed = 42)
+modelSettings <- setDefaultResNet(estimatorSettings = setEstimator(
+  learningRate = "auto",
+  weightDecay = 1e-06,
+  device="cuda:0",
+  batchSize=128L,
+  epochs=50L,
+  seed=42
+))
+
+modelSettings <- setResNet(numLayers = c(1L, 2L),
+                           sizeHidden = 72L,
+                           hiddenFactor = 1L,
+                           residualDropout = 0.0,
+                           hiddenDropout = 0.0,
+                           sizeEmbedding = 64L,
+                           estimatorSettings = setEstimator(
+                             learningRate = 3e-4,
+                             batchSize = 128L,
+                             epochs = 10L,
+                             device = "cpu",
+                             seed = 42
+                           ),
+                           randomSample = 2)
 
 res2 <- PatientLevelPrediction::runPlp(
   plpData = plpData,
-  outcomeId = 2,
+  outcomeId = unique(plpData$outcomes$outcomeId),
   modelSettings = modelSettings,
   analysisId = 'Test',
   analysisName = 'Testing DeepPlp',
   populationSettings = populationSet,
-  splitSettings = createDefaultSplitSetting(),
+  splitSettings = createDefaultSplitSetting(splitSeed = 123),
   sampleSettings = createSampleSettings("underSample"),  # none
   featureEngineeringSettings = createFeatureEngineeringSettings(), # none
-  preprocessSettings = createPreprocessSettings(),
+  preprocessSettings = createPreprocessSettings(normalize = F),
   logSettings = createLogSettings(verbosity='TRACE'),
   executeSettings = createExecuteSettings(
     runSplitData = T,
@@ -76,7 +87,7 @@ res2 <- PatientLevelPrediction::runPlp(
     runModelDevelopment = T,
     runCovariateSummary = F
   ),
-  saveDirectory = '~/test/new_plp/'
+  saveDirectory = '~/test/resnet/'
 )
 
 

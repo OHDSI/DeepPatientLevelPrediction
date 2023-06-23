@@ -27,19 +27,19 @@
 setDefaultTransformer <- function(estimatorSettings=setEstimator(
   learningRate = 'auto',
   weightDecay = 1e-4,
-  batchSize=512,
-  epochs=10,
+  batchSize=512L,
+  epochs=10L,
   seed=NULL,
   device='cpu')
 ) {
-  transformerSettings <- setTransformer(numBlocks = 3,
-                                        dimToken = 192,
-                                        dimOut = 1,
-                                        numHeads = 8,
+  transformerSettings <- setTransformer(numBlocks = 3L,
+                                        dimToken = 192L,
+                                        dimOut = 1L,
+                                        numHeads = 8L,
                                         attDropout = 0.2,
                                         ffnDropout = 0.1,
                                         resDropout = 0.0,
-                                        dimHidden = 256,
+                                        dimHidden = 256L,
                                         estimatorSettings=estimatorSettings,
                                         hyperParamSearch = 'random',
                                         randomSample = 1)
