@@ -221,6 +221,10 @@ predictDeepEstimator <- function(plpModel,
     )
     path <- system.file("python", package = "DeepPatientLevelPrediction")
     Dataset <- reticulate::import_from_path("Dataset", path = path)
+    if (is.null(attributes(mappedData)$path)) {
+      # sqlite object
+      attributes(mappedData)$path <- attributes(mappedData)$dbname
+    }
     data <- Dataset$Data(r_to_py(attributes(mappedData)$path),
                     numerical_features = r_to_py(which(plpModel$covariateImportance$isNumeric))
     )
@@ -229,6 +233,7 @@ predictDeepEstimator <- function(plpModel,
   # get predictions
   prediction <- cohort
   if (is.character(plpModel$model)) {
+    modelSettings <- plpModel$modelDesign$modelSettings
     Estimator <- reticulate::import_from_path("Estimator", path=path)
     model <- torch$load(file.path(plpModel$model, "DeepEstimatorModel.pt"), map_location = "cpu")
     model_type <- reticulate::import_from_path(modelSettings$modelType, path)
@@ -282,6 +287,10 @@ gridCvDeep <- function(mappedData,
   
   path <- system.file("python", package = "DeepPatientLevelPrediction")
   Dataset <- reticulate::import_from_path("Dataset", path = path)
+  if (is.null(attributes(mappedData)$path)) {
+    # sqlite object
+    attributes(mappedData)$path <- attributes(mappedData)$dbname
+  }
   dataset <- Dataset$Data(r_to_py(attributes(mappedData)$path), r_to_py(labels$outcomeCount))
   
   estimatorSettings <- modelSettings$estimatorSettings

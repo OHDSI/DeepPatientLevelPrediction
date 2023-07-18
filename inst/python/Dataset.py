@@ -17,7 +17,11 @@ class Data(Dataset):
         numerical_features: list of indices where the numerical features are
         """
         start = time.time()
-        data = pl.scan_ipc(pathlib.Path(data).joinpath('covariates/*.arrow'))
+        if pathlib.Path(data).suffix == '.sqlite':
+            data = pl.read_database("SELECT * from covariates",
+                                    connection_uri="sqlite://" + data).lazy()
+        else:
+            data = pl.scan_ipc(pathlib.Path(data).joinpath('covariates/*.arrow'))
         observations = data.select(pl.col('rowId').max()).collect()[0, 0]
         # detect features are numeric
         if not numerical_features:
