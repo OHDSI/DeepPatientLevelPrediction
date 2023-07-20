@@ -88,13 +88,13 @@ class Data(Dataset):
 
     def __getitem__(self, item):
         if self.num is not None:
-            batch = {"cat": self.cat[item, :].squeeze(),
-                     "num": self.num[item, :].squeeze()}
+            batch = {"cat": self.cat[item, :],
+                     "num": self.num[item, :]}
         else:
             batch = {"cat": self.cat[item, :].squeeze(),
                      "num": None}
-        if batch["cat"].dim() == 1:
+        if batch["cat"].dim() == 1 and not isinstance(item, list):
             batch["cat"] = batch["cat"].unsqueeze(0)
-        if batch["num"] is not None and batch["num"].dim() == 1:
+        if batch["num"] is not None and batch["num"].dim() == 1 and not isinstance(item, list):
             batch["num"] = batch["num"].unsqueeze(0)
         return [batch, self.target[item].squeeze()]

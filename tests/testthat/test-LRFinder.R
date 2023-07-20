@@ -1,18 +1,23 @@
+ResNet <- reticulate::import_from_path("ResNet", path)$ResNet
+lrFinderClass <- reticulate::import_from_path("LrFinder", path=path)$LrFinder
+
 test_that("LR scheduler that changes per batch works", {
   
-  model <- ResNet(catFeatures = 10, numFeatures = 1,
-                  sizeEmbedding = 32, sizeHidden = 64,
-                  numLayers = 1, hiddenFactor = 1)
-  optimizer <- torch::optim_adamw(model$parameters, lr=1e-7)
+  model <- ResNet(cat_features = 10L, num_features = 1L,
+                  size_embedding = 32L, size_hidden = 64L,
+                  num_layers = 1L, hidden_factor = 1L)
+  optimizer <- torch$optim$AdamW(model$parameters(), lr=1e-7)
   
-  scheduler <- lrPerBatch(optimizer,
-                          startLR = 1e-7,
-                          endLR = 1e-2,
-                          nIters = 5)
+  ExponentialSchedulerPerBatch <- reticulate::import_from_path("LrFinder", 
+                                                               path=path)$ExponentialSchedulerPerBatch
+  scheduler <- ExponentialSchedulerPerBatch(optimizer,
+                          end_lr = 1e-2,
+                          num_iter = 5)
   expect_equal(scheduler$last_epoch, 0)
   expect_equal(scheduler$optimizer$param_groups[[1]]$lr, 1e-7)
   
   for (i in 1:5) {
+    optimizer$step()
     scheduler$step()
   }
   
@@ -23,19 +28,20 @@ test_that("LR scheduler that changes per batch works", {
 
 
 test_that("LR finder works", {
-  
-  lr <- lrFinder(dataset, modelType = ResNet, modelParams = list(catFeatures=dataset$numCatFeatures(),
-                                                           numFeatures=dataset$numNumFeatures(),
-                                                           sizeEmbedding=32,
-                                                           sizeHidden=64,
-                                                           numLayers=1,
-                                                           hiddenFactor=1),
-           estimatorSettings = setEstimator(batchSize=32,
-                                            seed = 42),
-           minLR = 3e-4,
-           maxLR = 10.0,
-           numLR = 20,
-           divergenceThreshold = 1.1)
+  lrFinder <- lrFinderClass(model = ResNet, 
+                 model_parameters = list(cat_features=length(dataset$get_cat_features()),
+                                         num_features=length(dataset$get_numerical_features()),
+                                         size_embedding=32L,
+                                         size_hidden=64L,
+                                         num_layers=1L,
+                                         hidden_factor=1L),
+                 estimator_settings = SqlRender::camelCaseToSnakeCaseNames(setEstimator(batchSize=32L,
+                                                  seed = 42)),
+           min_lr = 3e-4,
+           max_lr = 10.0,
+           num_lr = 20L,
+           divergence_threshold = 1.1)
+  lr <- lrFinder$get_lr(dataset)
   
   expect_true(lr<=10.0)
   expect_true(lr>=3e-4)
@@ -46,19 +52,22 @@ test_that("LR finder works with device specified by a function", {
   deviceFun <- function(){
     dev = "cpu"
   }
-  lr <- lrFinder(dataset, modelType = ResNet, modelParams = list(catFeatures=dataset$numCatFeatures(),
-                                                                 numFeatures=dataset$numNumFeatures(),
-                                                                 sizeEmbedding=8,
-                                                                 sizeHidden=16,
-                                                                 numLayers=1,
-                                                                 hiddenFactor=1),
-                 estimatorSettings = setEstimator(batchSize=32,
+  lrFinder <- lrFinderClass(model = ResNet, 
+                            model_parameters = list(cat_features=length(dataset$get_cat_features()),
+                                                num_features=length(dataset$get_numerical_features()),
+                                                size_embedding=8L,
+                                                size_hidden=16L,
+                                                num_layers=1L,
+                                                hidden_factor=1L),
+                 estimator_settings = SqlRender::camelCaseToSnakeCaseNames(setEstimator(batchSize=32L,
                                                   seed = 42,
-                                                  device = deviceFun),
-                 minLR = 3e-4,
-                 maxLR = 10.0,
-                 numLR = 20,
-                 divergenceThreshold = 1.1)
+                                                  device = deviceFun)),
+                 min_lr = 3e-4,
+                 max_lr = 10.0,
+                 num_lr = 20L,
+                 divergence_threshold = 1.1)
+  lr <- lrFinder$get_lr(dataset)
+  
   expect_true(lr<=10.0)
   expect_true(lr>=3e-4)
   

@@ -39,12 +39,12 @@
 #' @export
 setEstimator <- function(learningRate='auto',
                          weightDecay = 0.0,
-                         batchSize = 512,
-                         epochs = 30,
+                         batchSize = 512L,
+                         epochs = 30L,
                          device='cpu',
                          optimizer = torch$optim$AdamW,
                          scheduler = list(fun=torch$optim$lr_scheduler$ReduceLROnPlateau,
-                                          params=list(patience=1)),
+                                          params=list(patience=1L)),
                          criterion = torch$nn$BCEWithLogitsLoss,
                          earlyStopping = list(useEarlyStopping=TRUE,
                                               params = list(patience=4L)),
@@ -226,7 +226,7 @@ predictDeepEstimator <- function(plpModel,
       attributes(mappedData)$path <- attributes(mappedData)$dbname
     }
     data <- Dataset$Data(r_to_py(attributes(mappedData)$path),
-                    numerical_features = r_to_py(which(plpModel$covariateImportance$isNumeric))
+                    numerical_features = r_to_py(as.array(which(plpModel$covariateImportance$isNumeric)))
     )
   }
   

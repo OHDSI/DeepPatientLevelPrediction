@@ -24,7 +24,8 @@ Imports:
     ParallelLogger (>= 2.0.0),
     PatientLevelPrediction (>= 6.0.4),
     rlang,
-    withr
+    withr,
+    reticulate
 Suggests:
     devtools,
     Eunomia,

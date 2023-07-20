@@ -1,11 +1,7 @@
 library(PatientLevelPrediction)
 
-if(Sys.getenv('GITHUB_ACTIONS') == 'true' & torch::torch_is_installed() != FALSE) {
-  torch::install_torch()
-}
-
 testLoc <- tempdir()
-
+torch <- reticulate::import("torch")
 # get connection and data from Eunomia
 connectionDetails <- Eunomia::getEunomiaConnectionDetails()
 Eunomia::createCohorts(connectionDetails)
@@ -69,13 +65,17 @@ mappedData <- PatientLevelPrediction::MapIds(
   cohort = trainData$Train$labels
 )
 
+path <- system.file("python", package = "DeepPatientLevelPrediction")
+Dataset <- reticulate::import_from_path("Dataset", path = path)
+if (is.null(attributes(mappedData)$path)) {
+  # sqlite object
+  attributes(mappedData)$path <- attributes(mappedData)$dbname
+}
 
-
-dataset <- Dataset(
-  data = mappedData$covariates,
-  labels = trainData$Train$labels$outcomeCount,
-  numericalIndex = NULL
+dataset <- Dataset$Data(
+  data = reticulate::r_to_py(attributes(mappedData)$path),
+  labels = reticulate::r_to_py(trainData$Train$labels$outcomeCount),
 )
-
-small_dataset <- torch::dataset_subset(dataset, (1:round(length(dataset)/3)))
+torch <- reticulate::import('torch')
+small_dataset <- torch$utils$data$Subset(dataset, (1:round(length(dataset)/3)))
 

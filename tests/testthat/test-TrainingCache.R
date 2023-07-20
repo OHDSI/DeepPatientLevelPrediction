@@ -1,17 +1,17 @@
-resNetSettings <- setResNet(numLayers = c(1, 2, 4),
-                            sizeHidden = 2^6,
-                            hiddenFactor = 1,
+resNetSettings <- setResNet(numLayers = c(1L, 2L, 4L),
+                            sizeHidden = 64L,
+                            hiddenFactor = 1L,
                             residualDropout = 0.5,
                             hiddenDropout = 0.5,
-                            sizeEmbedding = 2^6,
-                            estimatorSettings = setEstimator(learningRate='auto',
+                            sizeEmbedding = 64L,
+                            estimatorSettings = setEstimator(learningRate=3e-4,
                                                              weightDecay=1e-3,
                                                              device='cpu',
-                                                             batchSize=1024,
-                                                             epochs=30,
+                                                             batchSize=64L,
+                                                             epochs=1L,
                                                              seed=NULL),
                             hyperParamSearch = "random",
-                            randomSample = 2,
+                            randomSample = 3,
                             randomSampleSeed = NULL)
 
 trainCache <- TrainingCache$new(testLoc)
@@ -84,4 +84,5 @@ test_that("Estimator can resume training from cache", {
     }
   )
   sink()
+  
 })

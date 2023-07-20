@@ -18,7 +18,10 @@ class Estimator:
                  model_parameters,
                  estimator_settings):
         self.seed = estimator_settings["seed"]
-        self.device = estimator_settings["device"]
+        if callable(estimator_settings["device"]):
+            self.device = estimator_settings["device"]()
+        else:
+            self.device = estimator_settings["device"]
 
         torch.manual_seed(seed=self.seed)
         self.model = model(**model_parameters)
@@ -39,7 +42,7 @@ class Estimator:
                                                          weight_decay=self.weight_decay)
         self.criterion = estimator_settings["criterion"]()
 
-        if estimator_settings["metric"]:
+        if "metric" in estimator_settings.keys() and estimator_settings["metric"] is not None:
             self.metric = estimator_settings["metric"]
             if type(self.metric) == str:
                 if self.metric == "auc":
@@ -48,16 +51,16 @@ class Estimator:
                 elif self.metric == "loss":
                     self.metric = {"name": "loss",
                                    "mode": "min"}
-            if estimator_settings["scheduler"]:
+            if "scheduler" in estimator_settings.keys() and estimator_settings["scheduler"] is not None:
                 estimator_settings["scheduler"]["params"]["mode"] = self.metric["mode"]
-            if estimator_settings["early_stopping"]:
+            if "early_stopping" in estimator_settings.keys() and estimator_settings["early_stopping"] is not None:
                 estimator_settings["early_stopping"]["params"]["mode"] = self.metric["mode"]
 
-        if estimator_settings["scheduler"]:
+        if "scheduler" in estimator_settings.keys() and estimator_settings["scheduler"] is not None:
             self.scheduler = estimator_settings["scheduler"]["fun"](self.optimizer,
                                                                     **estimator_settings["scheduler"]["params"])
 
-        if estimator_settings["early_stopping"]:
+        if "early_stopping" in estimator_settings.keys() and estimator_settings["early_stopping"] is not None:
             self.early_stopper = EarlyStopping(**estimator_settings["early_stopping"]["params"])
         else:
             self.early_stopper = None
@@ -190,7 +193,7 @@ class Estimator:
 
     def print_progress(self, scores, training_loss, delta_time, current_epoch):
         if self.metric and self.metric["name"] != "auc" and self.metric["name"] != "loss":
-            print(f"Epochs: {current_epoch} | Val {self.metric['name']}: {scores['metric']:.3f)} "
+            print(f"Epochs: {current_epoch} | Val {self.metric['name']}: {scores['metric']:.3f} "
                   f"| Val AUC: {scores['auc']:.3f} | Val Loss: {scores['loss']:.3f} "
                   f"| Train Loss: {training_loss:.3f} | Time: {delta_time:.3f} seconds "
                   f"| LR: {self.optimizer.param_groups[0]['lr']}")

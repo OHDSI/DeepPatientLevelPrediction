@@ -4,6 +4,8 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 
+from ResNet import NumericalEmbedding
+
 
 def reglu(x):
     a, b = x.chunk(2, dim=-1)
@@ -37,7 +39,8 @@ class Transformer(nn.Module):
         self.name = "Transformer"
         self.categorical_embedding = nn.Embedding(cat_features + 1, dim_token, padding_idx=0)
 
-        self.numerical_embedding = NumericalEmbedding(num_features, dim_token)
+        if num_features != 0 and num_features is not None:
+            self.numerical_embedding = NumericalEmbedding(num_features, dim_token)
         self.class_token = ClassToken(dim_token)
 
         self.layers = nn.ModuleList([])
@@ -67,7 +70,7 @@ class Transformer(nn.Module):
     def forward(self, x):
         mask = torch.where(x["cat"] == 0, True, False)
         cat = self.categorical_embedding(x["cat"])
-        if x["num"] is not None:
+        if "num" in x.keys() and self.numerical_embedding is not None:
             num = self.numerical_embedding(x["num"])
             x = torch.cat([cat, num], dim=1)
             mask = torch.cat([mask, torch.zeros([x.shape[0],
@@ -134,7 +137,7 @@ class FeedForwardBlock(nn.Module):
                  bias_first=True,
                  bias_second=True,
                  dropout=0.0,
-                 activation=nn.ReLU):
+                 activation=ReGLU):
         super(FeedForwardBlock, self).__init__()
         self.linear0 = nn.Linear(dim_token, int(dim_hidden * 2), bias=bias_first)
         self.activation = activation()
@@ -168,30 +171,6 @@ class Head(nn.Module):
         x = self.activation(x)
         x = self.linear(x)
         return x
-
-
-class NumericalEmbedding(nn.Module):
-
-    def __init__(self,
-                 num_embeddings,
-                 embedding_dim,
-                 bias=True):
-        super(NumericalEmbedding, self).__init__()
-        self.weight = nn.Parameter(torch.empty(num_embeddings, embedding_dim))
-        self.bias = None
-        if bias:
-            self.bias = nn.Parameter(torch.empty(num_embeddings, embedding_dim))
-
-        for parameter in [self.weight, self.bias]:
-            if parameter is not None:
-                nn.init.kaiming_uniform_(parameter, a=math.sqrt(5))
-
-    def forward(self, x):
-        x = self.weight.unsqueeze(0) * x.unsqueeze(-1)
-        if self.bias is not None:
-            x = x + self.bias.unsqueeze(0)
-        return x
-
 
 class ClassToken(nn.Module):
 

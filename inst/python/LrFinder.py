@@ -35,7 +35,10 @@ class LrFinder:
                  divergence_threshold=4):
         torch.manual_seed(seed=estimator_settings["seed"])
         self.model = model(**model_parameters)
-        self.device = estimator_settings["device"]
+        if callable(estimator_settings["device"]):
+            self.device = estimator_settings["device"]()
+        else:
+            self.device = estimator_settings["device"]
         self.model.to(device=self.device)
         self.min_lr = min_lr
         self.max_lr = max_lr

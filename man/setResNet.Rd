@@ -5,14 +5,14 @@
 \title{setResNet}
 \usage{
 setResNet(
-  numLayers = c(1:8),
-  sizeHidden = c(2^(6:10)),
-  hiddenFactor = c(1:4),
+  numLayers = as.integer(1:8),
+  sizeHidden = as.integer(2^(6:10)),
+  hiddenFactor = as.integer(1:4),
   residualDropout = c(seq(0, 0.5, 0.05)),
   hiddenDropout = c(seq(0, 0.5, 0.05)),
-  sizeEmbedding = c(2^(6:9)),
+  sizeEmbedding = as.integer(2^(6:9)),
   estimatorSettings = setEstimator(learningRate = "auto", weightDecay = c(1e-06, 0.001),
-    device = "cpu", batchSize = 1024, epochs = 30, seed = NULL),
+    device = "cpu", batchSize = 1024L, epochs = 30L, seed = NULL),
   hyperParamSearch = "random",
   randomSample = 100,
   randomSampleSeed = NULL

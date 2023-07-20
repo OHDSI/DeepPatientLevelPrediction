@@ -7,12 +7,12 @@
 setEstimator(
   learningRate = "auto",
   weightDecay = 0,
-  batchSize = 512,
-  epochs = 30,
+  batchSize = 512L,
+  epochs = 30L,
   device = "cpu",
   optimizer = torch$optim$AdamW,
   scheduler = list(fun = torch$optim$lr_scheduler$ReduceLROnPlateau, params =
-    list(patience = 1)),
+    list(patience = 1L)),
   criterion = torch$nn$BCEWithLogitsLoss,
   earlyStopping = list(useEarlyStopping = TRUE, params = list(patience = 4L)),
   metric = "auc",
