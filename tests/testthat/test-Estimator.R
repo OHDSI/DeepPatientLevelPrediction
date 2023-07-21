@@ -97,7 +97,7 @@ test_that("estimator fitting works", {
                                     epochs = 5L,
                                     device = 'cpu',
                                     metric= "loss")
-  estimator_settings <- SqlRender::camelCaseToSnakeCaseNames(estimatorSettings)
+  estimator_settings <- camelCaseToSnakeCaseNames(estimatorSettings)
   estimator <- Estimator$Estimator(model=modelType,
                                    model_parameters=modelParameters,
                                    estimator_settings=estimator_settings)
@@ -232,7 +232,7 @@ test_that("Early stopper can use loss and stops early", {
                                                                       patience=1L)),
                                     metric = 'loss',
                                     seed=42)
-  estimator_settings <- SqlRender::snakeCaseToCamelCaseNames(estimatorSettings)
+  estimator_settings <- snakeCaseToCamelCaseNames(estimatorSettings)
   estimator <- Estimator$Estimator(model = modelType,
                                     model_parameters = modelParameters,
                                     estimator_settings = estimator_settings)
@@ -261,7 +261,7 @@ test_that('Custom metric in estimator works', {
                                     metric=list(fun=metric_fun,
                                                 name="auprc",
                                                 mode="max"))
-  estimator_settings <- SqlRender::camelCaseToSnakeCaseNames(estimatorSettings)
+  estimator_settings <- camelCaseToSnakeCaseNames(estimatorSettings)
   estimator <- Estimator$Estimator(model = modelType,
                                    model_parameters = modelParameters,
                                    estimator_settings = estimator_settings)
@@ -320,8 +320,8 @@ test_that("device as a function argument works", {
   model <- setDefaultResNet(estimatorSettings = estimatorSettings) 
   model$param[[1]]$catFeatures <- 10L
   
-  model_parameters <- SqlRender::camelCaseToSnakeCaseNames(model$param[[1]])
-  estimator_settings <- SqlRender::camelCaseToSnakeCaseNames(estimatorSettings)
+  model_parameters <- camelCaseToSnakeCaseNames(model$param[[1]])
+  estimator_settings <- camelCaseToSnakeCaseNames(estimatorSettings)
   estimator <- Estimator$Estimator(model = modelType,
                              model_parameters = model_parameters,
                              estimator_settings = estimator_settings)
@@ -336,8 +336,8 @@ test_that("device as a function argument works", {
   model <- setDefaultResNet(estimatorSettings = estimatorSettings) 
   model$param[[1]]$catFeatures <- 10L
   
-  model_parameters <- SqlRender::camelCaseToSnakeCaseNames(model$param[[1]])
-  estimator_settings <- SqlRender::camelCaseToSnakeCaseNames(estimatorSettings)
+  model_parameters <- camelCaseToSnakeCaseNames(model$param[[1]])
+  estimator_settings <- camelCaseToSnakeCaseNames(estimatorSettings)
   estimator <- Estimator$Estimator(model = modelType,
                                    model_parameters = model_parameters,
                                    estimator_settings = estimator_settings)

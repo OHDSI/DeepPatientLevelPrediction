@@ -318,8 +318,8 @@ gridCvDeep <- function(mappedData,
     currentModelParams$numFeatures <- dataset$get_numerical_features()$shape[[1]]
     if (estimatorSettings$findLR) {
       model <- reticulate::import_from_path(modelSettings$modelType, path)
-      names(currentModelParams) <- SqlRender::camelCaseToSnakeCase(names(currentModelParams))
-      names(currentEstimatorSettings) <- SqlRender::camelCaseToSnakeCase(names(currentEstimatorSettings))
+      names(currentModelParams) <- camelCaseToSnakeCase(names(currentModelParams))
+      names(currentEstimatorSettings) <- camelCaseToSnakeCase(names(currentEstimatorSettings))
       LrFinderClass <- reticulate::import_from_path('LrFinder', path)$LrFinder
       LrFinder <- LrFinderClass(model = model[modelSettings$modelType],
                                 model_parameters = currentModelParams,
@@ -337,8 +337,8 @@ gridCvDeep <- function(mappedData,
       testDataset <- torch$utils$data$Subset(dataset, indices = as.integer(which(fold == i) -1)) # -1 for python 0-based indexing
       Estimator <- reticulate::import_from_path("Estimator", path=path)
       model <- reticulate::import_from_path(modelSettings$modelType, path)
-      names(currentModelParams) <- SqlRender::camelCaseToSnakeCase(names(currentModelParams))
-      names(currentEstimatorSettings) <- SqlRender::camelCaseToSnakeCase(names(currentEstimatorSettings))
+      names(currentModelParams) <- camelCaseToSnakeCase(names(currentModelParams))
+      names(currentEstimatorSettings) <- camelCaseToSnakeCase(names(currentEstimatorSettings))
     
       estimator <- Estimator$Estimator(model=model[modelSettings$modelType],
                                        model_parameters=currentModelParams,
@@ -403,8 +403,8 @@ gridCvDeep <- function(mappedData,
                                              finalParam)
   estimatorSettings$learningRate <- finalParam$learnSchedule$LRs[[1]]
   model <- reticulate::import_from_path(modelSettings$modelType, path)
-  names(modelParams) <- SqlRender::camelCaseToSnakeCase(names(modelParams))
-  names(estimatorSettings) <- SqlRender::camelCaseToSnakeCase(names(estimatorSettings))
+  names(modelParams) <- camelCaseToSnakeCase(names(modelParams))
+  names(estimatorSettings) <- camelCaseToSnakeCase(names(estimatorSettings))
   estimator <- Estimator$Estimator(model=model[modelSettings$modelType],
                                    model_parameters=modelParams,
                                    estimator_settings=estimatorSettings)
