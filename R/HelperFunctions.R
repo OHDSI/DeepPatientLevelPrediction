@@ -22,12 +22,20 @@
 #' @return
 #' A string
 #'
-#' @examples
-#' camelCaseToSnakeCase("exposureConceptId1")
-#'
 camelCaseToSnakeCase <- function(string) {
   string <- gsub("([A-Z])", "_\\1", string)
   string <- tolower(string)
   string <- gsub("([a-z])([0-9])", "\\1_\\2", string)
   return(string)
+}
+
+#' Convert the names of an object from camel case to snake case
+#'
+#' @param object   The object of which the names should be converted
+#'
+#' @return
+#' The same object, but with converted names.
+camelCaseToSnakeCaseNames <- function(object) {
+  names(object) <- camelCaseToSnakeCase(names(object))
+  return(object)
 }

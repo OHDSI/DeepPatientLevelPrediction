@@ -15,7 +15,3 @@ A string
 \description{
 Convert a camel case string to snake case
 }
-\examples{
-camelCaseToSnakeCase("exposureConceptId1")
-
-}

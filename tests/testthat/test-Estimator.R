@@ -232,7 +232,7 @@ test_that("Early stopper can use loss and stops early", {
                                                                       patience=1L)),
                                     metric = 'loss',
                                     seed=42)
-  estimator_settings <- snakeCaseToCamelCaseNames(estimatorSettings)
+  estimator_settings <- camelCaseToSnakeCaseNames(estimatorSettings)
   estimator <- Estimator$Estimator(model = modelType,
                                     model_parameters = modelParameters,
                                     estimator_settings = estimator_settings)
