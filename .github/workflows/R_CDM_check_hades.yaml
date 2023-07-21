@@ -54,20 +54,6 @@ jobs:
       - uses: actions/setup-python@v4
         with:
           python-version: '3.10' 
-          
-      - name: setup r-reticulate venv
-        shell: Rscript {0}
-        run: |
-          python_packages <- 
-            c("torch", "polars", "tqdm")
-          
-          library(reticulate)
-          virtualenv_create("r-reticulate", Sys.which("python"))
-          virtualenv_install("r-reticulate", python_packages)
-          
-          path_to_python <- virtualenv_python("r-reticulate")
-          writeLines(sprintf("RETICULATE_PYTHON=%s", path_to_python),
-                     Sys.getenv("GITHUB_ENV"))
       
       - uses: r-lib/actions/setup-tinytex@v2
 
@@ -87,6 +73,20 @@ jobs:
         with:
           extra-packages: any::rcmdcheck
           needs: check
+          
+      - name: setup r-reticulate venv
+        shell: Rscript {0}
+        run: |
+          python_packages <- 
+            c("torch", "polars", "tqdm")
+          
+          library(reticulate)
+          virtualenv_create("r-reticulate", Sys.which("python"))
+          virtualenv_install("r-reticulate", python_packages)
+          
+          path_to_python <- virtualenv_python("r-reticulate")
+          writeLines(sprintf("RETICULATE_PYTHON=%s", path_to_python),
+                     Sys.getenv("GITHUB_ENV"))
 
       - uses: r-lib/actions/check-r-package@v2
         with:
