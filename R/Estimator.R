@@ -225,7 +225,7 @@ predictDeepEstimator <- function(plpModel,
       # sqlite object
       attributes(mappedData)$path <- attributes(mappedData)$dbname
     }
-    data <- Dataset$Data(r_to_py(attributes(mappedData)$path),
+    data <- Dataset$Data(r_to_py(normalizePath(attributes(mappedData)$path)),
                     numerical_features = r_to_py(as.array(which(plpModel$covariateImportance$isNumeric)))
     )
   }
@@ -291,7 +291,8 @@ gridCvDeep <- function(mappedData,
     # sqlite object
     attributes(mappedData)$path <- attributes(mappedData)$dbname
   }
-  dataset <- Dataset$Data(r_to_py(attributes(mappedData)$path), r_to_py(labels$outcomeCount))
+  dataset <- Dataset$Data(r_to_py(normalizePath(attributes(mappedData)$path)), 
+                          r_to_py(labels$outcomeCount))
   
   estimatorSettings <- modelSettings$estimatorSettings
   if (is.function(estimatorSettings$device)) {

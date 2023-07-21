@@ -73,7 +73,7 @@ if (is.null(attributes(mappedData)$path)) {
 }
 
 dataset <- Dataset$Data(
-  data = reticulate::r_to_py(attributes(mappedData)$path),
+  data = reticulate::r_to_py(normalizePath(attributes(mappedData)$path)),
   labels = reticulate::r_to_py(trainData$Train$labels$outcomeCount),
 )
 small_dataset <- torch$utils$data$Subset(dataset, (1:round(length(dataset)/3)))
