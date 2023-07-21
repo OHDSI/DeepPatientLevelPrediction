@@ -44,3 +44,11 @@ Remotes:
 RoxygenNote: 7.2.3
 Encoding: UTF-8
 Config/testthat/edition: 3
+Config/reticulate:
+  list(
+    packages = list(
+      list(package = "torch"),
+      list(package = "polars"),
+      list(package = "tqdm")
+      )
+  )

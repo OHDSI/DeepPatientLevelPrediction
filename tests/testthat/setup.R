@@ -76,6 +76,5 @@ dataset <- Dataset$Data(
   data = reticulate::r_to_py(attributes(mappedData)$path),
   labels = reticulate::r_to_py(trainData$Train$labels$outcomeCount),
 )
-torch <- reticulate::import('torch')
 small_dataset <- torch$utils$data$Subset(dataset, (1:round(length(dataset)/3)))
 
