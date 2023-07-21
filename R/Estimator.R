@@ -141,7 +141,7 @@ fitEstimator <- function(trainData,
                 dplyr::collect() %>%
                 as.integer())
   covariateRef <- covariateRef %>%
-    dplyr::arrange(columnId) %>%
+    dplyr::arrange("columnId") %>%
     dplyr::collect() %>%
     dplyr::mutate(
       included = incs,
