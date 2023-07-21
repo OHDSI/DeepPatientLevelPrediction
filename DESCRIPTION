@@ -37,7 +37,7 @@ Suggests:
     ResultModelManager (>= 0.2.0),
     DatabaseConnector (>= 6.0.0)
 Remotes:
-    ohdsi/PatientLevelPrediction@develop,
+    ohdsi/PatientLevelPrediction,
     ohdsi/FeatureExtraction,
     ohdsi/Eunomia,
     ohdsi/ResultModelManager
