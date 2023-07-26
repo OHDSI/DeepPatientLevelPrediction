@@ -29,6 +29,7 @@ NULL
 
 .onLoad <- function(libname, pkgname) {
   # use superassignment to update global reference 
+  reticulate::configure_environment(pkgname)
   torch <<- reticulate::import("torch", delay_load = TRUE)
 }
 
