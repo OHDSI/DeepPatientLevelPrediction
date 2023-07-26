@@ -49,6 +49,9 @@ Config/reticulate:
     packages = list(
       list(package = "torch"),
       list(package = "polars"),
-      list(package = "tqdm")
+      list(package = "tqdm"),
+      list(package = "connectorx"),
+      list(package = "scikit-learn"),
+      list(package = "pyarrow")
       )
   )
