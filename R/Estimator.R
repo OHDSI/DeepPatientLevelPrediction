@@ -56,6 +56,9 @@ setEstimator <- function(learningRate='auto',
     seed <- as.integer(sample(1e5, 1))
   }
   
+  optimizer <- substitute(optimizer)
+  criterion <- substitute(criterion)
+  scheduler$fun <- substitute(scheduler$fun)
   
   estimatorSettings <- list(learningRate=learningRate,
                             weightDecay=weightDecay,
@@ -86,9 +89,10 @@ setEstimator <- function(learningRate='auto',
     }
   }
   estimatorSettings$paramsToTune <- paramsToTune
+  
   return(estimatorSettings)
 }
-
+ 
 #' fitEstimator
 #'
 #' @description
@@ -239,7 +243,7 @@ predictDeepEstimator <- function(plpModel,
     model_type <- reticulate::import_from_path(modelSettings$modelType, path)
     estimator <- Estimator$Estimator(model=model_type[modelSettings$modelType],
                                      model_parameters=model$model_parameters,
-                                     estimator_settings=model$estimator_settings)
+                                     estimator_settings=evalEstimatorSettings(model$estimator_settings))
     estimator$model$load_state_dict(model$model_state_dict)
     prediction$value <- estimator$predict_proba(data)
   } else {
@@ -309,6 +313,8 @@ gridCvDeep <- function(mappedData,
     
     currentEstimatorSettings <- fillEstimatorSettings(estimatorSettings, fitParams, 
                                                paramSearch[[gridId]])
+    
+    currentEstimatorSettings <- evalEstimatorSettings(currentEstimatorSettings)
 
     # initiate prediction
     prediction <- NULL
@@ -402,6 +408,7 @@ gridCvDeep <- function(mappedData,
   
   estimatorSettings <- fillEstimatorSettings(estimatorSettings, fitParams,
                                              finalParam)
+  estimatorSettings <- evalEstimatorSettings(currentEstimatorSettings)
   estimatorSettings$learningRate <- finalParam$learnSchedule$LRs[[1]]
   model <- reticulate::import_from_path(modelSettings$modelType, path)
   names(modelParams) <- camelCaseToSnakeCase(names(modelParams))
@@ -457,4 +464,20 @@ fillEstimatorSettings <- function(estimatorSettings, fitParams, paramSearch) {
     }
   }
   return(estimatorSettings)
+}
+
+# utility function to evaluate any expressions passed as settings
+evalEstimatorSettings <- function(estimatorSettings) {
+  
+  for (set in names(estimatorSettings)) {
+    if (is.call(estimatorSettings[[set]])) {
+      estimatorSettings[[set]] <- eval(estimatorSettings[[set]])
+    }
+    if (is.list(estimatorSettings[[set]]) && !is.null(estimatorSettings[[set]]$fun)) {
+      if (is.call(estimatorSettings[[set]]$fun)) {
+        estimatorSettings[[set]]$fun <- eval(estimatorSettings[[set]]$fun)
+      }
+    }
+  }
+  estimatorSettings
 }

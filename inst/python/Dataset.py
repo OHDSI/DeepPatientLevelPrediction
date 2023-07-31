@@ -26,7 +26,7 @@ class Data(Dataset):
             data = pl.scan_ipc(pathlib.Path(data).joinpath('covariates/*.arrow'))
         observations = data.select(pl.col('rowId').max()).collect()[0, 0]
         # detect features are numeric
-        if not numerical_features:
+        if numerical_features is None:
             self.numerical_features = data.groupby(by='columnId') \
                 .n_unique().filter(pl.col('covariateValue') > 1).select('columnId').collect()['columnId']
         else:
