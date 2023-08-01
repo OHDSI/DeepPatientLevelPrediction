@@ -229,7 +229,6 @@ predictDeepEstimator <- function(plpModel,
   # get predictions
   prediction <- cohort
   if (is.character(plpModel$model)) {
-    browser()
     modelSettings <- plpModel$modelDesign$modelSettings
     model <- torch$load(file.path(plpModel$model, "DeepEstimatorModel.pt"), map_location = "cpu")
     estimator <- createEstimator(modelType=modelSettings$modelType,
