@@ -28,19 +28,20 @@ test_that("LR scheduler that changes per batch works", {
 
 
 test_that("LR finder works", {
-  lrFinder <- lrFinderClass(model = ResNet, 
-                 model_parameters = list(cat_features=length(dataset$get_cat_features()),
-                                         num_features=length(dataset$get_numerical_features()),
-                                         size_embedding=32L,
-                                         size_hidden=64L,
-                                         num_layers=1L,
-                                         hidden_factor=1L),
-                 estimator_settings = camelCaseToSnakeCaseNames(setEstimator(batchSize=32L,
-                                                  seed = 42)),
-           min_lr = 3e-4,
-           max_lr = 10.0,
-           num_lr = 20L,
-           divergence_threshold = 1.1)
+  lrFinder <- createLRFinder(modelType="ResNet",
+                             modelParameters = list(cat_features=length(dataset$get_cat_features()),
+                                                    num_features=length(dataset$get_numerical_features()),
+                                                    size_embedding=32L,
+                                                    size_hidden=64L,
+                                                    num_layers=1L,
+                                                    hidden_factor=1L),
+                             estimatorSettings = setEstimator(batchSize = 32L,
+                                                              seed=42),
+                             lrSettings = list(minLr=3e-4,
+                                               maxLr=10.0,
+                                               numLr=20L,
+                                               divergenceThreshold=1.1))
+    
   lr <- lrFinder$get_lr(dataset)
   
   expect_true(lr<=10.0)
@@ -52,20 +53,21 @@ test_that("LR finder works with device specified by a function", {
   deviceFun <- function(){
     dev = "cpu"
   }
-  lrFinder <- lrFinderClass(model = ResNet, 
-                            model_parameters = list(cat_features=length(dataset$get_cat_features()),
+  lrFinder <- createLRFinder(model = "ResNet", 
+                             modelParameters = list(cat_features=length(dataset$get_cat_features()),
                                                 num_features=length(dataset$get_numerical_features()),
                                                 size_embedding=8L,
                                                 size_hidden=16L,
                                                 num_layers=1L,
                                                 hidden_factor=1L),
-                 estimator_settings = camelCaseToSnakeCaseNames(setEstimator(batchSize=32L,
+                             estimatorSettings = setEstimator(batchSize=32L,
                                                   seed = 42,
-                                                  device = deviceFun)),
-                 min_lr = 3e-4,
-                 max_lr = 10.0,
-                 num_lr = 20L,
-                 divergence_threshold = 1.1)
+                                                  device = deviceFun),
+                             lrSettings = list(minLr=3e-4,
+                                               maxLr=10.0,
+                                               numLr=20L,
+                                               divergenceThreshold=1.1)
+                             )
   lr <- lrFinder$get_lr(dataset)
   
   expect_true(lr<=10.0)

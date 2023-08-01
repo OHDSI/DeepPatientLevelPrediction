@@ -28,11 +28,14 @@ class LrFinder:
                  model,
                  model_parameters,
                  estimator_settings,
-                 min_lr=1e-7,
-                 max_lr=1,
-                 num_lr=100,
-                 smooth=0.05,
-                 divergence_threshold=4):
+                 lr_settings):
+        if lr_settings is None:
+          lr_settings = {}
+        min_lr = lr_settings.get("min_lr", 1e-7)
+        max_lr = lr_settings.get("max_lr", 1)
+        num_lr = lr_settings.get("num_lr", 100)
+        smooth = lr_settings.get("smooth", 0.05)
+        divergence_threshold = lr_settings.get("divergence_threshold", 4)
         torch.manual_seed(seed=estimator_settings["seed"])
         self.model = model(**model_parameters)
         if callable(estimator_settings["device"]):

@@ -3,29 +3,28 @@
 library(PatientLevelPrediction)
 library(DeepPatientLevelPrediction)
 
-# data(plpDataSimulationProfile)
-# sampleSize <- 1e3
-# plpData <- simulatePlpData(
-
-#   plpDataSimulationProfile,
-#   n = sampleSize
-# )
+data(plpDataSimulationProfile)
+sampleSize <- 1e3
+plpData <- simulatePlpData(
+   plpDataSimulationProfile,
+   n = sampleSize
+ )
 #
-plpData <- loadPlpData('~/cohorts/ComparisonStudy/DementiaResults/Dementia/')
+# plpData <- loadPlpData('~/cohorts/ComparisonStudy/DementiaResults/Dementia/')
+# 
+# fix64bit <- function(plpData) {
+#   plpData$covariateData$covariateRef <- plpData$covariateData$covariateRef |>
+#     dplyr::mutate(covariateId=bit64::as.integer64(covariateId))
+#   plpData$covariateData$covariates <- plpData$covariateData$covariates |>
+#     dplyr::mutate(rowId = as.integer(rowId),
+#                   covariateId = bit64::as.integer64(covariateId))
+#   plpData$cohorts <- plpData$cohorts |> dplyr::mutate(rowId=as.integer(rowId))
+#   plpData$outcomes <- plpData$outcomes |> dplyr::mutate(rowId = as.integer(rowId))
+#   
+#   return(plpData)
+# }
 
-fix64bit <- function(plpData) {
-  plpData$covariateData$covariateRef <- plpData$covariateData$covariateRef |>
-    dplyr::mutate(covariateId=bit64::as.integer64(covariateId))
-  plpData$covariateData$covariates <- plpData$covariateData$covariates |>
-    dplyr::mutate(rowId = as.integer(rowId),
-                  covariateId = bit64::as.integer64(covariateId))
-  plpData$cohorts <- plpData$cohorts |> dplyr::mutate(rowId=as.integer(rowId))
-  plpData$outcomes <- plpData$outcomes |> dplyr::mutate(rowId = as.integer(rowId))
-  
-  return(plpData)
-}
-
-plpData <- fix64bit(plpData)
+# plpData <- fix64bit(plpData)
 #downsample for speed
 # plpData$cohorts <- plpData$cohorts[sample.int(nrow(plpData$cohorts), 1e5),]
 
@@ -69,7 +68,7 @@ modelSettings <- setResNet(numLayers = c(1L, 2L),
 
 res2 <- PatientLevelPrediction::runPlp(
   plpData = plpData,
-  outcomeId = unique(plpData$outcomes$outcomeId),
+  outcomeId = unique(plpData$outcomes$outcomeId)[[1]],
   modelSettings = modelSettings,
   analysisId = 'Test',
   analysisName = 'Testing DeepPlp',

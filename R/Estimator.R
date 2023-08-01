@@ -223,27 +223,18 @@ predictDeepEstimator <- function(plpModel,
                                                      "covariateId"
                                                    )
     )
-    path <- system.file("python", package = "DeepPatientLevelPrediction")
-    Dataset <- reticulate::import_from_path("Dataset", path = path)
-    if (is.null(attributes(mappedData)$path)) {
-      # sqlite object
-      attributes(mappedData)$path <- attributes(mappedData)$dbname
-    }
-    data <- Dataset$Data(r_to_py(normalizePath(attributes(mappedData)$path)),
-                    numerical_features = r_to_py(as.array(which(plpModel$covariateImportance$isNumeric)))
-    )
+    data <- createDataset(mappedData, plpModel=plpModel)
   }
   
   # get predictions
   prediction <- cohort
   if (is.character(plpModel$model)) {
+    browser()
     modelSettings <- plpModel$modelDesign$modelSettings
-    Estimator <- reticulate::import_from_path("Estimator", path=path)
     model <- torch$load(file.path(plpModel$model, "DeepEstimatorModel.pt"), map_location = "cpu")
-    model_type <- reticulate::import_from_path(modelSettings$modelType, path)
-    estimator <- Estimator$Estimator(model=model_type[modelSettings$modelType],
-                                     model_parameters=model$model_parameters,
-                                     estimator_settings=evalEstimatorSettings(model$estimator_settings))
+    estimator <- createEstimator(modelType=modelSettings$modelType,
+                                 modelParameters=model$model_parameters,
+                                 estimatorSettings=model$estimator_settings)
     estimator$model$load_state_dict(model$model_state_dict)
     prediction$value <- estimator$predict_proba(data)
   } else {
@@ -278,9 +269,10 @@ gridCvDeep <- function(mappedData,
   ###########################################################################
   
   paramSearch <- modelSettings$param
-  trainCache <- TrainingCache$new(analysisPath)
   
-  if (trainCache$isParamGridIdentical(paramSearch)) {
+  # TODO below chunk should be in a setupCache function
+  trainCache <- TrainingCache$new(analysisPath)
+    if (trainCache$isParamGridIdentical(paramSearch)) {
     gridSearchPredictons <- trainCache$getGridSearchPredictions()
   } else {
     gridSearchPredictons <- list()
@@ -289,33 +281,19 @@ gridCvDeep <- function(mappedData,
     trainCache$saveModelParams(paramSearch)
   }
   
-  path <- system.file("python", package = "DeepPatientLevelPrediction")
-  Dataset <- reticulate::import_from_path("Dataset", path = path)
-  if (is.null(attributes(mappedData)$path)) {
-    # sqlite object
-    attributes(mappedData)$path <- attributes(mappedData)$dbname
-  }
-  dataset <- Dataset$Data(r_to_py(normalizePath(attributes(mappedData)$path)), 
-                          r_to_py(labels$outcomeCount))
-  
-  estimatorSettings <- modelSettings$estimatorSettings
-  if (is.function(estimatorSettings$device)) {
-    estimatorSettings$device <- estimatorSettings$device()
-  } else {estimatorSettings$device <- estimatorSettings$device}
+  dataset <- createDataset(data=mappedData, labels=labels)
   
   fitParams <- names(paramSearch[[1]])[grepl("^estimator", names(paramSearch[[1]]))]
-  findLR <- estimatorSettings$findLR
+  findLR <- modelSettings$estimatorSettings$findLR
   for (gridId in trainCache$getLastGridSearchIndex():length(paramSearch)) {
     ParallelLogger::logInfo(paste0("Running hyperparameter combination no ", gridId))
     ParallelLogger::logInfo(paste0("HyperParameters: "))
     ParallelLogger::logInfo(paste(names(paramSearch[[gridId]]), paramSearch[[gridId]], collapse = " | "))
     currentModelParams <- paramSearch[[gridId]][modelSettings$modelParamNames]
     
-    currentEstimatorSettings <- fillEstimatorSettings(estimatorSettings, fitParams, 
+    currentEstimatorSettings <- fillEstimatorSettings(modelSettings$estimatorSettings, fitParams, 
                                                paramSearch[[gridId]])
     
-    currentEstimatorSettings <- evalEstimatorSettings(currentEstimatorSettings)
-
     # initiate prediction
     prediction <- NULL
     
@@ -323,37 +301,26 @@ gridCvDeep <- function(mappedData,
     ParallelLogger::logInfo(paste0("Max fold: ", max(fold)))
     currentModelParams$catFeatures <- dataset$get_cat_features()$shape[[1]]
     currentModelParams$numFeatures <- dataset$get_numerical_features()$shape[[1]]
-    if (estimatorSettings$findLR) {
-      model <- reticulate::import_from_path(modelSettings$modelType, path)
-      names(currentModelParams) <- camelCaseToSnakeCase(names(currentModelParams))
-      names(currentEstimatorSettings) <- camelCaseToSnakeCase(names(currentEstimatorSettings))
-      LrFinderClass <- reticulate::import_from_path('LrFinder', path)$LrFinder
-      LrFinder <- LrFinderClass(model = model[modelSettings$modelType],
-                                model_parameters = currentModelParams,
-                                estimator_settings = currentEstimatorSettings)
+    if (findLR) {
+      LrFinder <- createLRFinder(modelType = modelSettings$modelType,
+                                 modelParameters = currentModelParams,
+                                 estimatorSettings = currentEstimatorSettings
+                                 )
       lr <- LrFinder$get_lr(dataset)
       ParallelLogger::logInfo(paste0("Auto learning rate selected as: ", lr))
       currentEstimatorSettings$learningRate <- lr
     }
-    
     
     learnRates <- list()
     for (i in 1:max(fold)) {
       ParallelLogger::logInfo(paste0("Fold ", i))
       trainDataset <- torch$utils$data$Subset(dataset, indices = as.integer(which(fold != i) - 1)) # -1 for python 0-based indexing
       testDataset <- torch$utils$data$Subset(dataset, indices = as.integer(which(fold == i) -1)) # -1 for python 0-based indexing
-      Estimator <- reticulate::import_from_path("Estimator", path=path)
-      model <- reticulate::import_from_path(modelSettings$modelType, path)
-      names(currentModelParams) <- camelCaseToSnakeCase(names(currentModelParams))
-      names(currentEstimatorSettings) <- camelCaseToSnakeCase(names(currentEstimatorSettings))
     
-      estimator <- Estimator$Estimator(model=model[modelSettings$modelType],
-                                       model_parameters=currentModelParams,
-                                       estimator_settings=currentEstimatorSettings)
-      estimator$fit(
-        trainDataset,
-        testDataset
-      )
+      estimator <- createEstimator(modelType=modelSettings$modelType,
+                                   modelParameters=currentModelParams,
+                                   estimatorSettings=currentEstimatorSettings)
+      estimator$fit(trainDataset, testDataset)
       
       ParallelLogger::logInfo("Calculating predictions on left out fold set...")
       
@@ -406,17 +373,13 @@ gridCvDeep <- function(mappedData,
   modelParams$numFeatures <- dataset$get_numerical_features()$shape[[1]]
   
   
-  estimatorSettings <- fillEstimatorSettings(estimatorSettings, fitParams,
+  estimatorSettings <- fillEstimatorSettings(modelSettings$estimatorSettings, fitParams,
                                              finalParam)
-  estimatorSettings <- evalEstimatorSettings(currentEstimatorSettings)
   estimatorSettings$learningRate <- finalParam$learnSchedule$LRs[[1]]
-  model <- reticulate::import_from_path(modelSettings$modelType, path)
-  names(modelParams) <- camelCaseToSnakeCase(names(modelParams))
-  names(estimatorSettings) <- camelCaseToSnakeCase(names(estimatorSettings))
-  estimator <- Estimator$Estimator(model=model[modelSettings$modelType],
-                                   model_parameters=modelParams,
-                                   estimator_settings=estimatorSettings)
-
+  estimator <- createEstimator(modelType = modelSettings$modelType,
+                               modelParameters = modelParams,
+                               estimatorSettings = estimatorSettings)
+ 
   numericalIndex <- dataset$get_numerical_features()
   estimator$fit_whole_training_set(dataset, finalParam$learnSchedule$LRs)
   
@@ -466,18 +429,41 @@ fillEstimatorSettings <- function(estimatorSettings, fitParams, paramSearch) {
   return(estimatorSettings)
 }
 
-# utility function to evaluate any expressions passed as settings
+# utility function to evaluate any expressions or call functions passed as settings
 evalEstimatorSettings <- function(estimatorSettings) {
   
   for (set in names(estimatorSettings)) {
     if (is.call(estimatorSettings[[set]])) {
       estimatorSettings[[set]] <- eval(estimatorSettings[[set]])
-    }
+    } 
     if (is.list(estimatorSettings[[set]]) && !is.null(estimatorSettings[[set]]$fun)) {
       if (is.call(estimatorSettings[[set]]$fun)) {
         estimatorSettings[[set]]$fun <- eval(estimatorSettings[[set]]$fun)
       }
     }
+    if ((set == "device") && is.function(estimatorSettings[[set]])) {
+      estimatorSettings[[set]] <- estimatorSettings[[set]]()
+    }
+    
   }
   estimatorSettings
+}
+
+createEstimator <- function(modelType,
+                            modelParameters,
+                            estimatorSettings) {
+  path <- system.file("python", package = "DeepPatientLevelPrediction")
+
+  Model <- reticulate::import_from_path(modelType, path=path)[[modelType]]
+  
+  Estimator <- reticulate::import_from_path("Estimator", path=path)$Estimator
+  
+  modelParameters <- camelCaseToSnakeCaseNames(modelParameters)
+  estimatorSettings <- camelCaseToSnakeCaseNames(estimatorSettings)
+  estimatorSettings <- evalEstimatorSettings(estimatorSettings)
+  
+  estimator <- Estimator(model = Model,
+                         model_parameters = modelParameters,
+                         estimator_settings = estimatorSettings)
+  return(estimator)
 }

@@ -49,11 +49,11 @@ class ResNet(nn.Module):
     def forward(self, x):
         x_cat = x["cat"]
         x_cat = self.embedding(x_cat)
-        if "num" in x.keys() and self.num_embedding is not None:
+        if "num" in x.keys() and x["num"] is not None and self.num_embedding is not None:
             x_num = x["num"]
             # take the average af numerical and categorical embeddings
             x = (x_cat + self.num_embedding(x_num).mean(dim=1)) / 2
-        elif "num" in x.keys() and self.num_embedding is None:
+        elif "num" in x.keys() and x["num"] is not None and self.num_embedding is None:
             x_num = x["num"]
             # concatenate numerical to categorical embedding
             x = torch.cat([x_cat, x_num], dim=1)

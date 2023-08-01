@@ -1,10 +1,5 @@
-Estimator <- reticulate::import_from_path("Estimator", path=path)
-ResNet <- reticulate::import_from_path("ResNet", path)
-
 catFeatures <- small_dataset$dataset$get_cat_features()$shape[[1]]
 numFeatures <- small_dataset$dataset$get_numerical_features()$shape[[1]]
-
-modelType <- ResNet$ResNet
 
 modelParameters <- list(
   cat_features = catFeatures,
@@ -15,9 +10,9 @@ modelParameters <- list(
   hidden_factor = 2L
 )
 
-estimatorSettings <- list(learning_rate = 3e-4,
-                                 weight_decay = 0.0,
-                                 batch_size = 128L,
+estimatorSettings <- setEstimator(learningRate = 3e-4,
+                                 weightDecay = 0.0,
+                                 batchSize = 128L,
                                  epochs = 5L,
                                  device = 'cpu',
                                  seed=42,
@@ -26,17 +21,22 @@ estimatorSettings <- list(learning_rate = 3e-4,
                                  metric='loss',
                                  scheduler= list(fun=torch$optim$lr_scheduler$ReduceLROnPlateau,
                                                  params=list(patience=1)),
-                                 early_stopping=NULL)
-estimator <- Estimator$Estimator(model=modelType,
-                                 model_parameters=modelParameters,
-                                 estimator_settings=estimatorSettings)
+                                 earlyStopping=NULL)
+
+modelType <- "ResNet"
+estimator <- createEstimator(modelType = modelType,
+                             modelParameters = modelParameters,
+                             estimatorSettings = estimatorSettings)
 
 test_that("Estimator initialization works", {
 
   # count parameters in both instances
+  path <- system.file("python", package = "DeepPatientLevelPrediction")
+  ResNet <- reticulate::import_from_path(modelType, path=path)[[modelType]] 
+
   testthat::expect_equal(
     sum(reticulate::iterate(estimator$model$parameters(), function(x) x$numel())),
-    sum(reticulate::iterate(do.call(modelType, modelParameters)$parameters(), 
+    sum(reticulate::iterate(do.call(ResNet, modelParameters)$parameters(), 
                             function(x) x$numel()))
   )
 
@@ -97,10 +97,10 @@ test_that("estimator fitting works", {
                                     epochs = 5L,
                                     device = 'cpu',
                                     metric= "loss")
-  estimator_settings <- camelCaseToSnakeCaseNames(estimatorSettings)
-  estimator <- Estimator$Estimator(model=modelType,
-                                   model_parameters=modelParameters,
-                                   estimator_settings=estimator_settings)
+  
+  estimator <- createEstimator(modelType=modelType,
+                               modelParameters=modelParameters,
+                               estimatorSettings=estimatorSettings)
   
   sink(nullfile())
   estimator$fit(small_dataset, small_dataset)
@@ -208,10 +208,9 @@ test_that("Estimator without earlyStopping works", {
                                     device = 'cpu',
                                     earlyStopping = NULL)
   
-  estimator2 <- Estimator$Estimator(model = modelType,
-                                    model_parameters = modelParameters,
-                                    estimator_settings = estimatorSettings)
-  
+  estimator2 <- createEstimator(modelType = modelType,
+                                modelParameters = modelParameters,
+                                estimatorSettings=estimatorSettings)
   sink(nullfile())
   estimator2$fit(small_dataset, small_dataset)
   sink()
@@ -232,10 +231,10 @@ test_that("Early stopper can use loss and stops early", {
                                                                       patience=1L)),
                                     metric = 'loss',
                                     seed=42)
-  estimator_settings <- camelCaseToSnakeCaseNames(estimatorSettings)
-  estimator <- Estimator$Estimator(model = modelType,
-                                    model_parameters = modelParameters,
-                                    estimator_settings = estimator_settings)
+  
+  estimator <- createEstimator(modelType = modelType,
+                               modelParameters = modelParameters,
+                               estimatorSettings = estimatorSettings)
   sink(nullfile())
   estimator$fit(small_dataset, small_dataset)
   sink()
@@ -261,10 +260,9 @@ test_that('Custom metric in estimator works', {
                                     metric=list(fun=metric_fun,
                                                 name="auprc",
                                                 mode="max"))
-  estimator_settings <- camelCaseToSnakeCaseNames(estimatorSettings)
-  estimator <- Estimator$Estimator(model = modelType,
-                                   model_parameters = modelParameters,
-                                   estimator_settings = estimator_settings)
+  estimator <- createEstimator(modelType = modelType,
+                               modelParameters = modelParameters,
+                               estimatorSettings = estimatorSettings)
   expect_true(is.function(estimator$metric$fun))
   expect_true(is.character(estimator$metric$name))
   expect_true(estimator$metric$mode %in% c("min", "max"))
@@ -319,12 +317,10 @@ test_that("device as a function argument works", {
   
   model <- setDefaultResNet(estimatorSettings = estimatorSettings) 
   model$param[[1]]$catFeatures <- 10L
-  
-  model_parameters <- camelCaseToSnakeCaseNames(model$param[[1]])
-  estimator_settings <- camelCaseToSnakeCaseNames(estimatorSettings)
-  estimator <- Estimator$Estimator(model = modelType,
-                             model_parameters = model_parameters,
-                             estimator_settings = estimator_settings)
+
+  estimator <- createEstimator(modelType = modelType,
+                               modelParameters = model$param[[1]],
+                               estimatorSettings = estimatorSettings)
   
   expect_equal(estimator$device, "cpu")
   
@@ -336,11 +332,9 @@ test_that("device as a function argument works", {
   model <- setDefaultResNet(estimatorSettings = estimatorSettings) 
   model$param[[1]]$catFeatures <- 10L
   
-  model_parameters <- camelCaseToSnakeCaseNames(model$param[[1]])
-  estimator_settings <- camelCaseToSnakeCaseNames(estimatorSettings)
-  estimator <- Estimator$Estimator(model = modelType,
-                                   model_parameters = model_parameters,
-                                   estimator_settings = estimator_settings)
+  estimator <- createEstimator(modelType = modelType,
+                               modelParameters = model$param[[1]],
+                               estimatorSettings = estimatorSettings)
   
   expect_equal(estimator$device, "meta")
   
