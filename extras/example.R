@@ -9,24 +9,6 @@ plpData <- simulatePlpData(
    plpDataSimulationProfile,
    n = sampleSize
  )
-#
-# plpData <- loadPlpData('~/cohorts/ComparisonStudy/DementiaResults/Dementia/')
-# 
-# fix64bit <- function(plpData) {
-#   plpData$covariateData$covariateRef <- plpData$covariateData$covariateRef |>
-#     dplyr::mutate(covariateId=bit64::as.integer64(covariateId))
-#   plpData$covariateData$covariates <- plpData$covariateData$covariates |>
-#     dplyr::mutate(rowId = as.integer(rowId),
-#                   covariateId = bit64::as.integer64(covariateId))
-#   plpData$cohorts <- plpData$cohorts |> dplyr::mutate(rowId=as.integer(rowId))
-#   plpData$outcomes <- plpData$outcomes |> dplyr::mutate(rowId = as.integer(rowId))
-#   
-#   return(plpData)
-# }
-
-# plpData <- fix64bit(plpData)
-#downsample for speed
-# plpData$cohorts <- plpData$cohorts[sample.int(nrow(plpData$cohorts), 1e5),]
 
 
 populationSet <- PatientLevelPrediction::createStudyPopulationSettings(
@@ -38,7 +20,6 @@ populationSet <- PatientLevelPrediction::createStudyPopulationSettings(
 # modelSettings <- setDefaultTransformer(estimatorSettings = setEstimator(
 #   learningRate = "auto",
 #   batchSize=64L,
-#   device="cuda:0",
 #   epochs = 10L
 # ))
 
