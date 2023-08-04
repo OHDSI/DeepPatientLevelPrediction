@@ -341,3 +341,10 @@ test_that("device as a function argument works", {
   Sys.unsetenv("testDeepPLPDevice")
   
   })
+
+# test_that("estimatorSettings can be saved and loaded with correct objects", {
+#   settings <- setEstimator()
+#   
+#   saveRDS(settings,file=file.path(testLoc, 'settings.RDS'))
+#   
+# })

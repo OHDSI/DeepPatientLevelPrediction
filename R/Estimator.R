@@ -73,7 +73,6 @@ setEstimator <- function(learningRate='auto',
   estimatorSettings$criterion <- function() rlang::eval_tidy(criterion)
   class(estimatorSettings$criterion) <- c("delayed", class(estimatorSettings$criterion))
   
-  scheduler <- scheduler
   scheduler <- rlang::enquo(scheduler)
   estimatorSettings$scheduler <- function() rlang::eval_tidy(scheduler)
   class(estimatorSettings$scheduler) <-c("delayed", class(estimatorSettings$scheduler))
@@ -82,7 +81,6 @@ setEstimator <- function(learningRate='auto',
     class(estimatorSettings$device) <- c("delayed",  class(estimatorSettings$device))
   }
   
-  
   paramsToTune <- list()
   for (name in names(estimatorSettings)) {
     param <- estimatorSettings[[name]]
@@ -90,7 +88,7 @@ setEstimator <- function(learningRate='auto',
       paramsToTune[[paste0('estimator.',name)]] <- param
     }
     if ("params" %in% names(param)) {
-      for (name2 in names(param[["params"]])) { 
+      for (name2 in names(param[["params"]])) {
         param2 <- param[["params"]][[name2]]
         if (length(param2) > 1) {
           paramsToTune[[paste0('estimator.',name,'.',name2)]] <- param2
@@ -99,7 +97,7 @@ setEstimator <- function(learningRate='auto',
     }
   }
   estimatorSettings$paramsToTune <- paramsToTune
-  
+
   return(estimatorSettings)
 }
  
