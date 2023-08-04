@@ -73,11 +73,10 @@ setEstimator <- function(learningRate='auto',
   estimatorSettings$criterion <- function() rlang::eval_tidy(criterion)
   class(estimatorSettings$criterion) <- c("delayed", class(estimatorSettings$criterion))
   
-  schedulerFun <- scheduler$fun
-  schedulerFun <- rlang::enquo(schedulerFun)
-  estimatorSettings$scheduler$fun <- function() rlang::eval_tidy(schedulerFun)
-  estimatorSettings$scheduler$params <- scheduler$params
-  class(estimatorSettings$scheduler$fun) <-c("delayed", class(estimatorSettings$scheduler$fun))
+  scheduler <- scheduler
+  scheduler <- rlang::enquo(scheduler)
+  estimatorSettings$scheduler <- function() rlang::eval_tidy(scheduler)
+  class(estimatorSettings$scheduler) <-c("delayed", class(estimatorSettings$scheduler))
 
   if (is.function(device)) {
     class(estimatorSettings$device) <- c("delayed",  class(estimatorSettings$device))
