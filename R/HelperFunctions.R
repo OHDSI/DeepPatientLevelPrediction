@@ -39,3 +39,54 @@ camelCaseToSnakeCaseNames <- function(object) {
   names(object) <- camelCaseToSnakeCase(names(object))
   return(object)
 }
+
+# defuse functions in settings objects so that they are kept as is and then
+# evaluated when running the study. Useful when settings are saved as json's
+# # to be loaded later before running e.g. Strategus studies.
+# defuseCallables <- function(settings) {
+#   
+#   for (set in names(settings)) {
+#     if (is.function(settings[[set]])) {
+#       defused <- rlang::enquo(setting[[set]])
+#       defusedFun <- function() rlang::eval_tidy(defused)
+#       settings[[set]] <- defusedFun
+#     } else if (is.list(settings[[set]]) && is.function(settings[[set]]$fun)) {
+#       settings[[set]] <- defuse(settings[[set]]$fun)
+#     }
+#   }
+#  return(settings) 
+# }
+  
+#   defusedOptimizer <- rlang::enquo(optimizer)
+#   estimatorSettings$optimizer <- function() rlang::eval_tidy(defusedOptimizer)
+#   
+#   defusedCriterion <- rlang::enquo(criterion)
+#   estimatorSettings$criterion <- function() rlang::eval_tidy(defusedCriterion)
+#   
+#   schedulerFun <- scheduler$fun
+#   defusedSchedulerFun <- rlang::enquo(schedulerFun)
+#   estimatorSettings$scheduler$fun <- function() rlang::eval_tidy(defusedSchedulerFun)
+#   estimatorSettings$scheduler$params<- scheduler$params
+#   
+#   for (set in names(estimatorSettings)) {
+#     if (is.function(estimatorSettings[[set]])) {
+#       class(estimatorSettings[[set]]) <- c("delayed", "function")
+#     }
+#     
+#     if (is.list(estimatorSettings[[set]]) && 
+#         !is.null(estimatorSettings[[set]]$fun) && 
+#         is.function(estimatorSettings[[set]]$fun)) {
+#       class(estimatorSettings[[set]]$fun) <- c("delayed", "function")
+#     }
+#   }  
+# }
+
+# defuse and wrap in function one member of a settings object
+defuse <- function(setting) {
+  
+  defusedSetting <- rlang::enquo(setting)
+  results <- function() rlang::eval_tidy(defusedSetting)
+  class(results) <- c("delayed", class(results))
+  
+  return(results)
+}

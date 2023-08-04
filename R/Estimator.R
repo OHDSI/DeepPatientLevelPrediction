@@ -55,24 +55,38 @@ setEstimator <- function(learningRate='auto',
   if (is.null(seed)) {
     seed <- as.integer(sample(1e5, 1))
   }
-  
-  optimizer <- substitute(optimizer)
-  criterion <- substitute(criterion)
-  scheduler$fun <- substitute(scheduler$fun)
-  
   estimatorSettings <- list(learningRate=learningRate,
                             weightDecay=weightDecay,
                             batchSize=batchSize,
                             epochs=epochs,
                             device=device,
-                            optimizer=optimizer,
-                            scheduler=scheduler,
                             criterion=criterion,
+                            scheduler=scheduler,
                             earlyStopping=earlyStopping,
                             findLR=findLR,
                             metric=metric,
-                            seed=seed[1] 
-  )
+                            seed=seed[1])
+  
+  optimizer <- rlang::enquo(optimizer) 
+  estimatorSettings$optimizer <- function() rlang::eval_tidy(optimizer)
+  class(estimatorSettings$optimizer) <- c("delayed", class(estimatorSettings$optimizer))
+  
+  criterion <- rlang::enquo(criterion)
+  estimatorSettings$criterion <- function() rlang::eval_tidy(criterion)
+  class(estimatorSettings$criterion) <- c("delayed", class(estimatorSettings$criterion))
+  
+  if (!is.null(scheduler)) {
+    schedulerFun <- scheduler$fun
+    schedulerFun <- rlang::enquo(schedulerFun)
+    estimatorSettings$scheduler$fun <- function() rlang::eval_tidy(schedulerFun)
+    class(estimatorSettings$scheduler$fun) <-c("delayed", class(estimatorSettings$scheduler$fun))
+  }
+  
+  if (is.function(device)) {
+    class(estimatorSettings$device) <- c("delayed",  class(estimatorSettings$device))
+  }
+  
+  
   paramsToTune <- list()
   for (name in names(estimatorSettings)) {
     param <- estimatorSettings[[name]]
@@ -432,18 +446,14 @@ fillEstimatorSettings <- function(estimatorSettings, fitParams, paramSearch) {
 evalEstimatorSettings <- function(estimatorSettings) {
   
   for (set in names(estimatorSettings)) {
-    if (is.call(estimatorSettings[[set]])) {
-      estimatorSettings[[set]] <- eval(estimatorSettings[[set]])
+    if (inherits(estimatorSettings[[set]], "delayed")) {
+      estimatorSettings[[set]] <- estimatorSettings[[set]]()
     } 
     if (is.list(estimatorSettings[[set]]) && !is.null(estimatorSettings[[set]]$fun)) {
-      if (is.call(estimatorSettings[[set]]$fun)) {
-        estimatorSettings[[set]]$fun <- eval(estimatorSettings[[set]]$fun)
+      if (inherits(estimatorSettings[[set]]$fun, "delayed")) {
+        estimatorSettings[[set]]$fun <- estimatorSettings[[set]]$fun()
       }
     }
-    if ((set == "device") && is.function(estimatorSettings[[set]])) {
-      estimatorSettings[[set]] <- estimatorSettings[[set]]()
-    }
-    
   }
   estimatorSettings
 }
