@@ -76,8 +76,8 @@ setEstimator <- function(learningRate='auto',
   if (!is.null(scheduler)) {
     schedulerFun <- scheduler$fun
     schedulerFun <- rlang::enquo(schedulerFun)
-    estimatorSettings$scheduler <- scheduler
     estimatorSettings$scheduler$fun <- function() rlang::eval_tidy(schedulerFun)
+    estimatorSettings$scheduler$params <- scheduler$params
     class(estimatorSettings$scheduler$fun) <-c("delayed", class(estimatorSettings$scheduler$fun))
   }
   
