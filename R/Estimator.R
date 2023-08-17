@@ -442,11 +442,6 @@ evalEstimatorSettings <- function(estimatorSettings) {
   for (set in names(estimatorSettings)) {
     if (inherits(estimatorSettings[[set]], "delayed")) {
       estimatorSettings[[set]] <- estimatorSettings[[set]]()
-    } 
-    if (is.list(estimatorSettings[[set]]) && !is.null(estimatorSettings[[set]]$fun)) {
-      if (inherits(estimatorSettings[[set]]$fun, "delayed")) {
-        estimatorSettings[[set]]$fun <- estimatorSettings[[set]]$fun()
-      }
     }
   }
   estimatorSettings
