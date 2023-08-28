@@ -1,6 +1,6 @@
-DeepPatientLevelPrediction 1.1.6.9000
+DeepPatientLevelPrediction 2.0.0
 ======================
-
+  - New backend which uses pytorch through reticulate insteada of torch in R
 
 DeepPatientLevelPrediction 1.1.6
 ======================

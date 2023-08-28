@@ -21,15 +21,3 @@ createDataset <- function(data, labels, plpModel=NULL) {
   if (is.null(attributes(data)$path)) {
     # sqlite object
     attributes(data)$path <- attributes(data)$dbname
-  }
-  if (is.null(plpModel)) {
-    data <- Dataset(r_to_py(normalizePath(attributes(data)$path)), 
-                            r_to_py(labels$outcomeCount))
-  }
-  else {
-    data <- Dataset(r_to_py(normalizePath(attributes(data)$path)),
-                    numerical_features = r_to_py(as.array(which(plpModel$covariateImportance$isNumeric)))  )
-  }
-  
-  return(data)  
-}

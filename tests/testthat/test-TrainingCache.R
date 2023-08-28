@@ -84,5 +84,4 @@ test_that("Estimator can resume training from cache", {
     }
   )
   sink()
-  
 })
