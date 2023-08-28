@@ -45,6 +45,7 @@ This vignette describes how you need to install the Observational Health Data Sc
 Under Windows the OHDSI Deep Patient Level Prediction (DeepPLP) package requires installing:
 
 -   R (<https://cran.cnr.berkeley.edu/> ) - (R \>= 4.0.0, but latest is recommended)
+-   Python - The package is tested with python 3.10, but \>= 3.8 should work
 -   Rstudio (<https://www.rstudio.com/> )
 -   Java (<http://www.java.com> )
 -   RTools (<https://cran.r-project.org/bin/windows/Rtools/>)
@@ -54,6 +55,7 @@ Under Windows the OHDSI Deep Patient Level Prediction (DeepPLP) package requires
 Under Mac and Linux the OHDSI deepPLP package requires installing:
 
 -   R (<https://cran.cnr.berkeley.edu/> ) - (R \>= 4.0.0, but latest is recommended)
+-   Python - The package is tested with python 3.10, but \>= 3.8 should work
 -   Rstudio (<https://www.rstudio.com/> )
 -   Java (<http://www.java.com> )
 -   Xcode command line tools(run in terminal: xcode-select --install) [MAC USERS ONLY]
@@ -66,6 +68,25 @@ If you do not want the official release you could install the bleeding edge vers
 
 Note that the latest develop branch could contain bugs, please report them to us if you experience problems.
 
+## Installing Python environment
+
+Since the package uses `pytorch` through `reticulate` a working python installation is required. The package is tested with python 3.10. To install python an easy way is to use miniconda through `reticulate`:
+
+```{r, echo = TRUE, message = FALSE, warning = FALSE,tidy=FALSE,eval=FALSE}
+install.packages('reticulate')
+reticulate::install_miniconda()
+```
+
+By default `install_minconda()` creates an environment `r-reticulate` with `python 3.9`. To use instead `python 3.10` we can do:
+
+```{r, echo = TRUE, message = FALSE, warning = FALSE,tidy=FALSE,eval=FALSE}
+reticulate::conda_install(envname = 'r-reticulate', packages=c('python=3.10'))
+```
+
+Then when we can install `DeepPatientLevelPrediction` and it should install the required python packages in this environment.
+
+If instead you want to use a specific python environment you can set the environment variable `RETICULATE_PYTHON` to point to the python executable of that environment in your `.Renviron` file. You need to do this before installing `DeepPatientLevelPrediction`.
+
 ## Installing DeepPatientLevelPrediction using remotes
 
 To install using `remotes` run:
@@ -76,12 +97,6 @@ remotes::install_github("OHDSI/FeatureExtraction")
 remotes::install_github("OHDSI/PatientLevelPrediction")
 remotes::install_github("OHDSI/DeepPatientLevelPrediction")
 ```
-
-DeepPLP relies on [torch for R](https://torch.mlverse.org/). When torch is installed the user 
-will be prompted if libtorch and lantern binaries should be downloaded. These binaries are necessary 
-for the package to run.
-
-If you are using DeepPLP in an offline environment the function `torch::install_torch_from_file()` can be used. This will first require to download and move the correct binaries to the offline environment. See [torch installation guide](https://torch.mlverse.org/docs/articles/installation.html) for more detailed instructions.
 
 When installing make sure to close any other Rstudio sessions that are using `DeepPatientLevelPrediction` or any dependency. Keeping Rstudio sessions open can cause locks on windows that prevent the package installing.
 
@@ -103,20 +118,20 @@ populationSettings <- PatientLevelPrediction::createStudyPopulationSettings(
                                                           riskWindowStart = 1, 
                                                           riskWindowEnd = 365)
 # a very simple resnet
-modelSettings <- setResNet(numLayers = 2, 
-                           sizeHidden = 64, 
-                           hiddenFactor = 1,
+modelSettings <- setResNet(numLayers = 2L, 
+                           sizeHidden = 64L, 
+                           hiddenFactor = 1L,
                            residualDropout = 0, 
                            hiddenDropout = 0.2, 
-                           sizeEmbedding = 64, 
+                           sizeEmbedding = 64L, 
                            estimatorSettings = setEstimator(learningRate = 3e-4,
                                                             weightDecay = 1e-6,
                                                             device='cpu',
-                                                            batchSize=128,
-                                                            epochs=3,
+                                                            batchSize=128L,
+                                                            epochs=3L,
                                                             seed = 42),
                            hyperParamSearch = 'random',
-                           randomSample = 1)
+                           randomSample = 1L)
 
 plpResults <- PatientLevelPrediction::runPlp(plpData = plpData,
                outcomeId = 3,
