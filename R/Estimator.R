@@ -39,15 +39,15 @@
 #' @export
 setEstimator <- function(learningRate='auto',
                          weightDecay = 0.0,
-                         batchSize = 512,
-                         epochs = 30,
+                         batchSize = 512L,
+                         epochs = 30L,
                          device='cpu',
-                         optimizer = torch::optim_adamw,
-                         scheduler = list(fun=torch::lr_reduce_on_plateau,
-                                          params=list(patience=1)),
-                         criterion = torch::nn_bce_with_logits_loss,
+                         optimizer = torch$optim$AdamW,
+                         scheduler = list(fun=torch$optim$lr_scheduler$ReduceLROnPlateau,
+                                          params=list(patience=1L)),
+                         criterion = torch$nn$BCEWithLogitsLoss,
                          earlyStopping = list(useEarlyStopping=TRUE,
-                                              params = list(patience=4)),
+                                              params = list(patience=4L)),
                          metric = "auc",
                          seed = NULL
 ) {
@@ -55,21 +55,32 @@ setEstimator <- function(learningRate='auto',
   if (is.null(seed)) {
     seed <- as.integer(sample(1e5, 1))
   }
-  
-  
   estimatorSettings <- list(learningRate=learningRate,
                             weightDecay=weightDecay,
                             batchSize=batchSize,
                             epochs=epochs,
                             device=device,
-                            optimizer=optimizer,
-                            scheduler=scheduler,
-                            criterion=criterion,
                             earlyStopping=earlyStopping,
                             findLR=findLR,
                             metric=metric,
-                            seed=seed[1] 
-  )
+                            seed=seed[1])
+  
+  optimizer <- rlang::enquo(optimizer) 
+  estimatorSettings$optimizer <- function() rlang::eval_tidy(optimizer)
+  class(estimatorSettings$optimizer) <- c("delayed", class(estimatorSettings$optimizer))
+  
+  criterion <- rlang::enquo(criterion)
+  estimatorSettings$criterion <- function() rlang::eval_tidy(criterion)
+  class(estimatorSettings$criterion) <- c("delayed", class(estimatorSettings$criterion))
+  
+  scheduler <- rlang::enquo(scheduler)
+  estimatorSettings$scheduler <- function() rlang::eval_tidy(scheduler)
+  class(estimatorSettings$scheduler) <-c("delayed", class(estimatorSettings$scheduler))
+
+  if (is.function(device)) {
+    class(estimatorSettings$device) <- c("delayed",  class(estimatorSettings$device))
+  }
+  
   paramsToTune <- list()
   for (name in names(estimatorSettings)) {
     param <- estimatorSettings[[name]]
@@ -77,7 +88,7 @@ setEstimator <- function(learningRate='auto',
       paramsToTune[[paste0('estimator.',name)]] <- param
     }
     if ("params" %in% names(param)) {
-      for (name2 in names(param[["params"]])) { 
+      for (name2 in names(param[["params"]])) {
         param2 <- param[["params"]][[name2]]
         if (length(param2) > 1) {
           paramsToTune[[paste0('estimator.',name,'.',name2)]] <- param2
@@ -86,9 +97,10 @@ setEstimator <- function(learningRate='auto',
     }
   }
   estimatorSettings$paramsToTune <- paramsToTune
+
   return(estimatorSettings)
 }
-
+ 
 #' fitEstimator
 #'
 #' @description
@@ -141,11 +153,12 @@ fitEstimator <- function(trainData,
                 dplyr::collect() %>%
                 as.integer())
   covariateRef <- covariateRef %>%
+    dplyr::arrange("columnId") %>%
     dplyr::collect() %>%
     dplyr::mutate(
       included = incs,
       covariateValue = 0,
-      isNumeric = cvResult$numericalIndex
+      isNumeric = .data$columnId %in% cvResult$numericalIndex
     )
   
   comp <- start - Sys.time()
@@ -218,26 +231,22 @@ predictDeepEstimator <- function(plpModel,
                                                      "covariateId"
                                                    )
     )
-    data <- Dataset(mappedData$covariates,
-                    numericalIndex = plpModel$covariateImportance$isNumeric
-    )
+    data <- createDataset(mappedData, plpModel=plpModel)
   }
   
   # get predictions
   prediction <- cohort
   if (is.character(plpModel$model)) {
-    model <- torch::torch_load(file.path(plpModel$model, "DeepEstimatorModel.pt"), device = "cpu")
-    estimator <- Estimator$new(
-      modelType = plpModel$modelDesign$modelSettings$modelType,
-      modelParameters = model$modelParameters,
-      estimatorSettings = model$estimatorSettings
-    )
-    estimator$model$load_state_dict(model$modelStateDict)
-    prediction$value <- estimator$predictProba(data)
+    modelSettings <- plpModel$modelDesign$modelSettings
+    model <- torch$load(file.path(plpModel$model, "DeepEstimatorModel.pt"), map_location = "cpu")
+    estimator <- createEstimator(modelType=modelSettings$modelType,
+                                 modelParameters=model$model_parameters,
+                                 estimatorSettings=model$estimator_settings)
+    estimator$model$load_state_dict(model$model_state_dict)
+    prediction$value <- estimator$predict_proba(data)
   } else {
-    prediction$value <- plpModel$model$predictProba(data)
+    prediction$value <- plpModel$model$predict_proba(data)
   }
-  
   
   attr(prediction, "metaData")$modelType <- attr(plpModel, "modelType")
   
@@ -267,9 +276,10 @@ gridCvDeep <- function(mappedData,
   ###########################################################################
   
   paramSearch <- modelSettings$param
-  trainCache <- TrainingCache$new(analysisPath)
   
-  if (trainCache$isParamGridIdentical(paramSearch)) {
+  # TODO below chunk should be in a setupCache function
+  trainCache <- TrainingCache$new(analysisPath)
+    if (trainCache$isParamGridIdentical(paramSearch)) {
     gridSearchPredictons <- trainCache$getGridSearchPredictions()
   } else {
     gridSearchPredictons <- list()
@@ -278,55 +288,46 @@ gridCvDeep <- function(mappedData,
     trainCache$saveModelParams(paramSearch)
   }
   
-  dataset <- Dataset(mappedData$covariates, labels$outcomeCount)
-  
-  estimatorSettings <- modelSettings$estimatorSettings
+  dataset <- createDataset(data=mappedData, labels=labels)
   
   fitParams <- names(paramSearch[[1]])[grepl("^estimator", names(paramSearch[[1]]))]
-  
+  findLR <- modelSettings$estimatorSettings$findLR
   for (gridId in trainCache$getLastGridSearchIndex():length(paramSearch)) {
     ParallelLogger::logInfo(paste0("Running hyperparameter combination no ", gridId))
     ParallelLogger::logInfo(paste0("HyperParameters: "))
     ParallelLogger::logInfo(paste(names(paramSearch[[gridId]]), paramSearch[[gridId]], collapse = " | "))
-    modelParams <- paramSearch[[gridId]][modelSettings$modelParamNames]
+    currentModelParams <- paramSearch[[gridId]][modelSettings$modelParamNames]
     
-    
-    estimatorSettings <- fillEstimatorSettings(estimatorSettings, fitParams, 
+    currentEstimatorSettings <- fillEstimatorSettings(modelSettings$estimatorSettings, fitParams, 
                                                paramSearch[[gridId]])
-
+    
     # initiate prediction
-    prediction <- c()
+    prediction <- NULL
     
     fold <- labels$index
     ParallelLogger::logInfo(paste0("Max fold: ", max(fold)))
-    modelParams$catFeatures <- dataset$numCatFeatures()
-    modelParams$numFeatures <- dataset$numNumFeatures()
-    
-    if (estimatorSettings$findLR) {
-      lr <- lrFinder(dataset=dataset, 
-                     modelType = modelSettings$modelType,
-                     modelParams = modelParams,
-                     estimatorSettings = estimatorSettings)
+    currentModelParams$catFeatures <- dataset$get_cat_features()$shape[[1]]
+    currentModelParams$numFeatures <- dataset$get_numerical_features()$shape[[1]]
+    if (findLR) {
+      LrFinder <- createLRFinder(modelType = modelSettings$modelType,
+                                 modelParameters = currentModelParams,
+                                 estimatorSettings = currentEstimatorSettings
+                                 )
+      lr <- LrFinder$get_lr(dataset)
       ParallelLogger::logInfo(paste0("Auto learning rate selected as: ", lr))
-      estimatorSettings$learningRate <- lr
+      currentEstimatorSettings$learningRate <- lr
     }
-    
     
     learnRates <- list()
     for (i in 1:max(fold)) {
       ParallelLogger::logInfo(paste0("Fold ", i))
-      trainDataset <- torch::dataset_subset(dataset, indices = which(fold != i))
-      testDataset <- torch::dataset_subset(dataset, indices = which(fold == i))
-      estimator <- Estimator$new(
-        modelType = modelSettings$modelType,
-        modelParameters = modelParams,
-        estimatorSettings = estimatorSettings
-      )
-      
-      estimator$fit(
-        trainDataset,
-        testDataset
-      )
+      trainDataset <- torch$utils$data$Subset(dataset, indices = as.integer(which(fold != i) - 1)) # -1 for python 0-based indexing
+      testDataset <- torch$utils$data$Subset(dataset, indices = as.integer(which(fold == i) -1)) # -1 for python 0-based indexing
+    
+      estimator <- createEstimator(modelType=modelSettings$modelType,
+                                   modelParameters=currentModelParams,
+                                   estimatorSettings=currentEstimatorSettings)
+      estimator$fit(trainDataset, testDataset)
       
       ParallelLogger::logInfo("Calculating predictions on left out fold set...")
       
@@ -339,8 +340,8 @@ gridCvDeep <- function(mappedData,
         )
       )
       learnRates[[i]] <- list(
-        LRs = estimator$learnRateSchedule,
-        bestEpoch = estimator$bestEpoch
+        LRs = estimator$learn_rate_schedule,
+        bestEpoch = estimator$best_epoch
       )
     }
     maxIndex <- which.max(unlist(sapply(learnRates, `[`, 2)))
@@ -374,20 +375,20 @@ gridCvDeep <- function(mappedData,
   if (!dir.exists(file.path(modelLocation))) {
     dir.create(file.path(modelLocation), recursive = T)
   }
-  modelParams$catFeatures <- dataset$numCatFeatures()
-  modelParams$numFeatures <- dataset$numNumFeatures()
   
-  estimatorSettings <- fillEstimatorSettings(estimatorSettings, fitParams,
+  modelParams$catFeatures <- dataset$get_cat_features()$shape[[1]]
+  modelParams$numFeatures <- dataset$get_numerical_features()$shape[[1]]
+  
+  
+  estimatorSettings <- fillEstimatorSettings(modelSettings$estimatorSettings, fitParams,
                                              finalParam)
-  
-  estimator <- Estimator$new(
-    modelType = modelSettings$modelType,
-    modelParameters = modelParams,
-    estimatorSettings = estimatorSettings
-  )
-  numericalIndex <- dataset$getNumericalIndex()
-  
-  estimator$fitWholeTrainingSet(dataset, finalParam$learnSchedule$LRs)
+  estimatorSettings$learningRate <- finalParam$learnSchedule$LRs[[1]]
+  estimator <- createEstimator(modelType = modelSettings$modelType,
+                               modelParameters = modelParams,
+                               estimatorSettings = estimatorSettings)
+ 
+  numericalIndex <- dataset$get_numerical_features()
+  estimator$fit_whole_training_set(dataset, finalParam$learnSchedule$LRs)
   
   ParallelLogger::logInfo("Calculating predictions on all train data...")
   prediction <- predictDeepEstimator(
@@ -410,14 +411,13 @@ gridCvDeep <- function(mappedData,
   
   # save torch code here
   estimator$save(modelLocation, "DeepEstimatorModel.pt")
-  
   return(
     list(
       estimator = modelLocation,
       prediction = prediction,
       finalParam = finalParam,
       paramGridSearch = paramGridSearch,
-      numericalIndex = numericalIndex
+      numericalIndex = numericalIndex$to_list()
     )
   )
 }
@@ -434,4 +434,34 @@ fillEstimatorSettings <- function(estimatorSettings, fitParams, paramSearch) {
     }
   }
   return(estimatorSettings)
+}
+
+# utility function to evaluate any expressions or call functions passed as settings
+evalEstimatorSettings <- function(estimatorSettings) {
+  
+  for (set in names(estimatorSettings)) {
+    if (inherits(estimatorSettings[[set]], "delayed")) {
+      estimatorSettings[[set]] <- estimatorSettings[[set]]()
+    }
+  }
+  estimatorSettings
+}
+
+createEstimator <- function(modelType,
+                            modelParameters,
+                            estimatorSettings) {
+  path <- system.file("python", package = "DeepPatientLevelPrediction")
+
+  Model <- reticulate::import_from_path(modelType, path=path)[[modelType]]
+  
+  Estimator <- reticulate::import_from_path("Estimator", path=path)$Estimator
+  
+  modelParameters <- camelCaseToSnakeCaseNames(modelParameters)
+  estimatorSettings <- camelCaseToSnakeCaseNames(estimatorSettings)
+  estimatorSettings <- evalEstimatorSettings(estimatorSettings)
+  
+  estimator <- Estimator(model = Model,
+                         model_parameters = modelParameters,
+                         estimator_settings = estimatorSettings)
+  return(estimator)
 }

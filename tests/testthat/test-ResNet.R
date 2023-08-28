@@ -1,16 +1,16 @@
 
 resSet <- setResNet(
-  numLayers = c(2),
-  sizeHidden = c(32),
-  hiddenFactor = c(2),
-  residualDropout = c(0.1),
-  hiddenDropout = c(0.1),
-  sizeEmbedding = c(32),
+  numLayers = 2L,
+  sizeHidden = 32L,
+  hiddenFactor = 2L,
+  residualDropout = 0.1,
+  hiddenDropout = 0.1,
+  sizeEmbedding = 32L,
   estimatorSettings = setEstimator(learningRate="auto",
                                    weightDecay = c(1e-6),
                                    seed=42,
-                                   batchSize = 128,
-                                   epochs=1),
+                                   batchSize = 128L,
+                                   epochs=1L),
   hyperParamSearch = "random",
   randomSample = 1,
 )
@@ -22,17 +22,17 @@ test_that("setResNet works", {
   
   testthat::expect_true(length(resSet$param) > 0)
   
-  expect_error(setResNet(numLayers = c(2),
-                         sizeHidden = c(32),
-                         hiddenFactor = c(2),
-                         residualDropout = c(0.1),
-                         hiddenDropout = c(0.1),
-                         sizeEmbedding = c(32),
+  expect_error(setResNet(numLayers = 2L,
+                         sizeHidden = 32L,
+                         hiddenFactor = 2L,
+                         residualDropout = 0.1,
+                         hiddenDropout = 0.1,
+                         sizeEmbedding = 32L,
                          estimatorSettings = setEstimator(learningRate=c(3e-4),
                                                           weightDecay = c(1e-6),
                                                           seed=42,
-                                                          batchSize = 128,
-                                                          epochs=1),
+                                                          batchSize = 128L,
+                                                          epochs=1L),
                          hyperParamSearch = "random",
                          randomSample = 2))
 })
@@ -89,52 +89,63 @@ test_that("ResNet with runPlp working checks", {
 
 
 test_that("ResNet nn-module works ", {
+  ResNet <- reticulate::import_from_path("ResNet", path=path)$ResNet
   model <- ResNet(
-    catFeatures = 5, numFeatures = 1, sizeEmbedding = 5,
-    sizeHidden = 16, numLayers = 1, hiddenFactor = 2,
-    activation = torch::nn_relu,
-    normalization = torch::nn_batch_norm1d, hiddenDropout = 0.3,
-    residualDropout = 0.3, d_out = 1
+    cat_features = 5L, 
+    num_features = 1L, 
+    size_embedding = 5L,
+    size_hidden = 16L, 
+    num_layers = 1L, 
+    hidden_factor = 2L,
+    activation = torch$nn$ReLU,
+    normalization = torch$nn$BatchNorm1d, 
+    hidden_dropout = 0.3,
+    residual_dropout = 0.3
   )
   
-  pars <- sum(sapply(model$parameters, function(x) prod(x$shape)))
+  pars <- sum(reticulate::iterate(model$parameters(), function(x) x$numel()))
   
   # expected number of parameters
   expect_equal(pars, 1295)
   
   input <- list()
-  input$cat <- torch::torch_randint(0, 5, c(10, 5), dtype = torch::torch_long())
-  input$num <- torch::torch_randn(10, 1, dtype = torch::torch_float32())
+  input$cat <- torch$randint(0L, 5L, c(10L, 5L), dtype = torch$long)
+  input$num <- torch$randn(10L, 1L, dtype = torch$float32)
   
   
   output <- model(input)
   
   # output is correct shape
-  expect_equal(output$shape, 10)
+  expect_equal(output$shape[0], 10L)
   
   input$num <- NULL
   model <- ResNet(
-    catFeatures = 5, numFeatures = 0, sizeEmbedding = 5,
-    sizeHidden = 16, numLayers = 1, hiddenFactor = 2,
-    activation = torch::nn_relu,
-    normalization = torch::nn_batch_norm1d, hiddenDropout = 0.3,
-    residualDropout = 0.3, d_out = 1
+    cat_features = 5L, 
+    num_features = 0L, 
+    size_embedding = 5L,
+    size_hidden = 16L, 
+    num_layers = 1L, 
+    hidden_factor = 2L,
+    activation = torch$nn$ReLU,
+    normalization = torch$nn$BatchNorm1d, 
+    hidden_dropout = 0.3,
+    residual_dropout = 0.3
   )
   output <- model(input)
   # model works without numeric variables
-  expect_equal(output$shape, 10)
+  expect_equal(output$shape[0], 10L)
 })
 
 test_that("Default Resnet works", {
   defaultResNet <- setDefaultResNet()
   params <- defaultResNet$param[[1]]
   
-  expect_equal(params$numLayers, 6)
-  expect_equal(params$sizeHidden, 512)
-  expect_equal(params$hiddenFactor, 2)
+  expect_equal(params$numLayers, 6L)
+  expect_equal(params$sizeHidden, 512L)
+  expect_equal(params$hiddenFactor, 2L)
   expect_equal(params$residualDropout, 0.1)
   expect_equal(params$hiddenDropout, 0.4)
-  expect_equal(params$sizeEmbedding, 256)
+  expect_equal(params$sizeEmbedding, 256L)
   
 }) 
 
@@ -142,15 +153,15 @@ test_that("Errors are produced by settings function", {
   randomSample <- 2
   
   expect_error(setResNet(
-    numLayers = 1,
-    sizeHidden = 128,
+    numLayers = 1L,
+    sizeHidden = 128L,
     hiddenFactor = 1,
     residualDropout = 0.0,
     hiddenDropout = 0.0,
-    sizeEmbedding = 128,
-    weightDecay = 1e-6,
-    learningRate = 0.01,
-    seed = 42,
+    sizeEmbedding = 128L,
+    estimatorSettings = setEstimator(weightDecay = 1e-6,
+                                     learningRate = 0.01,
+                                     seed = 42),
     hyperParamSearch = 'random',
     randomSample = randomSample))
 })

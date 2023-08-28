@@ -31,15 +31,15 @@
 setDefaultResNet <- function(estimatorSettings=setEstimator(learningRate='auto',
                                                             weightDecay=1e-6,
                                                             device='cpu',
-                                                            batchSize=1024,
-                                                            epochs=50,
+                                                            batchSize=1024L,
+                                                            epochs=50L,
                                                             seed=NULL)) {
-  resnetSettings <- setResNet(numLayers = 6,
-                              sizeHidden = 512,
-                              hiddenFactor = 2,
+  resnetSettings <- setResNet(numLayers = 6L,
+                              sizeHidden = 512L,
+                              hiddenFactor = 2L,
                               residualDropout = 0.1,
                               hiddenDropout = 0.4,
-                              sizeEmbedding = 256,
+                              sizeEmbedding = 256L,
                               estimatorSettings = estimatorSettings,
                               hyperParamSearch = 'random',
                               randomSample = 1)
@@ -68,17 +68,17 @@ setDefaultResNet <- function(estimatorSettings=setEstimator(learningRate='auto',
 #' @param randomSample      How many random samples from hyperparameter space to use
 #' @param randomSampleSeed  Random seed to sample hyperparameter combinations
 #' @export
-setResNet <- function(numLayers = c(1:8),
-                      sizeHidden = c(2^(6:10)),
-                      hiddenFactor = c(1:4),
+setResNet <- function(numLayers = as.integer(1:8),
+                      sizeHidden = as.integer(2^(6:10)),
+                      hiddenFactor = as.integer(1:4),
                       residualDropout = c(seq(0, 0.5, 0.05)),
                       hiddenDropout = c(seq(0, 0.5, 0.05)),
-                      sizeEmbedding = c(2^(6:9)),
+                      sizeEmbedding = as.integer(2^(6:9)),
                       estimatorSettings = setEstimator(learningRate='auto',
                                                        weightDecay=c(1e-6, 1e-3),
                                                        device='cpu',
-                                                       batchSize=1024,
-                                                       epochs=30,
+                                                       batchSize=1024L,
+                                                       epochs=30L,
                                                        seed=NULL),
                       hyperParamSearch = "random",
                       randomSample = 100,
@@ -121,99 +121,3 @@ setResNet <- function(numLayers = c(1:8),
 
   return(results)
 }
-
-ResNet <- torch::nn_module(
-  name = "ResNet",
-  initialize = function(catFeatures, numFeatures = 0, sizeEmbedding, sizeHidden, numLayers,
-                        hiddenFactor, activation = torch::nn_relu,
-                        normalization = torch::nn_batch_norm1d, hiddenDropout = NULL,
-                        residualDropout = NULL, d_out = 1, concatNum=TRUE) {
-    self$embedding <- torch::nn_embedding_bag(
-      num_embeddings = catFeatures + 1,
-      embedding_dim = sizeEmbedding,
-      padding_idx = 1
-    )
-    if (numFeatures != 0 & concatNum != TRUE) {
-      self$numEmbedding <- numericalEmbedding(numFeatures, sizeEmbedding)
-    } else {
-      self$numEmbedding <- NULL
-      sizeEmbedding <- sizeEmbedding + numFeatures
-    }
-
-    self$first_layer <- torch::nn_linear(sizeEmbedding, sizeHidden)
-
-    resHidden <- sizeHidden * hiddenFactor
-
-    self$layers <- torch::nn_module_list(lapply(
-      1:numLayers,
-      function(x) {
-        ResLayer(
-          sizeHidden, resHidden,
-          normalization, activation,
-          hiddenDropout,
-          residualDropout
-        )
-      }
-    ))
-    self$lastNorm <- normalization(sizeHidden)
-    self$head <- torch::nn_linear(sizeHidden, d_out)
-
-    self$lastAct <- activation()
-  },
-  forward = function(x) {
-    x_cat <- x$cat
-    x_num <- x$num
-    x_cat <- self$embedding(x_cat + 1L) # padding_idx is 1
-    if (!is.null(x_num) & (!is.null(self$numEmbedding))) {
-      x <- (x_cat + self$numEmbedding(x_num)$mean(dim = 2)) / 2
-    } else if (!is.null(x_num) & is.null(self$numEmbedding)) {
-      x <- torch::torch_cat(list(x_cat, x_num), dim = 2L)
-    } else {
-      x <- x_cat
-    }
-    x <- self$first_layer(x)
-
-    for (i in 1:length(self$layers)) {
-      x <- self$layers[[i]](x)
-    }
-    x <- self$lastNorm(x)
-    x <- self$lastAct(x)
-    x <- self$head(x)
-    x <- x$squeeze(-1)
-    return(x)
-  }
-)
-
-ResLayer <- torch::nn_module(
-  name = "ResLayer",
-  initialize = function(sizeHidden, resHidden, normalization,
-                        activation, hiddenDropout = NULL, residualDropout = NULL) {
-    self$norm <- normalization(sizeHidden)
-    self$linear0 <- torch::nn_linear(sizeHidden, resHidden)
-    self$linear1 <- torch::nn_linear(resHidden, sizeHidden)
-
-    if (!is.null(hiddenDropout)) {
-      self$hiddenDropout <- torch::nn_dropout(p = hiddenDropout)
-    }
-    if (!is.null(residualDropout)) {
-      self$residualDropout <- torch::nn_dropout(p = residualDropout)
-    }
-
-    self$activation <- activation()
-  },
-  forward = function(x) {
-    z <- x
-    z <- self$norm(z)
-    z <- self$linear0(z)
-    z <- self$activation(z)
-    if (!is.null(self$hiddenDropout)) {
-      z <- self$hiddenDropout(z)
-    }
-    z <- self$linear1(z)
-    if (!is.null(self$residualDropout)) {
-      z <- self$residualDropout(z)
-    }
-    x <- z + x
-    return(x)
-  }
-)
