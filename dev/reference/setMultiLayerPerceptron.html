@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">DeepPatientLevelPrediction</a>
-        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">1.1.6.9000</span>
+        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">1.1.6.9999</span>
       </span>
     </div>
 
@@ -85,12 +85,12 @@
 
     <div id="ref-usage">
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">setMultiLayerPerceptron</span><span class="op">(</span></span>
-<span>  numLayers <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">8</span><span class="op">)</span>,</span>
-<span>  sizeHidden <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span><span class="op">^</span><span class="op">(</span><span class="fl">6</span><span class="op">:</span><span class="fl">9</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>  dropout <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">0.5</span>, <span class="fl">0.05</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>  sizeEmbedding <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span><span class="op">^</span><span class="op">(</span><span class="fl">6</span><span class="op">:</span><span class="fl">9</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  numLayers <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">as.integer</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">8</span><span class="op">)</span>,</span>
+<span>  sizeHidden <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">as.integer</a></span><span class="op">(</span><span class="fl">2</span><span class="op">^</span><span class="op">(</span><span class="fl">6</span><span class="op">:</span><span class="fl">9</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  dropout <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">0.3</span>, <span class="fl">0.05</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  sizeEmbedding <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">as.integer</a></span><span class="op">(</span><span class="fl">2</span><span class="op">^</span><span class="op">(</span><span class="fl">6</span><span class="op">:</span><span class="fl">9</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>  estimatorSettings <span class="op">=</span> <span class="fu"><a href="setEstimator.html">setEstimator</a></span><span class="op">(</span>learningRate <span class="op">=</span> <span class="st">"auto"</span>, weightDecay <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1e-06</span>, <span class="fl">0.001</span><span class="op">)</span>,</span>
-<span>    batchSize <span class="op">=</span> <span class="fl">1024</span>, epochs <span class="op">=</span> <span class="fl">30</span>, device <span class="op">=</span> <span class="st">"cpu"</span><span class="op">)</span>,</span>
+<span>    batchSize <span class="op">=</span> <span class="fl">1024L</span>, epochs <span class="op">=</span> <span class="fl">30L</span>, device <span class="op">=</span> <span class="st">"cpu"</span><span class="op">)</span>,</span>
 <span>  hyperParamSearch <span class="op">=</span> <span class="st">"random"</span>,</span>
 <span>  randomSample <span class="op">=</span> <span class="fl">100</span>,</span>
 <span>  randomSampleSeed <span class="op">=</span> <span class="cn">NULL</span></span>
@@ -100,11 +100,11 @@
     <div id="arguments">
     <h2>Arguments</h2>
     <dl><dt>numLayers</dt>
-<dd><p>Number of layers in network, default: 1:16</p></dd>
+<dd><p>Number of layers in network, default: 1:8</p></dd>
 
 
 <dt>sizeHidden</dt>
-<dd><p>Amount of neurons in each default layer, default: 2^(6:10) (64 to 1024)</p></dd>
+<dd><p>Amount of neurons in each default layer, default: 2^(6:9) (64 to 512)</p></dd>
 
 
 <dt>dropout</dt>
