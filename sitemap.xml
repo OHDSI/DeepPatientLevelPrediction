@@ -25,22 +25,16 @@
     <loc>/news/index.html</loc>
   </url>
   <url>
-    <loc>/reference/Dataset.html</loc>
-  </url>
-  <url>
     <loc>/reference/DeepPatientLevelPrediction.html</loc>
-  </url>
-  <url>
-    <loc>/reference/EarlyStopping.html</loc>
-  </url>
-  <url>
-    <loc>/reference/Estimator.html</loc>
   </url>
   <url>
     <loc>/reference/TrainingCache.html</loc>
   </url>
   <url>
-    <loc>/reference/batchToDevice.html</loc>
+    <loc>/reference/camelCaseToSnakeCase.html</loc>
+  </url>
+  <url>
+    <loc>/reference/camelCaseToSnakeCaseNames.html</loc>
   </url>
   <url>
     <loc>/reference/fitEstimator.html</loc>
@@ -50,9 +44,6 @@
   </url>
   <url>
     <loc>/reference/index.html</loc>
-  </url>
-  <url>
-    <loc>/reference/lrFinder.html</loc>
   </url>
   <url>
     <loc>/reference/predictDeepEstimator.html</loc>
