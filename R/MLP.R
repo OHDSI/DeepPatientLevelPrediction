@@ -35,20 +35,39 @@
 #' @param randomSampleSeed  Random seed to sample hyperparameter combinations
 #'
 #' @export
-setMultiLayerPerceptron <- function(numLayers = as.integer(1:8),
-                                    sizeHidden = as.integer(2^(6:9)),
+setMultiLayerPerceptron <- function(numLayers = c(1:8),
+                                    sizeHidden = c(2^(6:9)),
                                     dropout = c(seq(0, 0.3, 0.05)),
-                                    sizeEmbedding = as.integer(2^(6:9)),
+                                    sizeEmbedding = c(2^(6:9)),
                                     estimatorSettings = setEstimator(
                                       learningRate = 'auto',
                                       weightDecay = c(1e-6, 1e-3),
-                                      batchSize = 1024L,
-                                      epochs = 30L,
+                                      batchSize = 1024,
+                                      epochs = 30,
                                       device="cpu"),
                                     hyperParamSearch = "random",
                                     randomSample = 100,
                                     randomSampleSeed = NULL) {
+  
+  checkIsClass(numLayers, c("integer", "numeric"))
+  checkHigherEqual(numLayers, 1)
 
+  checkIsClass(sizeHidden, c("integer", "numeric"))
+  checkHigherEqual(sizeHidden, 1)
+  
+  checkIsClass(dropout, c("numeric"))
+  checkHigherEqual(dropout, 0)
+  
+  checkIsClass(sizeEmbedding, c("numeric", "integer"))
+  checkHigherEqual(sizeEmbedding, 1)
+  
+  checkIsClass(hyperParamSearch, "character")
+  
+  checkIsClass(randomSample, c("numeric", "integer"))
+  checkHigherEqual(randomSample, 1)
+  
+  checkIsClass(randomSampleSeed, c("numeric", "integer", "NULL"))
+  
   paramGrid <- list(
     numLayers = numLayers,
     sizeHidden = sizeHidden,

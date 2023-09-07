@@ -27,19 +27,19 @@
 setDefaultTransformer <- function(estimatorSettings=setEstimator(
   learningRate = 'auto',
   weightDecay = 1e-4,
-  batchSize=512L,
-  epochs=10L,
+  batchSize=512,
+  epochs=10,
   seed=NULL,
   device='cpu')
 ) {
-  transformerSettings <- setTransformer(numBlocks = 3L,
-                                        dimToken = 192L,
-                                        dimOut = 1L,
-                                        numHeads = 8L,
+  transformerSettings <- setTransformer(numBlocks = 3,
+                                        dimToken = 192,
+                                        dimOut = 1,
+                                        numHeads = 8,
                                         attDropout = 0.2,
                                         ffnDropout = 0.1,
                                         resDropout = 0.0,
-                                        dimHidden = 256L,
+                                        dimHidden = 256,
                                         estimatorSettings=estimatorSettings,
                                         hyperParamSearch = 'random',
                                         randomSample = 1)
@@ -67,16 +67,61 @@ setDefaultTransformer <- function(estimatorSettings=setEstimator(
 #' @param randomSampleSeed        Random seed to sample hyperparameter combinations
 #'
 #' @export
-setTransformer <- function(numBlocks = 3, dimToken = 96, dimOut = 1,
-                           numHeads = 8, attDropout = 0.25, ffnDropout = 0.25,
-                           resDropout = 0, dimHidden = 512, dimHiddenRatio = NULL,
+setTransformer <- function(numBlocks = 3, 
+                           dimToken = 96, 
+                           dimOut = 1,
+                           numHeads = 8, 
+                           attDropout = 0.25, 
+                           ffnDropout = 0.25,
+                           resDropout = 0, 
+                           dimHidden = 512, 
+                           dimHiddenRatio = NULL,
                            estimatorSettings=setEstimator(weightDecay = 1e-6,
                                                           batchSize=1024,
                                                           epochs=10,
                                                           seed=NULL),
                            hyperParamSearch = "random",
-                           randomSample = 1, randomSampleSeed = NULL) {
+                           randomSample = 1, 
+                           randomSampleSeed = NULL) {
+  
+  checkIsClass(numBlocks, c("integer", "numeric"))
+  checkHigherEqual(numBlocks, 1)
+  
+  checkIsClass(dimToken, c("integer", "numeric"))
+  checkHigherEqual(dimToken, 1)
+  
+  checkIsClass(dimOut, c("integer", "numeric"))
+  checkHigherEqual(dimOut, 1)
+  
+  checkIsClass(numHeads, c("integer", "numeric"))
+  checkHigherEqual(numHeads, 1)
 
+  checkIsClass(attDropout, c("numeric"))
+  checkHigherEqual(attDropout, 0)
+  
+  checkIsClass(ffnDropout, c("numeric"))
+  checkHigherEqual(ffnDropout, 0)
+  
+  checkIsClass(resDropout, c("numeric"))
+  checkHigherEqual(resDropout, 0)
+  
+  checkIsClass(dimHidden, c("integer", "numeric", "NULL"))
+  if (!is.null(dimHidden)) {
+    checkHigherEqual(dimHidden, 1)
+  }
+  
+  checkIsClass(dimHiddenRatio, c("numeric", "NULL"))
+  if (!is.null(dimHiddenRatio)) {
+    checkHigher(dimHiddenRatio, 0)
+  }
+  
+  checkIsClass(hyperParamSearch, "character")
+  
+  checkIsClass(randomSample, c("numeric", "integer"))
+  checkHigherEqual(randomSample, 1)
+  
+  checkIsClass(randomSampleSeed, c("numeric", "integer", "NULL"))
+  
   if (any(with(expand.grid(dimToken = dimToken, numHeads = numHeads), dimToken %% numHeads != 0))) {
     stop(paste(
       "dimToken needs to divisible by numHeads. dimToken =", dimToken,

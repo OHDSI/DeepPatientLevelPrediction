@@ -5,12 +5,12 @@
 \title{setMultiLayerPerceptron}
 \usage{
 setMultiLayerPerceptron(
-  numLayers = as.integer(1:8),
-  sizeHidden = as.integer(2^(6:9)),
+  numLayers = c(1:8),
+  sizeHidden = c(2^(6:9)),
   dropout = c(seq(0, 0.3, 0.05)),
-  sizeEmbedding = as.integer(2^(6:9)),
+  sizeEmbedding = c(2^(6:9)),
   estimatorSettings = setEstimator(learningRate = "auto", weightDecay = c(1e-06, 0.001),
-    batchSize = 1024L, epochs = 30L, device = "cpu"),
+    batchSize = 1024, epochs = 30, device = "cpu"),
   hyperParamSearch = "random",
   randomSample = 100,
   randomSampleSeed = NULL

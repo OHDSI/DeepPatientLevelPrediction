@@ -6,7 +6,7 @@
 \usage{
 setDefaultTransformer(
   estimatorSettings = setEstimator(learningRate = "auto", weightDecay = 1e-04, batchSize
-    = 512L, epochs = 10L, seed = NULL, device = "cpu")
+    = 512, epochs = 10, seed = NULL, device = "cpu")
 )
 }
 \arguments{

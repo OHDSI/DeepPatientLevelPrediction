@@ -39,3 +39,42 @@ camelCaseToSnakeCaseNames <- function(object) {
   names(object) <- camelCaseToSnakeCase(names(object))
   return(object)
 }
+
+#' helper function to check class of input
+#' 
+#' @param parameter the input parameter to check
+#' @param classes which classes it should belong to (one or more)
+checkIsClass<- function(parameter,classes) {
+  name = deparse(substitute(parameter))
+  if (!inherits(x = parameter, what = classes)) {
+    ParallelLogger::logError(paste0(name, ' should be of class:', classes))      
+    stop(paste0(name, ' is wrong class'))
+  }
+  return(TRUE)
+}
+
+#' helper function to check that input is higher than a certain value
+#' 
+#' @param parameter the input parameter to check, can be a vector
+#' @param value which value it should be higher than
+checkHigher <- function(parameter,value) {
+  name = deparse(substitute(parameter))
+  if (!is.numeric(parameter) | all(parameter<=value)) {
+    ParallelLogger::logError(paste0(name, ' needs to be > ',value))      
+    stop(paste0(name, ' needs to be > ', value))
+  }
+  return(TRUE)
+}
+
+#' helper function to check that input is higher or equal than a certain value
+#' 
+#' @param parameter the input parameter to check, can be a vector
+#' @param value which value it should be higher or equal than
+checkHigherEqual <- function(parameter,value) {
+  name = deparse(substitute(parameter))
+  if (!is.numeric(parameter) | all(parameter<value)) {
+    ParallelLogger::logError(paste0(name, ' needs to be >= ',value))      
+    stop(paste0(name, ' needs to be >= ', value))
+  }
+  return(TRUE)
+} 

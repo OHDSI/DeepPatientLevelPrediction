@@ -1,15 +1,15 @@
 settings <- setTransformer(
-  numBlocks = 1L, 
-  dimToken = 8L, 
-  dimOut = 1L,
-  numHeads = 2L, 
+  numBlocks = 1, 
+  dimToken = 8, 
+  dimOut = 1,
+  numHeads = 2, 
   attDropout = 0.0, 
   ffnDropout = 0.2,
   resDropout = 0.0, 
-  dimHidden = 32L, 
+  dimHidden = 32, 
   estimatorSettings = setEstimator(learningRate = 3e-4,
-                                   batchSize=64L,
-                                   epochs=1L),
+                                   batchSize=64,
+                                   epochs=1),
   randomSample = 1
 )
 
@@ -18,16 +18,16 @@ test_that("Transformer settings work", {
   testthat::expect_equal(settings$fitFunction, "fitEstimator")
   testthat::expect_true(length(settings$param) > 0)
   testthat::expect_error(setTransformer(
-    numBlocks = 1L, dimToken = 50L,
-    numHeads = 7L
+    numBlocks = 1, dimToken = 50,
+    numHeads = 7
   ))
   testthat::expect_error(setTransformer(
-    numBlocks = 1L, dimToken = c(2L, 4L),
-    numHeads = c(2L, 4L)
+    numBlocks = 1, dimToken = c(2, 4),
+    numHeads = c(2, 4)
   ))
   testthat::expect_error(setTransformer(
-    numBlocks = 1L, dimToken = c(4L, 6L),
-    numHeads = c(2L, 4L)
+    numBlocks = 1, dimToken = c(4, 6),
+    numHeads = c(2, 4)
   ))
 })
 
@@ -46,15 +46,15 @@ test_that("fitEstimator with Transformer works", {
 test_that("transformer nn-module works", {
   Transformer <- reticulate::import_from_path("Transformer", path=path)$Transformer
   model <- Transformer(
-    cat_features = 5L, 
-    num_features = 1L, 
-    num_blocks = 2L,
-    dim_token = 16L, 
-    num_heads = 2L, 
+    cat_features = 5, 
+    num_features = 1, 
+    num_blocks = 2,
+    dim_token = 16, 
+    num_heads = 2, 
     att_dropout = 0, 
     ffn_dropout = 0,
     res_dropout = 0, 
-    dim_hidden = 32L
+    dim_hidden = 32
   )
 
   pars <- sum(reticulate::iterate(model$parameters(), function(x) x$numel()))
@@ -74,15 +74,15 @@ test_that("transformer nn-module works", {
   input$num <- NULL
 
   model <- Transformer(
-    cat_features = 5L, 
-    num_features = 0L, 
-    num_blocks = 2L,
-    dim_token = 16L, 
-    num_heads = 2L, 
+    cat_features = 5, 
+    num_features = 0, 
+    num_blocks = 2,
+    dim_token = 16, 
+    num_heads = 2, 
     att_dropout = 0, 
     ffn_dropout = 0,
     res_dropout = 0, 
-    dim_hidden = 32L
+    dim_hidden = 32
   )
   output <- model(input)
   expect_equal(output$shape[0], 10L)
@@ -92,9 +92,9 @@ test_that("Default Transformer works", {
   defaultTransformer <- setDefaultTransformer()
   params <- defaultTransformer$param[[1]]
   
-  expect_equal(params$numBlocks, 3L)
-  expect_equal(params$dimToken, 192L)
-  expect_equal(params$numHeads, 8L)
+  expect_equal(params$numBlocks, 3)
+  expect_equal(params$dimToken, 192)
+  expect_equal(params$numHeads, 8)
   expect_equal(params$resDropout, 0.0)
   expect_equal(params$attDropout, 0.2)
   
@@ -111,8 +111,8 @@ test_that("Errors are produced by settings function", {
 
 test_that("dimHidden ratio works as expected", {
   randomSample <- 4
-  dimToken <- c(64L, 128L, 256L, 512L)
-  dimHiddenRatio <- 2L
+  dimToken <- c(64, 128, 256, 512)
+  dimHiddenRatio <- 2
   modelSettings <- setTransformer(dimToken = dimToken,
                                   dimHiddenRatio = dimHiddenRatio,
                                   dimHidden = NULL,

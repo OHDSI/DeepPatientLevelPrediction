@@ -4,16 +4,16 @@ numFeatures <- small_dataset$dataset$get_numerical_features()$shape[[1]]
 modelParameters <- list(
   cat_features = catFeatures,
   num_features = numFeatures,
-  size_embedding = 16L,
-  size_hidden = 16L,
-  num_layers = 2L,
-  hidden_factor = 2L
+  size_embedding = 16,
+  size_hidden = 16,
+  num_layers = 2,
+  hidden_factor = 2
 )
 
 estimatorSettings <- setEstimator(learningRate = 3e-4,
                                  weightDecay = 0.0,
-                                 batchSize = 128L,
-                                 epochs = 5L,
+                                 batchSize = 128,
+                                 epochs = 5,
                                  device = 'cpu',
                                  seed=42,
                                  optimizer=torch$optim$AdamW,
@@ -93,8 +93,8 @@ test_that("estimator fitting works", {
   
   estimatorSettings <- setEstimator(learningRate = 3e-4,
                                     weightDecay = 0.0,
-                                    batchSize = 128L,
-                                    epochs = 5L,
+                                    batchSize = 128,
+                                    epochs = 5,
                                     device = 'cpu',
                                     metric= "loss")
   
@@ -134,11 +134,11 @@ test_that("early stopping works", {
 })
 
 modelSettings <- setResNet(
-  numLayers = 1L, sizeHidden = 16L, hiddenFactor = 1L,
+  numLayers = 1, sizeHidden = 16, hiddenFactor = 1,
   residualDropout = 0, hiddenDropout = 0,
-  sizeEmbedding = 16L, hyperParamSearch = "random",
-  randomSample = 1L,
-  setEstimator(epochs=1L,
+  sizeEmbedding = 16, hyperParamSearch = "random",
+  randomSample = 1,
+  setEstimator(epochs=1,
                learningRate = 3e-4)
 )
 
@@ -203,8 +203,8 @@ test_that("Estimator without earlyStopping works", {
   # estimator without earlyStopping
   estimatorSettings <- setEstimator(learningRate = 3e-4,
                                     weightDecay = 0.0,
-                                    batchSize = 128L,
-                                    epochs = 1L,
+                                    batchSize = 128,
+                                    epochs = 1,
                                     device = 'cpu',
                                     earlyStopping = NULL)
   
@@ -223,12 +223,12 @@ test_that("Estimator without earlyStopping works", {
 test_that("Early stopper can use loss and stops early", {
   estimatorSettings <- setEstimator(learningRate = 3e-2,
                                     weightDecay = 0.0,
-                                    batchSize = 128L,
-                                    epochs = 10L,
+                                    batchSize = 128,
+                                    epochs = 10,
                                     device = 'cpu',
                                     earlyStopping =list(useEarlyStopping=TRUE,
                                                         params = list(mode=c('min'), 
-                                                                      patience=1L)),
+                                                                      patience=1)),
                                     metric = 'loss',
                                     seed=42)
   
@@ -254,9 +254,9 @@ test_that('Custom metric in estimator works', {
     
   estimatorSettings <- setEstimator(learningRate = 3e-4,
                                     weightDecay = 0.0,
-                                    batchSize = 128L,
+                                    batchSize = 128,
                                     device = "cpu",
-                                    epochs = 1L,
+                                    epochs = 1,
                                     metric=list(fun=metric_fun,
                                                 name="auprc",
                                                 mode="max"))
@@ -277,15 +277,15 @@ test_that('Custom metric in estimator works', {
 
 test_that("setEstimator with paramsToTune is correctly added to hyperparameters", {
   estimatorSettings <- setEstimator(learningRate=c(3e-4,1e-3),
-                                    batchSize=128L,
-                                    epochs=1L,
+                                    batchSize=128,
+                                    epochs=1,
                                     device="cpu",
                                     metric=c("auc", "auprc"),
                                     earlyStopping = list(useEarlyStopping=TRUE,
-                                                         params=list(patience=c(4L,10L))))
-  modelSettings <- setResNet(numLayers = 1L, sizeHidden = 64L,
-                             hiddenFactor = 1L, residualDropout = 0.2,
-                             hiddenDropout = 0.2,sizeEmbedding = 128L,
+                                                         params=list(patience=c(4,10))))
+  modelSettings <- setResNet(numLayers = 1, sizeHidden = 64,
+                             hiddenFactor = 1, residualDropout = 0.2,
+                             hiddenDropout = 0.2,sizeEmbedding = 128,
                              estimatorSettings = estimatorSettings,
                              hyperParamSearch = "grid")
   
@@ -316,7 +316,7 @@ test_that("device as a function argument works", {
                                     learningRate = 3e-4)
   
   model <- setDefaultResNet(estimatorSettings = estimatorSettings) 
-  model$param[[1]]$catFeatures <- 10L
+  model$param[[1]]$catFeatures <- 10
 
   estimator <- createEstimator(modelType = modelType,
                                modelParameters = model$param[[1]],
@@ -330,7 +330,7 @@ test_that("device as a function argument works", {
                                     learningRate = 3e-4)
   
   model <- setDefaultResNet(estimatorSettings = estimatorSettings) 
-  model$param[[1]]$catFeatures <- 10L
+  model$param[[1]]$catFeatures <- 10
   
   estimator <- createEstimator(modelType = modelType,
                                modelParameters = model$param[[1]],
