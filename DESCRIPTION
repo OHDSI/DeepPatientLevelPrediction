@@ -22,7 +22,7 @@ Imports:
     dplyr,
     FeatureExtraction (>= 3.0.0),
     ParallelLogger (>= 2.0.0),
-    PatientLevelPrediction (>= 6.0.4),
+    PatientLevelPrediction (>= 6.3.2),
     rlang,
     withr,
     reticulate (>= 1.31)
