@@ -119,6 +119,10 @@ test_that("dimHidden ratio works as expected", {
                                   randomSample = randomSample)
   dimHidden <- unlist(lapply(modelSettings$param, function(x) x$dimHidden))
   tokens <-   unlist(lapply(modelSettings$param, function(x) x$dimToken))
-  expect_true(all(dimHidden == dimHiddenRatio * tokens))
+  testthat::expect_true(all(dimHidden == dimHiddenRatio * tokens))
+  testthat::expect_error(setTransformer(dimHidden = NULL,
+                                        dimHiddenRatio = NULL))
+  testthat::expect_error(setTransformer(dimHidden = 256,
+                                        dimHiddenRatio = 4/3))
 
 })
