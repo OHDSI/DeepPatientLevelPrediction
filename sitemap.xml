@@ -37,6 +37,15 @@
     <loc>/reference/camelCaseToSnakeCaseNames.html</loc>
   </url>
   <url>
+    <loc>/reference/checkHigher.html</loc>
+  </url>
+  <url>
+    <loc>/reference/checkHigherEqual.html</loc>
+  </url>
+  <url>
+    <loc>/reference/checkIsClass.html</loc>
+  </url>
+  <url>
     <loc>/reference/fitEstimator.html</loc>
   </url>
   <url>
