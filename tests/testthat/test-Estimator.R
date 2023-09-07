@@ -44,9 +44,24 @@ test_that("Estimator initialization works", {
     estimator$model_parameters,
     modelParameters
   )
-
-  
 })
+
+test_that("Estimator detects wrong inputs", {
+  
+  testthat::expect_error(setEstimator(learningRate='notAuto'))
+  testthat::expect_error(setEstimator(weightDecay = -1))
+  testthat::expect_error(setEstimator(weightDecay = "text"))
+  testthat::expect_error(setEstimator(batchSize = 0))
+  testthat::expect_error(setEstimator(batchSize = "text"))
+  testthat::expect_error(setEstimator(epochs = 0))
+  testthat::expect_error(setEstimator(epochs = "test"))
+  testthat::expect_error(setEstimator(device = 1))
+  testthat::expect_error(setEstimator(scheduler = "notList"))
+  testthat::expect_error(setEstimator(earlyStopping = "notListorNull"))
+  testthat::expect_error(setEstimator(metric = 1))
+  testthat::expect_error(setEstimator(seed = "32"))
+})
+
 sink(nullfile())
 estimator$fit(small_dataset, small_dataset)
 sink()

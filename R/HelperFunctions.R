@@ -47,7 +47,7 @@ camelCaseToSnakeCaseNames <- function(object) {
 checkIsClass<- function(parameter,classes) {
   name = deparse(substitute(parameter))
   if (!inherits(x = parameter, what = classes)) {
-    ParallelLogger::logError(paste0(name, ' should be of class:', classes))      
+    ParallelLogger::logError(paste0(name, ' should be of class:', classes, ' '))      
     stop(paste0(name, ' is wrong class'))
   }
   return(TRUE)
