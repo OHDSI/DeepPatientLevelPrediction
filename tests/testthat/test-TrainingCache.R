@@ -84,4 +84,6 @@ test_that("Estimator can resume training from cache", {
     }
   )
   sink()
+  trainCache <- TrainingCache$new(analysisPath)
+  testthat::expect_equal(is.na(trainCache$getLastGridSearchIndex()), TRUE)
 })
