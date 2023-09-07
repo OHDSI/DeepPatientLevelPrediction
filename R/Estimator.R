@@ -39,18 +39,38 @@
 #' @export
 setEstimator <- function(learningRate='auto',
                          weightDecay = 0.0,
-                         batchSize = 512L,
-                         epochs = 30L,
+                         batchSize = 512,
+                         epochs = 30,
                          device='cpu',
                          optimizer = torch$optim$AdamW,
                          scheduler = list(fun=torch$optim$lr_scheduler$ReduceLROnPlateau,
-                                          params=list(patience=1L)),
+                                          params=list(patience=1)),
                          criterion = torch$nn$BCEWithLogitsLoss,
                          earlyStopping = list(useEarlyStopping=TRUE,
-                                              params = list(patience=4L)),
+                                              params = list(patience=4)),
                          metric = "auc",
                          seed = NULL
 ) {
+  
+  checkIsClass(learningRate, c("numeric", "character"))
+  if (inherits(learningRate, "character")) {
+    if (learningRate != "auto"){
+      stop(paste0('Learning rate should be either a numeric or "auto", you provided: ', learningRate))
+    }
+  }
+  checkIsClass(weightDecay, "numeric")
+  checkHigherEqual(weightDecay, 0.0)
+  checkIsClass(batchSize, c("numeric", "integer"))
+  checkHigher(batchSize, 0)
+  checkIsClass(epochs, c("numeric", "integer"))
+  checkHigher(epochs, 0)
+  checkIsClass(device, c("character", "function"))
+  checkIsClass(scheduler, "list")
+  checkIsClass(earlyStopping, c("list", "NULL"))
+  checkIsClass(metric, c("character", "list"))
+  checkIsClass(seed, c("numeric", "integer", "NULL"))
+  
+  
   if (length(learningRate)==1 && learningRate=='auto') {findLR <- TRUE} else {findLR <- FALSE}
   if (is.null(seed)) {
     seed <- as.integer(sample(1e5, 1))

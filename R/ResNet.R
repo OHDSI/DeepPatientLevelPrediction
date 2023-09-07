@@ -31,15 +31,15 @@
 setDefaultResNet <- function(estimatorSettings=setEstimator(learningRate='auto',
                                                             weightDecay=1e-6,
                                                             device='cpu',
-                                                            batchSize=1024L,
-                                                            epochs=50L,
+                                                            batchSize=1024,
+                                                            epochs=50,
                                                             seed=NULL)) {
-  resnetSettings <- setResNet(numLayers = 6L,
-                              sizeHidden = 512L,
-                              hiddenFactor = 2L,
+  resnetSettings <- setResNet(numLayers = 6,
+                              sizeHidden = 512,
+                              hiddenFactor = 2,
                               residualDropout = 0.1,
                               hiddenDropout = 0.4,
-                              sizeEmbedding = 256L,
+                              sizeEmbedding = 256,
                               estimatorSettings = estimatorSettings,
                               hyperParamSearch = 'random',
                               randomSample = 1)
@@ -68,22 +68,44 @@ setDefaultResNet <- function(estimatorSettings=setEstimator(learningRate='auto',
 #' @param randomSample      How many random samples from hyperparameter space to use
 #' @param randomSampleSeed  Random seed to sample hyperparameter combinations
 #' @export
-setResNet <- function(numLayers = as.integer(1:8),
-                      sizeHidden = as.integer(2^(6:10)),
-                      hiddenFactor = as.integer(1:4),
+setResNet <- function(numLayers = c(1:8),
+                      sizeHidden = c(2^(6:10)),
+                      hiddenFactor = c(1:4),
                       residualDropout = c(seq(0, 0.5, 0.05)),
                       hiddenDropout = c(seq(0, 0.5, 0.05)),
-                      sizeEmbedding = as.integer(2^(6:9)),
+                      sizeEmbedding = c(2^(6:9)),
                       estimatorSettings = setEstimator(learningRate='auto',
                                                        weightDecay=c(1e-6, 1e-3),
                                                        device='cpu',
-                                                       batchSize=1024L,
-                                                       epochs=30L,
+                                                       batchSize=1024,
+                                                       epochs=30,
                                                        seed=NULL),
                       hyperParamSearch = "random",
                       randomSample = 100,
                       randomSampleSeed = NULL) 
 {
+  checkIsClass(numLayers, c("integer", "numeric"))
+  checkHigherEqual(numLayers, 1)
+  
+  checkIsClass(sizeHidden, c("integer", "numeric"))
+  checkHigherEqual(sizeHidden, 1)
+  
+  checkIsClass(residualDropout, "numeric")
+  checkHigherEqual(residualDropout, 0)
+  
+  checkIsClass(hiddenDropout, "numeric")
+  checkHigherEqual(hiddenDropout, 0)
+  
+  checkIsClass(sizeEmbedding, c("integer", "numeric"))
+  checkHigherEqual(sizeEmbedding, 1)
+  
+  checkIsClass(hyperParamSearch, "character")
+  
+  checkIsClass(randomSample, c("numeric", "integer"))
+  checkHigherEqual(randomSample, 1)
+  
+  checkIsClass(randomSampleSeed, c("numeric", "integer", "NULL"))
+  
   paramGrid <- list(
     numLayers = numLayers,
     sizeHidden = sizeHidden,

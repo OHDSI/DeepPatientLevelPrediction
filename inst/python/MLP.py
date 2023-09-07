@@ -6,17 +6,24 @@ from ResNet import NumericalEmbedding
 class MLP(nn.Module):
 
     def __init__(self,
-                 cat_features,
-                 num_features,
-                 size_embedding,
-                 size_hidden,
-                 num_layers,
+                 cat_features: int,
+                 num_features: int,
+                 size_embedding: int,
+                 size_hidden: int,
+                 num_layers: int,
                  activation=nn.ReLU,
                  normalization=nn.BatchNorm1d,
                  dropout=None,
-                 d_out=1):
+                 d_out: int = 1):
         super(MLP, self).__init__()
         self.name = "MLP"
+        cat_features = int(cat_features)
+        num_features = int(num_features)
+        size_embedding = int(size_embedding)
+        size_hidden = int(size_hidden)
+        num_layers = int(num_layers)
+        d_out = int(d_out)
+        
         self.embedding = nn.EmbeddingBag(cat_features + 1,
                                          size_embedding,
                                          padding_idx=0)

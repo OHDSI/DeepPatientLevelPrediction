@@ -7,20 +7,29 @@ from torch import nn
 class ResNet(nn.Module):
 
     def __init__(self,
-                 cat_features,
-                 num_features=0,
-                 size_embedding=256,
-                 size_hidden=256,
-                 num_layers=2,
-                 hidden_factor=1,
+                 cat_features: int,
+                 num_features: int = 0,
+                 size_embedding: int = 256,
+                 size_hidden: int = 256,
+                 num_layers: int = 2,
+                 hidden_factor: int = 1,
                  activation=nn.ReLU,
                  normalization=nn.BatchNorm1d,
                  hidden_dropout=0,
                  residual_dropout=0,
-                 dim_out=1,
+                 dim_out: int = 1,
                  concat_num=True):
         super(ResNet, self).__init__()
         self.name = 'ResNet'
+        cat_features = int(cat_features)
+        num_features = int(num_features)
+        size_embedding = int(size_embedding)
+        size_hidden = int(size_hidden)
+        num_layers = int(num_layers)
+        hidden_factor = int(hidden_factor)
+        dim_out = int(dim_out)
+        
+        
         self.embedding = nn.EmbeddingBag(
             num_embeddings=cat_features + 1,
             embedding_dim=size_embedding,

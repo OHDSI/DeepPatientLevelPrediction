@@ -20,16 +20,16 @@ class ReGLU(nn.Module):
 class Transformer(nn.Module):
 
     def __init__(self,
-                 cat_features,
-                 num_features,
-                 num_blocks,
-                 dim_token,
-                 num_heads,
+                 cat_features: int,
+                 num_features: int,
+                 num_blocks: int,
+                 dim_token: int,
+                 num_heads: int,
                  att_dropout,
                  ffn_dropout,
                  res_dropout,
-                 dim_hidden,
-                 dim_out=1,
+                 dim_hidden: int,
+                 dim_out: int = 1,
                  head_activation=nn.ReLU,
                  activation=ReGLU,
                  ffn_norm=nn.LayerNorm,
@@ -37,6 +37,14 @@ class Transformer(nn.Module):
                  att_norm=nn.LayerNorm):
         super(Transformer, self).__init__()
         self.name = "Transformer"
+        cat_features = int(cat_features)
+        num_features = int(num_features)
+        num_blocks = int(num_blocks)
+        dim_token = int(dim_token)
+        num_heads = int(num_heads)
+        dim_hidden = int(dim_hidden)
+        dim_out = int(dim_out)
+        
         self.categorical_embedding = nn.Embedding(cat_features + 1, dim_token, padding_idx=0)
 
         if num_features != 0 and num_features is not None:

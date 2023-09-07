@@ -6,7 +6,7 @@
 \usage{
 setDefaultResNet(
   estimatorSettings = setEstimator(learningRate = "auto", weightDecay = 1e-06, device =
-    "cpu", batchSize = 1024L, epochs = 50L, seed = NULL)
+    "cpu", batchSize = 1024, epochs = 50, seed = NULL)
 )
 }
 \arguments{

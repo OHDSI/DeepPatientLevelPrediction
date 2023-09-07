@@ -28,13 +28,13 @@ class Estimator:
         self.model_parameters = model_parameters
         self.estimator_settings = estimator_settings
 
-        self.epochs = estimator_settings.get("epochs", 5)
+        self.epochs = int(estimator_settings.get("epochs", 5))
         self.learning_rate = estimator_settings.get("learning_rate", 3e-4)
         self.weight_decay = estimator_settings.get("weight_decay", 1e-5)
-        self.batch_size = estimator_settings.get("batch_size", 1024)
+        self.batch_size = int(estimator_settings.get("batch_size", 1024))
         self.prefix = estimator_settings.get("prefix", self.model.name)
 
-        self.previous_epochs = estimator_settings.get("previous_epochs", 0)
+        self.previous_epochs = int(estimator_settings.get("previous_epochs", 0))
         self.model.to(device=self.device)
 
         self.optimizer = estimator_settings["optimizer"](params=self.model.parameters(),

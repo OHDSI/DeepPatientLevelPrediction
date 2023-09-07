@@ -1,15 +1,15 @@
 
 modelSettings <- setMultiLayerPerceptron(
-  numLayers = 2L,
-  sizeHidden = 32L,
+  numLayers = 2,
+  sizeHidden = 32,
   dropout = c(0.1),
-  sizeEmbedding = 32L,
+  sizeEmbedding = 32,
   estimatorSettings = setEstimator(
     learningRate=c(3e-4),
     weightDecay = c(1e-6),
     seed=42,
-    batchSize=128L,
-    epochs=1L
+    batchSize=128,
+    epochs=1
   ),
   hyperParamSearch = "random",
   randomSample = 1
@@ -84,11 +84,11 @@ test_that("MLP with runPlp working checks", {
 test_that("MLP nn-module works ", {
   MLP <- reticulate::import_from_path("MLP", path=path)$MLP
   model <- MLP(
-    cat_features = 5L, 
-    num_features = 1L, 
-    size_embedding = 5L,
-    size_hidden = 16L, 
-    num_layers = 1L,
+    cat_features = 5, 
+    num_features = 1, 
+    size_embedding = 5,
+    size_hidden = 16, 
+    num_layers = 1,
     activation = torch$nn$ReLU,
     normalization = torch$nn$BatchNorm1d, 
     dropout = 0.3
@@ -131,16 +131,16 @@ test_that("Errors are produced by settings function", {
   randomSample <- 2
   
   expect_error(setMultiLayerPerceptron(
-    numLayers = 1L,
-    sizeHidden = 128L,
+    numLayers = 1,
+    sizeHidden = 128,
     dropout = 0.0,
-    sizeEmbedding = 128L,
+    sizeEmbedding = 128,
     hyperParamSearch = 'random',
     estimatorSettings = setEstimator(
       learningRate = 'auto',
       weightDecay = c(1e-3),
-      batchSize = 1024L,
-      epochs = 30L,
+      batchSize = 1024,
+      epochs = 30,
       device="cpu")))
                            
 })
