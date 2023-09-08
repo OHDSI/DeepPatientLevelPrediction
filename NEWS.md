@@ -1,6 +1,13 @@
 DeepPatientLevelPrediction 2.0.0
 ======================
-  - New backend which uses pytorch through reticulate insteada of torch in R
+  - New backend which uses pytorch through reticulate instead of torch in R
+  - All models ported over to python
+  - Dataset class now in python
+  - Estimator class in python
+  - Learning rate finder in python
+  - Added input checks and tests for wrong inputs
+  - Training-cache for single hyperparameter combination added
+  - Fixed empty test for training-cache
 
 DeepPatientLevelPrediction 1.1.6
 ======================
