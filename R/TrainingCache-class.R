@@ -76,8 +76,13 @@ TrainingCache <- R6::R6Class(
       if (is.null(private$.paramPersistence$gridSearchPredictions)) {
         return(1)
       } else {
-        return(which(sapply(private$.paramPersistence$gridSearchPredictions,
+        # if only a single hyperparameter combination is assessed return 1
+        if (length(private$.paramPersistence$gridSearchPredictions) == 1) {
+          return(1)
+        } else {
+          return(which(sapply(private$.paramPersistence$gridSearchPredictions,
             is.null))[1])
+        }
       }
     },
     

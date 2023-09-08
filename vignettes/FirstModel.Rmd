@@ -120,8 +120,8 @@ library(DeepPatientLevelPrediction)
 modelSettings <- setDefaultResNet(
   estimatorSettings = setEstimator(learningRate=3e-4,
                                    device="cpu",
-                                   batchSize=256,
-                                   epochs=3)
+                                   batchSize=256L,
+                                   epochs=3L)
 )
 
 ```

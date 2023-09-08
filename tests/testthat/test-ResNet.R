@@ -1,11 +1,11 @@
 
 resSet <- setResNet(
-  numLayers = c(2),
-  sizeHidden = c(32),
-  hiddenFactor = c(2),
-  residualDropout = c(0.1),
-  hiddenDropout = c(0.1),
-  sizeEmbedding = c(32),
+  numLayers = 2,
+  sizeHidden = 32,
+  hiddenFactor = 2,
+  residualDropout = 0.1,
+  hiddenDropout = 0.1,
+  sizeEmbedding = 32,
   estimatorSettings = setEstimator(learningRate="auto",
                                    weightDecay = c(1e-6),
                                    seed=42,
@@ -22,12 +22,12 @@ test_that("setResNet works", {
   
   testthat::expect_true(length(resSet$param) > 0)
   
-  expect_error(setResNet(numLayers = c(2),
-                         sizeHidden = c(32),
-                         hiddenFactor = c(2),
-                         residualDropout = c(0.1),
-                         hiddenDropout = c(0.1),
-                         sizeEmbedding = c(32),
+  expect_error(setResNet(numLayers = 2,
+                         sizeHidden = 32,
+                         hiddenFactor = 2,
+                         residualDropout = 0.1,
+                         hiddenDropout = 0.1,
+                         sizeEmbedding = 32,
                          estimatorSettings = setEstimator(learningRate=c(3e-4),
                                                           weightDecay = c(1e-6),
                                                           seed=42,
@@ -89,40 +89,51 @@ test_that("ResNet with runPlp working checks", {
 
 
 test_that("ResNet nn-module works ", {
+  ResNet <- reticulate::import_from_path("ResNet", path=path)$ResNet
   model <- ResNet(
-    catFeatures = 5, numFeatures = 1, sizeEmbedding = 5,
-    sizeHidden = 16, numLayers = 1, hiddenFactor = 2,
-    activation = torch::nn_relu,
-    normalization = torch::nn_batch_norm1d, hiddenDropout = 0.3,
-    residualDropout = 0.3, d_out = 1
+    cat_features = 5, 
+    num_features = 1, 
+    size_embedding = 5,
+    size_hidden = 16, 
+    num_layers = 1, 
+    hidden_factor = 2,
+    activation = torch$nn$ReLU,
+    normalization = torch$nn$BatchNorm1d, 
+    hidden_dropout = 0.3,
+    residual_dropout = 0.3
   )
   
-  pars <- sum(sapply(model$parameters, function(x) prod(x$shape)))
+  pars <- sum(reticulate::iterate(model$parameters(), function(x) x$numel()))
   
   # expected number of parameters
   expect_equal(pars, 1295)
   
   input <- list()
-  input$cat <- torch::torch_randint(0, 5, c(10, 5), dtype = torch::torch_long())
-  input$num <- torch::torch_randn(10, 1, dtype = torch::torch_float32())
+  input$cat <- torch$randint(0L, 5L, c(10L, 5L), dtype = torch$long)
+  input$num <- torch$randn(10L, 1L, dtype = torch$float32)
   
   
   output <- model(input)
   
   # output is correct shape
-  expect_equal(output$shape, 10)
+  expect_equal(output$shape[0], 10L)
   
   input$num <- NULL
   model <- ResNet(
-    catFeatures = 5, numFeatures = 0, sizeEmbedding = 5,
-    sizeHidden = 16, numLayers = 1, hiddenFactor = 2,
-    activation = torch::nn_relu,
-    normalization = torch::nn_batch_norm1d, hiddenDropout = 0.3,
-    residualDropout = 0.3, d_out = 1
+    cat_features = 5, 
+    num_features = 0, 
+    size_embedding = 5,
+    size_hidden = 16, 
+    num_layers = 1, 
+    hidden_factor = 2,
+    activation = torch$nn$ReLU,
+    normalization = torch$nn$BatchNorm1d, 
+    hidden_dropout = 0.3,
+    residual_dropout = 0.3
   )
   output <- model(input)
   # model works without numeric variables
-  expect_equal(output$shape, 10)
+  expect_equal(output$shape[0], 10L)
 })
 
 test_that("Default Resnet works", {
@@ -148,9 +159,9 @@ test_that("Errors are produced by settings function", {
     residualDropout = 0.0,
     hiddenDropout = 0.0,
     sizeEmbedding = 128,
-    weightDecay = 1e-6,
-    learningRate = 0.01,
-    seed = 42,
+    estimatorSettings = setEstimator(weightDecay = 1e-6,
+                                     learningRate = 0.01,
+                                     seed = 42),
     hyperParamSearch = 'random',
     randomSample = randomSample))
 })
