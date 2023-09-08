@@ -55,8 +55,6 @@ test_that("Estimator detects wrong inputs", {
   testthat::expect_error(setEstimator(batchSize = "text"))
   testthat::expect_error(setEstimator(epochs = 0))
   testthat::expect_error(setEstimator(epochs = "test"))
-  testthat::expect_error(setEstimator(device = 1))
-  testthat::expect_error(setEstimator(scheduler = "notList"))
   testthat::expect_error(setEstimator(earlyStopping = "notListorNull"))
   testthat::expect_error(setEstimator(metric = 1))
   testthat::expect_error(setEstimator(seed = "32"))
@@ -357,9 +355,18 @@ test_that("device as a function argument works", {
   
   })
 
-# test_that("estimatorSettings can be saved and loaded with correct objects", {
-#   settings <- setEstimator()
-#   
-#   saveRDS(settings,file=file.path(testLoc, 'settings.RDS'))
-#   
-# })
+test_that("estimatorSettings can be saved and loaded with correct python objects", {
+  settings <- setEstimator()
+
+  saveRDS(settings,file=file.path(testLoc, 'settings.RDS'))
+  
+  loadedSettings <- readRDS(file = file.path(testLoc, 'settings.RDS'))
+  
+  optimizer <- loadedSettings$optimizer()
+  scheduler <- loadedSettings$scheduler()
+  criterion <- loadedSettings$criterion()
+  
+  testthat::expect_false(reticulate::py_is_null_xptr(optimizer))
+  testthat::expect_false(reticulate::py_is_null_xptr(scheduler$fun))
+  testthat::expect_false(reticulate::py_is_null_xptr(criterion))
+})
