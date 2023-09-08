@@ -64,8 +64,6 @@ setEstimator <- function(learningRate='auto',
   checkHigher(batchSize, 0)
   checkIsClass(epochs, c("numeric", "integer"))
   checkHigher(epochs, 0)
-  checkIsClass(device, c("character", "function"))
-  checkIsClass(scheduler, "list")
   checkIsClass(earlyStopping, c("list", "NULL"))
   checkIsClass(metric, c("character", "list"))
   checkIsClass(seed, c("numeric", "integer", "NULL"))
