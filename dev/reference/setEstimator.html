@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">DeepPatientLevelPrediction</a>
-        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">1.1.6.9999</span>
+        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.0.0.9999</span>
       </span>
     </div>
 
@@ -87,14 +87,14 @@
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">setEstimator</span><span class="op">(</span></span>
 <span>  learningRate <span class="op">=</span> <span class="st">"auto"</span>,</span>
 <span>  weightDecay <span class="op">=</span> <span class="fl">0</span>,</span>
-<span>  batchSize <span class="op">=</span> <span class="fl">512L</span>,</span>
-<span>  epochs <span class="op">=</span> <span class="fl">30L</span>,</span>
+<span>  batchSize <span class="op">=</span> <span class="fl">512</span>,</span>
+<span>  epochs <span class="op">=</span> <span class="fl">30</span>,</span>
 <span>  device <span class="op">=</span> <span class="st">"cpu"</span>,</span>
 <span>  optimizer <span class="op">=</span> <span class="va">torch</span><span class="op">$</span><span class="va">optim</span><span class="op">$</span><span class="va">AdamW</span>,</span>
 <span>  scheduler <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>fun <span class="op">=</span> <span class="va">torch</span><span class="op">$</span><span class="va">optim</span><span class="op">$</span><span class="va">lr_scheduler</span><span class="op">$</span><span class="va">ReduceLROnPlateau</span>, params <span class="op">=</span></span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>patience <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>patience <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>  criterion <span class="op">=</span> <span class="va">torch</span><span class="op">$</span><span class="va">nn</span><span class="op">$</span><span class="va">BCEWithLogitsLoss</span>,</span>
-<span>  earlyStopping <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>useEarlyStopping <span class="op">=</span> <span class="cn">TRUE</span>, params <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>patience <span class="op">=</span> <span class="fl">4L</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  earlyStopping <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>useEarlyStopping <span class="op">=</span> <span class="cn">TRUE</span>, params <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>patience <span class="op">=</span> <span class="fl">4</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>  metric <span class="op">=</span> <span class="st">"auc"</span>,</span>
 <span>  seed <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
