@@ -382,7 +382,7 @@ gridCvDeep <- function(mappedData,
         }
       }
     }
-    
+    ParallelLogger::logInfo(paste0("Caching all grid search results and prediction for best combination ", indexOfMax))
     trainCache$saveGridSearchPredictions(gridSearchPredictons)
   }
   
