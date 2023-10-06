@@ -12,7 +12,7 @@ resNetSettings <- setResNet(numLayers = c(1, 2, 4),
                                                              seed=NULL),
                             hyperParamSearch = "random",
                             randomSample = 3,
-                            randomSampleSeed = NULL)
+                            randomSampleSeed = 123)
 
 trainCache <- TrainingCache$new(testLoc)
 paramSearch <- resNetSettings$param
@@ -86,4 +86,45 @@ test_that("Estimator can resume training from cache", {
   sink()
   trainCache <- TrainingCache$new(analysisPath)
   testthat::expect_equal(is.na(trainCache$getLastGridSearchIndex()), TRUE)
+})
+
+test_that("Prediction is cached for optimal parameters", {
+  modelPath <- tempdir()
+  analysisPath <- file.path(modelPath, "Analysis_TrainCacheResNet_GridSearchPred")
+  dir.create(analysisPath)
+
+  sink(nullfile())
+  res2 <- tryCatch(
+    {
+      PatientLevelPrediction::runPlp(
+        plpData = plpData,
+        outcomeId = 3,
+        modelSettings = resNetSettings,
+        analysisId = "Analysis_TrainCacheResNet_GridSearchPred",
+        analysisName = "Testing Training Cache - GridSearch",
+        populationSettings = populationSet,
+        splitSettings = PatientLevelPrediction::createDefaultSplitSetting(),
+        sampleSettings = PatientLevelPrediction::createSampleSettings(), # none
+        featureEngineeringSettings = PatientLevelPrediction::createFeatureEngineeringSettings(), # none
+        preprocessSettings = PatientLevelPrediction::createPreprocessSettings(),
+        executeSettings = PatientLevelPrediction::createExecuteSettings(
+          runSplitData = T,
+          runSampleData = F,
+          runfeatureEngineering = F,
+          runPreprocessData = T,
+          runModelDevelopment = T,
+          runCovariateSummary = F
+        ),
+        saveDirectory = modelPath
+      )
+    },
+    error = function(e) {
+      print(e)
+      return(NULL)
+    }
+  )
+  sink()
+  testCache <- readRDS(file.path(analysisPath, "paramPersistence.RDS"))
+  indexOfMax <- which.max(unlist(lapply(testCache$gridSearchPredictions, function(x) x$gridPerformance$cvPerformance)))
+  testthat::expect_equal(class(testCache$gridSearchPredictions[[indexOfMax]]$prediction), class(data.frame()))
 })
