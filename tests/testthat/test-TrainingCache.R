@@ -124,7 +124,7 @@ test_that("Prediction is cached for optimal parameters", {
     }
   )
   sink()
-  testCache <- readRDS(file.path(analysisPath, "paramPersistence.RDS"))
+  testCache <- readRDS(file.path(analysisPath, "paramPersistence.rds"))
   indexOfMax <- which.max(unlist(lapply(testCache$gridSearchPredictions, function(x) x$gridPerformance$cvPerformance)))
   testthat::expect_equal(class(testCache$gridSearchPredictions[[indexOfMax]]$prediction), class(data.frame()))
 })
