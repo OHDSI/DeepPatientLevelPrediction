@@ -8,7 +8,8 @@ TrainingCache <- R6::R6Class(
   private = list(
     .paramPersistence = list(
       gridSearchPredictions = NULL,
-      modelParams = NULL
+      modelParams = NULL,
+      gridPerformance = NULL
     ),
     .paramContinuity = list(),
     .saveDir = NULL,

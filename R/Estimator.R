@@ -369,21 +369,31 @@ gridCvDeep <- function(mappedData,
     
     gridSearchPredictons[[gridId]] <- list(
       prediction = prediction,
-      param = paramSearch[[gridId]]
+      param = paramSearch[[gridId]],
+      gridPerformance = PatientLevelPrediction::computeGridPerformance(prediction, paramSearch[[gridId]])
     )
-
+    
+    # remove all predictions that are not the max performance
+    indexOfMax <- which.max(sapply(gridSearchPredictons, function(x) x$gridPerformance$cvPerformance))
+    for (i in seq_along(gridSearchPredictons)) {
+      if (!is.null(gridSearchPredictons[[i]])) {
+        if (i != indexOfMax) {
+          gridSearchPredictons[[i]]$prediction <- NULL
+        }
+      }
+    }
+    
     trainCache$saveGridSearchPredictions(gridSearchPredictons)
   }
   
-  # get best para (this could be modified to enable any metric instead of AUC, just need metric input in function)
-  paramGridSearch <- lapply(gridSearchPredictons, function(x) {
-    do.call(PatientLevelPrediction::computeGridPerformance, x)
-  }) # cvAUCmean, cvAUC, param
+  paramGridSearch <- lapply(gridSearchPredictons, function(x) x$gridPerformance)
   
-  optimalParamInd <- which.max(unlist(lapply(paramGridSearch, function(x) x$cvPerformance)))
-  finalParam <- paramGridSearch[[optimalParamInd]]$param
+  # get best params
+  indexOfMax <- which.max(sapply(gridSearchPredictons, function(x) x$gridPerformance$cvPerformance))
+  finalParam <- gridSearchPredictons[[indexOfMax]]$param
   
-  cvPrediction <- gridSearchPredictons[[optimalParamInd]]$prediction
+  # get best CV prediction
+  cvPrediction <- gridSearchPredictons[[indexOfMax]]$prediction
   cvPrediction$evaluationType <- "CV"
   
   ParallelLogger::logInfo("Training final model using optimal parameters")
