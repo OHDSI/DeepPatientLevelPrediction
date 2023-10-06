@@ -374,11 +374,11 @@ gridCvDeep <- function(mappedData,
     )
     
     # remove all predictions that are not the max performance
-    indexOfMax <- which.max(sapply(gridSearchPredictons, function(x) x$gridPerformance$cvPerformance))
+    indexOfMax <- which.max(unlist(lapply(gridSearchPredictons, function(x) x$gridPerformance$cvPerformance)))
     for (i in seq_along(gridSearchPredictons)) {
       if (!is.null(gridSearchPredictons[[i]])) {
         if (i != indexOfMax) {
-          gridSearchPredictons[[i]]$prediction <- NULL
+          gridSearchPredictons[[i]]$prediction <- list(NULL)
         }
       }
     }
@@ -389,7 +389,7 @@ gridCvDeep <- function(mappedData,
   paramGridSearch <- lapply(gridSearchPredictons, function(x) x$gridPerformance)
   
   # get best params
-  indexOfMax <- which.max(sapply(gridSearchPredictons, function(x) x$gridPerformance$cvPerformance))
+  indexOfMax <- which.max(unlist(lapply(gridSearchPredictons, function(x) x$gridPerformance$cvPerformance)))
   finalParam <- gridSearchPredictons[[indexOfMax]]$param
   
   # get best CV prediction
