@@ -353,7 +353,6 @@ gridCvDeep <- function(mappedData,
 
     trainCache$saveGridSearchPredictions(gridSearchPredictons)
   }
-  browser()
   learnSchedules <- lapply(gridSearchPredictons, function(x) {x$param$learnSchedule})
   gridSearchPredictons <- lapply(gridSearchPredictons, function(x) {x$param <- x$param[names(x$param) != "learnSchedule"]; x})
   # get best para (this could be modified to enable any metric instead of AUC, just need metric input in function)
