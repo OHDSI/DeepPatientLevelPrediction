@@ -1,0 +1,355 @@
+import time
+import pathlib
+
+import torch
+from torch.utils.data import DataLoader, BatchSampler, RandomSampler, SequentialSampler
+import torch.nn.functional as F
+from tqdm import tqdm
+from sklearn.metrics import roc_auc_score
+
+
+class Estimator:
+    """
+    A class that wraps around pytorch models.
+    """
+
+    def __init__(self,
+                 model,
+                 model_parameters,
+                 estimator_settings):
+        self.seed = estimator_settings["seed"]
+        if callable(estimator_settings["device"]):
+            self.device = estimator_settings["device"]()
+        else:
+            self.device = estimator_settings["device"]
+
+        torch.manual_seed(seed=self.seed)
+        self.model = model(**model_parameters)
+        self.model_parameters = model_parameters
+        self.estimator_settings = estimator_settings
+
+        self.epochs = int(estimator_settings.get("epochs", 5))
+        self.learning_rate = estimator_settings.get("learning_rate", 3e-4)
+        self.weight_decay = estimator_settings.get("weight_decay", 1e-5)
+        self.batch_size = int(estimator_settings.get("batch_size", 1024))
+        self.prefix = estimator_settings.get("prefix", self.model.name)
+
+        self.previous_epochs = int(estimator_settings.get("previous_epochs", 0))
+        self.model.to(device=self.device)
+
+        self.optimizer = estimator_settings["optimizer"](params=self.model.parameters(),
+                                                         lr=self.learning_rate,
+                                                         weight_decay=self.weight_decay)
+        self.criterion = estimator_settings["criterion"]()
+
+        if "metric" in estimator_settings.keys() and estimator_settings["metric"] is not None:
+            self.metric = estimator_settings["metric"]
+            if type(self.metric) == str:
+                if self.metric == "auc":
+                    self.metric = {"name": "auc",
+                                   "mode": "max"}
+                elif self.metric == "loss":
+                    self.metric = {"name": "loss",
+                                   "mode": "min"}
+            if "scheduler" in estimator_settings.keys() and estimator_settings["scheduler"] is not None:
+                estimator_settings["scheduler"]["params"]["mode"] = self.metric["mode"]
+            if "early_stopping" in estimator_settings.keys() and estimator_settings["early_stopping"] is not None:
+                estimator_settings["early_stopping"]["params"]["mode"] = self.metric["mode"]
+
+        if "scheduler" in estimator_settings.keys() and estimator_settings["scheduler"] is not None:
+            self.scheduler = estimator_settings["scheduler"]["fun"](self.optimizer,
+                                                                    **estimator_settings["scheduler"]["params"])
+
+        if "early_stopping" in estimator_settings.keys() and estimator_settings["early_stopping"] is not None:
+            self.early_stopper = EarlyStopping(**estimator_settings["early_stopping"]["params"])
+        else:
+            self.early_stopper = None
+
+        self.best_score = None
+        self.best_epoch = None
+        self.learn_rate_schedule = None
+
+    def fit(self, dataset, test_dataset):
+
+        train_dataloader = DataLoader(dataset=dataset,
+                                      batch_size=None,
+                                      sampler=BatchSampler(
+                                          sampler=RandomSampler(dataset),
+                                          batch_size=self.batch_size,
+                                          drop_last=True
+                                      ))
+        test_dataloader = DataLoader(dataset=test_dataset,
+                                     batch_size=None,
+                                     sampler=BatchSampler(
+                                         sampler=SequentialSampler(test_dataset),
+                                         batch_size=self.batch_size,
+                                         drop_last=False
+                                     ))
+
+        trained_epochs = dict()
+        times = list()
+        learning_rates = list()
+        all_scores = list()
+        model_state_dict = dict()
+        for epoch in range(self.epochs):
+            start_time = time.time()
+            training_loss = self.fit_epoch(train_dataloader)
+            scores = self.score(test_dataloader)
+            end_time = time.time()
+            delta_time = end_time - start_time
+            current_epoch = epoch + self.previous_epochs
+            lr = self.optimizer.param_groups[0]["lr"]
+            self.print_progress(scores, training_loss, delta_time, current_epoch)
+            self.scheduler.step(scores["metric"])
+            all_scores.append(scores)
+            learning_rates.append(lr)
+            times.append(round(delta_time, 3))
+
+            if self.early_stopper:
+                self.early_stopper(scores['metric'])
+                if self.early_stopper.improved:
+                    model_state_dict[epoch] = self.model.state_dict()
+                    trained_epochs[epoch] = current_epoch
+                if self.early_stopper.early_stop:
+                    print("Early stopping, validation metric stopped improving")
+                    print(f'Average time per epoch was: {torch.mean(torch.as_tensor(times)).item():.2f} seconds')
+                    self.finish_fit(all_scores, model_state_dict, trained_epochs, learning_rates)
+                    return
+            else:
+                model_state_dict[epoch] = self.model.state_dict()
+                trained_epochs[epoch] = current_epoch
+        print(f'Average time per epoch was: {torch.mean(torch.as_tensor(times)).item()} seconds')
+        self.finish_fit(all_scores, model_state_dict, trained_epochs, learning_rates)
+        return
+
+    def fit_epoch(self, dataloader):
+        training_losses = torch.empty(len(dataloader))
+        self.model.train()
+        index = 0
+        for batch in tqdm(dataloader):
+            self.optimizer.zero_grad()
+            batch = batch_to_device(batch, device=self.device)
+            out = self.model(batch[0])
+            loss = self.criterion(out, batch[1])
+            loss.backward()
+
+            self.optimizer.step()
+            training_losses[index] = loss.detach()
+            index += 1
+        return training_losses.mean().item()
+
+    def score(self, dataloader):
+        with torch.no_grad():
+            loss = torch.empty(len(dataloader))
+            predictions = list()
+            targets = list()
+            self.model.eval()
+            index = 0
+            for batch in tqdm(dataloader):
+                batch = batch_to_device(batch, device=self.device)
+                pred = self.model(batch[0])
+                predictions.append(pred)
+                targets.append(batch[1])
+                loss[index] = self.criterion(pred, batch[1])
+                index += 1
+            mean_loss = loss.mean().item()
+            predictions = torch.concat(predictions)
+            targets = torch.concat(targets)
+            auc = roc_auc_score(targets.cpu(), predictions.cpu())
+            # auc = compute_auc(predictions, targets)
+            scores = dict()
+            if self.metric:
+                if self.metric["name"] == "auc":
+                    scores["metric"] = auc
+                elif self.metric["name"] == "loss":
+                    scores["metric"] = mean_loss
+                else:
+                    metric = self.metric["fun"](predictions, targets)
+                    scores["metric"] = metric
+            scores["auc"] = auc
+            scores["loss"] = mean_loss
+            return scores
+
+    def finish_fit(self, scores, model_state_dict, epoch, learning_rates):
+        if self.metric["mode"] == "max":
+            best_epoch_index = torch.argmax(torch.as_tensor([x["metric"] for x in scores])).item()
+        elif self.metric["mode"] == "min":
+            best_epoch_index = torch.argmin(torch.as_tensor([x["metric"] for x in scores])).item()
+
+        best_model_state_dict = model_state_dict[best_epoch_index]
+        self.model.load_state_dict(best_model_state_dict)
+
+        self.best_epoch = epoch[best_epoch_index]
+        self.best_score = {"loss": scores[best_epoch_index]["loss"],
+                           "auc": scores[best_epoch_index]["auc"]}
+        self.learn_rate_schedule = learning_rates[:(best_epoch_index+1)]
+        print(f"Loaded best model (based on AUC) from epoch {self.best_epoch}")
+        print(f"ValLoss: {self.best_score['loss']}")
+        print(f"valAUC: {self.best_score['auc']}")
+        if self.metric and self.metric["name"] != "auc" and self.metric["name"] != "loss":
+            self.best_score[self.metric["name"]] = scores[best_epoch_index]["metric"]
+            print(f"{self.metric['name']}: {self.best_score[self.metric['name']]}")
+        return
+
+    def print_progress(self, scores, training_loss, delta_time, current_epoch):
+        if self.metric and self.metric["name"] != "auc" and self.metric["name"] != "loss":
+            print(f"Epochs: {current_epoch} | Val {self.metric['name']}: {scores['metric']:.3f} "
+                  f"| Val AUC: {scores['auc']:.3f} | Val Loss: {scores['loss']:.3f} "
+                  f"| Train Loss: {training_loss:.3f} | Time: {delta_time:.3f} seconds "
+                  f"| LR: {self.optimizer.param_groups[0]['lr']}")
+        else:
+            print(f"Epochs: {current_epoch} "
+                  f"| Val AUC: {scores['auc']:.3f} "
+                  f"| Val Loss: {scores['loss']:.3f} "
+                  f"| Train Loss: {training_loss:.3f} "
+                  f"| Time: {delta_time:.3f} seconds "
+                  f"| LR: {self.optimizer.param_groups[0]['lr']}")
+        return
+
+    def fit_whole_training_set(self, dataset, learning_rates=None):
+        dataloader = DataLoader(dataset=dataset,
+                                batch_size=None,
+                                sampler=BatchSampler(
+                                    sampler=RandomSampler(dataset),
+                                    batch_size=self.batch_size,
+                                    drop_last=True
+                                ))
+        if isinstance(learning_rates, list):
+            self.best_epoch = len(learning_rates)
+        elif ~isinstance(learning_rates, list):
+            learning_rates = [learning_rates]
+            self.best_epoch = len(learning_rates)
+        else:
+            self.best_epoch = self.epochs
+
+        for epoch in range(self.best_epoch):
+            self.optimizer.param_groups[0]['lr'] = learning_rates[epoch]
+            self.fit_epoch(dataloader)
+        return
+
+    def save(self, path, name):
+        save_path = pathlib.Path(path).joinpath(name)
+        out = dict(
+            model_state_dict=self.model.state_dict(),
+            model_parameters=self.model_parameters,
+            estimator_settings=self.estimator_settings,
+            epoch=self.epochs)
+        torch.save(out,
+                   f=save_path)
+        return save_path
+
+    def predict_proba(self, dataset):
+        dataloader = DataLoader(dataset=dataset,
+                                batch_size=None,
+                                sampler=BatchSampler(
+                                    sampler=SequentialSampler(dataset),
+                                    batch_size=self.batch_size,
+                                    drop_last=False
+                                ))
+        with torch.no_grad():
+            predictions = list()
+            self.model.eval()
+            for batch in tqdm(dataloader):
+                batch = batch_to_device(batch, device=self.device)
+                pred = self.model(batch[0])
+                predictions.append(torch.sigmoid(pred))
+            predictions = torch.concat(predictions).cpu().numpy()
+        return predictions
+
+    def predict(self, dataset, threshold=None):
+        predictions = self.predict_proba(dataset)
+
+        if threshold is None:
+            # use outcome rate
+            threshold = dataset.target.sum().item() / len(dataset)
+        predicted_class = predictions > threshold
+
+
+class EarlyStopping:
+
+    def __init__(self,
+                 patience=3,
+                 delta=0,
+                 verbose=True,
+                 mode='max'):
+        self.patience = patience
+        self.counter = 0
+        self.verbose = verbose
+        self.best_score = None
+        self.early_stop = False
+        self.improved = False
+        self.delta = delta
+        self.previous_score = 0
+        self.mode = mode
+
+    def __call__(self,
+                 metric):
+        if self.mode == 'max':
+            score = metric
+        else:
+            score = -1 * metric
+        if self.best_score is None:
+            self.best_score = score
+            self.improved = True
+        elif score < (self.best_score + self.delta):
+            self.counter += 1
+            self.improved = False
+            if self.verbose:
+                print(f"Early stopping counter: {self.counter}"
+                      f" out of {self.patience}")
+            if self.counter >= self.patience:
+                self.early_stop = True
+        else:
+            self.best_score = score
+            self.counter = 0
+            self.improved = True
+        self.previous_score = score
+
+
+def batch_to_device(batch, device='cpu'):
+    if torch.is_tensor(batch):
+        batch = batch.to(device=device)
+    else:
+        for ix, b in enumerate(batch):
+            if type(b) is str:
+                key = b
+                b = batch[b]
+            else:
+                key = None
+            if b is None:
+                continue
+            if torch.is_tensor(b):
+                b_out = b.to(device=device)
+            else:
+                b_out = batch_to_device(b, device)
+            if b_out is not None:
+                if key is not None:
+                    batch[key] = b_out
+                else:
+                    batch[ix] = b_out
+    return batch
+
+
+def compute_auc(input, target, n_threshold=1000):
+    threshold = torch.linspace(0, 1.0, n_threshold).to(device=input.device)
+    pred_label = input >= threshold[:, None, None]
+    input_target = pred_label * target
+
+    cum_tp = F.pad(input_target.sum(dim=-1).rot90(1, [1, 0]), (1, 0), value=0.0)
+    cum_fp = F.pad(
+        (pred_label.sum(dim=-1) - input_target.sum(dim=-1)).rot90(1, [1, 0]),
+        (1, 0),
+        value=0.0,
+    )
+
+    if len(cum_tp.shape) > 1:
+        factor = cum_tp[:, -1] * cum_fp[:, -1]
+    else:
+        factor = cum_tp[-1] * cum_fp[-1]
+    # Set AUROC to 0.5 when the target contains all ones or all zeros.
+    auroc = torch.where(
+        factor == 0,
+        0.5,
+        torch.trapz(cum_tp, cum_fp).double() / factor,
+    )
+    return auroc.item()

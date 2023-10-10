@@ -228,18 +228,18 @@ combinations are 2*2*2*2 or 16 but specify ```randomSample=10``` to only try
 ```{r, eval=FALSE}
 
 modelSettings <- setMultiLayerPerceptron(
-  numLayers = c(3, 5),
-  sizeHidden = c(64, 128), 
+  numLayers = c(3L, 5L),
+  sizeHidden = c(64L, 128L), 
   dropout = c(0.2),
-  sizeEmbedding = c(32, 64),
+  sizeEmbedding = c(32L, 64L),
   estimatorSettings = setEstimator(
     learningRate = c(1e-3, 1e-4),
     weightDecay = c(1e-5),
-    batchSize = c(128),
-    epochs=c(5),
-    seed=12
+    batchSize = c(128L),
+    epochs=c(5L),
+    seed=12L
   ),
-  randomSample=10
+  randomSample=10L
 )
 
 mlpResult <- PatientLevelPrediction::runPlp(
@@ -347,18 +347,18 @@ input only includes one option.
 ```{r, eval=FALSE}
 
 resset <- setResNet(
-  numLayers = c(2), 
-  sizeHidden = c(32),
-  hiddenFactor = c(2),
+  numLayers = c(2L), 
+  sizeHidden = c(32L),
+  hiddenFactor = c(2L),
   residualDropout = c(0.1), 
   hiddenDropout = c(0.1),
-  sizeEmbedding = c(32),
+  sizeEmbedding = c(32L),
   estimatorSettings = setEstimator(learningRate = c(3e-4),
                                    weightDecay = c(1e-6),
                                    #device='cuda:0', # uncomment to use GPU
-                                   batchSize = 128, 
-                                   epochs = 3,
-                                   seed = 42),
+                                   batchSize = 128L, 
+                                   epochs = 3L,
+                                   seed = 42L),
   hyperParamSearch = 'random',
   randomSample = 1
 )
@@ -438,22 +438,22 @@ block
 
 ```{r, eval=FALSE}
 
-modelSettings <- setTransformer(numBlocks = 3,
-                                dimToken = 32,
+modelSettings <- setTransformer(numBlocks = 3L,
+                                dimToken = 32L,
                                 dimOut = 1, 
-                                numHeads = 4,
+                                numHeads = 4L,
                                 attDropout = 0.25,
                                 ffnDropout = 0.25,
                                 resDropout = 0,
-                                dimHidden = 128,
+                                dimHidden = 128L,
                                 estimatorSettings = setEstimator(
                                   learningRate = 3e-4,
                                   weightDecay = 1e-6,
-                                  batchSize = 128,
-                                  epochs = 10,
+                                  batchSize = 128L,
+                                  epochs = 10L,
                                   device = 'cpu'
                                 ),
-                                randomSample=1)
+                                randomSample=1L)
                               
 
 

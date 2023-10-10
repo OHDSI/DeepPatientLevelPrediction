@@ -1,66 +1,84 @@
-catFeatures <- small_dataset$dataset$numCatFeatures()
-numFeatures <- small_dataset$dataset$numNumFeatures()
-
-modelType <- ResNet
+catFeatures <- small_dataset$dataset$get_cat_features()$shape[[1]]
+numFeatures <- small_dataset$dataset$get_numerical_features()$shape[[1]]
 
 modelParameters <- list(
-  catFeatures = catFeatures,
-  numFeatures = numFeatures,
-  sizeEmbedding = 16,
-  sizeHidden = 16,
-  numLayers = 2,
-  hiddenFactor = 2
+  cat_features = catFeatures,
+  num_features = numFeatures,
+  size_embedding = 16,
+  size_hidden = 16,
+  num_layers = 2,
+  hidden_factor = 2
 )
 
 estimatorSettings <- setEstimator(learningRate = 3e-4,
                                  weightDecay = 0.0,
                                  batchSize = 128,
                                  epochs = 5,
-                                 device = 'cpu')
+                                 device = 'cpu',
+                                 seed=42,
+                                 optimizer=torch$optim$AdamW,
+                                 criterion=torch$nn$BCEWithLogitsLoss,
+                                 metric='loss',
+                                 scheduler= list(fun=torch$optim$lr_scheduler$ReduceLROnPlateau,
+                                                 params=list(patience=1)),
+                                 earlyStopping=NULL)
 
-estimator <- Estimator$new(
-  modelType = modelType,
-  modelParameters = modelParameters,
-  estimatorSettings = estimatorSettings
-)
+modelType <- "ResNet"
+estimator <- createEstimator(modelType = modelType,
+                             modelParameters = modelParameters,
+                             estimatorSettings = estimatorSettings)
 
 test_that("Estimator initialization works", {
 
   # count parameters in both instances
+  path <- system.file("python", package = "DeepPatientLevelPrediction")
+  ResNet <- reticulate::import_from_path(modelType, path=path)[[modelType]] 
+
   testthat::expect_equal(
-    sum(sapply(estimator$model$parameters, function(x) prod(x$shape))),
-    sum(sapply(do.call(modelType, modelParameters)$parameters, function(x) prod(x$shape)))
+    sum(reticulate::iterate(estimator$model$parameters(), function(x) x$numel())),
+    sum(reticulate::iterate(do.call(ResNet, modelParameters)$parameters(), 
+                            function(x) x$numel()))
   )
 
   testthat::expect_equal(
-    estimator$modelParameters,
+    estimator$model_parameters,
     modelParameters
   )
-
-  # check the function that results the value from a list
-  val <- estimator$itemOrDefaults(list(param = 1, test = 3), "param", default = NULL)
-  expect_equal(val, 1)
-  val <- estimator$itemOrDefaults(list(param = 1, test = 3), "paramater", default = NULL)
-  expect_true(is.null(val))
-  
 })
+
+test_that("Estimator detects wrong inputs", {
+  
+  testthat::expect_error(setEstimator(learningRate='notAuto'))
+  testthat::expect_error(setEstimator(weightDecay = -1))
+  testthat::expect_error(setEstimator(weightDecay = "text"))
+  testthat::expect_error(setEstimator(batchSize = 0))
+  testthat::expect_error(setEstimator(batchSize = "text"))
+  testthat::expect_error(setEstimator(epochs = 0))
+  testthat::expect_error(setEstimator(epochs = "test"))
+  testthat::expect_error(setEstimator(device = 1))
+  testthat::expect_error(setEstimator(scheduler = "notList"))
+  testthat::expect_error(setEstimator(earlyStopping = "notListorNull"))
+  testthat::expect_error(setEstimator(metric = 1))
+  testthat::expect_error(setEstimator(seed = "32"))
+})
+
 sink(nullfile())
 estimator$fit(small_dataset, small_dataset)
 sink()
 
 test_that("estimator fitting works", {
 
-  expect_true(!is.null(estimator$bestEpoch))
-  expect_true(!is.null(estimator$bestScore$loss))
-  expect_true(!is.null(estimator$bestScore$auc))
+  expect_true(!is.null(estimator$best_epoch))
+  expect_true(!is.null(estimator$best_score$loss))
+  expect_true(!is.null(estimator$best_score$auc))
 
   old_weights <- estimator$model$head$weight$mean()$item()
 
   sink(nullfile())
-  estimator$fitWholeTrainingSet(small_dataset, estimator$learnRateSchedule)
+  estimator$fit_whole_training_set(small_dataset, estimator$learn_rate_schedule)
   sink()
 
-  expect_equal(estimator$optimizer$param_groups[[1]]$lr, tail(estimator$learnRateSchedule, 1)[[1]])
+  expect_equal(estimator$optimizer$param_groups[[1]]$lr, tail(estimator$learn_rate_schedule, 1)[[1]])
 
   new_weights <- estimator$model$head$weight$mean()$item()
 
@@ -72,7 +90,7 @@ test_that("estimator fitting works", {
   expect_true(file.exists(file.path(testLoc, "estimator.pt")))
   
   sink(nullfile())
-  preds <- estimator$predictProba(dataset)
+  preds <- estimator$predict_proba(dataset)
   sink()
   
   expect_lt(max(preds), 1)
@@ -95,11 +113,10 @@ test_that("estimator fitting works", {
                                     device = 'cpu',
                                     metric= "loss")
   
-  estimator <- Estimator$new(
-    modelType = modelType,
-    modelParameters = modelParameters,
-    estimatorSettings = estimatorSettings
-  )
+  estimator <- createEstimator(modelType=modelType,
+                               modelParameters=modelParameters,
+                               estimatorSettings=estimatorSettings)
+  
   sink(nullfile())
   estimator$fit(small_dataset, small_dataset)
   sink()
@@ -108,24 +125,27 @@ test_that("estimator fitting works", {
   expect_equal(estimator$metric$name, "loss")
   
   sink(nullfile())
-  estimator$fitWholeTrainingSet(small_dataset, estimator$learnRateSchedule)
+  estimator$fit_whole_training_set(small_dataset, estimator$learn_rate_schedule)
   sink()
   
-  expect_equal(estimator$learnRateSchedule[[estimator$bestEpoch]],
+  expect_equal(estimator$learn_rate_schedule[[estimator$best_epoch]],
                estimator$optimizer$param_groups[[1]]$lr)
   
 })
 
 test_that("early stopping works", {
-  earlyStop <- EarlyStopping$new(patience = 3, delta = 0, verbose = FALSE)
-  testthat::expect_true(is.null(earlyStop$bestScore))
-  testthat::expect_false(earlyStop$earlyStop)
-  earlyStop$call(0.5)
-  testthat::expect_equal(earlyStop$bestScore, 0.5)
-  earlyStop$call(0.4)
-  earlyStop$call(0.4)
-  earlyStop$call(0.4)
-  testthat::expect_true(earlyStop$earlyStop)
+  EarlyStopping <- reticulate::import_from_path("Estimator", path=path)$EarlyStopping
+  earlyStop <- EarlyStopping(patience = 3, delta = 0, verbose = FALSE)
+  
+  
+  testthat::expect_true(is.null(earlyStop$best_score))
+  testthat::expect_false(earlyStop$early_stop)
+  earlyStop(0.5)
+  testthat::expect_equal(earlyStop$best_score, 0.5)
+  earlyStop(0.4)
+  earlyStop(0.4)
+  earlyStop(0.4)
+  testthat::expect_true(earlyStop$early_stop)
 })
 
 modelSettings <- setResNet(
@@ -176,21 +196,22 @@ test_that("predictDeepEstimator works", {
 })
 
 test_that("batchToDevice works", {
+  batch_to_device <- reticulate::import_from_path("Estimator", path=path)$batch_to_device
   # since we can't test moving to gpu there is a fake device called meta
   # which we can use to test of the device is updated
   estimator$device <- "meta"
   b <- 1:10
-  batch <- batchToDevice(dataset[b], device=estimator$device)
-
+  batch <- batch_to_device(dataset[b], device=estimator$device)
+  
   devices <- lapply(
     lapply(unlist(batch, recursive = TRUE), function(x) x$device),
-    function(x) x == torch::torch_device(type = "meta")
+    function(x) x == torch$device(type = "meta")
   )
   # test that all are meta
   expect_true(all(devices == TRUE))
   
-  numDevice <- batchToDevice(dataset[b]$batch$num, device=estimator$device)
-  expect_true(numDevice$device==torch::torch_device(type="meta"))
+  numDevice <- batch_to_device(dataset[b][[1]]$num, device=estimator$device)
+  expect_true(numDevice$device==torch$device(type="meta"))
 })
 
 test_that("Estimator without earlyStopping works", {
@@ -201,17 +222,16 @@ test_that("Estimator without earlyStopping works", {
                                     epochs = 1,
                                     device = 'cpu',
                                     earlyStopping = NULL)
-  estimator2 <- Estimator$new(
-    modelType = modelType,
-    modelParameters = modelParameters,
-    estimatorSettings = estimatorSettings
-  )
+  
+  estimator2 <- createEstimator(modelType = modelType,
+                                modelParameters = modelParameters,
+                                estimatorSettings=estimatorSettings)
   sink(nullfile())
   estimator2$fit(small_dataset, small_dataset)
   sink()
   
-  expect_null(estimator2$earlyStopper)
-  expect_true(!is.null(estimator2$bestEpoch))
+  expect_null(estimator2$early_stopper)
+  expect_true(!is.null(estimator2$best_epoch))
   
 })
 
@@ -226,27 +246,25 @@ test_that("Early stopper can use loss and stops early", {
                                                                       patience=1)),
                                     metric = 'loss',
                                     seed=42)
-  estimator <- Estimator$new(
-    modelType=modelType,
-    modelParameters = modelParameters,
-    estimatorSettings = estimatorSettings
-  )
   
+  estimator <- createEstimator(modelType = modelType,
+                               modelParameters = modelParameters,
+                               estimatorSettings = estimatorSettings)
   sink(nullfile())
   estimator$fit(small_dataset, small_dataset)
   sink()
   
-  expect_true(estimator$bestEpoch < estimator$epochs)
+  expect_true(estimator$best_epoch < estimator$epochs)
   
 })
 
 test_that('Custom metric in estimator works', {
   
   metric_fun <- function(predictions, labels)  {
-    positive <- predictions[labels == 1]
-    negative <- predictions[labels == 0]
-    pr <- PRROC::pr.curve(scores.class0 = positive, scores.class1 = negative)
+    pr <- PRROC::pr.curve(scores.class0 = torch$sigmoid(predictions)$numpy(), 
+                          weights.class0 = labels$numpy())
     auprc <- pr$auc.integral
+    reticulate::r_to_py(auprc)
   }
     
   estimatorSettings <- setEstimator(learningRate = 3e-4,
@@ -257,10 +275,9 @@ test_that('Custom metric in estimator works', {
                                     metric=list(fun=metric_fun,
                                                 name="auprc",
                                                 mode="max"))
-  
-  estimator <- Estimator$new(modelType = modelType,
-                             modelParameters = modelParameters,
-                             estimatorSettings = estimatorSettings)
+  estimator <- createEstimator(modelType = modelType,
+                               modelParameters = modelParameters,
+                               estimatorSettings = estimatorSettings)
   expect_true(is.function(estimator$metric$fun))
   expect_true(is.character(estimator$metric$name))
   expect_true(estimator$metric$mode %in% c("min", "max"))
@@ -269,7 +286,7 @@ test_that('Custom metric in estimator works', {
   estimator$fit(small_dataset, small_dataset)
   sink()
   
-  expect_true(estimator$bestScore[["auprc"]]>0)
+  expect_true(estimator$best_score[["auprc"]]>0)
 
 })
 
@@ -309,31 +326,40 @@ test_that("device as a function argument works", {
       dev
     }
   }
-  
-  estimatorSettings <- setEstimator(device=getDevice)
+
+  estimatorSettings <- setEstimator(device=getDevice,
+                                    learningRate = 3e-4)
   
   model <- setDefaultResNet(estimatorSettings = estimatorSettings) 
   model$param[[1]]$catFeatures <- 10
-  
-  estimator <- Estimator$new(modelType="ResNet",
-                             modelParameters = model$param[[1]],
-                             estimatorSettings = estimatorSettings)
+
+  estimator <- createEstimator(modelType = modelType,
+                               modelParameters = model$param[[1]],
+                               estimatorSettings = estimatorSettings)
   
   expect_equal(estimator$device, "cpu")
   
   Sys.setenv("testDeepPLPDevice" = "meta")
   
-  estimatorSettings <- setEstimator(device=getDevice)
+  estimatorSettings <- setEstimator(device=getDevice,
+                                    learningRate = 3e-4)
   
   model <- setDefaultResNet(estimatorSettings = estimatorSettings) 
   model$param[[1]]$catFeatures <- 10
   
-  estimator <- Estimator$new(modelType="ResNet",
-                             modelParameters = model$param[[1]],
-                             estimatorSettings = estimatorSettings)
+  estimator <- createEstimator(modelType = modelType,
+                               modelParameters = model$param[[1]],
+                               estimatorSettings = estimatorSettings)
   
   expect_equal(estimator$device, "meta")
   
   Sys.unsetenv("testDeepPLPDevice")
   
   })
+
+# test_that("estimatorSettings can be saved and loaded with correct objects", {
+#   settings <- setEstimator()
+#   
+#   saveRDS(settings,file=file.path(testLoc, 'settings.RDS'))
+#   
+# })

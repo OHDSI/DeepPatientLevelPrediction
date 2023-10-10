@@ -1,9 +1,9 @@
 
 modelSettings <- setMultiLayerPerceptron(
-  numLayers = c(2),
-  sizeHidden = c(32),
+  numLayers = 2,
+  sizeHidden = 32,
   dropout = c(0.1),
-  sizeEmbedding = c(32),
+  sizeEmbedding = 32,
   estimatorSettings = setEstimator(
     learningRate=c(3e-4),
     weightDecay = c(1e-6),
@@ -82,40 +82,48 @@ test_that("MLP with runPlp working checks", {
 
 
 test_that("MLP nn-module works ", {
+  MLP <- reticulate::import_from_path("MLP", path=path)$MLP
   model <- MLP(
-    catFeatures = 5, numFeatures = 1, sizeEmbedding = 5,
-    sizeHidden = 16, numLayers = 1,
-    activation = torch::nn_relu,
-    normalization = torch::nn_batch_norm1d, dropout = 0.3,
-    d_out = 1
+    cat_features = 5, 
+    num_features = 1, 
+    size_embedding = 5,
+    size_hidden = 16, 
+    num_layers = 1,
+    activation = torch$nn$ReLU,
+    normalization = torch$nn$BatchNorm1d, 
+    dropout = 0.3
   )
 
-  pars <- sum(sapply(model$parameters, function(x) prod(x$shape)))
+  pars <- sum(reticulate::iterate(model$parameters(), function(x) x$numel()))
 
   # expected number of parameters
   expect_equal(pars, 489)
 
   input <- list()
-  input$cat <- torch::torch_randint(0, 5, c(10, 5), dtype = torch::torch_long())
-  input$num <- torch::torch_randn(10, 1, dtype = torch::torch_float32())
+  input$cat <- torch$randint(0L, 5L, c(10L, 5L), dtype=torch$long)
+  input$num <- torch$randn(10L, 1L, dtype=torch$float32)
 
 
   output <- model(input)
 
   # output is correct shape
-  expect_equal(output$shape, 10)
+  expect_equal(output$shape[0], 10L)
 
   input$num <- NULL
   model <- MLP(
-    catFeatures = 5, numFeatures = 0, sizeEmbedding = 5,
-    sizeHidden = 16, numLayers = 1,
-    activation = torch::nn_relu,
-    normalization = torch::nn_batch_norm1d, dropout = 0.3,
-    d_out = 1
+    cat_features = 5L, 
+    num_features = 0, 
+    size_embedding = 5L,
+    size_hidden = 16L, 
+    num_layers = 1L,
+    activation = torch$nn$ReLU,
+    normalization = torch$nn$BatchNorm1d, 
+    dropout = 0.3,
+    d_out = 1L
   )
   output <- model(input)
   # model works without numeric variables
-  expect_equal(output$shape, 10)
+  expect_equal(output$shape[0], 10L)
 })
 
 
@@ -127,11 +135,13 @@ test_that("Errors are produced by settings function", {
     sizeHidden = 128,
     dropout = 0.0,
     sizeEmbedding = 128,
-    weightDecay = 1e-6,
-    learningRate = 0.01,
-    seed = 42,
     hyperParamSearch = 'random',
-    randomSample = randomSample))
+    estimatorSettings = setEstimator(
+      learningRate = 'auto',
+      weightDecay = c(1e-3),
+      batchSize = 1024,
+      epochs = 30,
+      device="cpu")))
                            
 })
 

@@ -10,9 +10,10 @@ setEstimator(
   batchSize = 512,
   epochs = 30,
   device = "cpu",
-  optimizer = torch::optim_adamw,
-  scheduler = list(fun = torch::lr_reduce_on_plateau, params = list(patience = 1)),
-  criterion = torch::nn_bce_with_logits_loss,
+  optimizer = torch$optim$AdamW,
+  scheduler = list(fun = torch$optim$lr_scheduler$ReduceLROnPlateau, params =
+    list(patience = 1)),
+  criterion = torch$nn$BCEWithLogitsLoss,
   earlyStopping = list(useEarlyStopping = TRUE, params = list(patience = 4)),
   metric = "auc",
   seed = NULL

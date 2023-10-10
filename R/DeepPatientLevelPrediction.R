@@ -23,5 +23,14 @@
 #' @docType package
 #' @name DeepPatientLevelPrediction
 #' @importFrom dplyr %>%
+#' @importFrom reticulate r_to_py py_to_r
 #' @importFrom rlang .data
 NULL
+
+.onLoad <- function(libname, pkgname) {
+  # use superassignment to update global reference 
+  reticulate::configure_environment(pkgname)
+  torch <<- reticulate::import("torch", delay_load = TRUE)
+}
+
+

@@ -7,7 +7,7 @@
 setMultiLayerPerceptron(
   numLayers = c(1:8),
   sizeHidden = c(2^(6:9)),
-  dropout = c(seq(0, 0.5, 0.05)),
+  dropout = c(seq(0, 0.3, 0.05)),
   sizeEmbedding = c(2^(6:9)),
   estimatorSettings = setEstimator(learningRate = "auto", weightDecay = c(1e-06, 0.001),
     batchSize = 1024, epochs = 30, device = "cpu"),
@@ -17,9 +17,9 @@ setMultiLayerPerceptron(
 )
 }
 \arguments{
-\item{numLayers}{Number of layers in network, default: 1:16}
+\item{numLayers}{Number of layers in network, default: 1:8}
 
-\item{sizeHidden}{Amount of neurons in each default layer, default: 2^(6:10) (64 to 1024)}
+\item{sizeHidden}{Amount of neurons in each default layer, default: 2^(6:9) (64 to 512)}
 
 \item{dropout}{How much dropout to apply after first linear, default: seq(0, 0.3, 0.05)}
 

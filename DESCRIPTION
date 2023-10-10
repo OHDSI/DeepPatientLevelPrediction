@@ -1,7 +1,7 @@
 Package: DeepPatientLevelPrediction
 Type: Package
 Title: Deep Learning For Patient Level Prediction Using Data In The OMOP Common Data Model
-Version: 1.1.6.9000
+Version: 2.0.0.9999
 Date: 18-04-2023
 Authors@R: c(
     person("Egill", "Fridgeirsson", email = "e.fridgeirsson@erasmusmc.nl", role = c("aut", "cre")),
@@ -22,10 +22,10 @@ Imports:
     dplyr,
     FeatureExtraction (>= 3.0.0),
     ParallelLogger (>= 2.0.0),
-    PatientLevelPrediction (>= 6.0.4),
+    PatientLevelPrediction (>= 6.3.2),
     rlang,
-    torch (>= 0.10.0),
-    withr
+    withr,
+    reticulate (>= 1.31)
 Suggests:
     devtools,
     Eunomia,
@@ -44,3 +44,14 @@ Remotes:
 RoxygenNote: 7.2.3
 Encoding: UTF-8
 Config/testthat/edition: 3
+Config/reticulate:
+  list(
+    packages = list(
+      list(package = "torch"),
+      list(package = "polars"),
+      list(package = "tqdm"),
+      list(package = "connectorx"),
+      list(package = "scikit-learn"),
+      list(package = "pyarrow")
+      )
+  )
