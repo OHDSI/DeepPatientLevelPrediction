@@ -365,14 +365,16 @@ gridCvDeep <- function(mappedData,
       )
     }
     maxIndex <- which.max(unlist(sapply(learnRates, `[`, 2)))
-    paramSearch[[gridId]]$learnSchedule <- learnRates[[maxIndex]]
-    
     gridSearchPredictons[[gridId]] <- list(
       prediction = prediction,
       param = paramSearch[[gridId]],
-      gridPerformance = PatientLevelPrediction::computeGridPerformance(prediction, paramSearch[[gridId]])
+      gridPerformance =  PatientLevelPrediction::computeGridPerformance(prediction, paramSearch[[gridId]])
     )
+    gridSearchPredictons[[gridId]]$gridPerformance$hyperSummary$learnRates <- rep(list(unlist(learnRates[[maxIndex]]$LRs)), 
+                                                                                  nrow(gridSearchPredictons[[gridId]]$gridPerformance$hyperSummary))   
+    gridSearchPredictons[[gridId]]$param$learnSchedule <- learnRates[[maxIndex]]
     
+
     # remove all predictions that are not the max performance
     indexOfMax <- which.max(unlist(lapply(gridSearchPredictons, function(x) x$gridPerformance$cvPerformance)))
     for (i in seq_along(gridSearchPredictons)) {
@@ -385,19 +387,11 @@ gridCvDeep <- function(mappedData,
     ParallelLogger::logInfo(paste0("Caching all grid search results and prediction for best combination ", indexOfMax))
     trainCache$saveGridSearchPredictions(gridSearchPredictons)
   }
-  learnSchedules <- lapply(gridSearchPredictons, function(x) {x$param$learnSchedule})
-  gridSearchPredictons <- lapply(gridSearchPredictons, function(x) {x$param <- x$param[names(x$param) != "learnSchedule"]; x})
-  # get best para (this could be modified to enable any metric instead of AUC, just need metric input in function)
-  paramGridSearch <- lapply(gridSearchPredictons, function(x) {
-    do.call(PatientLevelPrediction::computeGridPerformance, x)
-  }) # cvAUCmean, cvAUC, param
-  paramGridSearch <- mapply(function(x, y) {x$hyperSummary$learnRates <- rep(list(unlist(y$LRs)),4) ; 
-                                            x$param$learnSchedule <- y; x}, 
-                            paramGridSearch, learnSchedules, SIMPLIFY = FALSE)
- 
+  
+  paramGridSearch <- lapply(gridSearchPredictons, function(x) x$gridPerformance)
   # get best params
-  indexOfMax <- which.max(unlist(lapply(paramGridSearch, function(x) x$cvPerformance)))
-  finalParam <- paramGridSearch[[indexOfMax]]$param
+  indexOfMax <- which.max(unlist(lapply(gridSearchPredictons, function(x) x$gridPerformance$cvPerformance)))
+  finalParam <- gridSearchPredictons[[indexOfMax]]$param
 
   paramGridSearch <- lapply(gridSearchPredictons, function(x) x$gridPerformance)
   
