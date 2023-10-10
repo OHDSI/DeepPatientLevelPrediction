@@ -365,14 +365,16 @@ gridCvDeep <- function(mappedData,
       )
     }
     maxIndex <- which.max(unlist(sapply(learnRates, `[`, 2)))
-    paramSearch[[gridId]]$learnSchedule <- learnRates[[maxIndex]]
-    
     gridSearchPredictons[[gridId]] <- list(
       prediction = prediction,
       param = paramSearch[[gridId]],
-      gridPerformance = PatientLevelPrediction::computeGridPerformance(prediction, paramSearch[[gridId]])
+      gridPerformance =  PatientLevelPrediction::computeGridPerformance(prediction, paramSearch[[gridId]])
     )
+    gridSearchPredictons[[gridId]]$gridPerformance$hyperSummary$learnRates <- rep(list(unlist(learnRates[[maxIndex]]$LRs)), 
+                                                                                  nrow(gridSearchPredictons[[gridId]]$gridPerformance$hyperSummary))   
+    gridSearchPredictons[[gridId]]$param$learnSchedule <- learnRates[[maxIndex]]
     
+
     # remove all predictions that are not the max performance
     indexOfMax <- which.max(unlist(lapply(gridSearchPredictons, function(x) x$gridPerformance$cvPerformance)))
     for (i in seq_along(gridSearchPredictons)) {
@@ -387,10 +389,11 @@ gridCvDeep <- function(mappedData,
   }
   
   paramGridSearch <- lapply(gridSearchPredictons, function(x) x$gridPerformance)
-  
   # get best params
   indexOfMax <- which.max(unlist(lapply(gridSearchPredictons, function(x) x$gridPerformance$cvPerformance)))
   finalParam <- gridSearchPredictons[[indexOfMax]]$param
+
+  paramGridSearch <- lapply(gridSearchPredictons, function(x) x$gridPerformance)
   
   # get best CV prediction
   cvPrediction <- gridSearchPredictons[[indexOfMax]]$prediction
