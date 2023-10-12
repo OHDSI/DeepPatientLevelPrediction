@@ -12,7 +12,7 @@ resNetSettings <- setResNet(numLayers = c(1, 2, 4),
                                                              seed=NULL),
                             hyperParamSearch = "random",
                             randomSample = 3,
-                            randomSampleSeed = 123)
+                            randomSampleSeed = NULL)
 
 trainCache <- TrainingCache$new(testLoc)
 paramSearch <- resNetSettings$param

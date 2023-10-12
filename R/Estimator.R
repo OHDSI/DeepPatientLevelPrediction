@@ -102,7 +102,7 @@ setEstimator <- function(learningRate='auto',
   }
   
   paramsToTune <- list()
-  for (name in names(estimatorSettings)) {
+  for (name in namDevelopes(estimatorSettings)) {
     param <- estimatorSettings[[name]]
     if (length(param) > 1 && is.atomic(param)) {
       paramsToTune[[paste0('estimator.',name)]] <- param

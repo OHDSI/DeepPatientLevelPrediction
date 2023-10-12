@@ -357,9 +357,18 @@ test_that("device as a function argument works", {
   
   })
 
-# test_that("estimatorSettings can be saved and loaded with correct objects", {
-#   settings <- setEstimator()
-#   
-#   saveRDS(settings,file=file.path(testLoc, 'settings.RDS'))
-#   
-# })
+test_that("estimatorSettings can be saved and loaded with correct python objects", {
+  settings <- setEstimator()
+
+  saveRDS(settings,file=file.path(testLoc, 'settings.RDS'))
+  
+  loadedSettings <- readRDS(file = file.path(testLoc, 'settings.RDS'))
+  
+  optimizer <- loadedSettings$optimizer()
+  scheduler <- loadedSettings$scheduler()
+  criterion <- loadedSettings$criterion()
+  
+  testthat::expect_false(reticulate::py_is_null_xptr(optimizer))
+  testthat::expect_false(reticulate::py_is_null_xptr(scheduler$fun))
+  testthat::expect_false(reticulate::py_is_null_xptr(criterion))
+})
