@@ -126,3 +126,32 @@ test_that("dimHidden ratio works as expected", {
                                         dimHiddenRatio = 4/3))
 
 })
+
+test_that("numerical embedding works as expected", {
+  embeddings <- 32L # size of embeddings
+  features <- 2L # number of numerical features
+  patients <- 9L 
+  
+  numTensor <- torch$randn(c(patients, features))
+  
+  numericalEmbeddingClass <- reticulate::import_from_path("ResNet", path=path)$NumericalEmbedding
+  numericalEmbedding <- numericalEmbeddingClass(num_embeddings = features,
+                                                embedding_dim = embeddings,
+                                                bias = TRUE)
+  out <- numericalEmbedding(numTensor)
+  
+  # should be patients x features x embedding size
+  expect_equal(out$shape[[0]], patients)
+  expect_equal(out$shape[[1]], features)
+  expect_equal(out$shape[[2]], embeddings)
+  
+  numericalEmbedding <- numericalEmbeddingClass(num_embeddings = features,
+                                                embedding_dim = embeddings,
+                                                bias = FALSE)
+  
+  out <- numericalEmbedding(numTensor)
+  expect_equal(out$shape[[0]], patients)
+  expect_equal(out$shape[[1]], features)
+  expect_equal(out$shape[[2]], embeddings)
+  
+  })

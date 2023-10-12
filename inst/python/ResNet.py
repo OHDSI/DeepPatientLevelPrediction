@@ -130,9 +130,9 @@ class NumericalEmbedding(nn.Module):
                 nn.init.kaiming_uniform_(parameter, a=math.sqrt(5))
 
     def forward(self, input):
-        x = self.weight.unsqueeze(0) * input.unsqueeze(-1)
+        x = self.weight[None] * input[..., None]
         if self.bias is not None:
-            x = x + self.bias.unsqueeze(-1)
+            x = x + self.bias[None]
         return x
 
 
