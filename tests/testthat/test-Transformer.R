@@ -86,6 +86,12 @@ test_that("transformer nn-module works", {
   )
   output <- model(input)
   expect_equal(output$shape[0], 10L)
+  
+  input$num <- reticulate::py_none()
+  output <- model(input)
+  expect_equal(output$shape[0], 10L)
+  
+  
 })
 
 test_that("Default Transformer works", {
