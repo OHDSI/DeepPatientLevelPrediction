@@ -49,6 +49,9 @@ class Transformer(nn.Module):
 
         if num_features != 0 and num_features is not None:
             self.numerical_embedding = NumericalEmbedding(num_features, dim_token)
+            self.use_numerical = True
+        else:
+            self.use_numerical = False
         self.class_token = ClassToken(dim_token)
 
         self.layers = nn.ModuleList([])
@@ -78,7 +81,7 @@ class Transformer(nn.Module):
     def forward(self, x):
         mask = torch.where(x["cat"] == 0, True, False)
         cat = self.categorical_embedding(x["cat"])
-        if "num" in x.keys() and self.numerical_embedding is not None:
+        if self.use_numerical:
             num = self.numerical_embedding(x["num"])
             x = torch.cat([cat, num], dim=1)
             mask = torch.cat([mask, torch.zeros([x.shape[0],
