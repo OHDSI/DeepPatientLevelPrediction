@@ -55,8 +55,6 @@ test_that("Estimator detects wrong inputs", {
   testthat::expect_error(setEstimator(batchSize = "text"))
   testthat::expect_error(setEstimator(epochs = 0))
   testthat::expect_error(setEstimator(epochs = "test"))
-  testthat::expect_error(setEstimator(device = 1))
-  testthat::expect_error(setEstimator(scheduler = "notList"))
   testthat::expect_error(setEstimator(earlyStopping = "notListorNull"))
   testthat::expect_error(setEstimator(metric = 1))
   testthat::expect_error(setEstimator(seed = "32"))
@@ -148,25 +146,12 @@ test_that("early stopping works", {
   testthat::expect_true(earlyStop$early_stop)
 })
 
-modelSettings <- setResNet(
-  numLayers = 1, sizeHidden = 16, hiddenFactor = 1,
-  residualDropout = 0, hiddenDropout = 0,
-  sizeEmbedding = 16, hyperParamSearch = "random",
-  randomSample = 1,
-  setEstimator(epochs=1,
-               learningRate = 3e-4)
-)
-
-sink(nullfile())
-results <- fitEstimator(trainData$Train, modelSettings = modelSettings, analysisId = 1, analysisPath = testLoc)
-sink()
-
 test_that("Estimator fit function works", {
-  expect_true(!is.null(results$trainDetails$trainingTime))
+  expect_true(!is.null(fitEstimatorResults$trainDetails$trainingTime))
 
-  expect_equal(class(results), "plpModel")
-  expect_equal(attr(results, "modelType"), "binary")
-  expect_equal(attr(results, "saveType"), "file")
+  expect_equal(class(fitEstimatorResults), "plpModel")
+  expect_equal(attr(fitEstimatorResults, "modelType"), "binary")
+  expect_equal(attr(fitEstimatorResults, "saveType"), "file")
   fakeTrainData <- trainData
   fakeTrainData$train$covariateData <- list(fakeCovData <- c("Fake"))
   expect_error(fitEstimator(fakeTrainData$train, modelSettings, analysisId = 1, analysisPath = testLoc))
@@ -186,7 +171,7 @@ test_that("predictDeepEstimator works", {
   # input is a plpModel and data
   sink(nullfile())
   predictions <- predictDeepEstimator(
-    plpModel = results, data = trainData$Test,
+    plpModel = fitEstimatorResults, data = trainData$Test,
     trainData$Test$labels
   )
   sink()

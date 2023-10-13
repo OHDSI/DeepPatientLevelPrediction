@@ -78,3 +78,21 @@ dataset <- Dataset$Data(
 )
 small_dataset <- torch$utils$data$Subset(dataset, (1:round(length(dataset)/3)))
 
+modelSettings <- setResNet(
+  numLayers = 1, sizeHidden = 16, hiddenFactor = 1,
+  residualDropout = c(0, 0.2), hiddenDropout = 0,
+  sizeEmbedding = 16, hyperParamSearch = "random",
+  randomSample = 2,
+  setEstimator(epochs=1,
+               learningRate = 3e-4)
+)
+fitEstimatorPath <- file.path(testLoc, 'fitEstimator')
+if (!dir.exists(fitEstimatorPath)) {
+  dir.create(fitEstimatorPath)
+}
+fitEstimatorResults <- fitEstimator(trainData$Train, 
+                                    modelSettings = modelSettings, 
+                                    analysisId = 1, 
+                                    analysisPath = fitEstimatorPath)
+
+
