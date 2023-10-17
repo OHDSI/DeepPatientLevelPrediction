@@ -56,7 +56,7 @@ class LrFinder:
         self.scheduler = ExponentialSchedulerPerBatch(self.optimizer, self.max_lr, self.num_lr)
 
         self.criterion = estimator_settings["criterion"]()
-        self.batch_size = estimator_settings['batch_size']
+        self.batch_size = int(estimator_settings['batch_size'])
         self.losses = None
         self.loss_index = None
 
