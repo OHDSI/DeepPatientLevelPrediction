@@ -5,7 +5,7 @@ from torch.optim.lr_scheduler import _LRScheduler
 from torch.utils.data import DataLoader, BatchSampler, RandomSampler
 from tqdm import tqdm
 
-from inst.python.Estimator import batch_to_device
+from Estimator import batch_to_device
 
 
 class ExponentialSchedulerPerBatch(_LRScheduler):
