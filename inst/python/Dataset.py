@@ -21,7 +21,7 @@ class Data(Dataset):
         if pathlib.Path(data).suffix == '.sqlite':
             data = urllib.parse.quote(data)
             data = pl.read_database("SELECT * from covariates",
-                                    connection_uri=f"sqlite://{data}").lazy()
+                                    connection=f"sqlite://{data}").lazy()
         else:
             data = pl.scan_ipc(pathlib.Path(data).joinpath('covariates/*.arrow'))
         observations = data.select(pl.col('rowId').max()).collect()[0, 0]
