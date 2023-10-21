@@ -8,3 +8,4 @@ docs
 .idea/
 renv.lock
 extras/
+.Renviron

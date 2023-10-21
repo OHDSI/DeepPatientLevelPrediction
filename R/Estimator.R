@@ -310,7 +310,8 @@ gridCvDeep <- function(mappedData,
   
   fitParams <- names(paramSearch[[1]])[grepl("^estimator", names(paramSearch[[1]]))]
   findLR <- modelSettings$estimatorSettings$findLR
-  for (gridId in trainCache$getLastGridSearchIndex():length(paramSearch)) {
+  if (!trainCache$isFull()) {
+    for (gridId in trainCache$getLastGridSearchIndex():length(paramSearch)) {
     ParallelLogger::logInfo(paste0("Running hyperparameter combination no ", gridId))
     ParallelLogger::logInfo(paste0("HyperParameters: "))
     ParallelLogger::logInfo(paste(names(paramSearch[[gridId]]), paramSearch[[gridId]], collapse = " | "))
@@ -385,7 +386,7 @@ gridCvDeep <- function(mappedData,
     ParallelLogger::logInfo(paste0("Caching all grid search results and prediction for best combination ", indexOfMax))
     trainCache$saveGridSearchPredictions(gridSearchPredictons)
   }
-  
+  }
   paramGridSearch <- lapply(gridSearchPredictons, function(x) x$gridPerformance)
   # get best params
   indexOfMax <- which.max(unlist(lapply(gridSearchPredictons, function(x) x$gridPerformance$cvPerformance)))

@@ -23,14 +23,14 @@ populationSet <- PatientLevelPrediction::createStudyPopulationSettings(
 #   epochs = 10L
 # ))
 
-modelSettings <- setDefaultResNet(estimatorSettings = setEstimator(
-  learningRate = "auto",
-  weightDecay = 1e-06,
-  device="cuda:0",
-  batchSize=128L,
-  epochs=50L,
-  seed=42
-))
+# modelSettings <- setDefaultResNet(estimatorSettings = setEstimator(
+#   learningRate = "auto",
+#   weightDecay = 1e-06,
+#   device="cuda:0",
+#   batchSize=128L,
+#   epochs=50L,
+#   seed=42
+# ))
 
 modelSettings <- setResNet(numLayers = c(1L, 2L),
                            sizeHidden = 72L,
@@ -45,7 +45,8 @@ modelSettings <- setResNet(numLayers = c(1L, 2L),
                              device = "cpu",
                              seed = 42
                            ),
-                           randomSample = 2)
+                           randomSample = 2,
+                           randomSampleSeed = 1)
 
 res2 <- PatientLevelPrediction::runPlp(
   plpData = plpData,
@@ -67,7 +68,7 @@ res2 <- PatientLevelPrediction::runPlp(
     runModelDevelopment = T,
     runCovariateSummary = F
   ),
-  saveDirectory = '~/test/resnet/'
+  saveDirectory = '~/deep_plp_test/resnet/'
 )
 
 
