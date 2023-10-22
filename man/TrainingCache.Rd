@@ -8,6 +8,8 @@ Whether the provided and cached parameter grid is identical
 
 Grid search results from the training cache
 
+Boolen
+
 Last grid search index
 }
 \description{
@@ -21,6 +23,7 @@ Parameter caching for training persistence and continuity
 \item \href{#method-TrainingCache-saveGridSearchPredictions}{\code{TrainingCache$saveGridSearchPredictions()}}
 \item \href{#method-TrainingCache-saveModelParams}{\code{TrainingCache$saveModelParams()}}
 \item \href{#method-TrainingCache-getGridSearchPredictions}{\code{TrainingCache$getGridSearchPredictions()}}
+\item \href{#method-TrainingCache-isFull}{\code{TrainingCache$isFull()}}
 \item \href{#method-TrainingCache-getLastGridSearchIndex}{\code{TrainingCache$getLastGridSearchIndex()}}
 \item \href{#method-TrainingCache-dropCache}{\code{TrainingCache$dropCache()}}
 \item \href{#method-TrainingCache-clone}{\code{TrainingCache$clone()}}
@@ -102,6 +105,16 @@ Saves the parameter grid to the training cache
 Gets the grid search results from the training cache
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{TrainingCache$getGridSearchPredictions()}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-TrainingCache-isFull"></a>}}
+\if{latex}{\out{\hypertarget{method-TrainingCache-isFull}{}}}
+\subsection{Method \code{isFull()}}{
+Check if cache is full
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{TrainingCache$isFull()}\if{html}{\out{</div>}}
 }
 
 }

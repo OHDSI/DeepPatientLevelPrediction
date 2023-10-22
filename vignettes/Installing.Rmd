@@ -52,7 +52,7 @@ Under Windows the OHDSI Deep Patient Level Prediction (DeepPLP) package requires
 
 ## Mac/Linux Users
 
-Under Mac and Linux the OHDSI deepPLP package requires installing:
+Under Mac and Linux the OHDSI DeepPLP package requires installing:
 
 -   R (<https://cran.cnr.berkeley.edu/> ) - (R \>= 4.0.0, but latest is recommended)
 -   Python - The package is tested with python 3.10, but \>= 3.8 should work
@@ -83,9 +83,15 @@ By default `install_minconda()` creates an environment `r-reticulate` with `pyth
 reticulate::conda_install(envname = 'r-reticulate', packages=c('python=3.10'))
 ```
 
-Then when we can install `DeepPatientLevelPrediction` and it should install the required python packages in this environment.
+If reticulate is having issues finding the conda installation you can use the function `reticulate::miniconda_path()` to find the default installation location for your miniconda installation. Then you can force reticulate to use the newly generated environment by setting the environment variable `RETICULATE_PYTHON` to point to the python binary in the environment. For example by adding the following to the `.Renviron` file:
 
-If instead you want to use a specific python environment you can set the environment variable `RETICULATE_PYTHON` to point to the python executable of that environment in your `.Renviron` file. You need to do this before installing `DeepPatientLevelPrediction`.
+```         
+RETICULATE_PYTHON="/path/to/miniconda/envs/r-reticulate/python/bin"
+```
+
+Then you need to restart you R session. To verify that `reticulate` finds the correct version. You can call `reticulate::py_config()`. 
+
+Once you have a working python environment that reticulate can locate you can install `DeepPatientLevelPrediction`. If you want to use a specific python environment you can set the environment variable `RETICULATE_PYTHON` to point to the python executable of that environment in your `.Renviron` file. You need to do this before installing `DeepPatientLevelPrediction`.
 
 ## Installing DeepPatientLevelPrediction using remotes
 
@@ -93,10 +99,17 @@ To install using `remotes` run:
 
 ```{r, echo = TRUE, message = FALSE, warning = FALSE,tidy=FALSE,eval=FALSE}
 install.packages("remotes")
-remotes::install_github("OHDSI/FeatureExtraction")
-remotes::install_github("OHDSI/PatientLevelPrediction")
 remotes::install_github("OHDSI/DeepPatientLevelPrediction")
 ```
+
+This should install the required python packages. If that doesn't happen it can be triggered by calling:
+
+```
+library(DeepPatientLevelPrediction)
+torch$trandn(10L)
+```
+
+This should print out a tensor with ten different values. 
 
 When installing make sure to close any other Rstudio sessions that are using `DeepPatientLevelPrediction` or any dependency. Keeping Rstudio sessions open can cause locks on windows that prevent the package installing.
 
@@ -107,7 +120,7 @@ library(PatientLevelPrediction)
 library(DeepPatientLevelPrediction)
 
 data(plpDataSimulationProfile)
-sampleSize <- 1e4
+sampleSize <- 1e3
 plpData <- simulatePlpData(
   plpDataSimulationProfile,
   n = sampleSize 
