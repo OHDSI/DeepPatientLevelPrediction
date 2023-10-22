@@ -94,6 +94,9 @@
 <p>Grid search results from the training cache</p>
 
 
+<p>Boolen</p>
+
+
 <p>Last grid search index</p>
     </div>
     <div id="methods">
@@ -107,6 +110,7 @@
 <li><p><a href="#method-TrainingCache-saveGridSearchPredictions"><code>TrainingCache$saveGridSearchPredictions()</code></a></p></li>
 <li><p><a href="#method-TrainingCache-saveModelParams"><code>TrainingCache$saveModelParams()</code></a></p></li>
 <li><p><a href="#method-TrainingCache-getGridSearchPredictions"><code>TrainingCache$getGridSearchPredictions()</code></a></p></li>
+<li><p><a href="#method-TrainingCache-isFull"><code>TrainingCache$isFull()</code></a></p></li>
 <li><p><a href="#method-TrainingCache-getLastGridSearchIndex"><code>TrainingCache$getLastGridSearchIndex()</code></a></p></li>
 <li><p><a href="#method-TrainingCache-dropCache"><code>TrainingCache$dropCache()</code></a></p></li>
 <li><p><a href="#method-TrainingCache-clone"><code>TrainingCache$clone()</code></a></p></li>
@@ -183,10 +187,18 @@ the cached parameters.</p><div class="section">
 </div>
 
 
+</div><p></p><hr><a id="method-TrainingCache-isFull"></a><div class="section">
+<h3 id="method-isfull-">Method <code>isFull()</code><a class="anchor" aria-label="anchor" href="#method-isfull-"></a></h3>
+<p>Check if cache is full</p><div class="section">
+<h4 id="usage-5">Usage<a class="anchor" aria-label="anchor" href="#usage-5"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">TrainingCache</span><span class="op">$</span><span class="fu">isFull</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div>
+
+
 </div><p></p><hr><a id="method-TrainingCache-getLastGridSearchIndex"></a><div class="section">
 <h3 id="method-getlastgridsearchindex-">Method <code>getLastGridSearchIndex()</code><a class="anchor" aria-label="anchor" href="#method-getlastgridsearchindex-"></a></h3>
 <p>Gets the last index from the cached grid search</p><div class="section">
-<h4 id="usage-5">Usage<a class="anchor" aria-label="anchor" href="#usage-5"></a></h4>
+<h4 id="usage-6">Usage<a class="anchor" aria-label="anchor" href="#usage-6"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">TrainingCache</span><span class="op">$</span><span class="fu">getLastGridSearchIndex</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -194,7 +206,7 @@ the cached parameters.</p><div class="section">
 </div><p></p><hr><a id="method-TrainingCache-dropCache"></a><div class="section">
 <h3 id="method-dropcache-">Method <code>dropCache()</code><a class="anchor" aria-label="anchor" href="#method-dropcache-"></a></h3>
 <p>Remove the training cache from the analysis path</p><div class="section">
-<h4 id="usage-6">Usage<a class="anchor" aria-label="anchor" href="#usage-6"></a></h4>
+<h4 id="usage-7">Usage<a class="anchor" aria-label="anchor" href="#usage-7"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">TrainingCache</span><span class="op">$</span><span class="fu">dropCache</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -202,7 +214,7 @@ the cached parameters.</p><div class="section">
 </div><p></p><hr><a id="method-TrainingCache-clone"></a><div class="section">
 <h3 id="method-clone-">Method <code>clone()</code><a class="anchor" aria-label="anchor" href="#method-clone-"></a></h3>
 <p>The objects of this class are cloneable with this method.</p><div class="section">
-<h4 id="usage-7">Usage<a class="anchor" aria-label="anchor" href="#usage-7"></a></h4>
+<h4 id="usage-8">Usage<a class="anchor" aria-label="anchor" href="#usage-8"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">TrainingCache</span><span class="op">$</span><span class="fu">clone</span><span class="op">(</span>deep <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
