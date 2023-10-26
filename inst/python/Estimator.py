@@ -206,11 +206,12 @@ class Estimator:
                   f"| LR: {self.optimizer.param_groups[0]['lr']}")
         return
 
-    def fit_whole_training_set(self, dataset, learning_rates=None):
+    def fit_whole_training_set(self, dataset, learning_rates=None, num_folds=3):
+        samples = torch.floor(torch.as_tensor(len(dataset) * (num_folds - 1)/num_folds))
         dataloader = DataLoader(dataset=dataset,
                                 batch_size=None,
                                 sampler=BatchSampler(
-                                    sampler=RandomSampler(dataset),
+                                    sampler=RandomSampler(dataset, num_samples=int(samples)),
                                     batch_size=self.batch_size,
                                     drop_last=True
                                 ))

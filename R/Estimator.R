@@ -310,6 +310,8 @@ gridCvDeep <- function(mappedData,
   
   fitParams <- names(paramSearch[[1]])[grepl("^estimator", names(paramSearch[[1]]))]
   findLR <- modelSettings$estimatorSettings$findLR
+  fold <- labels$index
+  numFolds <- max(fold)
   if (!trainCache$isFull()) {
     for (gridId in trainCache$getLastGridSearchIndex():length(paramSearch)) {
     ParallelLogger::logInfo(paste0("Running hyperparameter combination no ", gridId))
@@ -323,8 +325,7 @@ gridCvDeep <- function(mappedData,
     # initiate prediction
     prediction <- NULL
     
-    fold <- labels$index
-    ParallelLogger::logInfo(paste0("Max fold: ", max(fold)))
+    ParallelLogger::logInfo(paste0("Max fold: ", numFolds))
     currentModelParams$catFeatures <- dataset$get_cat_features()$shape[[1]]
     currentModelParams$numFeatures <- dataset$get_numerical_features()$shape[[1]]
     if (findLR) {
@@ -338,7 +339,7 @@ gridCvDeep <- function(mappedData,
     }
     
     learnRates <- list()
-    for (i in 1:max(fold)) {
+    for (i in 1:numFolds) {
       ParallelLogger::logInfo(paste0("Fold ", i))
       trainDataset <- torch$utils$data$Subset(dataset, indices = as.integer(which(fold != i) - 1)) # -1 for python 0-based indexing
       testDataset <- torch$utils$data$Subset(dataset, indices = as.integer(which(fold == i) -1)) # -1 for python 0-based indexing
@@ -420,7 +421,7 @@ gridCvDeep <- function(mappedData,
                                estimatorSettings = estimatorSettings)
  
   numericalIndex <- dataset$get_numerical_features()
-  estimator$fit_whole_training_set(dataset, finalParam$learnSchedule$LRs)
+  estimator$fit_whole_training_set(dataset, finalParam$learnSchedule$LRs, numFolds)
   
   ParallelLogger::logInfo("Calculating predictions on all train data...")
   prediction <- predictDeepEstimator(

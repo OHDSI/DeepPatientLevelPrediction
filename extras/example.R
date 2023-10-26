@@ -2,14 +2,15 @@
 # rm(list = ls())
 library(PatientLevelPrediction)
 library(DeepPatientLevelPrediction)
+# 
+# data(plpDataSimulationProfile)
+# sampleSize <- 1e3
+# plpData <- simulatePlpData(
+#    plpDataSimulationProfile,
+#    n = sampleSize
+#  )
 
-data(plpDataSimulationProfile)
-sampleSize <- 1e3
-plpData <- simulatePlpData(
-   plpDataSimulationProfile,
-   n = sampleSize
- )
-
+plpData <- loadPlpData('~/cohorts/bipolar/')
 
 populationSet <- PatientLevelPrediction::createStudyPopulationSettings(
   requireTimeAtRisk = F, 
@@ -33,16 +34,16 @@ populationSet <- PatientLevelPrediction::createStudyPopulationSettings(
 # ))
 
 modelSettings <- setResNet(numLayers = c(1L, 2L),
-                           sizeHidden = 72L,
+                           sizeHidden = 256L,
                            hiddenFactor = 1L,
                            residualDropout = 0.0,
                            hiddenDropout = 0.0,
-                           sizeEmbedding = 64L,
+                           sizeEmbedding = 128L,
                            estimatorSettings = setEstimator(
                              learningRate = 3e-4,
                              batchSize = 128L,
                              epochs = 10L,
-                             device = "cpu",
+                             device = "cuda:0",
                              seed = 42
                            ),
                            randomSample = 2,
