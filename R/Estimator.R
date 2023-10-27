@@ -249,6 +249,7 @@ predictDeepEstimator <- function(plpModel,
                                                      "covariateId"
                                                    )
     )
+    browser()
     data <- createDataset(mappedData, plpModel=plpModel)
   }
   
