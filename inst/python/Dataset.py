@@ -67,7 +67,7 @@ class Data(Dataset):
         if pl.count(self.numerical_features) == 0:
             self.num = None
         else:
-            numerical_data = data.filter(pl.col('columnId').is_in(self.numerical_features)). \
+            numerical_data = data.filter(pl.col('columnId').is_in(self.numerical_features)).sort(by='columnId'). \
                 with_row_count('newColumnId').with_columns(pl.col('newColumnId').first().over('columnId').
                                                            rank(method="dense") - 1, pl.col('rowId') - 1) \
                 .select(pl.col('rowId'), pl.col('newColumnId').alias('columnId'), pl.col('covariateValue')).collect()
