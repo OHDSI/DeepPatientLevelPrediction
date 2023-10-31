@@ -1,3 +1,14 @@
+DeepPatientLevelPrediction 2.0.1
+======================
+  - Connection parameter fixed to be in line with newest polars
+  - Fixed a bug where LRFinder used a hardcoded batch size
+  - Seed is now used in LRFinder so it's reproducible
+  - Fixed a bug in NumericalEmbedding
+  - Fixed a bug for Transformer and numerical features
+  - Fixed a bug when resuming from a full TrainingCache (thanks Zoey Jiang and Linying Zhang )
+  - Updated installation documentation after feedback from HADES hackathon
+  - Fixed a bug where order of numeric features wasn't conserved between training and test set
+
 DeepPatientLevelPrediction 2.0.0
 ======================
   - New backend which uses pytorch through reticulate instead of torch in R
