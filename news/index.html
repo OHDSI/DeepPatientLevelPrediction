@@ -79,6 +79,17 @@
     </div>
 
     <div class="section level2">
+<h2 class="page-header" data-toc-text="2.0.1" id="deeppatientlevelprediction-201">DeepPatientLevelPrediction 2.0.1<a class="anchor" aria-label="anchor" href="#deeppatientlevelprediction-201"></a></h2>
+<ul><li>Connection parameter fixed to be in line with newest polars</li>
+<li>Fixed a bug where LRFinder used a hardcoded batch size</li>
+<li>Seed is now used in LRFinder so it’s reproducible</li>
+<li>Fixed a bug in NumericalEmbedding</li>
+<li>Fixed a bug for Transformer and numerical features</li>
+<li>Fixed a bug when resuming from a full TrainingCache (thanks Zoey Jiang and Linying Zhang )</li>
+<li>Updated installation documentation after feedback from HADES hackathon</li>
+<li>Fixed a bug where order of numeric features wasn’t conserved between training and test set</li>
+</ul></div>
+    <div class="section level2">
 <h2 class="page-header" data-toc-text="2.0.0" id="deeppatientlevelprediction-200">DeepPatientLevelPrediction 2.0.0<a class="anchor" aria-label="anchor" href="#deeppatientlevelprediction-200"></a></h2>
 <ul><li>New backend which uses pytorch through reticulate instead of torch in R</li>
 <li>All models ported over to python</li>
