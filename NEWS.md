@@ -8,6 +8,7 @@ DeepPatientLevelPrediction 2.0.1
   - Fixed a bug when resuming from a full TrainingCache (thanks Zoey Jiang and Linying Zhang )
   - Updated installation documentation after feedback from HADES hackathon
   - Fixed a bug where order of numeric features wasn't conserved between training and test set
+  - TrainingCache now only saves prediction dataframe for the best performing model 
 
 DeepPatientLevelPrediction 2.0.0
 ======================
