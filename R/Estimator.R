@@ -310,7 +310,8 @@ gridCvDeep <- function(mappedData,
   
   fitParams <- names(paramSearch[[1]])[grepl("^estimator", names(paramSearch[[1]]))]
   findLR <- modelSettings$estimatorSettings$findLR
-  for (gridId in trainCache$getLastGridSearchIndex():length(paramSearch)) {
+  if (!trainCache$isFull()) {
+    for (gridId in trainCache$getLastGridSearchIndex():length(paramSearch)) {
     ParallelLogger::logInfo(paste0("Running hyperparameter combination no ", gridId))
     ParallelLogger::logInfo(paste0("HyperParameters: "))
     ParallelLogger::logInfo(paste(names(paramSearch[[gridId]]), paramSearch[[gridId]], collapse = " | "))
@@ -363,25 +364,38 @@ gridCvDeep <- function(mappedData,
       )
     }
     maxIndex <- which.max(unlist(sapply(learnRates, `[`, 2)))
-    paramSearch[[gridId]]$learnSchedule <- learnRates[[maxIndex]]
-    
     gridSearchPredictons[[gridId]] <- list(
       prediction = prediction,
-      param = paramSearch[[gridId]]
+      param = paramSearch[[gridId]],
+      gridPerformance =  PatientLevelPrediction::computeGridPerformance(prediction, paramSearch[[gridId]])
     )
+    gridSearchPredictons[[gridId]]$gridPerformance$hyperSummary$learnRates <- rep(list(unlist(learnRates[[maxIndex]]$LRs)), 
+                                                                                  nrow(gridSearchPredictons[[gridId]]$gridPerformance$hyperSummary))   
+    gridSearchPredictons[[gridId]]$param$learnSchedule <- learnRates[[maxIndex]]
+    
 
+    # remove all predictions that are not the max performance
+    indexOfMax <- which.max(unlist(lapply(gridSearchPredictons, function(x) x$gridPerformance$cvPerformance)))
+    for (i in seq_along(gridSearchPredictons)) {
+      if (!is.null(gridSearchPredictons[[i]])) {
+        if (i != indexOfMax) {
+          gridSearchPredictons[[i]]$prediction <- list(NULL)
+        }
+      }
+    }
+    ParallelLogger::logInfo(paste0("Caching all grid search results and prediction for best combination ", indexOfMax))
     trainCache$saveGridSearchPredictions(gridSearchPredictons)
   }
+  }
+  paramGridSearch <- lapply(gridSearchPredictons, function(x) x$gridPerformance)
+  # get best params
+  indexOfMax <- which.max(unlist(lapply(gridSearchPredictons, function(x) x$gridPerformance$cvPerformance)))
+  finalParam <- gridSearchPredictons[[indexOfMax]]$param
+
+  paramGridSearch <- lapply(gridSearchPredictons, function(x) x$gridPerformance)
   
-  # get best para (this could be modified to enable any metric instead of AUC, just need metric input in function)
-  paramGridSearch <- lapply(gridSearchPredictons, function(x) {
-    do.call(PatientLevelPrediction::computeGridPerformance, x)
-  }) # cvAUCmean, cvAUC, param
-  
-  optimalParamInd <- which.max(unlist(lapply(paramGridSearch, function(x) x$cvPerformance)))
-  finalParam <- paramGridSearch[[optimalParamInd]]$param
-  
-  cvPrediction <- gridSearchPredictons[[optimalParamInd]]$prediction
+  # get best CV prediction
+  cvPrediction <- gridSearchPredictons[[indexOfMax]]$prediction
   cvPrediction$evaluationType <- "CV"
   
   ParallelLogger::logInfo("Training final model using optimal parameters")

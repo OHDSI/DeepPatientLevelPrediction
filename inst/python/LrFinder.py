@@ -37,6 +37,7 @@ class LrFinder:
         smooth = lr_settings.get("smooth", 0.05)
         divergence_threshold = lr_settings.get("divergence_threshold", 4)
         torch.manual_seed(seed=estimator_settings["seed"])
+        self.seed = estimator_settings["seed"]
         self.model = model(**model_parameters)
         if callable(estimator_settings["device"]):
             self.device = estimator_settings["device"]()
@@ -55,18 +56,18 @@ class LrFinder:
         self.scheduler = ExponentialSchedulerPerBatch(self.optimizer, self.max_lr, self.num_lr)
 
         self.criterion = estimator_settings["criterion"]()
-        self.batch_size = estimator_settings['batch_size']
+        self.batch_size = int(estimator_settings['batch_size'])
         self.losses = None
         self.loss_index = None
 
     def get_lr(self, dataset):
         batch_index = torch.arange(0, len(dataset), 1).tolist()
-
+        random.seed(self.seed)
         losses = torch.empty(size=(self.num_lr,), dtype=torch.float)
         lrs = torch.empty(size=(self.num_lr,), dtype=torch.float)
         for i in tqdm(range(self.num_lr)):
             self.optimizer.zero_grad()
-            random_batch = random.sample(batch_index, 32)
+            random_batch = random.sample(batch_index, self.batch_size)
             batch = dataset[random_batch]
             batch = batch_to_device(batch, self.device)
 

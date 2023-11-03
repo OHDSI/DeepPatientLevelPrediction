@@ -47,43 +47,32 @@ test_that("Param grid predictions can be cached", {
 })
 
 test_that("Estimator can resume training from cache", {
-  modelPath <- tempdir()
-  analysisPath <- file.path(modelPath, "Analysis_TrainCacheResNet")
-  dir.create(analysisPath)
-  trainCache <- TrainingCache$new(analysisPath)
-  trainCache$saveModelParams(paramSearch)
+  trainCache <- readRDS(file.path(fitEstimatorPath, "paramPersistence.rds"))
+  newPath <- file.path(testLoc, 'resume')
+  dir.create(newPath)
+  
+  # remove last row
+  trainCache$gridSearchPredictions[[2]] <- NULL
+  length(trainCache$gridSearchPredictions) <- 2
+  
+  # save new cache
+  saveRDS(trainCache, file=file.path(newPath, "paramPersistence.rds"))
   
   sink(nullfile())
-  res2 <- tryCatch(
-    {
-      PatientLevelPrediction::runPlp(
-        plpData = plpData,
-        outcomeId = 3,
-        modelSettings = resNetSettings,
-        analysisId = "Analysis_TrainCacheResNet",
-        analysisName = "Testing Training Cache",
-        populationSettings = populationSet,
-        splitSettings = PatientLevelPrediction::createDefaultSplitSetting(),
-        sampleSettings = PatientLevelPrediction::createSampleSettings(), # none
-        featureEngineeringSettings = PatientLevelPrediction::createFeatureEngineeringSettings(), # none
-        preprocessSettings = PatientLevelPrediction::createPreprocessSettings(),
-        executeSettings = PatientLevelPrediction::createExecuteSettings(
-          runSplitData = T,
-          runSampleData = F,
-          runfeatureEngineering = F,
-          runPreprocessData = T,
-          runModelDevelopment = T,
-          runCovariateSummary = F
-        ),
-        saveDirectory = modelPath
-      )
-    },
-    error = function(e) {
-      print(e)
-      return(NULL)
-    }
-  )
+  fitEstimatorResults <- fitEstimator(trainData$Train, 
+                                      modelSettings = modelSettings, 
+                                      analysisId = 1, 
+                                      analysisPath = newPath)
   sink()
-  trainCache <- TrainingCache$new(analysisPath)
-  testthat::expect_equal(is.na(trainCache$getLastGridSearchIndex()), TRUE)
+ 
+  newCache <- readRDS(file.path(newPath, "paramPersistence.rds"))
+  testthat::expect_equal(nrow(newCache$gridSearchPredictions[[2]]$gridPerformance$hyperSummary), 4)
+})
+
+test_that("Prediction is cached for optimal parameters", {
+  testCache <- readRDS(file.path(fitEstimatorPath, "paramPersistence.rds"))
+  indexOfMax <- which.max(unlist(lapply(testCache$gridSearchPredictions, function(x) x$gridPerformance$cvPerformance)))
+  indexOfMin <- which.min(unlist(lapply(testCache$gridSearchPredictions, function(x) x$gridPerformance$cvPerformance)))
+  testthat::expect_equal(class(testCache$gridSearchPredictions[[indexOfMax]]$prediction), class(data.frame()))
+  testthat::expect_null(testCache$gridSearchPredictions[[indexOfMin]]$prediction[[1]])
 })
