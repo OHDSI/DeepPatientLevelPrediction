@@ -21,21 +21,28 @@ setResNet(
 \arguments{
 \item{numLayers}{Number of layers in network, default: 1:16}
 
-\item{sizeHidden}{Amount of neurons in each default layer, default: 2^(6:10) (64 to 1024)}
+\item{sizeHidden}{Amount of neurons in each default layer, default:
+2^(6:10) (64 to 1024)}
 
-\item{hiddenFactor}{How much to grow the amount of neurons in each ResLayer, default: 1:4}
+\item{hiddenFactor}{How much to grow the amount of neurons in each
+ResLayer, default: 1:4}
 
-\item{residualDropout}{How much dropout to apply after last linear layer in ResLayer, default: seq(0, 0.3, 0.05)}
+\item{residualDropout}{How much dropout to apply after last linear layer
+in ResLayer, default: seq(0, 0.3, 0.05)}
 
-\item{hiddenDropout}{How much dropout to apply after first linear layer in ResLayer, default: seq(0, 0.3, 0.05)}
+\item{hiddenDropout}{How much dropout to apply after first linear layer
+in ResLayer, default: seq(0, 0.3, 0.05)}
 
-\item{sizeEmbedding}{Size of embedding layer, default: 2^(6:9) (64 to 512)}
+\item{sizeEmbedding}{Size of embedding layer, default: 2^(6:9)
+'(64 to 512)}
 
 \item{estimatorSettings}{created with ```setEstimator```}
 
-\item{hyperParamSearch}{Which kind of hyperparameter search to use random sampling or exhaustive grid search. default: 'random'}
+\item{hyperParamSearch}{Which kind of hyperparameter search to use random
+sampling or exhaustive grid search. default: 'random'}
 
-\item{randomSample}{How many random samples from hyperparameter space to use}
+\item{randomSample}{How many random samples from hyperparameter space
+to use}
 
 \item{randomSampleSeed}{Random seed to sample hyperparameter combinations}
 }

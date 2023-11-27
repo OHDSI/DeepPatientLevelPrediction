@@ -2,9 +2,8 @@
 #' @description
 #' Parameter caching for training persistence and continuity
 #' @export
-TrainingCache <- R6::R6Class(
+trainingCache <- R6::R6Class(
   "TrainingCache",
-  
   private = list(
     .paramPersistence = list(
       gridSearchPredictions = NULL,
@@ -12,30 +11,27 @@ TrainingCache <- R6::R6Class(
     ),
     .paramContinuity = list(),
     .saveDir = NULL,
-    
     writeToFile = function() {
       saveRDS(private$.paramPersistence, file.path(private$.saveDir))
     },
-    
     readFromFile = function() {
-        private$.paramPersistence <- readRDS(file.path(private$.saveDir))
+      private$.paramPersistence <- readRDS(file.path(private$.saveDir))
     }
   ),
-  
   public = list(
     #' @description
     #' Creates a new training cache
     #' @param inDir Path to the analysis directory
     initialize = function(inDir) {
       private$.saveDir <- file.path(inDir, "paramPersistence.rds")
-      
+
       if (file.exists(private$.saveDir)) {
         private$readFromFile()
       } else {
         private$writeToFile()
       }
     },
-    
+
     #' @description
     #' Checks whether the parameter grid in the model settings is identical to
     #' the cached parameters.
@@ -44,7 +40,7 @@ TrainingCache <- R6::R6Class(
     isParamGridIdentical = function(inModelParams) {
       return(identical(inModelParams, private$.paramPersistence$modelParams))
     },
-    
+
     #' @description
     #' Saves the grid search results to the training cache
     #' @param inGridSearchPredictions Grid search predictions
@@ -53,7 +49,7 @@ TrainingCache <- R6::R6Class(
         inGridSearchPredictions
       private$writeToFile()
     },
-    
+
     #' @description
     #' Saves the parameter grid to the training cache
     #' @param inModelParams Parameter grid from the model settings
@@ -61,21 +57,22 @@ TrainingCache <- R6::R6Class(
       private$.paramPersistence$modelParams <- inModelParams
       private$writeToFile()
     },
-    
+
     #' @description
     #' Gets the grid search results from the training cache
     #' @returns Grid search results from the training cache
     getGridSearchPredictions = function() {
       return(private$.paramPersistence$gridSearchPredictions)
     },
-    
+
     #' @description
     #' Check if cache is full
     #' @returns Boolen
     isFull = function() {
-      return(all(unlist(lapply(private$.paramPersistence$gridSearchPredictions, function(x) !is.null(x$gridPerformance)))))
-    },    
-    
+      return(all(unlist(lapply(private$.paramPersistence$gridSearchPredictions,
+                               function(x) !is.null(x$gridPerformance)))))
+    },
+
     #' @description
     #' Gets the last index from the cached grid search
     #' @returns Last grid search index
@@ -88,11 +85,11 @@ TrainingCache <- R6::R6Class(
           return(1)
         } else {
           return(which(sapply(private$.paramPersistence$gridSearchPredictions,
-            is.null))[1])
+                              is.null))[1])
         }
       }
     },
-    
+
     #' @description
     #' Remove the training cache from the analysis path
     dropCache = function() {

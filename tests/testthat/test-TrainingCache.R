@@ -14,7 +14,7 @@ resNetSettings <- setResNet(numLayers = c(1, 2, 4),
                             randomSample = 3,
                             randomSampleSeed = NULL)
 
-trainCache <- TrainingCache$new(testLoc)
+trainCache <- trainingCache$new(testLoc)
 paramSearch <- resNetSettings$param
 
 test_that("Training cache exists on disk", {

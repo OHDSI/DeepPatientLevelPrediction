@@ -5,5 +5,6 @@
 \alias{DeepPatientLevelPrediction}
 \title{DeepPatientLevelPrediction}
 \description{
-A package containing deep learning extensions for developing prediction models using data in the OMOP CDM
+A package containing deep learning extensions for developing
+prediction models using data in the OMOP CDM
 }
