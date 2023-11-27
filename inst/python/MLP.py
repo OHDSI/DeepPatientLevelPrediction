@@ -4,17 +4,18 @@ from ResNet import NumericalEmbedding
 
 
 class MLP(nn.Module):
-
-    def __init__(self,
-                 cat_features: int,
-                 num_features: int,
-                 size_embedding: int,
-                 size_hidden: int,
-                 num_layers: int,
-                 activation=nn.ReLU,
-                 normalization=nn.BatchNorm1d,
-                 dropout=None,
-                 d_out: int = 1):
+    def __init__(
+        self,
+        cat_features: int,
+        num_features: int,
+        size_embedding: int,
+        size_hidden: int,
+        num_layers: int,
+        activation=nn.ReLU,
+        normalization=nn.BatchNorm1d,
+        dropout=None,
+        d_out: int = 1,
+    ):
         super(MLP, self).__init__()
         self.name = "MLP"
         cat_features = int(cat_features)
@@ -23,21 +24,25 @@ class MLP(nn.Module):
         size_hidden = int(size_hidden)
         num_layers = int(num_layers)
         d_out = int(d_out)
-        
-        self.embedding = nn.EmbeddingBag(cat_features + 1,
-                                         size_embedding,
-                                         padding_idx=0)
+
+        self.embedding = nn.EmbeddingBag(
+            cat_features + 1, size_embedding, padding_idx=0
+        )
 
         if num_features != 0 and num_features is not None:
             self.num_embedding = NumericalEmbedding(num_features, size_embedding)
 
         self.first_layer = nn.Linear(size_embedding, size_hidden)
 
-        self.layers = nn.ModuleList(MLPLayer(size_hidden=size_hidden,
-                                             normalization=normalization,
-                                             activation=activation,
-                                             dropout=dropout)
-                                    for _ in range(num_layers))
+        self.layers = nn.ModuleList(
+            MLPLayer(
+                size_hidden=size_hidden,
+                normalization=normalization,
+                activation=activation,
+                dropout=dropout,
+            )
+            for _ in range(num_layers)
+        )
         self.last_norm = normalization(size_hidden)
         self.head = nn.Linear(size_hidden, d_out)
 
@@ -62,12 +67,14 @@ class MLP(nn.Module):
 
 
 class MLPLayer(nn.Module):
-    def __init__(self,
-                 size_hidden=64,
-                 normalization=nn.BatchNorm1d,
-                 activation=nn.ReLU,
-                 dropout=0.0,
-                 bias=True):
+    def __init__(
+        self,
+        size_hidden=64,
+        normalization=nn.BatchNorm1d,
+        activation=nn.ReLU,
+        dropout=0.0,
+        bias=True,
+    ):
         super(MLPLayer, self).__init__()
         self.norm = normalization(size_hidden)
         self.activation = activation()

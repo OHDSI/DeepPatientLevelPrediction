@@ -2,17 +2,13 @@ import random
 
 import torch
 from torch.optim.lr_scheduler import _LRScheduler
-from torch.utils.data import DataLoader, BatchSampler, RandomSampler
 from tqdm import tqdm
 
 from Estimator import batch_to_device
 
 
 class ExponentialSchedulerPerBatch(_LRScheduler):
-
-    def __init__(self, optimizer,
-                 end_lr,
-                 num_iter):
+    def __init__(self, optimizer, end_lr, num_iter):
         self.end_lr = end_lr
         self.num_iter = num_iter
         super(ExponentialSchedulerPerBatch, self).__init__(optimizer, last_epoch=-1)
@@ -23,14 +19,9 @@ class ExponentialSchedulerPerBatch(_LRScheduler):
 
 
 class LrFinder:
-
-    def __init__(self,
-                 model,
-                 model_parameters,
-                 estimator_settings,
-                 lr_settings):
+    def __init__(self, model, model_parameters, estimator_settings, lr_settings):
         if lr_settings is None:
-          lr_settings = {}
+            lr_settings = {}
         min_lr = lr_settings.get("min_lr", 1e-7)
         max_lr = lr_settings.get("max_lr", 1)
         num_lr = lr_settings.get("num_lr", 100)
@@ -50,13 +41,16 @@ class LrFinder:
         self.smooth = smooth
         self.divergence_threshold = divergence_threshold
 
-        self.optimizer = estimator_settings['optimizer'](params=self.model.parameters(),
-                                                         lr=self.min_lr)
+        self.optimizer = estimator_settings["optimizer"](
+            params=self.model.parameters(), lr=self.min_lr
+        )
 
-        self.scheduler = ExponentialSchedulerPerBatch(self.optimizer, self.max_lr, self.num_lr)
+        self.scheduler = ExponentialSchedulerPerBatch(
+            self.optimizer, self.max_lr, self.num_lr
+        )
 
         self.criterion = estimator_settings["criterion"]()
-        self.batch_size = int(estimator_settings['batch_size'])
+        self.batch_size = int(estimator_settings["batch_size"])
         self.losses = None
         self.loss_index = None
 
@@ -74,7 +68,9 @@ class LrFinder:
             out = self.model(batch[0])
             loss = self.criterion(out, batch[1])
             if self.smooth is not None and i != 0:
-                losses[i] = self.smooth * loss.item() + (1 - self.smooth) * losses[i - 1]
+                losses[i] = (
+                    self.smooth * loss.item() + (1 - self.smooth) * losses[i - 1]
+                )
             else:
                 losses[i] = loss.item()
             lrs[i] = self.optimizer.param_groups[0]["lr"]
@@ -90,13 +86,15 @@ class LrFinder:
                     best_loss = losses[i]
 
             if losses[i] > (self.divergence_threshold * best_loss):
-                print(f"Loss diverged - stopped early - iteration {i} out of {self.num_lr}")
+                print(
+                    f"Loss diverged - stopped early - iteration {i} out of {self.num_lr}"
+                )
                 break
 
         # find LR where gradient is highest but before global minimum is reached
         # I added -5 to make sure it is not still in the minimum
         global_minimum = torch.argmin(losses)
-        gradient = torch.diff(losses[:(global_minimum - 5)+1])
+        gradient = torch.diff(losses[: (global_minimum - 5) + 1])
         smallest_gradient = torch.argmin(gradient)
 
         suggested_lr = lrs[smallest_gradient]

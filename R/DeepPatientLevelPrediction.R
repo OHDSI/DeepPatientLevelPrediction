@@ -18,7 +18,8 @@
 
 #' DeepPatientLevelPrediction
 #'
-#' @description A package containing deep learning extensions for developing prediction models using data in the OMOP CDM
+#' @description A package containing deep learning extensions for developing
+#' prediction models using data in the OMOP CDM
 #'
 #' @docType package
 #' @name DeepPatientLevelPrediction
@@ -28,9 +29,7 @@
 NULL
 
 .onLoad <- function(libname, pkgname) {
-  # use superassignment to update global reference 
+  # use superassignment to update global reference
   reticulate::configure_environment(pkgname)
   torch <<- reticulate::import("torch", delay_load = TRUE)
 }
-
-

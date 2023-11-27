@@ -18,22 +18,21 @@
 createLRFinder <- function(modelType,
                            modelParameters,
                            estimatorSettings,
-                           lrSettings=NULL) {
+                           lrSettings = NULL) {
   path <- system.file("python", package = "DeepPatientLevelPrediction")
-  LRFinderClass <- reticulate::import_from_path("LrFinder", path = path)$LrFinder
-  
-  model <- reticulate::import_from_path(modelType, path=path)[[modelType]]
-  
+  lrFinderClass <-
+    reticulate::import_from_path("LrFinder", path = path)$LrFinder
+
+  model <- reticulate::import_from_path(modelType, path = path)[[modelType]]
   modelParameters <- camelCaseToSnakeCaseNames(modelParameters)
   estimatorSettings <- camelCaseToSnakeCaseNames(estimatorSettings)
   if (!is.null(lrSettings)) {
     lrSettings <- camelCaseToSnakeCaseNames(lrSettings)
   }
-  
+
   estimatorSettings <- evalEstimatorSettings(estimatorSettings)
-  
-  
-  lrFinder <- LRFinderClass(model=model,
+
+  lrFinder <- lrFinderClass(model = model,
                             model_parameters = modelParameters,
                             estimator_settings = estimatorSettings,
                             lr_settings = lrSettings)
