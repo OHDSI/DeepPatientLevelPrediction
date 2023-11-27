@@ -19,15 +19,18 @@ setMultiLayerPerceptron(
 \arguments{
 \item{numLayers}{Number of layers in network, default: 1:8}
 
-\item{sizeHidden}{Amount of neurons in each default layer, default: 2^(6:9) (64 to 512)}
+\item{sizeHidden}{Amount of neurons in each default layer,
+default: 2^(6:9) (64 to 512)}
 
-\item{dropout}{How much dropout to apply after first linear, default: seq(0, 0.3, 0.05)}
+\item{dropout}{How much dropout to apply after first linear,
+default: seq(0, 0.3, 0.05)}
 
-\item{sizeEmbedding}{Size of embedding layer, default: 2^(6:9) (64 to 512)}
+\item{sizeEmbedding}{Size of embedding default: 2^(6:9) (64 to 512)}
 
 \item{estimatorSettings}{settings of Estimator created with `setEstimator`}
 
-\item{hyperParamSearch}{Which kind of hyperparameter search to use random sampling or exhaustive grid search. default: 'random'}
+\item{hyperParamSearch}{Which kind of hyperparameter search to use random
+sampling or exhaustive grid search. default: 'random'}
 
 \item{randomSample}{How many random samples from hyperparameter space to use}
 

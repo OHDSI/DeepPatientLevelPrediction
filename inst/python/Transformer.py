@@ -18,23 +18,24 @@ class ReGLU(nn.Module):
 
 
 class Transformer(nn.Module):
-
-    def __init__(self,
-                 cat_features: int,
-                 num_features: int,
-                 num_blocks: int,
-                 dim_token: int,
-                 num_heads: int,
-                 att_dropout,
-                 ffn_dropout,
-                 res_dropout,
-                 dim_hidden: int,
-                 dim_out: int = 1,
-                 head_activation=nn.ReLU,
-                 activation=ReGLU,
-                 ffn_norm=nn.LayerNorm,
-                 head_norm=nn.LayerNorm,
-                 att_norm=nn.LayerNorm):
+    def __init__(
+        self,
+        cat_features: int,
+        num_features: int,
+        num_blocks: int,
+        dim_token: int,
+        num_heads: int,
+        att_dropout,
+        ffn_dropout,
+        res_dropout,
+        dim_hidden: int,
+        dim_out: int = 1,
+        head_activation=nn.ReLU,
+        activation=ReGLU,
+        ffn_norm=nn.LayerNorm,
+        head_norm=nn.LayerNorm,
+        att_norm=nn.LayerNorm,
+    ):
         super(Transformer, self).__init__()
         self.name = "Transformer"
         cat_features = int(cat_features)
@@ -44,8 +45,10 @@ class Transformer(nn.Module):
         num_heads = int(num_heads)
         dim_hidden = int(dim_hidden)
         dim_out = int(dim_out)
-        
-        self.categorical_embedding = nn.Embedding(cat_features + 1, dim_token, padding_idx=0)
+
+        self.categorical_embedding = nn.Embedding(
+            cat_features + 1, dim_token, padding_idx=0
+        )
 
         if num_features != 0 and num_features is not None:
             self.numerical_embedding = NumericalEmbedding(num_features, dim_token)
@@ -56,27 +59,35 @@ class Transformer(nn.Module):
 
         self.layers = nn.ModuleList([])
         for layer_idx in range(num_blocks):
-            layer = nn.ModuleDict({
-                "attention": nn.MultiheadAttention(dim_token, num_heads,
-                                                   dropout=att_dropout),
-                "ffn": FeedForwardBlock(dim_token, dim_hidden,
-                                        bias_first=True,
-                                        bias_second=True,
-                                        dropout=ffn_dropout,
-                                        activation=activation),
-                "attention_res_dropout": nn.Dropout(res_dropout),
-                "ffn_res_dropout": nn.Dropout(res_dropout),
-                "ffn_norm": ffn_norm(dim_token)
-            })
+            layer = nn.ModuleDict(
+                {
+                    "attention": nn.MultiheadAttention(
+                        dim_token, num_heads, dropout=att_dropout
+                    ),
+                    "ffn": FeedForwardBlock(
+                        dim_token,
+                        dim_hidden,
+                        bias_first=True,
+                        bias_second=True,
+                        dropout=ffn_dropout,
+                        activation=activation,
+                    ),
+                    "attention_res_dropout": nn.Dropout(res_dropout),
+                    "ffn_res_dropout": nn.Dropout(res_dropout),
+                    "ffn_norm": ffn_norm(dim_token),
+                }
+            )
             if layer_idx != 0:
                 layer["attention_norm"] = att_norm(dim_token)
             self.layers.append(layer)
 
-        self.head = Head(dim_token,
-                         bias=True,
-                         activation=head_activation,
-                         normalization=head_norm,
-                         dim_out=dim_out)
+        self.head = Head(
+            dim_token,
+            bias=True,
+            activation=head_activation,
+            normalization=head_norm,
+            dim_out=dim_out,
+        )
 
     def forward(self, x):
         mask = torch.where(x["cat"] == 0, True, False)
@@ -84,31 +95,34 @@ class Transformer(nn.Module):
         if self.use_numerical:
             num = self.numerical_embedding(x["num"])
             x = torch.cat([cat, num], dim=1)
-            mask = torch.cat([mask, torch.zeros([x.shape[0],
-                                                 num.shape[1]],
-                                                device=mask.device,
-                                                dtype=mask.dtype)],
-                             dim=1)
+            mask = torch.cat(
+                [
+                    mask,
+                    torch.zeros(
+                        [x.shape[0], num.shape[1]], device=mask.device, dtype=mask.dtype
+                    ),
+                ],
+                dim=1,
+            )
         else:
             x = cat
         x = self.class_token(x)
-        mask = torch.cat([mask, torch.zeros([x.shape[0], 1],
-                                            device=mask.device,
-                                            dtype=mask.dtype)],
-                         dim=1)
+        mask = torch.cat(
+            [mask, torch.zeros([x.shape[0], 1], device=mask.device, dtype=mask.dtype)],
+            dim=1,
+        )
 
         for i, layer in enumerate(self.layers):
             x_residual = self.start_residual(layer, "attention", x)
 
-            if i == len(self.layers)-1:
+            if i == len(self.layers) - 1:
                 dims = x_residual.shape
                 x_residual = layer["attention"](
                     x_residual[:, -1].view([dims[0], 1, dims[2]]).transpose(0, 1),
                     x_residual.transpose(0, 1),
                     x_residual.transpose(0, 1),
-                    mask
+                    mask,
                 )
-                attn_weights = x_residual[1]
                 x_residual = x_residual[0]
                 x = x[:, -1].view([dims[0], 1, dims[2]])
             else:
@@ -116,7 +130,7 @@ class Transformer(nn.Module):
                     x_residual.transpose(0, 1),
                     x_residual.transpose(0, 1),
                     x_residual.transpose(0, 1),
-                    mask
+                    mask,
                 )[0]
             x = self.end_residual(layer, "attention", x, x_residual.transpose(0, 1))
 
@@ -141,14 +155,15 @@ class Transformer(nn.Module):
 
 
 class FeedForwardBlock(nn.Module):
-
-    def __init__(self,
-                 dim_token,
-                 dim_hidden,
-                 bias_first=True,
-                 bias_second=True,
-                 dropout=0.0,
-                 activation=ReGLU):
+    def __init__(
+        self,
+        dim_token,
+        dim_hidden,
+        bias_first=True,
+        bias_second=True,
+        dropout=0.0,
+        activation=ReGLU,
+    ):
         super(FeedForwardBlock, self).__init__()
         self.linear0 = nn.Linear(dim_token, int(dim_hidden * 2), bias=bias_first)
         self.activation = activation()
@@ -164,13 +179,7 @@ class FeedForwardBlock(nn.Module):
 
 
 class Head(nn.Module):
-
-    def __init__(self,
-                 dim_in,
-                 bias,
-                 activation,
-                 normalization,
-                 dim_out):
+    def __init__(self, dim_in, bias, activation, normalization, dim_out):
         super(Head, self).__init__()
         self.normalization = normalization(dim_in)
         self.activation = activation()
@@ -183,17 +192,16 @@ class Head(nn.Module):
         x = self.linear(x)
         return x
 
-class ClassToken(nn.Module):
 
-    def __init__(self,
-                 dim_token):
+class ClassToken(nn.Module):
+    def __init__(self, dim_token):
         super(ClassToken, self).__init__()
         self.weight = nn.Parameter(torch.empty(dim_token, 1))
         nn.init.kaiming_uniform_(self.weight, a=math.sqrt(5))
 
     def expand(self, dims):
         new_dims = [1] * (len(dims) - 1)
-        return self.weight.view(new_dims + [-1]).expand(dims +[-1])
+        return self.weight.view(new_dims + [-1]).expand(dims + [-1])
 
     def forward(self, x):
         return torch.cat([x, self.expand([x.shape[0], 1])], dim=1)

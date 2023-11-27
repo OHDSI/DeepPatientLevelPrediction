@@ -28,7 +28,8 @@ setEstimator(
 
 \item{epochs}{how many epochs to train for}
 
-\item{device}{what device to train on, can be a string or a function to that evaluates
+\item{device}{what device to train on, can be a string or a function to
+that evaluates
 to the device during runtime}
 
 \item{optimizer}{which optimizer to use}
@@ -37,11 +38,15 @@ to the device during runtime}
 
 \item{criterion}{loss function to use}
 
-\item{earlyStopping}{If earlyStopping should be used which stops the training of your metric is not improving}
+\item{earlyStopping}{If earlyStopping should be used which stops the
+training of your metric is not improving}
 
-\item{metric}{either `auc` or `loss` or a custom metric to use. This is the metric used for scheduler and earlyStopping. 
-Needs to be a list with function `fun`, mode either `min` or `max` and a `name`,
-`fun` needs to be a function that takes in prediction and labels and outputs a score.}
+\item{metric}{either `auc` or `loss` or a custom metric to use. This is the
+metric used for scheduler and earlyStopping.
+Needs to be a list with function `fun`, mode either `min` or `max` and a
+`name`,
+`fun` needs to be a function that takes in prediction and labels and
+outputs a score.}
 
 \item{seed}{seed to initialize weights of model with}
 }

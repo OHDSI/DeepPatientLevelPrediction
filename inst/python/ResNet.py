@@ -5,22 +5,23 @@ from torch import nn
 
 
 class ResNet(nn.Module):
-
-    def __init__(self,
-                 cat_features: int,
-                 num_features: int = 0,
-                 size_embedding: int = 256,
-                 size_hidden: int = 256,
-                 num_layers: int = 2,
-                 hidden_factor: int = 1,
-                 activation=nn.ReLU,
-                 normalization=nn.BatchNorm1d,
-                 hidden_dropout=0,
-                 residual_dropout=0,
-                 dim_out: int = 1,
-                 concat_num=True):
+    def __init__(
+        self,
+        cat_features: int,
+        num_features: int = 0,
+        size_embedding: int = 256,
+        size_hidden: int = 256,
+        num_layers: int = 2,
+        hidden_factor: int = 1,
+        activation=nn.ReLU,
+        normalization=nn.BatchNorm1d,
+        hidden_dropout=0,
+        residual_dropout=0,
+        dim_out: int = 1,
+        concat_num=True,
+    ):
         super(ResNet, self).__init__()
-        self.name = 'ResNet'
+        self.name = "ResNet"
         cat_features = int(cat_features)
         num_features = int(num_features)
         size_embedding = int(size_embedding)
@@ -28,12 +29,9 @@ class ResNet(nn.Module):
         num_layers = int(num_layers)
         hidden_factor = int(hidden_factor)
         dim_out = int(dim_out)
-        
-        
+
         self.embedding = nn.EmbeddingBag(
-            num_embeddings=cat_features + 1,
-            embedding_dim=size_embedding,
-            padding_idx=0
+            num_embeddings=cat_features + 1, embedding_dim=size_embedding, padding_idx=0
         )
         if num_features != 0 and not concat_num:
             self.num_embedding = NumericalEmbedding(num_features, size_embedding)
@@ -45,9 +43,17 @@ class ResNet(nn.Module):
 
         res_hidden = size_hidden * hidden_factor
 
-        self.layers = nn.ModuleList(ResLayer(size_hidden, res_hidden, normalization,
-                                             activation, hidden_dropout, residual_dropout)
-                                    for _ in range(num_layers))
+        self.layers = nn.ModuleList(
+            ResLayer(
+                size_hidden,
+                res_hidden,
+                normalization,
+                activation,
+                hidden_dropout,
+                residual_dropout,
+            )
+            for _ in range(num_layers)
+        )
 
         self.last_norm = normalization(size_hidden)
 
@@ -58,7 +64,11 @@ class ResNet(nn.Module):
     def forward(self, x):
         x_cat = x["cat"]
         x_cat = self.embedding(x_cat)
-        if "num" in x.keys() and x["num"] is not None and self.num_embedding is not None:
+        if (
+            "num" in x.keys()
+            and x["num"] is not None
+            and self.num_embedding is not None
+        ):
             x_num = x["num"]
             # take the average af numerical and categorical embeddings
             x = (x_cat + self.num_embedding(x_num).mean(dim=1)) / 2
@@ -79,14 +89,15 @@ class ResNet(nn.Module):
 
 
 class ResLayer(nn.Module):
-
-    def __init__(self,
-                 size_hidden,
-                 res_hidden,
-                 normalization,
-                 activation,
-                 hidden_dropout=None,
-                 residual_dropout=None):
+    def __init__(
+        self,
+        size_hidden,
+        res_hidden,
+        normalization,
+        activation,
+        hidden_dropout=None,
+        residual_dropout=None,
+    ):
         super(ResLayer, self).__init__()
 
         self.norm = normalization(size_hidden)
@@ -114,10 +125,7 @@ class ResLayer(nn.Module):
 
 
 class NumericalEmbedding(nn.Module):
-    def __init__(self,
-                 num_embeddings,
-                 embedding_dim,
-                 bias=True):
+    def __init__(self, num_embeddings, embedding_dim, bias=True):
         super(NumericalEmbedding, self).__init__()
         self.weight = nn.Parameter(torch.empty(num_embeddings, embedding_dim))
         if bias:
@@ -134,6 +142,3 @@ class NumericalEmbedding(nn.Module):
         if self.bias is not None:
             x = x + self.bias[None]
         return x
-
-
-
