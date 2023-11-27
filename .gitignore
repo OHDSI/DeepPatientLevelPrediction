@@ -10,3 +10,4 @@ renv.lock
 extras/
 .Renviron
 inst/python/__pycache__
+.mypy_cache

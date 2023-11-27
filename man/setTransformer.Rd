@@ -26,7 +26,8 @@ setTransformer(
 
 \item{dimToken}{dimension of each token (embedding size)}
 
-\item{dimOut}{dimension of output, usually 1 for binary problems}
+\item{dimOut}{dimension of output, usually 1 for binary
+problems}
 
 \item{numHeads}{number of attention heads}
 
@@ -38,15 +39,19 @@ setTransformer(
 
 \item{dimHidden}{dimension of the feedworward block}
 
-\item{dimHiddenRatio}{dimension of the feedforward block as a ratio of dimToken (embedding size)}
+\item{dimHiddenRatio}{dimension of the feedforward block as a ratio
+of dimToken (embedding size)}
 
 \item{estimatorSettings}{created with `setEstimator`}
 
-\item{hyperParamSearch}{what kind of hyperparameter search to do, default 'random'}
+\item{hyperParamSearch}{what kind of hyperparameter search to do,
+default 'random'}
 
-\item{randomSample}{How many samples to use in hyperparameter search if random}
+\item{randomSample}{How many samples to use in hyperparameter
+search if random}
 
-\item{randomSampleSeed}{Random seed to sample hyperparameter combinations}
+\item{randomSampleSeed}{Random seed to sample hyperparameter
+combinations}
 }
 \description{
 A transformer model

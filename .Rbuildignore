@@ -8,3 +8,4 @@
 ^extras$
 ^deploy.sh$
 ^compare_versions$
+^.mypy_cache$
