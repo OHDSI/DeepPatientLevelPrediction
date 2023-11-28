@@ -140,10 +140,8 @@ setTransformer <- function(numBlocks = 3,
     stop(paste(
       "dimHidden and dimHiddenRatio cannot be both set or both NULL"
     ))
-  } else {
-    if (!is.null(dimHiddenRatio)) {
-      dimHidden <- dimHiddenRatio
-    }
+  } else if (!is.null(dimHiddenRatio)) {
+    dimHidden <- dimHiddenRatio
   }
 
   paramGrid <- list(
@@ -187,10 +185,7 @@ setTransformer <- function(numBlocks = 3,
     estimatorSettings = estimatorSettings,
     modelType = "Transformer",
     saveType = "file",
-    modelParamNames = c(
-      "numBlocks", "dimToken", "dimOut", "numHeads",
-      "attDropout", "ffnDropout", "resDropout", "dimHidden"
-    )
+    modelParamNames = names(paramGrid)
   )
 
   class(results) <- "modelSettings"
