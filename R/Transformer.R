@@ -185,7 +185,10 @@ setTransformer <- function(numBlocks = 3,
     estimatorSettings = estimatorSettings,
     modelType = "Transformer",
     saveType = "file",
-    modelParamNames = names(paramGrid)
+    modelParamNames = c(
+      "numBlocks", "dimToken", "dimOut", "numHeads",
+      "attDropout", "ffnDropout", "resDropout", "dimHidden"
+    )
   )
 
   class(results) <- "modelSettings"

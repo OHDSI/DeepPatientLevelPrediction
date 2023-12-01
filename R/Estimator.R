@@ -329,6 +329,8 @@ gridCvDeep <- function(mappedData,
       indexOfMax <-
         which.max(unlist(lapply(gridSearchPredictions,
                                 function(x) x$gridPerformance$cvPerformance)))
+      # when first iteration runs out of memory, indexOfMax is empty
+      if (length(indexOfMax) == 0) {indexOfMax <- 0}
       for (i in seq_along(gridSearchPredictions)) {
         if (!is.null(gridSearchPredictions[[i]]) && i != indexOfMax) {
           gridSearchPredictions[[i]]$prediction <- list(NULL)
@@ -464,66 +466,70 @@ doCrossValidation <- function(dataset,
                               labels,
                               modelSettings,
                               params) {
-  fitParams <- names(params)[grepl("^estimator",
-                                   names(params))]
-  currentModelParams <- params[modelSettings$modelParamNames]
-
-  currentEstimatorSettings <-
-    fillEstimatorSettings(modelSettings$estimatorSettings,
-                          fitParams,
-                          params)
-  currentEstimatorSettings$modelType <- modelSettings$modelType
-  currentModelParams$catFeatures <- dataset$get_cat_features()$shape[[1]]
-  currentModelParams$numFeatures <-
-    dataset$get_numerical_features()$shape[[1]]
   crossValidationResults <-
     tryCatch(doCrossValidationImpl(dataset,
                                    labels,
-                                   modelSettings = currentModelParams,
-                                   estimatorSettings =
-                                     currentEstimatorSettings),
+                                   modelSettings,
+                                   params),
              error = function(e) {
                if (inherits(e, "torch.cuda.OutOfMemoryError")) {
                  # do nothing
                  crossValidationResults <- list()
-                 crossValidationResults$learnRates <- NA
                  crossValidationResults$prediction <- labels
+                 crossValidationResults$prediction <- 
+                   cbind(crossValidationResults$prediction, value = NA)
                  attr(crossValidationResults$prediction,
                       "metaData")$modelType <- "binary"
-                 crossValidationResults$prediction$value <-
-                   rep(NA, nrow(crossValidationResults$prediction))
+                 crossValidationResults$param <- params
+                 crossValidationResults$param$learnSchedule <- list(
+                   LRs = NA,
+                   bestEpoch = NA
+                 )
+                 nFolds <- max(labels$index)
+                 hyperSummary <- 
+                   data.frame(metric = rep("computeAuc", nFolds + 1),
+                              fold = c("CV", as.character(1:nFolds)),
+                              value = NA)
+                 hyperSummary <- cbind(hyperSummary, params)
+                 hyperSummary$learnRates <- NA
+                                    
+                 gridPerformance <- list(
+                   metric = "computeAuc",
+                   cvPerformance = NA,
+                   cvPerformancePerFold = rep(NA, nFolds),
+                   param = params,
+                   hyperSummary = hyperSummary
+                 )
+                crossValidationResults$gridPerformance <- gridPerformance
                 } else {
                   stop(e)
                 }
               }
             )
-  learnRates <- crossValidationResults$learnRates
-  prediction <- crossValidationResults$prediction
-
-  gridPerformance <-
-    PatientLevelPrediction::computeGridPerformance(prediction,
-                                                   params)
-  maxIndex <- which.max(unlist(sapply(learnRates, `[`, 2)))
-  results <- list(
-    prediction = prediction,
-    param = params,
-    gridPerformance = gridPerformance
-  )
-  results$gridPerformance$hyperSummary$learnRates <-
-    rep(list(unlist(learnRates[[maxIndex]]$LRs)),
-        nrow(results$gridPerformance$hyperSummary))
-  results$param$learnSchedule <-
-    learnRates[[maxIndex]]
-  return(results)
+  return(crossValidationResults)
 }
 
 doCrossValidationImpl <- function(dataset,
                                   labels,
                                   modelSettings,
-                                  estimatorSettings) {
+                                  params) {
+  
+  fitParams <- names(params)[grepl("^estimator",
+                                   names(params))]
+  modelParameters <- params[modelSettings$modelParamNames]
+  
+  estimatorSettings <-
+    fillEstimatorSettings(modelSettings$estimatorSettings,
+                          fitParams,
+                          params)
+  estimatorSettings$modelType <- modelSettings$modelType
+  modelParameters$catFeatures <- dataset$get_cat_features()$shape[[1]]
+  modelParameters$numFeatures <-
+    dataset$get_numerical_features()$shape[[1]]
+  
   if (estimatorSettings$findLR) {
     lrFinder <- createLRFinder(modelType = estimatorSettings$modelType,
-                               modelParameters = modelSettings,
+                               modelParameters = modelParameters,
                                estimatorSettings = estimatorSettings)
     lr <- lrFinder$get_lr(dataset)
     ParallelLogger::logInfo(paste0("Auto learning rate selected as: ", lr))
@@ -548,7 +554,7 @@ doCrossValidationImpl <- function(dataset,
                                            indices =
                                              as.integer(which(fold == i) - 1))
     estimator <- createEstimator(modelType = estimatorSettings$modelType,
-                                 modelParameters = modelSettings,
+                                 modelParameters = modelParameters,
                                  estimatorSettings = estimatorSettings)
     estimator$fit(trainDataset, testDataset)
 
@@ -567,8 +573,22 @@ doCrossValidationImpl <- function(dataset,
       bestEpoch = estimator$best_epoch
     )
   }
-  return(results = list(prediction = prediction,
-                        learnRates = learnRates))
+  gridPerformance <-
+    PatientLevelPrediction::computeGridPerformance(prediction,
+                                                   params)
+  maxIndex <- which.max(unlist(sapply(learnRates, `[`, 2)))
+  results <- list(
+    prediction = prediction,
+    param = params,
+    gridPerformance = gridPerformance
+  )
+  results$gridPerformance$hyperSummary$learnRates <-
+    rep(list(unlist(learnRates[[maxIndex]]$LRs)),
+        nrow(results$gridPerformance$hyperSummary))
+  results$param$learnSchedule <-
+    learnRates[[maxIndex]]
+  
+  return(results)
 }
 
 
