@@ -35,7 +35,8 @@ Suggests:
     testthat,
     PRROC,
     ResultModelManager (>= 0.2.0),
-    DatabaseConnector (>= 6.0.0)
+    DatabaseConnector (>= 6.0.0),
+    Andromeda
 Remotes:
     ohdsi/PatientLevelPrediction,
     ohdsi/FeatureExtraction,
