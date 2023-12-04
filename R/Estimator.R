@@ -142,10 +142,26 @@ fitEstimator <- function(trainData,
   if (!is.null(trainData$folds)) {
     trainData$labels <- merge(trainData$labels, trainData$fold, by = "rowId")
   }
-  mappedCovariateData <- PatientLevelPrediction::MapIds(
-    covariateData = trainData$covariateData,
-    cohort = trainData$labels
-  )
+  
+  if (modelSettings$modelType == "Finetuner") {
+    # make sure to use same mapping from covariateIds to columns if finetuning
+    path <- modelSettings$param[[1]]$modelPath
+    oldCovImportance <- utils::read.csv(file.path(path, 
+                                                  "covariateImportance.csv"))
+    mapping <- oldCovImportance %>% dplyr::select("columnId", "covariateId")
+    numericalIndex <- which(oldCovImportance %>% dplyr::pull("isNumeric"))
+    mappedCovariateData <- PatientLevelPrediction::MapIds(
+      covariateData = trainData$covariateData,
+      cohort = trainData$labels,
+      mapping = mapping
+    )
+    mappedCovariateData$numericalIndex <- as.data.frame(numericalIndex)
+  } else {
+    mappedCovariateData <- PatientLevelPrediction::MapIds(
+      covariateData = trainData$covariateData,
+      cohort = trainData$labels
+    )
+  }
 
   covariateRef <- mappedCovariateData$covariateRef
 
@@ -322,7 +338,7 @@ gridCvDeep <- function(mappedData,
       ParallelLogger::logInfo(paste(names(paramSearch[[gridId]]),
                                     paramSearch[[gridId]], collapse = " | "))
       currentModelParams <- paramSearch[[gridId]][modelSettings$modelParamNames]
-
+      attr(currentModelParams, "metaData")$names <- modelSettings$modelParamNames
       currentEstimatorSettings <-
         fillEstimatorSettings(modelSettings$estimatorSettings,
                               fitParams,
@@ -480,7 +496,18 @@ createEstimator <- function(modelType,
                             modelParameters,
                             estimatorSettings) {
   path <- system.file("python", package = "DeepPatientLevelPrediction")
-
+  
+  if (modelType == "Finetuner") {
+    estimatorSettings$finetune <- TRUE
+    plpModel <- PatientLevelPrediction::loadPlpModel(modelParameters$modelPath)
+    estimatorSettings$finetuneModelPath <- 
+      file.path(normalizePath(plpModel$model), "DeepEstimatorModel.pt")
+    modelType <- plpModel$modelDesign$modelSettings$modelType
+    oldModelParameters <- modelParameters
+    modelParameters <- 
+      plpModel$trainDetails$finalModelParameters[plpModel$modelDesign$modelSettings$modelParamNames]
+    }
+  
   model <- reticulate::import_from_path(modelType, path = path)[[modelType]]
   estimator <- reticulate::import_from_path("Estimator", path = path)$Estimator
 

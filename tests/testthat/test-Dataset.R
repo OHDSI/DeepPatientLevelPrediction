@@ -49,3 +49,9 @@ test_that(".getbatch works", {
   
   expect_equal(out[[2]]$shape[0], 16)
 })
+
+test_that("Column order is preserved in presence of missing features", {
+  # important for both external validation and transfer learning
+  
+  
+})
