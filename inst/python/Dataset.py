@@ -47,13 +47,8 @@ class Data(Dataset):
         # rename newColumnId to columnId and sort by it
         data_cat = (
             data.filter(~pl.col("columnId").is_in(self.numerical_features))
-            .sort(by="columnId")
-            .with_row_count("newColumnId")
-            .with_columns(
-                pl.col("newColumnId").first().over("columnId").rank(method="dense")
-            )
-            .select(pl.col("rowId"), pl.col("newColumnId").alias("columnId"))
-            .sort("rowId")
+            .select(pl.col("rowId"), pl.col("columnId"))
+            .sort(["rowId", "columnId"])
             .with_columns(pl.col("rowId") - 1)
             .collect()
         )
@@ -77,18 +72,16 @@ class Data(Dataset):
         if pl.count(self.numerical_features) == 0:
             self.num = None
         else:
+            map_numerical = dict(zip(self.numerical_features.sort().to_list(),
+                                     list(range(len(self.numerical_features)))))
+
             numerical_data = (
                 data.filter(pl.col("columnId").is_in(self.numerical_features))
-                .sort(by="columnId")
-                .with_row_count("newColumnId")
-                .with_columns(
-                    pl.col("newColumnId").first().over("columnId").rank(method="dense")
-                    - 1,
-                    pl.col("rowId") - 1,
-                )
+                .with_columns(pl.col("columnId").replace(map_numerical),
+                              pl.col("rowId") - 1)
                 .select(
                     pl.col("rowId"),
-                    pl.col("newColumnId").alias("columnId"),
+                    pl.col("columnId"),
                     pl.col("covariateValue"),
                 )
                 .collect()
