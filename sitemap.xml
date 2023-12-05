@@ -28,9 +28,6 @@
     <loc>/reference/DeepPatientLevelPrediction.html</loc>
   </url>
   <url>
-    <loc>/reference/TrainingCache.html</loc>
-  </url>
-  <url>
     <loc>/reference/camelCaseToSnakeCase.html</loc>
   </url>
   <url>
@@ -74,5 +71,8 @@
   </url>
   <url>
     <loc>/reference/setTransformer.html</loc>
+  </url>
+  <url>
+    <loc>/reference/trainingCache.html</loc>
   </url>
 </urlset>
