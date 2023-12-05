@@ -24,13 +24,13 @@
 #' @param estimatorSettings created with `setEstimator`
 #'
 #' @export
-setDefaultTransformer <- function(estimatorSettings=setEstimator(
-  learningRate = 'auto',
-  weightDecay = 1e-4,
-  batchSize=512,
-  epochs=10,
-  seed=NULL,
-  device='cpu')
+setDefaultTransformer <- function(estimatorSettings =
+    setEstimator(learningRate = "auto",
+                 weightDecay = 1e-4,
+                 batchSize = 512,
+                 epochs = 10,
+                 seed = NULL,
+                 device = "cpu")
 ) {
   transformerSettings <- setTransformer(numBlocks = 3,
                                         dimToken = 192,
@@ -40,10 +40,10 @@ setDefaultTransformer <- function(estimatorSettings=setEstimator(
                                         ffnDropout = 0.1,
                                         resDropout = 0.0,
                                         dimHidden = 256,
-                                        estimatorSettings=estimatorSettings,
-                                        hyperParamSearch = 'random',
+                                        estimatorSettings = estimatorSettings,
+                                        hyperParamSearch = "random",
                                         randomSample = 1)
-  attr(transformerSettings, 'settings')$name <- 'defaultTransformer'
+  attr(transformerSettings, "settings")$name <- "defaultTransformer"
   return(transformerSettings)
 }
 
@@ -54,75 +54,81 @@ setDefaultTransformer <- function(estimatorSettings=setEstimator(
 #'
 #' @param numBlocks               number of transformer blocks
 #' @param dimToken                dimension of each token (embedding size)
-#' @param dimOut                  dimension of output, usually 1 for binary problems
+#' @param dimOut                  dimension of output, usually 1 for binary
+#' problems
 #' @param numHeads                number of attention heads
 #' @param attDropout              dropout to use on attentions
 #' @param ffnDropout              dropout to use in feedforward block
 #' @param resDropout              dropout to use in residual connections
 #' @param dimHidden               dimension of the feedworward block
-#' @param dimHiddenRatio          dimension of the feedforward block as a ratio of dimToken (embedding size)
+#' @param dimHiddenRatio          dimension of the feedforward block as a ratio
+#' of dimToken (embedding size)
 #' @param estimatorSettings       created with `setEstimator`
-#' @param hyperParamSearch        what kind of hyperparameter search to do, default 'random'
-#' @param randomSample            How many samples to use in hyperparameter search if random
-#' @param randomSampleSeed        Random seed to sample hyperparameter combinations
+#' @param hyperParamSearch        what kind of hyperparameter search to do,
+#' default 'random'
+#' @param randomSample            How many samples to use in hyperparameter
+#' search if random
+#' @param randomSampleSeed        Random seed to sample hyperparameter
+#' combinations
 #'
 #' @export
-setTransformer <- function(numBlocks = 3, 
-                           dimToken = 96, 
+setTransformer <- function(numBlocks = 3,
+                           dimToken = 96,
                            dimOut = 1,
-                           numHeads = 8, 
-                           attDropout = 0.25, 
+                           numHeads = 8,
+                           attDropout = 0.25,
                            ffnDropout = 0.25,
-                           resDropout = 0, 
-                           dimHidden = 512, 
+                           resDropout = 0,
+                           dimHidden = 512,
                            dimHiddenRatio = NULL,
-                           estimatorSettings=setEstimator(weightDecay = 1e-6,
-                                                          batchSize=1024,
-                                                          epochs=10,
-                                                          seed=NULL),
+                           estimatorSettings = setEstimator(weightDecay = 1e-6,
+                                                            batchSize = 1024,
+                                                            epochs = 10,
+                                                            seed = NULL),
                            hyperParamSearch = "random",
-                           randomSample = 1, 
+                           randomSample = 1,
                            randomSampleSeed = NULL) {
-  
+
   checkIsClass(numBlocks, c("integer", "numeric"))
   checkHigherEqual(numBlocks, 1)
-  
+
   checkIsClass(dimToken, c("integer", "numeric"))
   checkHigherEqual(dimToken, 1)
-  
+
   checkIsClass(dimOut, c("integer", "numeric"))
   checkHigherEqual(dimOut, 1)
-  
+
   checkIsClass(numHeads, c("integer", "numeric"))
   checkHigherEqual(numHeads, 1)
 
   checkIsClass(attDropout, c("numeric"))
   checkHigherEqual(attDropout, 0)
-  
+
   checkIsClass(ffnDropout, c("numeric"))
   checkHigherEqual(ffnDropout, 0)
-  
+
   checkIsClass(resDropout, c("numeric"))
   checkHigherEqual(resDropout, 0)
-  
+
   checkIsClass(dimHidden, c("integer", "numeric", "NULL"))
   if (!is.null(dimHidden)) {
     checkHigherEqual(dimHidden, 1)
   }
-  
+
   checkIsClass(dimHiddenRatio, c("numeric", "NULL"))
   if (!is.null(dimHiddenRatio)) {
     checkHigher(dimHiddenRatio, 0)
   }
-  
+
   checkIsClass(hyperParamSearch, "character")
-  
+
   checkIsClass(randomSample, c("numeric", "integer"))
   checkHigherEqual(randomSample, 1)
-  
+
   checkIsClass(randomSampleSeed, c("numeric", "integer", "NULL"))
-  
-  if (any(with(expand.grid(dimToken = dimToken, numHeads = numHeads), dimToken %% numHeads != 0))) {
+
+  if (any(with(expand.grid(dimToken = dimToken, numHeads = numHeads),
+               dimToken %% numHeads != 0))) {
     stop(paste(
       "dimToken needs to divisible by numHeads. dimToken =", dimToken,
       "is not divisible by numHeads =", numHeads
@@ -157,21 +163,24 @@ setTransformer <- function(numBlocks = 3,
 
   if (!is.null(dimHiddenRatio)) {
     param <- lapply(param, function(x) {
-      x$dimHidden <- round(x$dimToken*x$dimHidden, digits = 0)
+      x$dimHidden <- round(x$dimToken * x$dimHidden, digits = 0)
       return(x)
     })
   }
-  
-  if (hyperParamSearch == "random" && randomSample>length(param)) {
-    stop(paste("\n Chosen amount of randomSamples is higher than the amount of possible hyperparameter combinations.",
-               "\n randomSample:", randomSample,"\n Possible hyperparameter combinations:", length(param),
-               "\n Please lower the amount of randomSample"))
+
+  if (hyperParamSearch == "random" && randomSample > length(param)) {
+    stop(paste("\n Chosen amount of randomSamples is higher than the amount of
+               possible hyperparameter combinations.", "\n randomSample:",
+               randomSample, "\n Possible hyperparameter combinations:",
+               length(param), "\n Please lower the amount of randomSample"))
   }
 
   if (hyperParamSearch == "random") {
-    suppressWarnings(withr::with_seed(randomSampleSeed, {param <- param[sample(length(param), randomSample)]}))
+    suppressWarnings(withr::with_seed(randomSampleSeed,
+                                      {param <- param[sample(length(param),
+                                                             randomSample)]}))
   }
-  attr(param, 'settings')$modelType <- "Transformer"
+  attr(param, "settings")$modelType <- "Transformer"
   results <- list(
     fitFunction = "fitEstimator",
     param = param,

@@ -16,6 +16,6 @@ setDefaultResNet(
 Creates settings for a default ResNet model
 }
 \details{
-Model architecture from by https://arxiv.org/abs/2106.11959 . 
+Model architecture from by https://arxiv.org/abs/2106.11959 .
 Hyperparameters chosen by a experience on a few prediction problems.
 }
