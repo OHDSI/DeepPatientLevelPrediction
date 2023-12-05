@@ -72,7 +72,7 @@ trainingCache <- R6::R6Class(
       return(all(unlist(lapply(private$.paramPersistence$gridSearchPredictions,
                                function(x) !is.null(x$gridPerformance)))))
     },
-
+    
     #' @description
     #' Gets the last index from the cached grid search
     #' @returns Last grid search index
