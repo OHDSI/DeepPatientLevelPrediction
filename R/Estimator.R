@@ -267,7 +267,7 @@ predictDeepEstimator <- function(plpModel,
   } else {
     prediction$value <- plpModel$model$predict_proba(data)
   }
-
+  prediction$value <- as.numeric(prediction$value)
   attr(prediction, "metaData")$modelType <- attr(plpModel, "modelType")
 
   return(prediction)
