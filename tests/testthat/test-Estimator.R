@@ -377,3 +377,17 @@ test_that("estimatorSettings can be saved and loaded with python objects", {
   testthat::expect_false(reticulate::py_is_null_xptr(scheduler$fun))
   testthat::expect_false(reticulate::py_is_null_xptr(criterion))
 })
+
+test_that("evaluation works on predictDeepEstimator output", {
+  
+  prediction <- predictDeepEstimator(plpModel = fitEstimatorResults,
+                                     data = trainData$Test,
+                                     cohort = trainData$Test$labels)
+  prediction$evaluationType <- 'Validation'
+
+  evaluation <- evaluatePlp(prediction, "evaluationType")
+  
+  expect_length(evaluation, 5)
+  expect_s3_class(evaluation, "plpEvaluation")
+  
+  })
