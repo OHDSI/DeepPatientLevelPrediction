@@ -88,6 +88,10 @@ class Transformer(nn.Module):
             normalization=head_norm,
             dim_out=dim_out,
         )
+        self.dim_token = dim_token
+        self.head_activation = head_activation
+        self.head_normalization = head_norm
+        self.dim_out = dim_out
 
     def forward(self, x):
         mask = torch.where(x["cat"] == 0, True, False)
@@ -140,6 +144,15 @@ class Transformer(nn.Module):
 
         x = self.head(x)[:, 0]
         return x
+
+    def reset_head(self):
+        self.head = Head(
+            self.dim_token,
+            bias=True,
+            activation=self.head_activation,
+            normalization=self.head_normalization,
+            dim_out=self.dim_out
+        )
 
     @staticmethod
     def start_residual(layer, stage, x):

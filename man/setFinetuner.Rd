@@ -4,13 +4,7 @@
 \alias{setFinetuner}
 \title{setFinetuner}
 \usage{
-setFinetuner(
-  modelPath,
-  estimatorSettings = setEstimator(learningRate = learningRate, weightDecay =
-    weightDecay, batchSize = batchSize, epochs = epochs, device = device, optimizer =
-    optimizer, scheduler = scheduler, criterion = criterion, earlyStopping =
-    earlyStopping, metric = metric, seed = seed)
-)
+setFinetuner(modelPath, estimatorSettings = setEstimator())
 }
 \arguments{
 \item{modelPath}{path to existing plpModel directory}

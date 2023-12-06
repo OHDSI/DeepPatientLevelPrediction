@@ -3,7 +3,6 @@ import pathlib
 
 import torch
 from torch.utils.data import DataLoader, BatchSampler, RandomSampler, SequentialSampler
-import torch.nn.functional as F
 from tqdm import tqdm
 
 
@@ -20,12 +19,25 @@ class Estimator:
             self.device = estimator_settings["device"]
 
         torch.manual_seed(seed=self.seed)
-        self.model = model(**model_parameters)
+        if estimator_settings["finetune"]:
+            path = estimator_settings["finetune_model_path"]
+            fitted_estimator = torch.load(path, map_location="cpu")
+            fitted_parameters = fitted_estimator["model_parameters"]
+            self.model = model(**fitted_parameters)
+            self.model.load_state_dict(fitted_estimator["model_state_dict"])
+            for param in self.model.parameters():
+                param.requires_grad = False
+            self.model.reset_head()
+        else:
+            self.model = model(**model_parameters)
         self.model_parameters = model_parameters
         self.estimator_settings = estimator_settings
 
         self.epochs = int(estimator_settings.get("epochs", 5))
-        self.learning_rate = estimator_settings.get("learning_rate", 3e-4)
+        if estimator_settings["find_l_r"]:
+            self.learning_rate = 3e-4
+        else:
+            self.learning_rate = estimator_settings.get("learning_rate", 3e-4)
         self.weight_decay = estimator_settings.get("weight_decay", 1e-5)
         self.batch_size = int(estimator_settings.get("batch_size", 1024))
         self.prefix = estimator_settings.get("prefix", self.model.name)

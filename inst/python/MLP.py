@@ -14,7 +14,7 @@ class MLP(nn.Module):
         activation=nn.ReLU,
         normalization=nn.BatchNorm1d,
         dropout=None,
-        d_out: int = 1,
+        dim_out: int = 1,
     ):
         super(MLP, self).__init__()
         self.name = "MLP"
@@ -23,7 +23,7 @@ class MLP(nn.Module):
         size_embedding = int(size_embedding)
         size_hidden = int(size_hidden)
         num_layers = int(num_layers)
-        d_out = int(d_out)
+        dim_out = int(dim_out)
 
         self.embedding = nn.EmbeddingBag(
             cat_features + 1, size_embedding, padding_idx=0
@@ -44,7 +44,9 @@ class MLP(nn.Module):
             for _ in range(num_layers)
         )
         self.last_norm = normalization(size_hidden)
-        self.head = nn.Linear(size_hidden, d_out)
+        self.head = nn.Linear(size_hidden, dim_out)
+        self.size_hidden = size_hidden
+        self.dim_out = dim_out
 
         self.last_act = activation()
 
@@ -64,6 +66,9 @@ class MLP(nn.Module):
         x = self.head(x)
         x = x.squeeze(-1)
         return x
+
+    def reset_head(self):
+        self.head = nn.Linear(self.size_hidden, self.dim_out)
 
 
 class MLPLayer(nn.Module):

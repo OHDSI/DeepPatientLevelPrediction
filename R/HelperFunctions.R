@@ -29,6 +29,33 @@ camelCaseToSnakeCase <- function(string) {
   return(string)
 }
 
+#' Convert a camel case string to snake case
+#'
+#' @param string   The string to be converted
+#'
+#' @return
+#' A string
+#'
+snakeCaseToCamelCase <- function(string) {
+  string <- tolower(string)
+  for (letter in letters) {
+    string <- gsub(paste("_", letter, sep = ""), toupper(letter), string)
+  }
+  string <- gsub("_([0-9])", "\\1", string)
+  return(string)
+}
+
+#' Convert the names of an object from snake case to camel case
+#'
+#' @param object   The object of which the names should be converted
+#'
+#' @return
+#' The same object, but with converted names.
+snakeCaseToCamelCaseNames <- function(object) {
+  names(object) <- snakeCaseToCamelCase(names(object))
+  return(object)
+}
+
 #' Convert the names of an object from camel case to snake case
 #'
 #' @param object   The object of which the names should be converted

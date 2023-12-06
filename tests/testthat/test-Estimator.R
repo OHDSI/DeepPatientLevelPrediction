@@ -1,5 +1,5 @@
 catFeatures <- smallDataset$dataset$get_cat_features()$max()
-numFeatures <- smallDataset$dataset$get_numerical_features()$max()
+numFeatures <- smallDataset$dataset$get_numerical_features()$len()
 
 modelParameters <- list(
   cat_features = catFeatures,
@@ -9,7 +9,7 @@ modelParameters <- list(
   num_layers = 2,
   hidden_factor = 2
 )
-
+modelType = "ResNet"
 estimatorSettings <-
   setEstimator(learningRate = 3e-4,
                weightDecay = 0.0,
@@ -23,18 +23,19 @@ estimatorSettings <-
                scheduler =
                list(fun = torch$optim$lr_scheduler$ReduceLROnPlateau,
                     params = list(patience = 1)),
-               earlyStopping = NULL)
+               earlyStopping = NULL,
+               modelType = modelType)
 
-modelType <- "ResNet"
-estimator <- createEstimator(modelType = modelType,
-                             modelParameters = modelParameters,
+estimator <- createEstimator(modelParameters = modelParameters,
                              estimatorSettings = estimatorSettings)
 
 test_that("Estimator initialization works", {
 
   # count parameters in both instances
   path <- system.file("python", package = "DeepPatientLevelPrediction")
-  resNet <- reticulate::import_from_path(modelType, path = path)[[modelType]]
+  resNet <-
+    reticulate::import_from_path(estimatorSettings$modelType, 
+                                 path = path)[[estimatorSettings$modelType]]
 
   testthat::expect_equal(
     sum(reticulate::iterate(estimator$model$parameters(),
@@ -113,10 +114,9 @@ test_that("estimator fitting works", {
                                     batchSize = 128,
                                     epochs = 5,
                                     device = "cpu",
-                                    metric = "loss")
-
-  estimator <- createEstimator(modelType = modelType,
-                               modelParameters = modelParameters,
+                                    metric = "loss",
+                                    modelType = modelType)
+  estimator <- createEstimator(modelParameters = modelParameters,
                                estimatorSettings = estimatorSettings)
 
   sink(nullfile())
@@ -216,10 +216,9 @@ test_that("Estimator without earlyStopping works", {
                                     batchSize = 128,
                                     epochs = 1,
                                     device = "cpu",
-                                    earlyStopping = NULL)
-
-  estimator2 <- createEstimator(modelType = modelType,
-                                modelParameters = modelParameters,
+                                    earlyStopping = NULL,
+                                    modelType = modelType)
+  estimator2 <- createEstimator(modelParameters = modelParameters,
                                 estimatorSettings = estimatorSettings)
   sink(nullfile())
   estimator2$fit(smallDataset, smallDataset)
@@ -241,10 +240,10 @@ test_that("Early stopper can use loss and stops early", {
                                            params = list(mode = c("min"),
                                                          patience = 1)),
                                     metric = "loss",
-                                    seed = 42)
+                                    seed = 42,
+                                    modelType = modelType)
 
-  estimator <- createEstimator(modelType = modelType,
-                               modelParameters = modelParameters,
+  estimator <- createEstimator(modelParameters = modelParameters,
                                estimatorSettings = estimatorSettings)
   sink(nullfile())
   estimator$fit(smallDataset, smallDataset)
@@ -270,9 +269,9 @@ test_that("Custom metric in estimator works", {
                                     epochs = 1,
                                     metric = list(fun = metricFun,
                                                   name = "auprc",
-                                                  mode = "max"))
-  estimator <- createEstimator(modelType = modelType,
-                               modelParameters = modelParameters,
+                                                  mode = "max"),
+                                    modelType = modelType)
+  estimator <- createEstimator(modelParameters = modelParameters,
                                estimatorSettings = estimatorSettings)
   expect_true(is.function(estimator$metric$fun))
   expect_true(is.character(estimator$metric$name))
@@ -334,13 +333,13 @@ test_that("device as a function argument works", {
   }
 
   estimatorSettings <- setEstimator(device = getDevice,
-                                    learningRate = 3e-4)
+                                    learningRate = 3e-4,
+                                    modelType = modelType)
 
   model <- setDefaultResNet(estimatorSettings = estimatorSettings)
   model$param[[1]]$catFeatures <- 10
 
-  estimator <- createEstimator(modelType = modelType,
-                               modelParameters = model$param[[1]],
+  estimator <- createEstimator(modelParameters = model$param[[1]],
                                estimatorSettings = estimatorSettings)
 
   expect_equal(estimator$device, "cpu")
@@ -348,13 +347,13 @@ test_that("device as a function argument works", {
   Sys.setenv("testDeepPLPDevice" = "meta")
 
   estimatorSettings <- setEstimator(device = getDevice,
-                                    learningRate = 3e-4)
+                                    learningRate = 3e-4,
+                                    modelType = modelType)
 
   model <- setDefaultResNet(estimatorSettings = estimatorSettings)
   model$param[[1]]$catFeatures <- 10
 
-  estimator <- createEstimator(modelType = modelType,
-                               modelParameters = model$param[[1]],
+  estimator <- createEstimator(modelParameters = model$param[[1]],
                                estimatorSettings = estimatorSettings)
 
   expect_equal(estimator$device, "meta")
@@ -385,7 +384,8 @@ test_that("evaluation works on predictDeepEstimator output", {
                                      cohort = trainData$Test$labels)
   prediction$evaluationType <- 'Validation'
 
-  evaluation <- evaluatePlp(prediction, "evaluationType")
+  evaluation <-
+    PatientLevelPrediction::evaluatePlp(prediction, "evaluationType")
   
   expect_length(evaluation, 5)
   expect_s3_class(evaluation, "plpEvaluation")

@@ -180,12 +180,12 @@ setTransformer <- function(numBlocks = 3,
                                       {param <- param[sample(length(param),
                                                              randomSample)]}))
   }
-  attr(param, "settings")$modelType <- "Transformer"
+  estimatorSettings$modelType <- "Transformer"
+  attr(param, "settings")$modelType <- estimatorSettings$modelType
   results <- list(
     fitFunction = "fitEstimator",
     param = param,
     estimatorSettings = estimatorSettings,
-    modelType = "Transformer",
     saveType = "file",
     modelParamNames = c(
       "numBlocks", "dimToken", "dimOut", "numHeads",
