@@ -283,7 +283,7 @@ predictDeepEstimator <- function(plpModel,
   } else {
     prediction$value <- plpModel$model$predict_proba(data)
   }
-
+  prediction$value <- as.numeric(prediction$value)
   attr(prediction, "metaData")$modelType <- attr(plpModel, "modelType")
 
   return(prediction)
@@ -344,9 +344,9 @@ gridCvDeep <- function(mappedData,
                               fitParams,
                               paramSearch[[gridId]])
       currentEstimatorSettings$modelType <- modelSettings$modelType
-      currentModelParams$catFeatures <- dataset$get_cat_features()$shape[[1]]
+      currentModelParams$catFeatures <- dataset$get_cat_features()$max()
       currentModelParams$numFeatures <-
-        dataset$get_numerical_features()$shape[[1]]
+        dataset$get_numerical_features()$max()
       if (findLR) {
         lrFinder <- createLRFinder(modelType = modelSettings$modelType,
           modelParameters = currentModelParams,
@@ -417,8 +417,8 @@ gridCvDeep <- function(mappedData,
     dir.create(file.path(modelLocation), recursive = TRUE)
   }
 
-  modelParams$catFeatures <- dataset$get_cat_features()$shape[[1]]
-  modelParams$numFeatures <- dataset$get_numerical_features()$shape[[1]]
+  modelParams$catFeatures <- dataset$get_cat_features()$max()
+  modelParams$numFeatures <- dataset$get_numerical_features()$max()
 
 
   estimatorSettings <- fillEstimatorSettings(modelSettings$estimatorSettings,

@@ -23,14 +23,17 @@ createLRFinder <- function(modelType,
   lrFinderClass <-
     reticulate::import_from_path("LrFinder", path = path)$LrFinder
   
-  
-
   estimatorSettings <- evalEstimatorSettings(estimatorSettings)
   
+  model <- reticulate::import_from_path(modelType, path = path)[[modelType]]
+  modelParameters <- camelCaseToSnakeCaseNames(modelParameters)
+  estimatorSettings <- camelCaseToSnakeCaseNames(estimatorSettings)
+  estimatorSettings <- evalEstimatorSettings(estimatorSettings)
   browser()
   estimator <- createEstimator(modelType = estimatorSettings$modelType,
                                modelParameters = modelParameters,
                                estimatorSettings = estimatorSettings)
+
   if (!is.null(lrSettings)) {
     lrSettings <- camelCaseToSnakeCaseNames(lrSettings)
   }

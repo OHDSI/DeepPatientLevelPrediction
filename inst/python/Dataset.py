@@ -45,7 +45,7 @@ class Data(Dataset):
         data_cat = (
             data.filter(~pl.col("columnId").is_in(self.numerical_features))
             .select(pl.col("rowId"), pl.col("columnId"))
-            .sort("rowId")
+            .sort(["rowId", "columnId"])
             .with_columns(pl.col("rowId") - 1)
             .collect()
         )
@@ -69,9 +69,13 @@ class Data(Dataset):
         if pl.count(self.numerical_features) == 0:
             self.num = None
         else:
+            map_numerical = dict(zip(self.numerical_features.sort().to_list(),
+                                     list(range(len(self.numerical_features)))))
+
             numerical_data = (
                 data.filter(pl.col("columnId").is_in(self.numerical_features))
-                .sort(by="columnId")
+                .with_columns(pl.col("columnId").replace(map_numerical),
+                              pl.col("rowId") - 1)
                 .select(
                     pl.col("rowId"),
                     pl.col("columnId"),
