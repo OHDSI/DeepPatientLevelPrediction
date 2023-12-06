@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">DeepPatientLevelPrediction</a>
-        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.0.1.9999</span>
+        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.0.2.9999</span>
       </span>
     </div>
 
@@ -78,6 +78,15 @@
       <small>Source: <a href="https://github.com/OHDSI/DeepPatientLevelPrediction/blob/HEAD/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="page-header" data-toc-text="2.0.2" id="deeppatientlevelprediction-202">DeepPatientLevelPrediction 2.0.2<a class="anchor" aria-label="anchor" href="#deeppatientlevelprediction-202"></a></h2>
+<ul><li>Ensure output from predict_proba is numeric instead of 1d array</li>
+<li>Refactoring: Move cross-validation to a separate function</li>
+<li>Refactoring: Move paramsToTune to a separate function</li>
+<li>linting: Enforcing HADES style</li>
+<li>Calculate AUC ourselves with torch, get rid of scikit-learn dependancy</li>
+<li>added Andromeda to dev dependencies</li>
+</ul></div>
     <div class="section level2">
 <h2 class="page-header" data-toc-text="2.0.1" id="deeppatientlevelprediction-201">DeepPatientLevelPrediction 2.0.1<a class="anchor" aria-label="anchor" href="#deeppatientlevelprediction-201"></a></h2>
 <ul><li>Connection parameter fixed to be in line with newest polars</li>
