@@ -36,7 +36,7 @@ test_that("LR finder works", {
                    list(cat_features =
                         dataset$get_cat_features()$max(),
                         num_features =
-                        dataset$get_numerical_features()$max(),
+                        dataset$get_numerical_features()$len(),
                         size_embedding = 32L,
                         size_hidden = 64L,
                         num_layers = 1L,
@@ -64,7 +64,7 @@ test_that("LR finder works with device specified by a function", {
     model = "ResNet",
     modelParameters =
       list(cat_features = dataset$get_cat_features()$max(),
-           num_features = dataset$get_numerical_features()$max(),
+           num_features = dataset$get_numerical_features()$len(),
            size_embedding = 8L,
            size_hidden = 16L,
            num_layers = 1L,

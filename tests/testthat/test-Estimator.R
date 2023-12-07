@@ -1,5 +1,5 @@
 catFeatures <- smallDataset$dataset$get_cat_features()$max()
-numFeatures <- smallDataset$dataset$get_numerical_features()$max()
+numFeatures <- smallDataset$dataset$get_numerical_features()$len()
 
 modelParameters <- list(
   cat_features = catFeatures,

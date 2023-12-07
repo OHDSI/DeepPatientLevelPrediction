@@ -330,7 +330,7 @@ gridCvDeep <- function(mappedData,
       currentEstimatorSettings$modelType <- modelSettings$modelType
       currentModelParams$catFeatures <- dataset$get_cat_features()$max()
       currentModelParams$numFeatures <-
-        dataset$get_numerical_features()$max()
+        dataset$get_numerical_features()$len()
       if (findLR) {
         lrFinder <- createLRFinder(modelType = modelSettings$modelType,
           modelParameters = currentModelParams,
@@ -402,7 +402,7 @@ gridCvDeep <- function(mappedData,
   }
 
   modelParams$catFeatures <- dataset$get_cat_features()$max()
-  modelParams$numFeatures <- dataset$get_numerical_features()$max()
+  modelParams$numFeatures <- dataset$get_numerical_features()$len()
 
 
   estimatorSettings <- fillEstimatorSettings(modelSettings$estimatorSettings,
