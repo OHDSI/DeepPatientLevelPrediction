@@ -19,7 +19,7 @@ class Estimator:
             self.device = estimator_settings["device"]
 
         torch.manual_seed(seed=self.seed)
-        if estimator_settings["finetune"]:
+        if "finetune" in estimator_settings.keys() and estimator_settings["finetune"]:
             path = estimator_settings["finetune_model_path"]
             fitted_estimator = torch.load(path, map_location="cpu")
             fitted_parameters = fitted_estimator["model_parameters"]
