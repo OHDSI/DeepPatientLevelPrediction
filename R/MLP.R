@@ -105,7 +105,7 @@ setMultiLayerPerceptron <- function(numLayers = c(1:8),
     modelType = "MLP"
   )
   attr(results$param, "settings")$modelType <- results$modelType
-  
+
 
   class(results) <- "modelSettings"
 

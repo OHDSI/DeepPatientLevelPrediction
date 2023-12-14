@@ -21,7 +21,7 @@ createLRFinder <- function(modelParameters,
   path <- system.file("python", package = "DeepPatientLevelPrediction")
   lrFinderClass <-
     reticulate::import_from_path("LrFinder", path = path)$LrFinder
-  
+
   estimator <- createEstimator(modelParameters = modelParameters,
                                estimatorSettings = estimatorSettings)
 

@@ -26,30 +26,29 @@
 #' @param estimatorSettings settings created with `setEstimator`
 #' @export
 setFinetuner <- function(modelPath,
-                         estimatorSettings = setEstimator()
-)  {
+                         estimatorSettings = setEstimator()) {
 
   if (!dir.exists(modelPath)) {
-    stop(paste0("supplied modelPath does not exist, you supplied: modelPath = ", 
+    stop(paste0("supplied modelPath does not exist, you supplied: modelPath = ",
                 modelPath))
   }
-  
+
   # TODO check if it's a valid path to a plpModel
-  
+
   param <- list()
   param[[1]] <- list(modelPath = modelPath)
-  
+
   results <- list(
-  fitFunction = "fitEstimator",
-  param = param,
-  estimatorSettings = estimatorSettings,
-  saveType = "file",
-  modelParamNames = c("modelPath"),
-  modelType = "Finetuner"
+    fitFunction = "fitEstimator",
+    param = param,
+    estimatorSettings = estimatorSettings,
+    saveType = "file",
+    modelParamNames = c("modelPath"),
+    modelType = "Finetuner"
   )
   attr(results$param, "settings")$modelType <- results$modelType
-  
- class(results) <- "modelSettings"
- 
- return(results)
+
+  class(results) <- "modelSettings"
+
+  return(results)
 }

@@ -147,7 +147,7 @@ setResNet <- function(numLayers = c(1:8),
     modelType = "ResNet"
   )
   attr(results$param, "settings")$modelType <- results$modelType
-  
+
   class(results) <- "modelSettings"
 
   return(results)
