@@ -19,9 +19,10 @@ class ResNet(nn.Module):
         residual_dropout=0,
         dim_out: int = 1,
         concat_num=True,
+        model_type="ResNet"
     ):
         super(ResNet, self).__init__()
-        self.name = "ResNet"
+        self.name = model_type
         cat_features = int(cat_features)
         num_features = int(num_features)
         size_embedding = int(size_embedding)

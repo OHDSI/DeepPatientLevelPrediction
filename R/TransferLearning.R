@@ -38,17 +38,17 @@ setFinetuner <- function(modelPath,
   
   param <- list()
   param[[1]] <- list(modelPath = modelPath)
-    
-  estimatorSettings$modelType <- "Finetuner"
-  attr(param, "settings")$modelType <- estimatorSettings$modelType
+  
   results <- list(
   fitFunction = "fitEstimator",
   param = param,
   estimatorSettings = estimatorSettings,
   saveType = "file",
-  modelParamNames = c("modelPath")
+  modelParamNames = c("modelPath"),
+  modelType = "Finetuner"
   )
- 
+  attr(results$param, "settings")$modelType <- results$modelType
+  
  class(results) <- "modelSettings"
  
  return(results)

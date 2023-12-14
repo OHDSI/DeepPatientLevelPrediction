@@ -16,8 +16,7 @@ setEstimator(
   criterion = torch$nn$BCEWithLogitsLoss,
   earlyStopping = list(useEarlyStopping = TRUE, params = list(patience = 4)),
   metric = "auc",
-  seed = NULL,
-  modelType = NULL
+  seed = NULL
 )
 }
 \arguments{

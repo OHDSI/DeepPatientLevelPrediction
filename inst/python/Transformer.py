@@ -35,9 +35,10 @@ class Transformer(nn.Module):
         ffn_norm=nn.LayerNorm,
         head_norm=nn.LayerNorm,
         att_norm=nn.LayerNorm,
+        model_type="Transformer"
     ):
         super(Transformer, self).__init__()
-        self.name = "Transformer"
+        self.name = model_type
         cat_features = int(cat_features)
         num_features = int(num_features)
         num_blocks = int(num_blocks)

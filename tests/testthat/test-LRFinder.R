@@ -31,8 +31,7 @@ test_that("LR scheduler that changes per batch works", {
 
 test_that("LR finder works", {
   estimatorSettings <- setEstimator(batchSize = 32L,
-                                    seed = 42,
-                                    modelType = "ResNet")
+                                    seed = 42)
   lrFinder <-
     createLRFinder(modelParameters =
                      list(cat_features =
@@ -42,7 +41,8 @@ test_that("LR finder works", {
                           size_embedding = 32L,
                           size_hidden = 64L,
                           num_layers = 1L,
-                          hidden_factor = 1L),
+                          hidden_factor = 1L,
+                          modelType = "ResNet"),
                    estimatorSettings = estimatorSettings,
                    lrSettings = list(minLr = 3e-4,
                                      maxLr = 10.0,
@@ -68,11 +68,11 @@ test_that("LR finder works with device specified by a function", {
            size_embedding = 8L,
            size_hidden = 16L,
            num_layers = 1L,
-           hidden_factor = 1L),
+           hidden_factor = 1L,
+           modelType = "ResNet"),
     estimatorSettings = setEstimator(batchSize = 32L,
                                      seed = 42,
-                                     device = deviceFun,
-                                     modelType = "ResNet"),
+                                     device = deviceFun),
     lrSettings = list(minLr = 3e-4,
                       maxLr = 10.0,
                       numLr = 20L,

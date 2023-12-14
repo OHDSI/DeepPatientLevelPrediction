@@ -137,17 +137,17 @@ setResNet <- function(numLayers = c(1:8),
                                       {param <- param[sample(length(param),
                                                              randomSample)]}))
   }
-  estimatorSettings$modelType <- "ResNet"
-  attr(param, "settings")$modelType <- estimatorSettings$modelType
   results <- list(
     fitFunction = "fitEstimator",
     param = param,
     estimatorSettings = estimatorSettings,
     saveType = "file",
     modelParamNames = c("numLayers", "sizeHidden", "hiddenFactor",
-                        "residualDropout", "hiddenDropout", "sizeEmbedding")
+                        "residualDropout", "hiddenDropout", "sizeEmbedding"),
+    modelType = "ResNet"
   )
-
+  attr(results$param, "settings")$modelType <- results$modelType
+  
   class(results) <- "modelSettings"
 
   return(results)

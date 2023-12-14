@@ -54,8 +54,7 @@ setEstimator <- function(learningRate = "auto",
   earlyStopping = list(useEarlyStopping = TRUE,
                        params = list(patience = 4)),
   metric = "auc",
-  seed = NULL, 
-  modelType = NULL
+  seed = NULL
 ) {
 
   checkIsClass(learningRate, c("numeric", "character"))
@@ -90,8 +89,7 @@ setEstimator <- function(learningRate = "auto",
                             earlyStopping = earlyStopping,
                             findLR = findLR,
                             metric = metric,
-                            seed = seed[1],
-                            modelType = modelType)
+                            seed = seed[1])
 
   optimizer <- rlang::enquo(optimizer)
   estimatorSettings$optimizer <- function() rlang::eval_tidy(optimizer)
@@ -144,11 +142,11 @@ fitEstimator <- function(trainData,
   if (!is.null(trainData$folds)) {
     trainData$labels <- merge(trainData$labels, trainData$fold, by = "rowId")
   }
-  
-  if (modelSettings$estimatorSettings$modelType == "Finetuner") {
+
+  if (modelSettings$modelType == "Finetuner") {
     # make sure to use same mapping from covariateIds to columns if finetuning
     path <- modelSettings$param[[1]]$modelPath
-    oldCovImportance <- utils::read.csv(file.path(path, 
+    oldCovImportance <- utils::read.csv(file.path(path,
                                                   "covariateImportance.csv"))
     mapping <- oldCovImportance %>% dplyr::select("columnId", "covariateId")
     numericalIndex <- which(oldCovImportance %>% dplyr::pull("isNumeric"))
@@ -229,7 +227,7 @@ fitEstimator <- function(trainData,
       attrition = attr(trainData, "metaData")$attrition,
       trainingTime = paste(as.character(abs(comp)), attr(comp, "units")),
       trainingDate = Sys.Date(),
-      modelName = modelSettings$estimatorSettings$modelType,
+      modelName = modelSettings$modelType,
       finalModelParameters = cvResult$finalParam,
       hyperParamSearch = hyperSummary
     ),
@@ -278,9 +276,9 @@ predictDeepEstimator <- function(plpModel,
                         map_location = "cpu")
     estimator <-
       createEstimator(modelParameters =
-                        snakeCaseToCamelCaseNames(model$model_parameters),
+                      snakeCaseToCamelCaseNames(model$model_parameters),
                       estimatorSettings =
-                        snakeCaseToCamelCaseNames(model$estimator_settings))
+                      snakeCaseToCamelCaseNames(model$estimator_settings))
     estimator$model$load_state_dict(model$model_state_dict)
     prediction$value <- estimator$predict_proba(data)
   } else {
@@ -311,7 +309,7 @@ gridCvDeep <- function(mappedData,
                        modelLocation,
                        analysisPath) {
   ParallelLogger::logInfo(paste0("Running hyperparameter search for ",
-                                 modelSettings$estimatorSettings$modelType,
+                                 modelSettings$modelType,
                                  " model"))
 
   ###########################################################################
@@ -342,7 +340,9 @@ gridCvDeep <- function(mappedData,
       ParallelLogger::logInfo(paste(names(paramSearch[[gridId]]),
                                     paramSearch[[gridId]], collapse = " | "))
       currentModelParams <- paramSearch[[gridId]][modelSettings$modelParamNames]
-      attr(currentModelParams, "metaData")$names <- modelSettings$modelParamNames
+      attr(currentModelParams, "metaData")$names <-
+        modelSettings$modelParamNames
+      currentModelParams$modelType <- modelSettings$modelType
       currentEstimatorSettings <-
         fillEstimatorSettings(modelSettings$estimatorSettings,
                               fitParams,
@@ -420,7 +420,7 @@ gridCvDeep <- function(mappedData,
 
   modelParams$catFeatures <- dataset$get_cat_features()$max()
   modelParams$numFeatures <- dataset$get_numerical_features()$len()
-
+  modelParams$modelType <- modelSettings$modelType
 
   estimatorSettings <- fillEstimatorSettings(modelSettings$estimatorSettings,
                                              fitParams,
@@ -495,19 +495,19 @@ evalEstimatorSettings <- function(estimatorSettings) {
 createEstimator <- function(modelParameters,
                             estimatorSettings) {
   path <- system.file("python", package = "DeepPatientLevelPrediction")
-  
-  if (estimatorSettings$modelType == "Finetuner") {
+
+  if (modelParameters$modelType == "Finetuner") {
     estimatorSettings$finetune <- TRUE
     plpModel <- PatientLevelPrediction::loadPlpModel(modelParameters$modelPath)
-    estimatorSettings$finetuneModelPath <- 
+    estimatorSettings$finetuneModelPath <-
       file.path(normalizePath(plpModel$model), "DeepEstimatorModel.pt")
-    estimatorSettings$modelType <-
-      plpModel$modelDesign$modelSettings$estimatorSettings$modelType
-    }
-  
+    modelParameters$modelType <-
+      plpModel$modelDesign$modelSettings$modelType
+  }
+
   model <-
-    reticulate::import_from_path(estimatorSettings$modelType,
-                                 path = path)[[estimatorSettings$modelType]]
+    reticulate::import_from_path(modelParameters$modelType,
+                                 path = path)[[modelParameters$modelType]]
   estimator <- reticulate::import_from_path("Estimator", path = path)$Estimator
 
   modelParameters <- camelCaseToSnakeCaseNames(modelParameters)

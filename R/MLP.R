@@ -93,8 +93,6 @@ setMultiLayerPerceptron <- function(numLayers = c(1:8),
                                       {param <- param[sample(length(param),
                                                              randomSample)]}))
   }
-  estimatorSettings$modelType <- "MLP"
-  attr(param, "settings")$modelType <- estimatorSettings$modelType
   results <- list(
     fitFunction = "fitEstimator",
     param = param,
@@ -103,8 +101,11 @@ setMultiLayerPerceptron <- function(numLayers = c(1:8),
     modelParamNames = c(
       "numLayers", "sizeHidden",
       "dropout", "sizeEmbedding"
-    )
+    ),
+    modelType = "MLP"
   )
+  attr(results$param, "settings")$modelType <- results$modelType
+  
 
   class(results) <- "modelSettings"
 

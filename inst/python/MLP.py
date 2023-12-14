@@ -15,9 +15,10 @@ class MLP(nn.Module):
         normalization=nn.BatchNorm1d,
         dropout=None,
         dim_out: int = 1,
+        model_type="MLP"
     ):
         super(MLP, self).__init__()
-        self.name = "MLP"
+        self.name = model_type
         cat_features = int(cat_features)
         num_features = int(num_features)
         size_embedding = int(size_embedding)
