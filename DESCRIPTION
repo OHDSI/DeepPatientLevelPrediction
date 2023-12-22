@@ -1,8 +1,8 @@
 Package: DeepPatientLevelPrediction
 Type: Package
 Title: Deep Learning For Patient Level Prediction Using Data In The OMOP Common Data Model
-Version: 2.0.2.9999
-Date: 18-04-2023
+Version: 2.0.3.9999
+Date: 22-12-2023
 Authors@R: c(
     person("Egill", "Fridgeirsson", email = "e.fridgeirsson@erasmusmc.nl", role = c("aut", "cre")),
     person("Jenna", "Reps", email = "jreps@its.jnj.com", role = c("aut")), 
@@ -40,7 +40,7 @@ Suggests:
 Remotes:
     ohdsi/PatientLevelPrediction,
     ohdsi/FeatureExtraction,
-    ohdsi/Eunomia,
+    ohdsi/Eunomia,  
     ohdsi/ResultModelManager
 RoxygenNote: 7.2.3
 Encoding: UTF-8

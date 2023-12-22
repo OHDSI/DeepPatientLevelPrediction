@@ -1,3 +1,7 @@
+DeepPatientLevelPrediction 2.0.3
+======================
+  - Hotfix: Fix count for polars v0.20.x
+  
 DeepPatientLevelPrediction 2.0.2
 ======================
   - Ensure output from predict_proba is numeric instead of 1d array
