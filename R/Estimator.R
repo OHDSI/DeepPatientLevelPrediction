@@ -273,8 +273,7 @@ predictDeepEstimator <- function(plpModel,
   prediction <- cohort
   if (is.character(plpModel$model)) {
     model <- torch$load(file.path(plpModel$model,
-                                  "DeepEstimatorModel.pt"),
-                        map_location = "cpu")
+                                  "DeepEstimatorModel.pt"),                        map_location = "cpu")
     estimator <-
       createEstimator(modelParameters =
                       snakeCaseToCamelCaseNames(model$model_parameters),
@@ -421,10 +420,7 @@ gridCvDeep <- function(mappedData,
 
   modelParams$catFeatures <- dataset$get_cat_features()$max()
   modelParams$numFeatures <- dataset$get_numerical_features()$len()
-<<<<<<< HEAD
   modelParams$modelType <- modelSettings$modelType
-=======
->>>>>>> develop
 
   estimatorSettings <- fillEstimatorSettings(modelSettings$estimatorSettings,
                                              fitParams,
