@@ -182,7 +182,7 @@ setTransformer <- function(numBlocks = 3,
   }
   attr(param, "settings")$modelType <- "Transformer"
   results <- list(
-    fitFunction = "fitEstimator",
+    fitFunction = "DeepPatientLevelPrediction::fitEstimator",
     param = param,
     estimatorSettings = estimatorSettings,
     modelType = "Transformer",

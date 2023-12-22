@@ -139,7 +139,7 @@ setResNet <- function(numLayers = c(1:8),
   }
   attr(param, "settings")$modelType <- "ResNet"
   results <- list(
-    fitFunction = "fitEstimator",
+    fitFunction = "DeepPatientLevelPrediction::fitEstimator",
     param = param,
     estimatorSettings = estimatorSettings,
     modelType = "ResNet",
