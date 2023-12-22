@@ -45,6 +45,8 @@ class LrFinder:
         self.loss_index = None
 
     def get_lr(self, dataset):
+        if len(dataset) < self.estimator.batch_size:
+            self.estimator.batch_size = len(dataset)
         batch_index = torch.arange(0, len(dataset), 1).tolist()
         random.seed(self.seed)
         losses = torch.empty(size=(self.num_lr,), dtype=torch.float)
