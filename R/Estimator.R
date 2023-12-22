@@ -219,7 +219,8 @@ fitEstimator <- function(trainData,
   )
 
   class(result) <- "plpModel"
-  attr(result, "predictionFunction") <- "predictDeepEstimator"
+  attr(result, "predictionFunction") <-
+    "DeepPatientLevelPrediction::predictDeepEstimator"
   attr(result, "modelType") <- "binary"
   attr(result, "saveType") <- modelSettings$saveType
 
