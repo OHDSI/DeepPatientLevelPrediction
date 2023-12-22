@@ -69,7 +69,7 @@ class Data(Dataset):
 
         # numerical data,
         # N x C, dense matrix with values for N patients/visits for C numerical features
-        if pl.count(self.numerical_features) == 0:
+        if self.numerical_features.count() == 0:
             self.num = None
         else:
             map_numerical = dict(zip(self.numerical_features.sort().to_list(),
@@ -96,7 +96,7 @@ class Data(Dataset):
             self.num = torch.sparse_coo_tensor(
                 indices=indices.T,
                 values=values.squeeze(),
-                size=(observations, pl.count(self.numerical_features)),
+                size=(observations, self.numerical_features.count()),
             ).to_dense()
         delta = time.time() - start
         print(f"Processed data in {delta:.2f} seconds")
