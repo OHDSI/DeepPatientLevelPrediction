@@ -402,7 +402,7 @@ gridCvDeep <- function(mappedData,
   }
 
   modelParams$catFeatures <- dataset$get_cat_features()$max()
-  modelParams$numFeatures <- dataset$get_numerical_features()$max()
+  modelParams$numFeatures <- dataset$get_numerical_features()$len()
 
   estimatorSettings <- fillEstimatorSettings(modelSettings$estimatorSettings,
                                              fitParams,
