@@ -138,7 +138,7 @@ setResNet <- function(numLayers = c(1:8),
                                                              randomSample)]}))
   }
   results <- list(
-    fitFunction = "fitEstimator",
+    fitFunction = "DeepPatientLevelPrediction::fitEstimator",
     param = param,
     estimatorSettings = estimatorSettings,
     saveType = "file",

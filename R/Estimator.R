@@ -235,7 +235,8 @@ fitEstimator <- function(trainData,
   )
 
   class(result) <- "plpModel"
-  attr(result, "predictionFunction") <- "predictDeepEstimator"
+  attr(result, "predictionFunction") <-
+    "DeepPatientLevelPrediction::predictDeepEstimator"
   attr(result, "modelType") <- "binary"
   attr(result, "saveType") <- modelSettings$saveType
 
@@ -420,7 +421,10 @@ gridCvDeep <- function(mappedData,
 
   modelParams$catFeatures <- dataset$get_cat_features()$max()
   modelParams$numFeatures <- dataset$get_numerical_features()$len()
+<<<<<<< HEAD
   modelParams$modelType <- modelSettings$modelType
+=======
+>>>>>>> develop
 
   estimatorSettings <- fillEstimatorSettings(modelSettings$estimatorSettings,
                                              fitParams,

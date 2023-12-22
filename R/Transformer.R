@@ -181,7 +181,7 @@ setTransformer <- function(numBlocks = 3,
                                                              randomSample)]}))
   }
   results <- list(
-    fitFunction = "fitEstimator",
+    fitFunction = "DeepPatientLevelPrediction::fitEstimator",
     param = param,
     estimatorSettings = estimatorSettings,
     saveType = "file",

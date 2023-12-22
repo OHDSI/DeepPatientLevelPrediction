@@ -18,7 +18,7 @@ modelSettings <- setMultiLayerPerceptron(
 test_that("setMultiLayerPerceptron works", {
   testthat::expect_s3_class(object = modelSettings, class = "modelSettings")
 
-  testthat::expect_equal(modelSettings$fitFunction, "fitEstimator")
+  testthat::expect_equal(modelSettings$fitFunction, "DeepPatientLevelPrediction::fitEstimator")
 
   testthat::expect_true(length(modelSettings$param) > 0)
 
