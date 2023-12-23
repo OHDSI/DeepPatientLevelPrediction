@@ -23,13 +23,16 @@ createDataset <- function(data, labels, plpModel = NULL) {
     attributes(data)$path <- attributes(data)$dbname
   }
   if (is.null(plpModel)) {
-    data <- dataset(r_to_py(normalizePath(attributes(data)$path)),
-                    r_to_py(labels$outcomeCount))
+    data <- dataset(
+      r_to_py(normalizePath(attributes(data)$path)),
+      r_to_py(labels$outcomeCount)
+    )
   } else {
     numericalFeatures <-
       r_to_py(as.array(which(plpModel$covariateImportance$isNumeric)))
     data <- dataset(r_to_py(normalizePath(attributes(data)$path)),
-                    numerical_features = numericalFeatures)
+      numerical_features = numericalFeatures
+    )
   }
 
   return(data)

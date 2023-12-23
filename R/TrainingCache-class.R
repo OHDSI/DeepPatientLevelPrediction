@@ -69,10 +69,12 @@ trainingCache <- R6::R6Class(
     #' Check if cache is full
     #' @returns Boolen
     isFull = function() {
-      return(all(unlist(lapply(private$.paramPersistence$gridSearchPredictions,
-                               function(x) !is.null(x$gridPerformance)))))
+      return(all(unlist(lapply(
+        private$.paramPersistence$gridSearchPredictions,
+        function(x) !is.null(x$gridPerformance)
+      ))))
     },
-    
+
     #' @description
     #' Gets the last index from the cached grid search
     #' @returns Last grid search index
@@ -84,8 +86,10 @@ trainingCache <- R6::R6Class(
         if (length(private$.paramPersistence$gridSearchPredictions) == 1) {
           return(1)
         } else {
-          return(which(sapply(private$.paramPersistence$gridSearchPredictions,
-                              is.null))[1])
+          return(which(sapply(
+            private$.paramPersistence$gridSearchPredictions,
+            is.null
+          ))[1])
         }
       }
     },

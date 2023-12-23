@@ -25,24 +25,27 @@
 #'
 #' @export
 setDefaultTransformer <- function(estimatorSettings =
-    setEstimator(learningRate = "auto",
-                 weightDecay = 1e-4,
-                 batchSize = 512,
-                 epochs = 10,
-                 seed = NULL,
-                 device = "cpu")
-) {
-  transformerSettings <- setTransformer(numBlocks = 3,
-                                        dimToken = 192,
-                                        dimOut = 1,
-                                        numHeads = 8,
-                                        attDropout = 0.2,
-                                        ffnDropout = 0.1,
-                                        resDropout = 0.0,
-                                        dimHidden = 256,
-                                        estimatorSettings = estimatorSettings,
-                                        hyperParamSearch = "random",
-                                        randomSample = 1)
+                                    setEstimator(
+                                      learningRate = "auto",
+                                      weightDecay = 1e-4,
+                                      batchSize = 512,
+                                      epochs = 10,
+                                      seed = NULL,
+                                      device = "cpu"
+                                    )) {
+  transformerSettings <- setTransformer(
+    numBlocks = 3,
+    dimToken = 192,
+    dimOut = 1,
+    numHeads = 8,
+    attDropout = 0.2,
+    ffnDropout = 0.1,
+    resDropout = 0.0,
+    dimHidden = 256,
+    estimatorSettings = estimatorSettings,
+    hyperParamSearch = "random",
+    randomSample = 1
+  )
   attr(transformerSettings, "settings")$name <- "defaultTransformer"
   return(transformerSettings)
 }
@@ -81,14 +84,15 @@ setTransformer <- function(numBlocks = 3,
                            resDropout = 0,
                            dimHidden = 512,
                            dimHiddenRatio = NULL,
-                           estimatorSettings = setEstimator(weightDecay = 1e-6,
-                                                            batchSize = 1024,
-                                                            epochs = 10,
-                                                            seed = NULL),
+                           estimatorSettings = setEstimator(
+                             weightDecay = 1e-6,
+                             batchSize = 1024,
+                             epochs = 10,
+                             seed = NULL
+                           ),
                            hyperParamSearch = "random",
                            randomSample = 1,
                            randomSampleSeed = NULL) {
-
   checkIsClass(numBlocks, c("integer", "numeric"))
   checkHigherEqual(numBlocks, 1)
 
@@ -127,16 +131,18 @@ setTransformer <- function(numBlocks = 3,
 
   checkIsClass(randomSampleSeed, c("numeric", "integer", "NULL"))
 
-  if (any(with(expand.grid(dimToken = dimToken, numHeads = numHeads),
-               dimToken %% numHeads != 0))) {
+  if (any(with(
+    expand.grid(dimToken = dimToken, numHeads = numHeads),
+    dimToken %% numHeads != 0
+  ))) {
     stop(paste(
       "dimToken needs to divisible by numHeads. dimToken =", dimToken,
       "is not divisible by numHeads =", numHeads
     ))
   }
 
-  if (is.null(dimHidden) && is.null(dimHiddenRatio)
-      || !is.null(dimHidden) && !is.null(dimHiddenRatio)) {
+  if (is.null(dimHidden) && is.null(dimHiddenRatio) ||
+    !is.null(dimHidden) && !is.null(dimHiddenRatio)) {
     stop(paste(
       "dimHidden and dimHiddenRatio cannot be both set or both NULL"
     ))
@@ -169,16 +175,21 @@ setTransformer <- function(numBlocks = 3,
   }
 
   if (hyperParamSearch == "random" && randomSample > length(param)) {
-    stop(paste("\n Chosen amount of randomSamples is higher than the amount of
+    stop(paste(
+      "\n Chosen amount of randomSamples is higher than the amount of
                possible hyperparameter combinations.", "\n randomSample:",
-               randomSample, "\n Possible hyperparameter combinations:",
-               length(param), "\n Please lower the amount of randomSample"))
+      randomSample, "\n Possible hyperparameter combinations:",
+      length(param), "\n Please lower the amount of randomSample"
+    ))
   }
 
   if (hyperParamSearch == "random") {
-    suppressWarnings(withr::with_seed(randomSampleSeed,
-                                      {param <- param[sample(length(param),
-                                                             randomSample)]}))
+    suppressWarnings(withr::with_seed(randomSampleSeed, {
+      param <- param[sample(
+        length(param),
+        randomSample
+      )]
+    }))
   }
   attr(param, "settings")$modelType <- "Transformer"
   results <- list(
