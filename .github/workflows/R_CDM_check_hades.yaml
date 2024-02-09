@@ -95,13 +95,6 @@ jobs:
           error-on: '"warning"'
           check-dir: '"check"'
 
-      - name: Upload source package
-        if: success() && runner.os == 'macOS' && github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-        uses: actions/upload-artifact@v2
-        with:
-          name: package_tarball
-          path: check/*.tar.gz
-
       - name: Install covr
         if: runner.os == 'ubuntu-22.04'
         run: |
@@ -112,6 +105,13 @@ jobs:
         if: runner.os == 'ubuntu-22.04'
         run: covr::codecov()
         shell: Rscript {0}
+
+      - name: Upload source package
+        if: success() && runner.os == 'macOS' && github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v2
+        with:
+          name: package_tarball
+          path: check/*.tar.gz
 
   Release:
     needs: R-CMD-Check
