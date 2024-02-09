@@ -32,9 +32,17 @@ setFinetuner <- function(modelPath,
     stop(paste0("supplied modelPath does not exist, you supplied: modelPath = ",
                 modelPath))
   }
-
   # TODO check if it's a valid path to a plpModel
-
+  if (!dir.exists(file.path(modelPath, "model"))) {
+    stop(paste0("supplied modelPath does not contain a model directory, you supplied: modelPath = ",
+                modelPath))
+  }
+  if (!file.exists(file.path(modelPath, "model", "DeepEstimatorModel.pt"))) {
+    stop(paste0("supplied modelPath does not contain a model file, you supplied: modelPath = ",
+                modelPath))
+  }
+  
+  
   param <- list()
   param[[1]] <- list(modelPath = modelPath)
 

@@ -111,3 +111,4 @@ fitEstimatorResults <- fitEstimator(trainData$Train,
                                     modelSettings = modelSettings,
                                     analysisId = 1,
                                     analysisPath = fitEstimatorPath)
+PatientLevelPrediction::savePlpModel(fitEstimatorResults, file.path(fitEstimatorPath, "plpModel"))
