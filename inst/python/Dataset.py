@@ -30,6 +30,7 @@ class Data(Dataset):
                 .n_unique()
                 .filter(pl.col("covariateValue") > 1)
                 .select("columnId")
+                .sort("columnId")
                 .collect()["columnId"]
             )
         else:
@@ -41,10 +42,7 @@ class Data(Dataset):
             self.target = torch.zeros(size=(observations,))
 
         # filter by categorical columns,
-        # sort and group_by columnId
-        # create newColumnId from 1 (or zero?) until # catColumns
-        # select rowId and newColumnId
-        # rename newColumnId to columnId and sort by it
+        # select rowId and columnId
         data_cat = (
             data.filter(~pl.col("columnId").is_in(self.numerical_features))
             .select(pl.col("rowId"), pl.col("columnId"))
@@ -72,13 +70,19 @@ class Data(Dataset):
         if self.numerical_features.count() == 0:
             self.num = None
         else:
-            map_numerical = dict(zip(self.numerical_features.sort().to_list(),
-                                     list(range(len(self.numerical_features)))))
+            map_numerical = dict(
+                zip(
+                    self.numerical_features.sort().to_list(),
+                    list(range(len(self.numerical_features))),
+                )
+            )
 
             numerical_data = (
                 data.filter(pl.col("columnId").is_in(self.numerical_features))
-                .with_columns(pl.col("columnId").replace(map_numerical),
-                              pl.col("rowId") - 1)
+                .sort("columnId")
+                .with_columns(
+                    pl.col("columnId").replace(map_numerical), pl.col("rowId") - 1
+                )
                 .select(
                     pl.col("rowId"),
                     pl.col("columnId"),
@@ -124,3 +128,8 @@ class Data(Dataset):
         ):
             batch["num"] = batch["num"].unsqueeze(0)
         return [batch, self.target[item].squeeze()]
+
+
+
+
+

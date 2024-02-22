@@ -191,19 +191,18 @@ setTransformer <- function(numBlocks = 3,
       )]
     }))
   }
-  attr(param, "settings")$modelType <- "Transformer"
   results <- list(
     fitFunction = "DeepPatientLevelPrediction::fitEstimator",
     param = param,
     estimatorSettings = estimatorSettings,
-    modelType = "Transformer",
     saveType = "file",
     modelParamNames = c(
       "numBlocks", "dimToken", "dimOut", "numHeads",
       "attDropout", "ffnDropout", "resDropout", "dimHidden"
-    )
+    ),
+    modelType = "Transformer"
   )
-
+  attr(results$param, "settings")$modelType <- results$modelType
   class(results) <- "modelSettings"
   return(results)
 }

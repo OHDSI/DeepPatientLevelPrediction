@@ -22,11 +22,15 @@ createDataset <- function(data, labels, plpModel = NULL) {
     # sqlite object
     attributes(data)$path <- attributes(data)$dbname
   }
-  if (is.null(plpModel)) {
-    data <- dataset(
-      r_to_py(normalizePath(attributes(data)$path)),
-      r_to_py(labels$outcomeCount)
-    )
+  if (is.null(plpModel) && is.null(data$numericalIndex)) {
+    data <- dataset(r_to_py(normalizePath(attributes(data)$path)),
+                    r_to_py(labels$outcomeCount))
+  } else if (!is.null(data$numericalIndex)) {
+    numericalIndex <-
+      r_to_py(as.array(data$numericalIndex %>% dplyr::pull()))
+    data <- dataset(r_to_py(normalizePath(attributes(data)$path)),
+                    r_to_py(labels$outcomeCount),
+                    numericalIndex)
   } else {
     numericalFeatures <-
       r_to_py(as.array(which(plpModel$covariateImportance$isNumeric)))

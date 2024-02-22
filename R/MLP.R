@@ -100,19 +100,19 @@ setMultiLayerPerceptron <- function(numLayers = c(1:8),
       )]
     }))
   }
-  attr(param, "settings")$modelType <- "MLP"
-
   results <- list(
     fitFunction = "DeepPatientLevelPrediction::fitEstimator",
     param = param,
     estimatorSettings = estimatorSettings,
-    modelType = "MLP",
     saveType = "file",
     modelParamNames = c(
       "numLayers", "sizeHidden",
       "dropout", "sizeEmbedding"
-    )
+    ),
+    modelType = "MLP"
   )
+  attr(results$param, "settings")$modelType <- results$modelType
+
 
   class(results) <- "modelSettings"
 

@@ -155,10 +155,26 @@ fitEstimator <- function(trainData,
   if (!is.null(trainData$folds)) {
     trainData$labels <- merge(trainData$labels, trainData$fold, by = "rowId")
   }
-  mappedCovariateData <- PatientLevelPrediction::MapIds(
-    covariateData = trainData$covariateData,
-    cohort = trainData$labels
-  )
+
+  if (modelSettings$modelType == "Finetuner") {
+    # make sure to use same mapping from covariateIds to columns if finetuning
+    path <- modelSettings$param[[1]]$modelPath
+    oldCovImportance <- utils::read.csv(file.path(path,
+                                                  "covariateImportance.csv"))
+    mapping <- oldCovImportance %>% dplyr::select("columnId", "covariateId")
+    numericalIndex <- which(oldCovImportance %>% dplyr::pull("isNumeric"))
+    mappedCovariateData <- PatientLevelPrediction::MapIds(
+      covariateData = trainData$covariateData,
+      cohort = trainData$labels,
+      mapping = mapping
+    )
+    mappedCovariateData$numericalIndex <- as.data.frame(numericalIndex)
+  } else {
+    mappedCovariateData <- PatientLevelPrediction::MapIds(
+      covariateData = trainData$covariateData,
+      cohort = trainData$labels
+    )
+  }
 
   covariateRef <- mappedCovariateData$covariateRef
 
@@ -281,19 +297,13 @@ predictDeepEstimator <- function(plpModel,
   # get predictions
   prediction <- cohort
   if (is.character(plpModel$model)) {
-    modelSettings <- plpModel$modelDesign$modelSettings
-    model <- torch$load(
-      file.path(
-        plpModel$model,
-        "DeepEstimatorModel.pt"
-      ),
-      map_location = "cpu"
-    )
-    estimator <- createEstimator(
-      modelType = modelSettings$modelType,
-      modelParameters = model$model_parameters,
-      estimatorSettings = model$estimator_settings
-    )
+    model <- torch$load(file.path(plpModel$model,
+                                  "DeepEstimatorModel.pt"),                        map_location = "cpu")
+    estimator <-
+      createEstimator(modelParameters =
+                      snakeCaseToCamelCaseNames(model$model_parameters),
+                      estimatorSettings =
+                      snakeCaseToCamelCaseNames(model$estimator_settings))
     estimator$model$load_state_dict(model$model_state_dict)
     prediction$value <- estimator$predict_proba(data)
   } else {
@@ -323,11 +333,9 @@ gridCvDeep <- function(mappedData,
                        modelSettings,
                        modelLocation,
                        analysisPath) {
-  ParallelLogger::logInfo(paste0(
-    "Running hyperparameter search for ",
-    modelSettings$modelType, " model"
-  ))
-
+  ParallelLogger::logInfo(paste0("Running hyperparameter search for ",
+                                 modelSettings$modelType,
+                                 " model"))
   ###########################################################################
 
   paramSearch <- modelSettings$param
@@ -362,23 +370,19 @@ gridCvDeep <- function(mappedData,
         collapse = " | "
       ))
       currentModelParams <- paramSearch[[gridId]][modelSettings$modelParamNames]
-
+      attr(currentModelParams, "metaData")$names <-
+        modelSettings$modelParamNames
+      currentModelParams$modelType <- modelSettings$modelType
       currentEstimatorSettings <-
-        fillEstimatorSettings(
-          modelSettings$estimatorSettings,
-          fitParams,
-          paramSearch[[gridId]]
-        )
-      currentEstimatorSettings$modelType <- modelSettings$modelType
+        fillEstimatorSettings(modelSettings$estimatorSettings,
+                              fitParams,
+                              paramSearch[[gridId]])
       currentModelParams$catFeatures <- dataset$get_cat_features()$max()
       currentModelParams$numFeatures <-
-        dataset$get_numerical_features()$max()
+        dataset$get_numerical_features()$len()
       if (findLR) {
-        lrFinder <- createLRFinder(
-          modelType = modelSettings$modelType,
-          modelParameters = currentModelParams,
-          estimatorSettings = currentEstimatorSettings
-        )
+        lrFinder <- createLRFinder(modelParameters = currentModelParams,
+                                   estimatorSettings = currentEstimatorSettings)
         lr <- lrFinder$get_lr(dataset)
         ParallelLogger::logInfo(paste0("Auto learning rate selected as: ", lr))
         currentEstimatorSettings$learningRate <- lr
@@ -457,6 +461,7 @@ gridCvDeep <- function(mappedData,
 
   modelParams$catFeatures <- dataset$get_cat_features()$max()
   modelParams$numFeatures <- dataset$get_numerical_features()$len()
+  modelParams$modelType <- modelSettings$modelType
 
   estimatorSettings <- fillEstimatorSettings(
     modelSettings$estimatorSettings,
@@ -464,12 +469,8 @@ gridCvDeep <- function(mappedData,
     finalParam
   )
   estimatorSettings$learningRate <- finalParam$learnSchedule$LRs[[1]]
-  estimator <- createEstimator(
-    modelType = modelSettings$modelType,
-    modelParameters = modelParams,
-    estimatorSettings = estimatorSettings
-  )
-
+  estimator <- createEstimator(modelParameters = modelParams,
+                               estimatorSettings = estimatorSettings)
   numericalIndex <- dataset$get_numerical_features()
   estimator$fit_whole_training_set(dataset, finalParam$learnSchedule$LRs)
 
@@ -534,12 +535,22 @@ evalEstimatorSettings <- function(estimatorSettings) {
   estimatorSettings
 }
 
-createEstimator <- function(modelType,
-                            modelParameters,
+createEstimator <- function(modelParameters,
                             estimatorSettings) {
   path <- system.file("python", package = "DeepPatientLevelPrediction")
 
-  model <- reticulate::import_from_path(modelType, path = path)[[modelType]]
+  if (modelParameters$modelType == "Finetuner") {
+    estimatorSettings$finetune <- TRUE
+    plpModel <- PatientLevelPrediction::loadPlpModel(modelParameters$modelPath)
+    estimatorSettings$finetuneModelPath <-
+      file.path(normalizePath(plpModel$model), "DeepEstimatorModel.pt")
+    modelParameters$modelType <-
+      plpModel$modelDesign$modelSettings$modelType
+  }
+
+  model <-
+    reticulate::import_from_path(modelParameters$modelType,
+                                 path = path)[[modelParameters$modelType]]
   estimator <- reticulate::import_from_path("Estimator", path = path)$Estimator
 
   modelParameters <- camelCaseToSnakeCaseNames(modelParameters)
@@ -573,14 +584,10 @@ doCrossvalidation <- function(dataset,
 
     # -1 for python 0-based indexing
     testDataset <- torch$utils$data$Subset(dataset,
-      indices =
-        as.integer(which(fold == i) - 1)
-    )
-    estimator <- createEstimator(
-      modelType = estimatorSettings$modelType,
-      modelParameters = modelSettings,
-      estimatorSettings = estimatorSettings
-    )
+                                           indices =
+                                             as.integer(which(fold == i) - 1))
+    estimator <- createEstimator(modelParameters = modelSettings,
+                                 estimatorSettings = estimatorSettings)
     estimator$fit(trainDataset, testDataset)
 
     ParallelLogger::logInfo("Calculating predictions on left out fold set...")

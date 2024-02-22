@@ -150,18 +150,16 @@ setResNet <- function(numLayers = c(1:8),
       )]
     }))
   }
-  attr(param, "settings")$modelType <- "ResNet"
   results <- list(
     fitFunction = "DeepPatientLevelPrediction::fitEstimator",
     param = param,
     estimatorSettings = estimatorSettings,
-    modelType = "ResNet",
     saveType = "file",
-    modelParamNames = c(
-      "numLayers", "sizeHidden", "hiddenFactor",
-      "residualDropout", "hiddenDropout", "sizeEmbedding"
-    )
+    modelParamNames = c("numLayers", "sizeHidden", "hiddenFactor",
+                        "residualDropout", "hiddenDropout", "sizeEmbedding"),
+    modelType = "ResNet"
   )
+  attr(results$param, "settings")$modelType <- results$modelType
 
   class(results) <- "modelSettings"
 

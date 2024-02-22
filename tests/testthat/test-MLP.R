@@ -123,7 +123,7 @@ test_that("MLP nn-module works ", {
     activation = torch$nn$ReLU,
     normalization = torch$nn$BatchNorm1d,
     dropout = 0.3,
-    d_out = 1L
+    dim_out = 1L
   )
   output <- model(input)
   # model works without numeric variables

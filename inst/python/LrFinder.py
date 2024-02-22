@@ -19,7 +19,7 @@ class ExponentialSchedulerPerBatch(_LRScheduler):
 
 
 class LrFinder:
-    def __init__(self, model, model_parameters, estimator_settings, lr_settings):
+    def __init__(self, estimator, lr_settings=None):
         if lr_settings is None:
             lr_settings = {}
         min_lr = lr_settings.get("min_lr", 1e-7)
@@ -27,57 +27,49 @@ class LrFinder:
         num_lr = lr_settings.get("num_lr", 100)
         smooth = lr_settings.get("smooth", 0.05)
         divergence_threshold = lr_settings.get("divergence_threshold", 4)
-        torch.manual_seed(seed=estimator_settings["seed"])
-        self.seed = estimator_settings["seed"]
-        self.model = model(**model_parameters)
-        if callable(estimator_settings["device"]):
-            self.device = estimator_settings["device"]()
-        else:
-            self.device = estimator_settings["device"]
-        self.model.to(device=self.device)
+        torch.manual_seed(seed=estimator.seed)
+        self.seed = estimator.seed
+
         self.min_lr = min_lr
         self.max_lr = max_lr
         self.num_lr = num_lr
         self.smooth = smooth
         self.divergence_threshold = divergence_threshold
 
-        self.optimizer = estimator_settings["optimizer"](
-            params=self.model.parameters(), lr=self.min_lr
+        estimator.scheduler = ExponentialSchedulerPerBatch(
+            estimator.optimizer, self.max_lr, self.num_lr
         )
 
-        self.scheduler = ExponentialSchedulerPerBatch(
-            self.optimizer, self.max_lr, self.num_lr
-        )
-
-        self.criterion = estimator_settings["criterion"]()
-        self.batch_size = int(estimator_settings["batch_size"])
+        self.estimator = estimator
         self.losses = None
         self.loss_index = None
 
     def get_lr(self, dataset):
+        if len(dataset) < self.estimator.batch_size:
+            self.estimator.batch_size = len(dataset)
         batch_index = torch.arange(0, len(dataset), 1).tolist()
         random.seed(self.seed)
         losses = torch.empty(size=(self.num_lr,), dtype=torch.float)
         lrs = torch.empty(size=(self.num_lr,), dtype=torch.float)
         for i in tqdm(range(self.num_lr)):
-            self.optimizer.zero_grad()
-            random_batch = random.sample(batch_index, self.batch_size)
+            self.estimator.optimizer.zero_grad()
+            random_batch = random.sample(batch_index, self.estimator.batch_size)
             batch = dataset[random_batch]
-            batch = batch_to_device(batch, self.device)
+            batch = batch_to_device(batch, self.estimator.device)
 
-            out = self.model(batch[0])
-            loss = self.criterion(out, batch[1])
+            out = self.estimator.model(batch[0])
+            loss = self.estimator.criterion(out, batch[1])
             if self.smooth is not None and i != 0:
                 losses[i] = (
                     self.smooth * loss.item() + (1 - self.smooth) * losses[i - 1]
                 )
             else:
                 losses[i] = loss.item()
-            lrs[i] = self.optimizer.param_groups[0]["lr"]
+            lrs[i] = self.estimator.optimizer.param_groups[0]["lr"]
 
             loss.backward()
-            self.optimizer.step()
-            self.scheduler.step()
+            self.estimator.optimizer.step()
+            self.estimator.scheduler.step()
 
             if i == 0:
                 best_loss = losses[i]
