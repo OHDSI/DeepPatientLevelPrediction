@@ -26,7 +26,7 @@ class Estimator:
             self.model = model(**fitted_parameters)
             self.model.load_state_dict(fitted_estimator["model_state_dict"])
             for param in self.model.parameters():
-                param.requires_grad = False
+                param.requires_grad = True
             self.model.reset_head()
         else:
             self.model = model(**model_parameters)
