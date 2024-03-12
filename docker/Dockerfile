@@ -24,6 +24,9 @@ COPY setupProjectEnv.R setupProjectEnv.R
 RUN R cmd javareconf &&  \
     Rscript setupProjectEnv.R 
 
+RUN Rscript -e "remotes::install_github('ohdsi/PatientLevelPrediction')"
+RUN Rscript -e "remotes::install_github('ohdsi/DeepPatientLevelPrediction')"
+
 RUN Rscript -e "DatabaseConnector::downloadJdbcDrivers(dbms='all', pathToDriver='/database_drivers/')"
 
 # set up python
