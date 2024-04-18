@@ -1,3 +1,4 @@
+from os import walk
 import random
 
 import torch
@@ -39,7 +40,10 @@ class LrFinder:
         estimator.scheduler = ExponentialSchedulerPerBatch(
             estimator.optimizer, self.max_lr, self.num_lr
         )
-
+        if estimator.accumulation_steps > 1:
+            self.accumulation_steps = estimator.accumulation_steps
+        else:
+            self.accumulation_steps = 1
         self.estimator = estimator
         self.losses = None
         self.loss_index = None
@@ -51,31 +55,34 @@ class LrFinder:
         random.seed(self.seed)
         losses = torch.empty(size=(self.num_lr,), dtype=torch.float)
         lrs = torch.empty(size=(self.num_lr,), dtype=torch.float)
+        self.estimator.optimizer.zero_grad()
+        best_loss = float("inf")
         for i in tqdm(range(self.num_lr)):
-            self.estimator.optimizer.zero_grad()
-            random_batch = random.sample(batch_index, self.estimator.batch_size)
-            batch = dataset[random_batch]
-            batch = batch_to_device(batch, self.estimator.device)
+            lossValue = 0   
+            for _ in range(self.accumulation_steps):
+                random_batch = random.sample(batch_index, self.estimator.batch_size)
+                batch = dataset[random_batch]
+                batch = batch_to_device(batch, self.estimator.device)
 
-            out = self.estimator.model(batch[0])
-            loss = self.estimator.criterion(out, batch[1])
+                out = self.estimator.model(batch[0])
+                loss = self.estimator.criterion(out, batch[1])
+                loss.backward()
+                lossValue += loss.item()
+            lossValue = lossValue / self.accumulation_steps
             if self.smooth is not None and i != 0:
                 losses[i] = (
-                    self.smooth * loss.item() + (1 - self.smooth) * losses[i - 1]
+                    self.smooth * lossValue + (1 - self.smooth) * losses[i - 1]
                 )
             else:
-                losses[i] = loss.item()
+                losses[i] = lossValue 
             lrs[i] = self.estimator.optimizer.param_groups[0]["lr"]
 
-            loss.backward()
+            
             self.estimator.optimizer.step()
             self.estimator.scheduler.step()
 
-            if i == 0:
+            if losses[i] < best_loss:
                 best_loss = losses[i]
-            else:
-                if losses[i] < best_loss:
-                    best_loss = losses[i]
 
             if losses[i] > (self.divergence_threshold * best_loss):
                 print(

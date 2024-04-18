@@ -41,7 +41,13 @@ class Estimator:
         self.weight_decay = estimator_settings.get("weight_decay", 1e-5)
         self.batch_size = int(estimator_settings.get("batch_size", 1024))
         self.prefix = estimator_settings.get("prefix", self.model.name)
-
+        
+        if estimator_settings["accumulation_steps"]:
+            self.batch_size = int(self.batch_size / estimator_settings["accumulation_steps"])
+            self.accumulation_steps = int(estimator_settings["accumulation_steps"])
+        else:
+            self.accumulation_steps = 1
+        
         self.previous_epochs = int(estimator_settings.get("previous_epochs", 0))
         self.model.to(device=self.device)
 
@@ -163,14 +169,16 @@ class Estimator:
         training_losses = torch.empty(len(dataloader))
         self.model.train()
         index = 0
+        self.optimizer.zero_grad()
         for batch in tqdm(dataloader):
-            self.optimizer.zero_grad()
             batch = batch_to_device(batch, device=self.device)
             out = self.model(batch[0])
             loss = self.criterion(out, batch[1])
             loss.backward()
-
-            self.optimizer.step()
+            
+            if index % self.accumulation_steps == 0:
+                self.optimizer.step()
+                self.optimizer.zero_grad()
             training_losses[index] = loss.detach()
             index += 1
         return training_losses.mean().item()
