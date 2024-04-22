@@ -93,3 +93,29 @@ test_that("Loss is equal without dropout and layernorm",  {
   expect_equal(loss, lossWith)
   
 })
+
+test_that("LR finder works same with and without accumulation", {
+  modelParams$modelType <- "ResNet"
+  lrFinder <-
+    createLRFinder(modelParameters = modelParams,
+                   estimatorSettings = estimatorSettings,
+                   lrSettings = list(minLr = 1e-8,
+                                     maxLr = 0.01,
+                                     numLr = 10L,
+                                     divergenceThreshold = 1.1))
+
+  lr <- lrFinder$get_lr(dataset)
+  
+  estimatorSettings$accumulation_steps <- 2
+  lrFinderWith <- 
+    createLRFinder(modelParameters = modelParams,
+                   estimatorSettings = estimatorSettings,
+                   lrSettings = list(minLr = 1e-8,
+                                     maxLr = 0.01,
+                                     numLr = 10L,
+                                     divergenceThreshold = 1.1))
+  lrWith <- lrFinderWith$get_lr(dataset)
+  
+  expect_equal(lr, lrWith, tolerance = 1e-10)
+  
+})

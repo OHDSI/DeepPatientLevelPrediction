@@ -44,15 +44,18 @@ test_that("LR finder works", {
                           hidden_factor = 1L,
                           modelType = "ResNet"),
                    estimatorSettings = estimatorSettings,
-                   lrSettings = list(minLr = 3e-4,
-                                     maxLr = 10.0,
-                                     numLr = 20L,
+                   lrSettings = list(minLr = 1e-8,
+                                     maxLr = 0.01,
+                                     numLr = 10L,
                                      divergenceThreshold = 1.1))
-
+  
+  # initial LR should be the minLR
+  expect_equal(lrFinder$estimator$optimizer$param_groups[[1]]$lr, 1e-8)
+  
   lr <- lrFinder$get_lr(dataset)
-
-  expect_true(lr <= 10.0)
-  expect_true(lr >= 3e-4)
+  tol <- 1e-10
+  expect_lte(lr, 0.01 + tol)
+  expect_gte(lr, 1e-08 - tol)
 })
 
 test_that("LR finder works with device specified by a function", {
@@ -73,13 +76,13 @@ test_that("LR finder works with device specified by a function", {
     estimatorSettings = setEstimator(batchSize = 32L,
                                      seed = 42,
                                      device = deviceFun),
-    lrSettings = list(minLr = 3e-4,
-                      maxLr = 10.0,
-                      numLr = 20L,
+    lrSettings = list(minLr = 1e-6,
+                      maxLr = 0.03,
+                      numLr = 10L,
                       divergenceThreshold = 1.1)
   )
   lr <- lrFinder$get_lr(dataset)
-
-  expect_true(lr <= 10.0)
-  expect_true(lr >= 3e-4)
+  tol <- 1e-8
+  expect_lte(lr, 0.03 + tol) 
+  expect_gte(lr, 1e-6 - tol)
 })

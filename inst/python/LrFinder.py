@@ -32,6 +32,9 @@ class LrFinder:
         torch.manual_seed(seed=estimator.seed)
         self.seed = estimator.seed
 
+        for group in estimator.optimizer.param_groups:
+            group['lr'] = self.min_lr
+
         estimator.scheduler = ExponentialSchedulerPerBatch(
             estimator.optimizer, self.max_lr, self.num_lr
         )
