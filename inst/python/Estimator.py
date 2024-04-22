@@ -210,7 +210,7 @@ class Estimator:
                     predictions.append(pred)
                     targets.append(sub_batch[1])
                     accumulated_loss += self.criterion(pred.squeeze(), sub_batch[1]).detach()
-                loss[index] = accumulated_loss / self.accumulation_steps
+                loss[index] = accumulated_loss / self.batch_size
 
                 index += 1
             mean_loss = loss.mean().item()
