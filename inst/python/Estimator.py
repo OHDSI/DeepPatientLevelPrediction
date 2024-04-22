@@ -187,7 +187,7 @@ class Estimator:
             
             self.optimizer.step()
             self.optimizer.zero_grad()
-            training_losses[index] = accumulated_loss / self.accumulation_steps
+            training_losses[index] = accumulated_loss / self.batch_size
             index += 1
         return training_losses.mean().item()
 
@@ -286,7 +286,8 @@ class Estimator:
 
     def split_batch(self, batch):
         data, labels = batch
-        split_data = {key: list(torch.split(value, self.sub_batch_size)) for key, value in data.items()}
+        split_data = {key: list(torch.split(value, self.sub_batch_size))
+                      for key, value in data.items() if value is not None}
         split_labels = list(torch.split(labels, self.sub_batch_size))
 
         sub_batches = []
