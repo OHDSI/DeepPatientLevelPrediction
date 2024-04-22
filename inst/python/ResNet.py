@@ -19,9 +19,10 @@ class ResNet(nn.Module):
         residual_dropout=0,
         dim_out: int = 1,
         concat_num=True,
+        model_type="ResNet"
     ):
         super(ResNet, self).__init__()
-        self.name = "ResNet"
+        self.name = model_type
         cat_features = int(cat_features)
         num_features = int(num_features)
         size_embedding = int(size_embedding)
@@ -58,6 +59,8 @@ class ResNet(nn.Module):
         self.last_norm = normalization(size_hidden)
 
         self.head = nn.Linear(size_hidden, dim_out)
+        self.size_hidden = size_hidden
+        self.dim_out = dim_out
 
         self.last_act = activation()
 
@@ -86,6 +89,9 @@ class ResNet(nn.Module):
         x = self.head(x)
         x = x.squeeze(-1)
         return x
+
+    def reset_head(self):
+        self.head = nn.Linear(self.size_hidden, self.dim_out)
 
 
 class ResLayer(nn.Module):

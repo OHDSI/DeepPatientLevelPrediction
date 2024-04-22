@@ -1,3 +1,17 @@
+DeepPatientLevelPrediction 2.0.3
+======================
+  - Hotfix: Fix count for polars v0.20.x
+  
+DeepPatientLevelPrediction 2.0.2
+======================
+  - Ensure output from predict_proba is numeric instead of 1d array
+  - Refactoring: Move cross-validation to a separate function
+  - Refactoring: Move paramsToTune to a separate function 
+  - linting: Enforcing HADES style
+  - Calculate AUC ourselves with torch, get rid of scikit-learn dependancy
+  - added Andromeda to dev dependencies
+
+
 DeepPatientLevelPrediction 2.0.1
 ======================
   - Connection parameter fixed to be in line with newest polars

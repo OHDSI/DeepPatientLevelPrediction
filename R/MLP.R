@@ -43,11 +43,13 @@ setMultiLayerPerceptron <- function(numLayers = c(1:8),
                                     dropout = c(seq(0, 0.3, 0.05)),
                                     sizeEmbedding = c(2^(6:9)),
                                     estimatorSettings =
-                                      setEstimator(learningRate = "auto",
-                                                   weightDecay = c(1e-6, 1e-3),
-                                                   batchSize = 1024,
-                                                   epochs = 30,
-                                                   device = "cpu"),
+                                      setEstimator(
+                                        learningRate = "auto",
+                                        weightDecay = c(1e-6, 1e-3),
+                                        batchSize = 1024,
+                                        epochs = 30,
+                                        device = "cpu"
+                                      ),
                                     hyperParamSearch = "random",
                                     randomSample = 100,
                                     randomSampleSeed = NULL) {
@@ -81,31 +83,36 @@ setMultiLayerPerceptron <- function(numLayers = c(1:8),
 
   param <- PatientLevelPrediction::listCartesian(paramGrid)
   if (hyperParamSearch == "random" && randomSample > length(param)) {
-    stop(paste("\n Chosen amount of randomSamples is higher than the 
+    stop(paste(
+      "\n Chosen amount of randomSamples is higher than the
                amount of possible hyperparameter combinations.",
-               "\n randomSample:", randomSample, "\n Possible hyperparameter 
+      "\n randomSample:", randomSample, "\n Possible hyperparameter
                combinations:", length(param),
-               "\n Please lower the amount of randomSamples"))
+      "\n Please lower the amount of randomSamples"
+    ))
   }
 
   if (hyperParamSearch == "random") {
-    suppressWarnings(withr::with_seed(randomSampleSeed,
-                                      {param <- param[sample(length(param),
-                                                             randomSample)]}))
+    suppressWarnings(withr::with_seed(randomSampleSeed, {
+      param <- param[sample(
+        length(param),
+        randomSample
+      )]
+    }))
   }
-  attr(param, "settings")$modelType <- "MLP"
-
   results <- list(
-    fitFunction = "fitEstimator",
+    fitFunction = "DeepPatientLevelPrediction::fitEstimator",
     param = param,
     estimatorSettings = estimatorSettings,
-    modelType = "MLP",
     saveType = "file",
     modelParamNames = c(
       "numLayers", "sizeHidden",
       "dropout", "sizeEmbedding"
-    )
+    ),
+    modelType = "MLP"
   )
+  attr(results$param, "settings")$modelType <- results$modelType
+
 
   class(results) <- "modelSettings"
 

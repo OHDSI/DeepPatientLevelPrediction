@@ -42,24 +42,27 @@
 #' outputs a score.
 #' @param seed seed to initialize weights of model with
 #' @export
-setEstimator <- function(learningRate = "auto",
-  weightDecay = 0.0,
-  batchSize = 512,
-  epochs = 30,
-  device = "cpu",
-  optimizer = torch$optim$AdamW,
-  scheduler = list(fun = torch$optim$lr_scheduler$ReduceLROnPlateau,
-                   params = list(patience = 1)),
-  criterion = torch$nn$BCEWithLogitsLoss,
-  earlyStopping = list(useEarlyStopping = TRUE,
-                       params = list(patience = 4)),
-  metric = "auc",
-  seed = NULL
-) {
-
+setEstimator <- function(
+    learningRate = "auto",
+    weightDecay = 0.0,
+    batchSize = 512,
+    epochs = 30,
+    device = "cpu",
+    optimizer = torch$optim$AdamW,
+    scheduler = list(
+      fun = torch$optim$lr_scheduler$ReduceLROnPlateau,
+      params = list(patience = 1)
+    ),
+    criterion = torch$nn$BCEWithLogitsLoss,
+    earlyStopping = list(
+      useEarlyStopping = TRUE,
+      params = list(patience = 4)
+    ),
+    metric = "auc",
+    seed = NULL) {
   checkIsClass(learningRate, c("numeric", "character"))
   if (inherits(learningRate, "character") && learningRate != "auto") {
-    stop(paste0('Learning rate should be either a numeric or "auto", 
+    stop(paste0('Learning rate should be either a numeric or "auto",
                 you provided: ', learningRate))
   }
   checkIsClass(weightDecay, "numeric")
@@ -81,34 +84,44 @@ setEstimator <- function(learningRate = "auto",
   if (is.null(seed)) {
     seed <- as.integer(sample(1e5, 1))
   }
-  estimatorSettings <- list(learningRate = learningRate,
-                            weightDecay = weightDecay,
-                            batchSize = batchSize,
-                            epochs = epochs,
-                            device = device,
-                            earlyStopping = earlyStopping,
-                            findLR = findLR,
-                            metric = metric,
-                            seed = seed[1])
+  estimatorSettings <- list(
+    learningRate = learningRate,
+    weightDecay = weightDecay,
+    batchSize = batchSize,
+    epochs = epochs,
+    device = device,
+    earlyStopping = earlyStopping,
+    findLR = findLR,
+    metric = metric,
+    seed = seed[1]
+  )
 
   optimizer <- rlang::enquo(optimizer)
   estimatorSettings$optimizer <- function() rlang::eval_tidy(optimizer)
-  class(estimatorSettings$optimizer) <- c("delayed",
-                                          class(estimatorSettings$optimizer))
+  class(estimatorSettings$optimizer) <- c(
+    "delayed",
+    class(estimatorSettings$optimizer)
+  )
 
   criterion <- rlang::enquo(criterion)
   estimatorSettings$criterion <- function() rlang::eval_tidy(criterion)
-  class(estimatorSettings$criterion) <- c("delayed",
-                                          class(estimatorSettings$criterion))
+  class(estimatorSettings$criterion) <- c(
+    "delayed",
+    class(estimatorSettings$criterion)
+  )
 
   scheduler <- rlang::enquo(scheduler)
   estimatorSettings$scheduler <- function() rlang::eval_tidy(scheduler)
-  class(estimatorSettings$scheduler) <- c("delayed",
-                                          class(estimatorSettings$scheduler))
+  class(estimatorSettings$scheduler) <- c(
+    "delayed",
+    class(estimatorSettings$scheduler)
+  )
 
   if (is.function(device)) {
-    class(estimatorSettings$device) <- c("delayed",
-                                         class(estimatorSettings$device))
+    class(estimatorSettings$device) <- c(
+      "delayed",
+      class(estimatorSettings$device)
+    )
   }
 
   estimatorSettings$paramsToTune <- extractParamsToTune(estimatorSettings)
@@ -142,10 +155,26 @@ fitEstimator <- function(trainData,
   if (!is.null(trainData$folds)) {
     trainData$labels <- merge(trainData$labels, trainData$fold, by = "rowId")
   }
-  mappedCovariateData <- PatientLevelPrediction::MapIds(
-    covariateData = trainData$covariateData,
-    cohort = trainData$labels
-  )
+
+  if (modelSettings$modelType == "Finetuner") {
+    # make sure to use same mapping from covariateIds to columns if finetuning
+    path <- modelSettings$param[[1]]$modelPath
+    oldCovImportance <- utils::read.csv(file.path(path,
+                                                  "covariateImportance.csv"))
+    mapping <- oldCovImportance %>% dplyr::select("columnId", "covariateId")
+    numericalIndex <- which(oldCovImportance %>% dplyr::pull("isNumeric"))
+    mappedCovariateData <- PatientLevelPrediction::MapIds(
+      covariateData = trainData$covariateData,
+      cohort = trainData$labels,
+      mapping = mapping
+    )
+    mappedCovariateData$numericalIndex <- as.data.frame(numericalIndex)
+  } else {
+    mappedCovariateData <- PatientLevelPrediction::MapIds(
+      covariateData = trainData$covariateData,
+      cohort = trainData$labels
+    )
+  }
 
   covariateRef <- mappedCovariateData$covariateRef
 
@@ -161,13 +190,16 @@ fitEstimator <- function(trainData,
     )
   )
 
-  hyperSummary <- do.call(rbind, lapply(cvResult$paramGridSearch,
-                                        function(x) x$hyperSummary))
+  hyperSummary <- do.call(rbind, lapply(
+    cvResult$paramGridSearch,
+    function(x) x$hyperSummary
+  ))
   prediction <- cvResult$prediction
   incs <- rep(1, covariateRef %>%
-                dplyr::tally() %>%
-                dplyr::collect() %>%
-                as.integer())
+      dplyr::tally() %>%
+      dplyr::collect() %>%
+      as.integer()
+  )
   covariateRef <- covariateRef %>%
     dplyr::arrange("columnId") %>%
     dplyr::collect() %>%
@@ -180,26 +212,35 @@ fitEstimator <- function(trainData,
   comp <- start - Sys.time()
   result <- list(
     model = cvResult$estimator,
-
     preprocessing = list(
-      featureEngineering = attr(trainData$covariateData,
-                                "metaData")$featureEngineering,
-      tidyCovariates = attr(trainData$covariateData,
-                            "metaData")$tidyCovariateDataSettings,
+      featureEngineering = attr(
+        trainData$covariateData,
+        "metaData"
+      )$featureEngineering,
+      tidyCovariates = attr(
+        trainData$covariateData,
+        "metaData"
+      )$tidyCovariateDataSettings,
       requireDenseMatrix = FALSE
     ),
     prediction = prediction,
     modelDesign = PatientLevelPrediction::createModelDesign(
       targetId = attr(trainData, "metaData")$targetId,
       outcomeId = attr(trainData, "metaData")$outcomeId,
-      restrictPlpDataSettings = attr(trainData,
-                                     "metaData")$restrictPlpDataSettings,
+      restrictPlpDataSettings = attr(
+        trainData,
+        "metaData"
+      )$restrictPlpDataSettings,
       covariateSettings = attr(trainData, "metaData")$covariateSettings,
       populationSettings = attr(trainData, "metaData")$populationSettings,
-      featureEngineeringSettings = attr(trainData$covariateData,
-                                        "metaData")$featureEngineeringSettings,
-      preprocessSettings = attr(trainData$covariateData,
-                                "metaData")$preprocessSettings,
+      featureEngineeringSettings = attr(
+        trainData$covariateData,
+        "metaData"
+      )$featureEngineeringSettings,
+      preprocessSettings = attr(
+        trainData$covariateData,
+        "metaData"
+      )$preprocessSettings,
       modelSettings = modelSettings,
       splitSettings = attr(trainData, "metaData")$splitSettings,
       sampleSettings = attr(trainData, "metaData")$sampleSettings
@@ -219,7 +260,8 @@ fitEstimator <- function(trainData,
   )
 
   class(result) <- "plpModel"
-  attr(result, "predictionFunction") <- "predictDeepEstimator"
+  attr(result, "predictionFunction") <-
+    "DeepPatientLevelPrediction::predictDeepEstimator"
   attr(result, "modelType") <- "binary"
   attr(result, "saveType") <- modelSettings$saveType
 
@@ -255,19 +297,19 @@ predictDeepEstimator <- function(plpModel,
   # get predictions
   prediction <- cohort
   if (is.character(plpModel$model)) {
-    modelSettings <- plpModel$modelDesign$modelSettings
     model <- torch$load(file.path(plpModel$model,
-                                  "DeepEstimatorModel.pt"),
-                        map_location = "cpu")
-    estimator <- createEstimator(modelType = modelSettings$modelType,
-                                 modelParameters = model$model_parameters,
-                                 estimatorSettings = model$estimator_settings)
+                                  "DeepEstimatorModel.pt"),                        map_location = "cpu")
+    estimator <-
+      createEstimator(modelParameters =
+                      snakeCaseToCamelCaseNames(model$model_parameters),
+                      estimatorSettings =
+                      snakeCaseToCamelCaseNames(model$estimator_settings))
     estimator$model$load_state_dict(model$model_state_dict)
     prediction$value <- estimator$predict_proba(data)
   } else {
     prediction$value <- plpModel$model$predict_proba(data)
   }
-
+  prediction$value <- as.numeric(prediction$value)
   attr(prediction, "metaData")$modelType <- attr(plpModel, "modelType")
 
   return(prediction)
@@ -292,8 +334,8 @@ gridCvDeep <- function(mappedData,
                        modelLocation,
                        analysisPath) {
   ParallelLogger::logInfo(paste0("Running hyperparameter search for ",
-                                 modelSettings$modelType, " model"))
-
+                                 modelSettings$modelType,
+                                 " model"))
   ###########################################################################
 
   paramSearch <- modelSettings$param
@@ -311,44 +353,96 @@ gridCvDeep <- function(mappedData,
 
   dataset <- createDataset(data = mappedData, labels = labels)
 
+  fitParams <- names(paramSearch[[1]])[grepl(
+    "^estimator",
+    names(paramSearch[[1]])
+  )]
+  findLR <- modelSettings$estimatorSettings$findLR
   if (!trainCache$isFull()) {
     for (gridId in trainCache$getLastGridSearchIndex():length(paramSearch)) {
-      ParallelLogger::logInfo(paste0("Running hyperparameter combination no ",
-                                     gridId))
+      ParallelLogger::logInfo(paste0(
+        "Running hyperparameter combination no ",
+        gridId
+      ))
       ParallelLogger::logInfo(paste0("HyperParameters: "))
       ParallelLogger::logInfo(paste(names(paramSearch[[gridId]]),
-                                    paramSearch[[gridId]], collapse = " | "))
+        paramSearch[[gridId]],
+        collapse = " | "
+      ))
+      currentModelParams <- paramSearch[[gridId]][modelSettings$modelParamNames]
+      attr(currentModelParams, "metaData")$names <-
+        modelSettings$modelParamNames
+      currentModelParams$modelType <- modelSettings$modelType
+      currentEstimatorSettings <-
+        fillEstimatorSettings(modelSettings$estimatorSettings,
+                              fitParams,
+                              paramSearch[[gridId]])
+      currentModelParams$catFeatures <- dataset$get_cat_features()$max()
+      currentModelParams$numFeatures <-
+        dataset$get_numerical_features()$len()
+      if (findLR) {
+        lrFinder <- createLRFinder(modelParameters = currentModelParams,
+                                   estimatorSettings = currentEstimatorSettings)
+        lr <- lrFinder$get_lr(dataset)
+        ParallelLogger::logInfo(paste0("Auto learning rate selected as: ", lr))
+        currentEstimatorSettings$learningRate <- lr
+      }
 
-      gridSearchPredictions[[gridId]] <-
-        doCrossValidation(dataset,
-                          labels = labels,
-                          modelSettings = modelSettings,
-                          params = paramSearch[[gridId]])
+      crossValidationResults <-
+        doCrossvalidation(dataset,
+          labels = labels,
+          modelSettings = currentModelParams,
+          estimatorSettings = currentEstimatorSettings
+        )
+      learnRates <- crossValidationResults$learnRates
+      prediction <- crossValidationResults$prediction
 
+      gridPerformance <-
+        PatientLevelPrediction::computeGridPerformance(
+          prediction,
+          paramSearch[[gridId]]
+        )
+      maxIndex <- which.max(unlist(sapply(learnRates, `[`, 2)))
+      gridSearchPredictons[[gridId]] <- list(
+        prediction = prediction,
+        param = paramSearch[[gridId]],
+        gridPerformance = gridPerformance
+      )
+      gridSearchPredictons[[gridId]]$gridPerformance$hyperSummary$learnRates <-
+        rep(
+          list(unlist(learnRates[[maxIndex]]$LRs)),
+          nrow(gridSearchPredictons[[gridId]]$gridPerformance$hyperSummary)
+        )
+      gridSearchPredictons[[gridId]]$param$learnSchedule <-
+        learnRates[[maxIndex]]
       # remove all predictions that are not the max performance
       indexOfMax <-
-        which.max(unlist(lapply(gridSearchPredictions,
-                                function(x) x$gridPerformance$cvPerformance)))
-      # when first iteration runs out of memory, indexOfMax is empty
-      if (length(indexOfMax) == 0) {indexOfMax <- 0}
-      for (i in seq_along(gridSearchPredictions)) {
-        if (!is.null(gridSearchPredictions[[i]]) && i != indexOfMax) {
-          gridSearchPredictions[[i]]$prediction <- list(NULL)
+        which.max(unlist(lapply(
+          gridSearchPredictons,
+          function(x) x$gridPerformance$cvPerformance
+        )))
+      for (i in seq_along(gridSearchPredictons)) {
+        if (!is.null(gridSearchPredictons[[i]]) && i != indexOfMax) {
+          gridSearchPredictons[[i]]$prediction <- list(NULL)
         }
       }
-      ParallelLogger::logInfo(paste0("Caching all grid search results and 
+      ParallelLogger::logInfo(paste0(
+        "Caching all grid search results and
                                      prediction for best combination ",
-                                     indexOfMax))
-      trainCache$saveGridSearchPredictions(gridSearchPredictions)
+        indexOfMax
+      ))
+      trainCache$saveGridSearchPredictions(gridSearchPredictons)
     }
   }
   paramGridSearch <- lapply(gridSearchPredictions,
                             function(x) x$gridPerformance)
   # get best params
   indexOfMax <-
-    which.max(unlist(lapply(gridSearchPredictions,
-                            function(x) x$gridPerformance$cvPerformance)))
-  finalParam <- gridSearchPredictions[[indexOfMax]]$param
+    which.max(unlist(lapply(
+      gridSearchPredictons,
+      function(x) x$gridPerformance$cvPerformance
+    )))
+  finalParam <- gridSearchPredictons[[indexOfMax]]$param
 
   paramGridSearch <- lapply(gridSearchPredictions,
                             function(x) x$gridPerformance)
@@ -367,20 +461,18 @@ gridCvDeep <- function(mappedData,
     dir.create(file.path(modelLocation), recursive = TRUE)
   }
 
-  modelParams$catFeatures <- dataset$get_cat_features()$shape[[1]]
-  modelParams$numFeatures <- dataset$get_numerical_features()$shape[[1]]
+  modelParams$catFeatures <- dataset$get_cat_features()$max()
+  modelParams$numFeatures <- dataset$get_numerical_features()$len()
+  modelParams$modelType <- modelSettings$modelType
 
-  fitParams <- names(paramSearch[[1]])[grepl("^estimator",
-                                             names(paramSearch[[1]]))]
-  estimatorSettings <-
-    fillEstimatorSettings(modelSettings$estimatorSettings,
-                          fitParams,
-                          finalParam)
+  estimatorSettings <- fillEstimatorSettings(
+    modelSettings$estimatorSettings,
+    fitParams,
+    finalParam
+  )
   estimatorSettings$learningRate <- finalParam$learnSchedule$LRs[[1]]
-  estimator <- createEstimator(modelType = modelSettings$modelType,
-                               modelParameters = modelParams,
+  estimator <- createEstimator(modelParameters = modelParams,
                                estimatorSettings = estimatorSettings)
-
   numericalIndex <- dataset$get_numerical_features()
   estimator$fit_whole_training_set(dataset, finalParam$learnSchedule$LRs)
 
@@ -401,7 +493,8 @@ gridCvDeep <- function(mappedData,
     dplyr::select(-"index")
 
   prediction$cohortStartDate <- as.Date(prediction$cohortStartDate,
-                                        origin = "1970-01-01")
+    origin = "1970-01-01"
+  )
 
 
   # save torch code here
@@ -444,21 +537,33 @@ evalEstimatorSettings <- function(estimatorSettings) {
   estimatorSettings
 }
 
-createEstimator <- function(modelType,
-                            modelParameters,
+createEstimator <- function(modelParameters,
                             estimatorSettings) {
   path <- system.file("python", package = "DeepPatientLevelPrediction")
 
-  model <- reticulate::import_from_path(modelType, path = path)[[modelType]]
+  if (modelParameters$modelType == "Finetuner") {
+    estimatorSettings$finetune <- TRUE
+    plpModel <- PatientLevelPrediction::loadPlpModel(modelParameters$modelPath)
+    estimatorSettings$finetuneModelPath <-
+      file.path(normalizePath(plpModel$model), "DeepEstimatorModel.pt")
+    modelParameters$modelType <-
+      plpModel$modelDesign$modelSettings$modelType
+  }
+
+  model <-
+    reticulate::import_from_path(modelParameters$modelType,
+                                 path = path)[[modelParameters$modelType]]
   estimator <- reticulate::import_from_path("Estimator", path = path)$Estimator
 
   modelParameters <- camelCaseToSnakeCaseNames(modelParameters)
   estimatorSettings <- camelCaseToSnakeCaseNames(estimatorSettings)
   estimatorSettings <- evalEstimatorSettings(estimatorSettings)
 
-  estimator <- estimator(model = model,
-                         model_parameters = modelParameters,
-                         estimator_settings = estimatorSettings)
+  estimator <- estimator(
+    model = model,
+    model_parameters = modelParameters,
+    estimator_settings = estimatorSettings
+  )
   return(estimator)
 }
 
@@ -546,15 +651,15 @@ doCrossValidationImpl <- function(dataset,
 
     # -1 for python 0-based indexing
     trainDataset <- torch$utils$data$Subset(dataset,
-                                            indices =
-                                              as.integer(which(fold != i) - 1))
+      indices =
+        as.integer(which(fold != i) - 1)
+    )
 
     # -1 for python 0-based indexing
     testDataset <- torch$utils$data$Subset(dataset,
                                            indices =
                                              as.integer(which(fold == i) - 1))
-    estimator <- createEstimator(modelType = estimatorSettings$modelType,
-                                 modelParameters = modelParameters,
+    estimator <- createEstimator(modelParameters = modelSettings,
                                  estimatorSettings = estimatorSettings)
     estimator$fit(trainDataset, testDataset)
 
@@ -573,22 +678,10 @@ doCrossValidationImpl <- function(dataset,
       bestEpoch = estimator$best_epoch
     )
   }
-  gridPerformance <-
-    PatientLevelPrediction::computeGridPerformance(prediction,
-                                                   params)
-  maxIndex <- which.max(unlist(sapply(learnRates, `[`, 2)))
-  results <- list(
+  return(results = list(
     prediction = prediction,
-    param = params,
-    gridPerformance = gridPerformance
-  )
-  results$gridPerformance$hyperSummary$learnRates <-
-    rep(list(unlist(learnRates[[maxIndex]]$LRs)),
-        nrow(results$gridPerformance$hyperSummary))
-  results$param$learnSchedule <-
-    learnRates[[maxIndex]]
-  
-  return(results)
+    learnRates = learnRates
+  ))
 }
 
 

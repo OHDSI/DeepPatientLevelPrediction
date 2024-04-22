@@ -30,6 +30,7 @@ class Data(Dataset):
                 .n_unique()
                 .filter(pl.col("covariateValue") > 1)
                 .select("columnId")
+                .sort("columnId")
                 .collect()["columnId"]
             )
         else:
@@ -41,19 +42,11 @@ class Data(Dataset):
             self.target = torch.zeros(size=(observations,))
 
         # filter by categorical columns,
-        # sort and group_by columnId
-        # create newColumnId from 1 (or zero?) until # catColumns
-        # select rowId and newColumnId
-        # rename newColumnId to columnId and sort by it
+        # select rowId and columnId
         data_cat = (
             data.filter(~pl.col("columnId").is_in(self.numerical_features))
-            .sort(by="columnId")
-            .with_row_count("newColumnId")
-            .with_columns(
-                pl.col("newColumnId").first().over("columnId").rank(method="dense")
-            )
-            .select(pl.col("rowId"), pl.col("newColumnId").alias("columnId"))
-            .sort("rowId")
+            .select(pl.col("rowId"), pl.col("columnId"))
+            .sort(["rowId", "columnId"])
             .with_columns(pl.col("rowId") - 1)
             .collect()
         )
@@ -74,21 +67,25 @@ class Data(Dataset):
 
         # numerical data,
         # N x C, dense matrix with values for N patients/visits for C numerical features
-        if pl.count(self.numerical_features) == 0:
+        if self.numerical_features.count() == 0:
             self.num = None
         else:
+            map_numerical = dict(
+                zip(
+                    self.numerical_features.sort().to_list(),
+                    list(range(len(self.numerical_features))),
+                )
+            )
+
             numerical_data = (
                 data.filter(pl.col("columnId").is_in(self.numerical_features))
-                .sort(by="columnId")
-                .with_row_count("newColumnId")
+                .sort("columnId")
                 .with_columns(
-                    pl.col("newColumnId").first().over("columnId").rank(method="dense")
-                    - 1,
-                    pl.col("rowId") - 1,
+                    pl.col("columnId").replace(map_numerical), pl.col("rowId") - 1
                 )
                 .select(
                     pl.col("rowId"),
-                    pl.col("newColumnId").alias("columnId"),
+                    pl.col("columnId"),
                     pl.col("covariateValue"),
                 )
                 .collect()
@@ -103,7 +100,7 @@ class Data(Dataset):
             self.num = torch.sparse_coo_tensor(
                 indices=indices.T,
                 values=values.squeeze(),
-                size=(observations, pl.count(self.numerical_features)),
+                size=(observations, self.numerical_features.count()),
             ).to_dense()
         delta = time.time() - start
         print(f"Processed data in {delta:.2f} seconds")
@@ -131,3 +128,8 @@ class Data(Dataset):
         ):
             batch["num"] = batch["num"].unsqueeze(0)
         return [batch, self.target[item].squeeze()]
+
+
+
+
+

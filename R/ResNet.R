@@ -29,21 +29,25 @@
 
 #' @export
 setDefaultResNet <- function(estimatorSettings =
-                               setEstimator(learningRate = "auto",
-                                            weightDecay = 1e-6,
-                                            device = "cpu",
-                                            batchSize = 1024,
-                                            epochs = 50,
-                                            seed = NULL)) {
-  resnetSettings <- setResNet(numLayers = 6,
-                              sizeHidden = 512,
-                              hiddenFactor = 2,
-                              residualDropout = 0.1,
-                              hiddenDropout = 0.4,
-                              sizeEmbedding = 256,
-                              estimatorSettings = estimatorSettings,
-                              hyperParamSearch = "random",
-                              randomSample = 1)
+                               setEstimator(
+                                 learningRate = "auto",
+                                 weightDecay = 1e-6,
+                                 device = "cpu",
+                                 batchSize = 1024,
+                                 epochs = 50,
+                                 seed = NULL
+                               )) {
+  resnetSettings <- setResNet(
+    numLayers = 6,
+    sizeHidden = 512,
+    hiddenFactor = 2,
+    residualDropout = 0.1,
+    hiddenDropout = 0.4,
+    sizeEmbedding = 256,
+    estimatorSettings = estimatorSettings,
+    hyperParamSearch = "random",
+    randomSample = 1
+  )
   attr(resnetSettings, "settings")$name <- "defaultResnet"
   return(resnetSettings)
 }
@@ -83,12 +87,14 @@ setResNet <- function(numLayers = c(1:8),
                       hiddenDropout = c(seq(0, 0.5, 0.05)),
                       sizeEmbedding = c(2^(6:9)),
                       estimatorSettings =
-                        setEstimator(learningRate = "auto",
-                                     weightDecay = c(1e-6, 1e-3),
-                                     device = "cpu",
-                                     batchSize = 1024,
-                                     epochs = 30,
-                                     seed = NULL),
+                        setEstimator(
+                          learningRate = "auto",
+                          weightDecay = c(1e-6, 1e-3),
+                          device = "cpu",
+                          batchSize = 1024,
+                          epochs = 30,
+                          seed = NULL
+                        ),
                       hyperParamSearch = "random",
                       randomSample = 100,
                       randomSampleSeed = NULL) {
@@ -114,39 +120,46 @@ setResNet <- function(numLayers = c(1:8),
 
   checkIsClass(randomSampleSeed, c("numeric", "integer", "NULL"))
 
-  paramGrid <- list(numLayers = numLayers,
-                    sizeHidden = sizeHidden,
-                    hiddenFactor = hiddenFactor,
-                    residualDropout = residualDropout,
-                    hiddenDropout = hiddenDropout,
-                    sizeEmbedding = sizeEmbedding)
+  paramGrid <- list(
+    numLayers = numLayers,
+    sizeHidden = sizeHidden,
+    hiddenFactor = hiddenFactor,
+    residualDropout = residualDropout,
+    hiddenDropout = hiddenDropout,
+    sizeEmbedding = sizeEmbedding
+  )
 
   paramGrid <- c(paramGrid, estimatorSettings$paramsToTune)
 
   param <- PatientLevelPrediction::listCartesian(paramGrid)
 
   if (hyperParamSearch == "random" && randomSample > length(param)) {
-    stop(paste("\n Chosen amount of randomSamples is higher than the amount of 
+    stop(paste(
+      "\n Chosen amount of randomSamples is higher than the amount of
                possible hyperparameter combinations.", "\n randomSample:",
-               randomSample, "\n Possible hyperparameter combinations:",
-               length(param), "\n Please lower the amount of randomSamples"))
+      randomSample, "\n Possible hyperparameter combinations:",
+      length(param), "\n Please lower the amount of randomSamples"
+    ))
   }
 
   if (hyperParamSearch == "random") {
-    suppressWarnings(withr::with_seed(randomSampleSeed,
-                                      {param <- param[sample(length(param),
-                                                             randomSample)]}))
+    suppressWarnings(withr::with_seed(randomSampleSeed, {
+      param <- param[sample(
+        length(param),
+        randomSample
+      )]
+    }))
   }
-  attr(param, "settings")$modelType <- "ResNet"
   results <- list(
-    fitFunction = "fitEstimator",
+    fitFunction = "DeepPatientLevelPrediction::fitEstimator",
     param = param,
     estimatorSettings = estimatorSettings,
-    modelType = "ResNet",
     saveType = "file",
     modelParamNames = c("numLayers", "sizeHidden", "hiddenFactor",
-                        "residualDropout", "hiddenDropout", "sizeEmbedding")
+                        "residualDropout", "hiddenDropout", "sizeEmbedding"),
+    modelType = "ResNet"
   )
+  attr(results$param, "settings")$modelType <- results$modelType
 
   class(results) <- "modelSettings"
 
