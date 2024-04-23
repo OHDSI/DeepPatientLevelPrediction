@@ -389,7 +389,7 @@ gridCvDeep <- function(mappedData,
       }
 
       crossValidationResults <-
-        doCrossvalidation(dataset,
+        doCrossValidation(dataset,
           labels = labels,
           modelSettings = currentModelParams,
           estimatorSettings = currentEstimatorSettings
@@ -570,12 +570,12 @@ createEstimator <- function(modelParameters,
 doCrossValidation <- function(dataset,
                               labels,
                               modelSettings,
-                              params) {
+                              estimatorSettings) {
   crossValidationResults <-
     tryCatch(doCrossValidationImpl(dataset,
                                    labels,
                                    modelSettings,
-                                   params),
+                                   estimatorSettings),
              error = function(e) {
                if (inherits(e, "torch.cuda.OutOfMemoryError")) {
                  # do nothing
