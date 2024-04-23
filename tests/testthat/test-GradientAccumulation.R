@@ -1,8 +1,8 @@
 
-covariates <- data.frame(rowId = as.integer(c(1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4)),
-                         columnId = as.integer(c(1, 4, 5, 2, 4, 0, 3, 1, 0, 4, 2, 5)),
-                         covariateValue = c(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1))
-labels <- c(1, 0, 1, 0)
+covariates <- data.frame(rowId = as.integer(c(1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5)),
+                         columnId = as.integer(c(1, 4, 5, 2, 4, 0, 3, 1, 0, 4, 2, 5, 3, 1, 0)),
+                         covariateValue = c(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1))
+labels <- c(1, 0, 1, 0, 0)
 data <- Andromeda::andromeda(covariates = covariates)
 data <- attr(data, "dbname")
 Data <- reticulate::import_from_path("Dataset", path = path)$Data

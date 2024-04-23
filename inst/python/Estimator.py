@@ -171,17 +171,14 @@ class Estimator:
         index = 0
         self.optimizer.zero_grad()
         for batch in tqdm(dataloader):
-            if self.accumulation_steps > 1:
-                working_batch = self.split_batch(batch)
-            else:
-                working_batch = [batch]
+            split_batch = self.split_batch(batch)
             accumulated_loss = 0
             all_out = []
-            for sub_batch in working_batch:
+            for sub_batch in split_batch:
                 sub_batch = batch_to_device(sub_batch, device=self.device)
                 out = self.model(sub_batch[0])
                 all_out.append(out.detach())
-                loss = self.criterion(out, sub_batch[1])
+                loss = self.criterion(out.squeeze(), sub_batch[1])
                 loss.backward()
                 accumulated_loss += loss.detach()
             
@@ -199,12 +196,9 @@ class Estimator:
             self.model.eval()
             index = 0
             for batch in tqdm(dataloader):
-                if self.accumulation_steps > 1:
-                    batch = self.split_batch(batch)
-                else:
-                    batch = [batch]
+                split_batch = self.split_batch(batch)
                 accumulated_loss = 0
-                for sub_batch in batch:
+                for sub_batch in split_batch:
                     sub_batch = batch_to_device(sub_batch, device=self.device)
                     pred = self.model(sub_batch[0])
                     predictions.append(pred)
@@ -285,16 +279,19 @@ class Estimator:
         return
 
     def split_batch(self, batch):
-        data, labels = batch
-        split_data = {key: list(torch.split(value, self.sub_batch_size))
-                      for key, value in data.items() if value is not None}
-        split_labels = list(torch.split(labels, self.sub_batch_size))
+        if self.accumulation_steps > 1 and len(batch[0]["cat"]) > self.sub_batch_size:
+            data, labels = batch
+            split_data = {key: list(torch.split(value, self.sub_batch_size))
+                          for key, value in data.items() if value is not None}
+            split_labels = list(torch.split(labels, self.sub_batch_size))
 
-        sub_batches = []
-        for i in range(self.accumulation_steps):
-            sub_batch = {key: value[i] for key, value in split_data.items()}
-            sub_batch = [sub_batch, split_labels[i]]
-            sub_batches.append(sub_batch)
+            sub_batches = []
+            for i in range(self.accumulation_steps):
+                sub_batch = {key: value[i] for key, value in split_data.items()}
+                sub_batch = [sub_batch, split_labels[i]]
+                sub_batches.append(sub_batch)
+        else:
+            sub_batches = [batch]
         return sub_batches
 
     def fit_whole_training_set(self, dataset, learning_rates=None):
@@ -345,11 +342,8 @@ class Estimator:
             predictions = list()
             self.model.eval()
             for batch in tqdm(dataloader):
-                if self.accumulation_steps > 1:
-                    batch = self.split_batch(batch)
-                else:
-                    batch = [batch]
-                for sub_batch in batch:
+                split_batch = self.split_batch(batch)
+                for sub_batch in split_batch:
                     sub_batch = batch_to_device(sub_batch, device=self.device)
                     pred = self.model(sub_batch[0])
                     predictions.append(torch.sigmoid(pred))
