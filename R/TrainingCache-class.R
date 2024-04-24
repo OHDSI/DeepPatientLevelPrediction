@@ -98,6 +98,46 @@ trainingCache <- R6::R6Class(
     #' Remove the training cache from the analysis path
     dropCache = function() {
       # TODO
+    },
+    
+    #' @description
+    #' Trims the performance of the hyperparameter results by removing 
+    #' the predictions from all but the best performing hyperparameter 
+    trimPerformance = function(hyperparameterResults) {
+      indexOfMax <-
+        which.max(unlist(
+          lapply(hyperparameterResults,
+                 function(x)
+                   x$gridPerformance$cvPerformance)
+        ))
+      if (length(indexOfMax) != 0) {
+        for (i in seq_along(hyperparameterResults)) {
+          if (!is.null(hyperparameterResults[[i]]) && i != indexOfMax) {
+            hyperparameterResults[[i]]$prediction <- list(NULL)
+          }
+        }
+        ParallelLogger::logInfo(
+          paste0(
+            "Caching all grid search results and
+                                     prediction for best combination ",
+            indexOfMax
+          )
+        )
+      }
+      return(hyperparameterResults)
     }
   )
 )
+
+setupCache <- function(analysisPath, parameters) {
+  trainCache <- trainingCache$new(analysisPath)
+  if (trainCache$isParamGridIdentical(parameters)) {
+    hyperparameterResults <- trainCache$getGridSearchPredictions()
+  } else {
+    hyperparameterResults <- list()
+    length(hyperparameterResults) <- length(parameters)
+    trainCache$saveGridSearchPredictions(hyperparameterResults)
+    trainCache$saveModelParams(parameters)
+  }
+  return(trainCache)
+}
