@@ -78,7 +78,7 @@ jobs:
         shell: Rscript {0}
         run: |
           python_packages <- 
-            c("polars", "tqdm", "connectorx", "pyarrow", "scikit-learn")
+            c("polars", "tqdm", "connectorx", "pyarrow", "pynvml")
           
           library(reticulate)
           virtualenv_create("r-reticulate", Sys.which("python"))
@@ -88,9 +88,6 @@ jobs:
           path_to_python <- virtualenv_python("r-reticulate")
           writeLines(sprintf("RETICULATE_PYTHON=%s", path_to_python),
                      Sys.getenv("GITHUB_ENV"))
-      
-      - name: Setup upterm session
-        uses: lhotari/action-upterm@v1
       
       - uses: r-lib/actions/check-r-package@v2
         with:
