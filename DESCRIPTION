@@ -52,6 +52,7 @@ Config/reticulate:
       list(package = "polars"),
       list(package = "tqdm"),
       list(package = "connectorx"),
-      list(package = "pyarrow")
+      list(package = "pyarrow"),
+      list(package = "pynvml")
       )
   )
