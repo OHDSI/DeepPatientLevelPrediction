@@ -32,24 +32,19 @@ test_that("LR scheduler that changes per batch works", {
 test_that("LR finder works", {
   estimatorSettings <- setEstimator(batchSize = 32L,
                                     seed = 42)
-  lrFinder <-
-    createLRFinder(modelParameters =
-                     list(cat_features =
-                            dataset$get_cat_features()$max(),
-                          num_features =
-                            dataset$get_numerical_features()$len(),
+  modelParameters <- list(cat_features = dataset$get_cat_features()$max(),
+                          num_features = dataset$get_numerical_features()$len(),
                           size_embedding = 32L,
                           size_hidden = 64L,
                           num_layers = 1L,
                           hidden_factor = 1L,
-                          modelType = "ResNet"),
-                   estimatorSettings = estimatorSettings,
-                   lrSettings = list(minLr = 3e-4,
-                                     maxLr = 10.0,
-                                     numLr = 20L,
-                                     divergenceThreshold = 1.1))
+                          modelType = "ResNet")
+  lrSettings <- list(minLr = 3e-4,
+                     maxLr = 10.0,
+                     numLr = 20L,
+                     divergenceThreshold = 1.1)
 
-  lr <- lrFinder$get_lr(dataset)
+  lr <- getLR(modelParameters, estimatorSettings, dataset, lrSettings)
 
   expect_true(lr <= 10.0)
   expect_true(lr >= 3e-4)
@@ -61,24 +56,22 @@ test_that("LR finder works with device specified by a function", {
     dev <- "cpu"
     dev
   }
-  lrFinder <- createLRFinder(
-    modelParameters =
-      list(cat_features = dataset$get_cat_features()$max(),
-           num_features = dataset$get_numerical_features()$len(),
-           size_embedding = 8L,
-           size_hidden = 16L,
-           num_layers = 1L,
-           hidden_factor = 1L,
-           modelType = "ResNet"),
-    estimatorSettings = setEstimator(batchSize = 32L,
-                                     seed = 42,
-                                     device = deviceFun),
-    lrSettings = list(minLr = 3e-4,
-                      maxLr = 10.0,
-                      numLr = 20L,
-                      divergenceThreshold = 1.1)
-  )
-  lr <- lrFinder$get_lr(dataset)
+  modelParameters <- list(cat_features = dataset$get_cat_features()$max(),
+                          num_features = dataset$get_numerical_features()$len(),
+                          size_embedding = 8L,
+                          size_hidden = 16L,
+                          num_layers = 1L,
+                          hidden_factor = 1L,
+                          modelType = "ResNet")
+  estimatorSettings <- setEstimator(batchSize = 32L,
+                                    seed = 42,
+                                    device = deviceFun)
+  lrSettings <- list(minLr = 3e-4,
+                     maxLr = 10.0,
+                     numLr = 20L,
+                     divergenceThreshold = 1.1)
+  
+  lr <- getLR(modelParameters, estimatorSettings, dataset, lrSettings)
 
   expect_true(lr <= 10.0)
   expect_true(lr >= 3e-4)

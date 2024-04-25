@@ -5,6 +5,7 @@ from torch.optim.lr_scheduler import _LRScheduler
 from tqdm import tqdm
 
 from Estimator import batch_to_device
+from gpu_memory_cleanup import memory_cleanup
 
 
 class ExponentialSchedulerPerBatch(_LRScheduler):
@@ -59,15 +60,16 @@ class LrFinder:
 
             out = self.estimator.model(batch[0])
             loss = self.estimator.criterion(out, batch[1])
+            loss.backward()
+            current_loss = loss.item()
             if self.smooth is not None and i != 0:
                 losses[i] = (
-                    self.smooth * loss.item() + (1 - self.smooth) * losses[i - 1]
+                        self.smooth * current_loss + (1 - self.smooth) * losses[i - 1]
                 )
             else:
-                losses[i] = loss.item()
-            lrs[i] = self.estimator.optimizer.param_groups[0]["lr"]
+                losses[i] = current_loss
+            lrs[i] = self.estimator.scheduler.get_lr()[0]
 
-            loss.backward()
             self.estimator.optimizer.step()
             self.estimator.scheduler.step()
 
@@ -90,7 +92,18 @@ class LrFinder:
         smallest_gradient = torch.argmin(gradient)
 
         suggested_lr = lrs[smallest_gradient]
-        self.losses = losses
-        self.loss_index = smallest_gradient
-        self.lrs = lrs
         return suggested_lr.item()
+
+
+def get_lr(estimator,
+           dataset,
+           lr_settings):
+    try:
+        lr_finder = LrFinder(estimator, lr_settings=lr_settings)
+        lr = lr_finder.get_lr(dataset)
+    except torch.cuda.OutOfMemoryError as e:
+        memory_cleanup()
+        raise e
+    return lr
+
+

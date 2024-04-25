@@ -298,7 +298,8 @@ predictDeepEstimator <- function(plpModel,
   prediction <- cohort
   if (is.character(plpModel$model)) {
     model <- torch$load(file.path(plpModel$model,
-                                  "DeepEstimatorModel.pt"),                        map_location = "cpu")
+                                  "DeepEstimatorModel.pt"),                        
+                        map_location = "cpu")
     estimator <-
       createEstimator(modelParameters =
                       snakeCaseToCamelCaseNames(model$model_parameters),
@@ -363,7 +364,6 @@ gridCvDeep <- function(mappedData,
           parameters = paramSearch[[gridId]],
           modelSettings = modelSettings
         )
-
      # remove all predictions that are not the max performance
      hyperparameterResults <- trainCache$trimPerformance(hyperparameterResults) 
      trainCache$saveGridSearchPredictions(hyperparameterResults)
@@ -491,7 +491,8 @@ doCrossValidation <- function(dataset,
              error = function(e) {
                if (inherits(e, "torch.cuda.OutOfMemoryError")) {
                  ParallelLogger::logError(
-                   "Out of memory error during cross validation, trying to continue with next hyperparameter combination"
+                   "Out of memory error during cross validation, 
+                   trying to continue with next hyperparameter combination"
                  )
                  crossValidationResults <- list()
                  crossValidationResults$prediction <- labels
@@ -569,13 +570,11 @@ doCrossValidationImpl <- function(dataset,
     fillEstimatorSettings(modelSettings$estimatorSettings,
                           fitParams,
                           parameters)
+  currentEstimatorSettings <- evalEstimatorSettings(currentEstimatorSettings)
   currentModelParams$catFeatures <- dataset$get_cat_features()$max()
-  currentModelParams$numFeatures <-
-    dataset$get_numerical_features()$len()
+  currentModelParams$numFeatures <- dataset$get_numerical_features()$len()
   if (currentEstimatorSettings$findLR) {
-    lrFinder <- createLRFinder(modelParameters = currentModelParams,
-                               estimatorSettings = currentEstimatorSettings)
-    lr <- lrFinder$get_lr(dataset)
+    lr <- getLR(currentModelParams, currentEstimatorSettings, dataset)
     ParallelLogger::logInfo(paste0("Auto learning rate selected as: ", lr))
     currentEstimatorSettings$learningRate <- lr
   }
@@ -584,6 +583,9 @@ doCrossValidationImpl <- function(dataset,
   ParallelLogger::logInfo(paste0("Max fold: ", max(fold)))
   learnRates <- list()
   prediction <- NULL
+  path <- system.file("python", package = "DeepPatientLevelPrediction")
+  fit_estimator <- reticulate::import_from_path("Estimator",
+                                                path = path)$fit_estimator
   for (i in 1:max(fold)) {
     ParallelLogger::logInfo(paste0("Fold ", i))
 
@@ -599,7 +601,7 @@ doCrossValidationImpl <- function(dataset,
                                              as.integer(which(fold == i) - 1))
     estimator <- createEstimator(modelParameters = currentModelParams,
                                  estimatorSettings = currentEstimatorSettings)
-    estimator$fit(trainDataset, testDataset)
+    fit_estimator(estimator, trainDataset, testDataset)
 
     ParallelLogger::logInfo("Calculating predictions on left out fold set...")
 

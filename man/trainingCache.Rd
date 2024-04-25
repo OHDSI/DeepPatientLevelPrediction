@@ -26,6 +26,7 @@ Parameter caching for training persistence and continuity
 \item \href{#method-TrainingCache-isFull}{\code{trainingCache$isFull()}}
 \item \href{#method-TrainingCache-getLastGridSearchIndex}{\code{trainingCache$getLastGridSearchIndex()}}
 \item \href{#method-TrainingCache-dropCache}{\code{trainingCache$dropCache()}}
+\item \href{#method-TrainingCache-trimPerformance}{\code{trainingCache$trimPerformance()}}
 \item \href{#method-TrainingCache-clone}{\code{trainingCache$clone()}}
 }
 }
@@ -135,6 +136,17 @@ Gets the last index from the cached grid search
 Remove the training cache from the analysis path
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{trainingCache$dropCache()}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-TrainingCache-trimPerformance"></a>}}
+\if{latex}{\out{\hypertarget{method-TrainingCache-trimPerformance}{}}}
+\subsection{Method \code{trimPerformance()}}{
+Trims the performance of the hyperparameter results by removing 
+the predictions from all but the best performing hyperparameter
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{trainingCache$trimPerformance(hyperparameterResults)}\if{html}{\out{</div>}}
 }
 
 }
