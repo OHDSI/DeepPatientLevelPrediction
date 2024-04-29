@@ -113,6 +113,7 @@
 <li><p><a href="#method-TrainingCache-isFull"><code>trainingCache$isFull()</code></a></p></li>
 <li><p><a href="#method-TrainingCache-getLastGridSearchIndex"><code>trainingCache$getLastGridSearchIndex()</code></a></p></li>
 <li><p><a href="#method-TrainingCache-dropCache"><code>trainingCache$dropCache()</code></a></p></li>
+<li><p><a href="#method-TrainingCache-trimPerformance"><code>trainingCache$trimPerformance()</code></a></p></li>
 <li><p><a href="#method-TrainingCache-clone"><code>trainingCache$clone()</code></a></p></li>
 </ul></div><p></p><hr><a id="method-TrainingCache-new"></a><div class="section">
 <h3 id="method-new-">Method <code>new()</code><a class="anchor" aria-label="anchor" href="#method-new-"></a></h3>
@@ -211,10 +212,19 @@ the cached parameters.</p><div class="section">
 </div>
 
 
+</div><p></p><hr><a id="method-TrainingCache-trimPerformance"></a><div class="section">
+<h3 id="method-trimperformance-">Method <code>trimPerformance()</code><a class="anchor" aria-label="anchor" href="#method-trimperformance-"></a></h3>
+<p>Trims the performance of the hyperparameter results by removing 
+the predictions from all but the best performing hyperparameter</p><div class="section">
+<h4 id="usage-8">Usage<a class="anchor" aria-label="anchor" href="#usage-8"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">trainingCache</span><span class="op">$</span><span class="fu">trimPerformance</span><span class="op">(</span><span class="va">hyperparameterResults</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div>
+
+
 </div><p></p><hr><a id="method-TrainingCache-clone"></a><div class="section">
 <h3 id="method-clone-">Method <code>clone()</code><a class="anchor" aria-label="anchor" href="#method-clone-"></a></h3>
 <p>The objects of this class are cloneable with this method.</p><div class="section">
-<h4 id="usage-8">Usage<a class="anchor" aria-label="anchor" href="#usage-8"></a></h4>
+<h4 id="usage-9">Usage<a class="anchor" aria-label="anchor" href="#usage-9"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">trainingCache</span><span class="op">$</span><span class="fu">clone</span><span class="op">(</span>deep <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
