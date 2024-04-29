@@ -5,6 +5,7 @@ import torch
 from torch.utils.data import DataLoader, BatchSampler, RandomSampler, SequentialSampler
 from tqdm import tqdm
 
+from gpu_memory_cleanup import memory_cleanup
 
 class Estimator:
     """
@@ -443,3 +444,12 @@ def compute_auc(y_true, y_pred):
     # Compute AUC
     auc = num_crossings / (n_pos * n_neg)
     return auc
+
+
+def fit_estimator(estimator, train, test):
+    try:
+        estimator.fit(train, test)
+    except torch.cuda.OutOfMemoryError as e:
+        memory_cleanup()
+        raise e
+    return estimator
