@@ -21,12 +21,11 @@
 #' @description A package containing deep learning extensions for developing
 #' prediction models using data in the OMOP CDM
 #'
-#' @docType package
 #' @name DeepPatientLevelPrediction
 #' @importFrom dplyr %>%
 #' @importFrom reticulate r_to_py py_to_r
 #' @importFrom rlang .data
-NULL
+"_PACKAGE"
 
 .onLoad <- function(libname, pkgname) {
   # use superassignment to update global reference

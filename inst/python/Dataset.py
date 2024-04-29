@@ -119,7 +119,7 @@ class Data(Dataset):
             batch = {"cat": self.cat[item, :], "num": self.num[item, :]}
         else:
             batch = {"cat": self.cat[item, :].squeeze(), "num": None}
-        if batch["cat"].dim() == 1 and not isinstance(item, list):
+        if batch["cat"].dim() == 1:
             batch["cat"] = batch["cat"].unsqueeze(0)
         if (
             batch["num"] is not None
