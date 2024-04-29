@@ -40,6 +40,8 @@
 #' `name`,
 #' `fun` needs to be a function that takes in prediction and labels and
 #' outputs a score.
+#' @param accumulationSteps how many steps to accumulate gradients before
+#' updating weights
 #' @param seed seed to initialize weights of model with
 #' @export
 setEstimator <- function(
@@ -59,6 +61,7 @@ setEstimator <- function(
       params = list(patience = 4)
     ),
     metric = "auc",
+    accumulationSteps = NULL,
     seed = NULL) {
   checkIsClass(learningRate, c("numeric", "character"))
   if (inherits(learningRate, "character") && learningRate != "auto") {
@@ -74,6 +77,14 @@ setEstimator <- function(
   checkIsClass(earlyStopping, c("list", "NULL"))
   checkIsClass(metric, c("character", "list"))
   checkIsClass(seed, c("numeric", "integer", "NULL"))
+  
+  if (!is.null(accumulationSteps)) {
+    checkHigher(accumulationSteps, 0)
+    checkIsClass(accumulationSteps, c("numeric", "integer"))
+    if (batchSize %% accumulationSteps != 0) {
+      stop("Batch size should be divisible by accumulation steps")
+    }
+  }
 
 
   if (length(learningRate) == 1 && learningRate == "auto") {
@@ -93,6 +104,7 @@ setEstimator <- function(
     earlyStopping = earlyStopping,
     findLR = findLR,
     metric = metric,
+    accumulationSteps = accumulationSteps,
     seed = seed[1]
   )
 
