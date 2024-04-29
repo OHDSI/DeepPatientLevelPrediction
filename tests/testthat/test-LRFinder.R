@@ -46,8 +46,8 @@ test_that("LR finder works", {
                    estimatorSettings = estimatorSettings,
                    lrSettings = list(minLr = 1e-8,
                                      maxLr = 0.01,
-                                     numLr = 10L,
-                                     divergenceThreshold = 1.1))
+                                     numLr = 20L,
+                                     divergenceThreshold = 1.1))  
   
   # initial LR should be the minLR
   expect_equal(lrFinder$estimator$optimizer$param_groups[[1]]$lr, 1e-8)
@@ -78,7 +78,7 @@ test_that("LR finder works with device specified by a function", {
                                      device = deviceFun),
     lrSettings = list(minLr = 1e-6,
                       maxLr = 0.03,
-                      numLr = 10L,
+                      numLr = 20L,
                       divergenceThreshold = 1.1)
   )
   lr <- lrFinder$get_lr(dataset)
