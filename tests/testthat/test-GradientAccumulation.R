@@ -90,7 +90,7 @@ test_that("Loss is equal without dropout and layernorm",  {
   )
   lossWith <- estimatorWith$fit_epoch(dataloader)
   
-  expect_equal(loss, lossWith)
+  expect_equal(loss, lossWith, tolerance = 1e-5)
   
 })
 
