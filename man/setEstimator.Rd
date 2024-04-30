@@ -30,8 +30,7 @@ setEstimator(
 \item{epochs}{how many epochs to train for}
 
 \item{device}{what device to train on, can be a string or a function to
-that evaluates
-to the device during runtime}
+that evaluates to the device during runtime}
 
 \item{optimizer}{which optimizer to use}
 
@@ -50,7 +49,7 @@ Needs to be a list with function `fun`, mode either `min` or `max` and a
 outputs a score.}
 
 \item{accumulationSteps}{how many steps to accumulate gradients before
-updating weights}
+updating weights, can also be a function that is evaluated during runtime}
 
 \item{seed}{seed to initialize weights of model with}
 }

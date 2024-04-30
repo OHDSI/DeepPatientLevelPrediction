@@ -27,8 +27,7 @@
 #' @param batchSize batchSize to use
 #' @param epochs  how many epochs to train for
 #' @param device  what device to train on, can be a string or a function to
-#' that evaluates
-#' to the device during runtime
+#' that evaluates to the device during runtime
 #' @param optimizer which optimizer to use
 #' @param scheduler which learning rate scheduler to use
 #' @param criterion loss function to use
@@ -41,7 +40,7 @@
 #' `fun` needs to be a function that takes in prediction and labels and
 #' outputs a score.
 #' @param accumulationSteps how many steps to accumulate gradients before
-#' updating weights
+#' updating weights, can also be a function that is evaluated during runtime
 #' @param seed seed to initialize weights of model with
 #' @export
 setEstimator <- function(
@@ -78,14 +77,13 @@ setEstimator <- function(
   checkIsClass(metric, c("character", "list"))
   checkIsClass(seed, c("numeric", "integer", "NULL"))
   
-  if (!is.null(accumulationSteps)) {
+  if (!is.null(accumulationSteps) && !is.function(accumulationSteps)) {
     checkHigher(accumulationSteps, 0)
     checkIsClass(accumulationSteps, c("numeric", "integer"))
     if (batchSize %% accumulationSteps != 0) {
       stop("Batch size should be divisible by accumulation steps")
     }
   }
-
 
   if (length(learningRate) == 1 && learningRate == "auto") {
     findLR <- TRUE
@@ -133,6 +131,13 @@ setEstimator <- function(
     class(estimatorSettings$device) <- c(
       "delayed",
       class(estimatorSettings$device)
+    )
+  }
+  
+  if (is.function(accumulationSteps)) {
+    class(estimatorSettings$accumulationSteps) <- c(
+      "delayed",
+      class(estimatorSettings$accumulationSteps)
     )
   }
 
