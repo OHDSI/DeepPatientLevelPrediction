@@ -587,7 +587,6 @@ doCrossValidationImpl <- function(dataset,
     fillEstimatorSettings(modelSettings$estimatorSettings,
                           fitParams,
                           parameters)
-  currentEstimatorSettings <- evalEstimatorSettings(currentEstimatorSettings)
   currentModelParams$catFeatures <- dataset$get_cat_features()$max()
   currentModelParams$numFeatures <- dataset$get_numerical_features()$len()
   if (currentEstimatorSettings$findLR) {

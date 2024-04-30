@@ -42,7 +42,7 @@ class Estimator:
         self.batch_size = int(estimator_settings.get("batch_size", 1024))
         self.prefix = estimator_settings.get("prefix", self.model.name)
         
-        if estimator_settings["accumulation_steps"]:
+        if "accumulation_steps" in estimator_settings.keys() and estimator_settings["accumulation_steps"]:
             self.accumulation_steps = int(estimator_settings["accumulation_steps"])
             self.sub_batch_size = self.batch_size // self.accumulation_steps
         else:
