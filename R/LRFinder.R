@@ -22,7 +22,9 @@ getLR <- function(modelParameters,
   path <- system.file("python", package = "DeepPatientLevelPrediction")
   estimator <- createEstimator(modelParameters = modelParameters,
                                estimatorSettings = estimatorSettings)
-  lrSettings <- camelCaseToSnakeCaseNames(lrSettings)
+  if (!is.null(lrSettings)) {
+    lrSettings <- camelCaseToSnakeCaseNames(lrSettings)
+  }
   get_lr <- reticulate::import_from_path("LrFinder", path)$get_lr
   lr <- get_lr(estimator, dataset, lrSettings)
   return(lr)
