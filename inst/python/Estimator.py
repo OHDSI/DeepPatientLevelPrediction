@@ -287,7 +287,7 @@ class Estimator:
             split_labels = list(torch.split(labels, self.sub_batch_size))
 
             sub_batches = []
-            for i in range(self.accumulation_steps):
+            for i in range(len(split_labels)):
                 sub_batch = {key: value[i] for key, value in split_data.items()}
                 sub_batch = [sub_batch, split_labels[i]]
                 sub_batches.append(sub_batch)
