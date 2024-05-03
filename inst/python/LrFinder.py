@@ -32,6 +32,10 @@ class LrFinder:
         self.divergence_threshold = lr_settings.get("divergence_threshold", 4)
         torch.manual_seed(seed=estimator.seed)
         self.seed = estimator.seed
+        if self.num_lr < 20:
+            self.min_factor = 0
+        else:
+            self.min_factor = 5
 
         for group in estimator.optimizer.param_groups:
             group['lr'] = self.min_lr
@@ -90,9 +94,12 @@ class LrFinder:
 
         # find LR where gradient is highest but before global minimum is reached
         # I added -5 to make sure it is not still in the minimum
-        global_minimum = torch.argmin(losses[:i])
-        gradient = torch.diff(losses[: (global_minimum - 5) + 1])
-        biggest_gradient = torch.argmax(gradient)
+        global_minimum = torch.argmin(losses[:i + 1])
+        if global_minimum == 0:
+            biggest_gradient = 0
+        else:
+            gradient = torch.diff(losses[: (global_minimum - self.min_factor) + 1])
+            biggest_gradient = torch.argmax(gradient)
 
         suggested_lr = lrs[biggest_gradient]
         self.losses = losses[:i]
