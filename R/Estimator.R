@@ -317,6 +317,9 @@ predictDeepEstimator <- function(plpModel,
     model <- torch$load(file.path(plpModel$model,
                                   "DeepEstimatorModel.pt"),                        
                         map_location = "cpu")
+    if (is.null(model$model_parameters$model_type)) {
+      model$model_parameters$model_type <- plpModel$modelDesign$modelSettings$modelType
+    }
     estimator <-
       createEstimator(modelParameters =
                       snakeCaseToCamelCaseNames(model$model_parameters),
