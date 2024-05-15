@@ -318,8 +318,11 @@ predictDeepEstimator <- function(plpModel,
                                   "DeepEstimatorModel.pt"),                        
                         map_location = "cpu")
     if (is.null(model$model_parameters$model_type)) {
+      # for backwards compatibility
       model$model_parameters$model_type <- plpModel$modelDesign$modelSettings$modelType
     }
+    model$estimator_settings$device <-
+      plpModel$modelDesign$modelSettings$estimatorSettings$device
     estimator <-
       createEstimator(modelParameters =
                       snakeCaseToCamelCaseNames(model$model_parameters),
