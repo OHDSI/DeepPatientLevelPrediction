@@ -104,7 +104,7 @@
                         <h4 data-toc-skip class="author">Egill
 Fridgeirsson</h4>
             
-            <h4 data-toc-skip class="date">2024-05-15</h4>
+            <h4 data-toc-skip class="date">2024-05-16</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/OHDSI/DeepPatientLevelPrediction/blob/HEAD/vignettes/FirstModel.Rmd" class="external-link"><code>vignettes/FirstModel.Rmd</code></a></small>
       <div class="hidden name"><code>FirstModel.Rmd</code></div>
@@ -114,7 +114,7 @@ Fridgeirsson</h4>
     
     
 <!--
-%\VignetteEngine{knitr}
+%\VignetteEngine{knitr::rmarkdown}
 %\VignetteIndexEntry{Developing your first DeepPLP model}
 -->
 <div class="section level2">
@@ -160,7 +160,8 @@ cohort of gastrointestinal bleeding.</p>
 <span><span class="op">)</span></span></code></pre></div>
 <p>This means we are extracting gender as a binary variable, age as a
 continuous variable and conditions occurring in the long term window,
-which is by default 365 days prior.</p>
+which is by default 365 days prior to index. If you want to know more
+about these terms we recommend checking out the <a href="https://ohdsi.github.io/TheBookOfOhdsi/" class="external-link">book of OHDSI</a>.</p>
 <p>Next we need to define our database details, which defines from which
 database we are getting which cohorts. Since we don’t have a database we
 are using Eunomia.</p>
@@ -222,7 +223,7 @@ neurons per layer.</p>
 <p>We still need to define a few parameters. Device defines on which
 device to train the model. Usually deep learning models are slow to
 train so they need a GPU. However this example is small enough that we
-can use a CPU If you have access to a GPU you can try changing the
+can use a CPU. If you have access to a GPU you can try changing the
 device to <code>'cuda'</code> and see how much faster it goes.</p>
 <p>We also need to define our batch size. Usually in deep learning the
 model sees only a small chunk of the data at a time, in this case 256
@@ -230,7 +231,8 @@ patients. After that the model is updated before seeing the next batch.
 The batch order is random. This is called stochastic gradient
 descent.</p>
 <p>Finally we define our epochs. This is how long we will train the
-model. One epoch means the model has seen all the data once.</p>
+model. One epoch means the model has seen all the data once. In this
+case we will train the model for 3 epochs.</p>
 <p>Now all that is left is using the PLP to train our first deep
 learning model. If you have used the PLP this should look familiar to
 you.</p>

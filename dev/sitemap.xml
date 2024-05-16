@@ -79,6 +79,9 @@
     <loc>/reference/snakeCaseToCamelCaseNames.html</loc>
   </url>
   <url>
+    <loc>/reference/torch.html</loc>
+  </url>
+  <url>
     <loc>/reference/trainingCache.html</loc>
   </url>
 </urlset>

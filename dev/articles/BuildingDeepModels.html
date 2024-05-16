@@ -105,7 +105,7 @@
 Egill Fridgeirsson, Chungsoo Kim, Henrik John, Seng Chan You, Xiaoyong
 Pan</h4>
             
-            <h4 data-toc-skip class="date">2024-05-15</h4>
+            <h4 data-toc-skip class="date">2024-05-16</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/OHDSI/DeepPatientLevelPrediction/blob/HEAD/vignettes/BuildingDeepModels.Rmd" class="external-link"><code>vignettes/BuildingDeepModels.Rmd</code></a></small>
       <div class="hidden name"><code>BuildingDeepModels.Rmd</code></div>
@@ -115,7 +115,7 @@ Pan</h4>
     
     
 <!--
-%\VignetteEngine{knitr}
+%\VignetteEngine{knitr::rmarkdown}
 %\VignetteIndexEntry{Building Deep Learning Models}
 -->
 <div class="section level2">
@@ -159,8 +159,8 @@ Deep Learning an interesting approach to test within OHDSI’s <a href="https://
 Prediction Framework</a>. The current implementation allows us to
 perform research at scale on the value and limitations of Deep Learning
 using observational healthcare data.</p>
-<p>In the package we have used <a href="https://cran.r-project.org/web/packages/torch/index.html" class="external-link">torch</a>
-but we invite the community to add other backends.</p>
+<p>In the package we use <code>pytorch</code> through the
+<code>reticulate</code> package.</p>
 <p>Many network architectures have recently been proposed and we have
 implemented a number of them, however, this list will grow in the near
 future. It is important to understand that some of these architectures
@@ -170,7 +170,7 @@ Package</a> has been extended to enable the extraction of both data
 formats as will be described with examples below.</p>
 <p>Note that training Deep Learning models is computationally intensive,
 our implementation therefore supports both GPU and CPU. A GPU is highly
-recommended for Deep Learning!</p>
+recommended and neccesary for most models for Deep Learning!</p>
 </div>
 <div class="section level3">
 <h3 id="requirements">Requirements<a class="anchor" aria-label="anchor" href="#requirements"></a>
@@ -183,16 +183,17 @@ installing the package can be found <a href="https://ohdsi.github.io/DeepPatient
 </h3>
 <p>The <code>DeepPatientLevelPrediction</code> package provides
 additional model settings that can be used within the
-<code>PatientLevelPrediction</code> package <code>runPlp()</code>
-function. To use both packages you first need to pick the deep learning
-architecture you wish to fit (see below) and then you specify this as
-the modelSettings inside <code>runPlp()</code>.</p>
+<code>PatientLevelPrediction</code> package <code>runPlp()</code> and
+<code>runMultiplePlp()</code> functions. To use both packages you first
+need to pick the deep learning architecture you wish to fit (see below)
+and then you specify this as the modelSettings inside
+<code>runPlp()</code>.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># load the data</span></span>
 <span><span class="va">plpData</span> <span class="op">&lt;-</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/loadPlpData.html" class="external-link">loadPlpData</a></span><span class="op">(</span><span class="st">'locationOfData'</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># pick the set&lt;Model&gt; from  DeepPatientLevelPrediction</span></span>
-<span><span class="va">deepLearningModel</span> <span class="op">&lt;-</span> <span class="fu">DeepPatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="../reference/setResNet.html">setResNet</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">deepLearningModel</span> <span class="op">&lt;-</span> <span class="fu">DeepPatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="../reference/setDefaultResNet.html">setDefaultResNet</a></span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># use PatientLevelPrediction to fit model</span></span>
 <span><span class="va">deepLearningResult</span> <span class="op">&lt;-</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/runPlp.html" class="external-link">runPlp</a></span><span class="op">(</span></span>
@@ -220,10 +221,10 @@ an input layer, one or more hidden layers and an output layer. The model
 takes in the input feature values and feeds these forward through the
 graph to determine the output class. A process known as
 ‘backpropagation’ is used to train the model. Backpropagation requires
-labelled data and involves automatically calculating the derivative of
-the model parameters with respect to the the error between the model’s
-predictions and ground truth. Then the model learns how to adjust the
-model’s parameters to reduce the error.</p>
+some ground truth and involves automatically calculating the derivative
+of the model parameters with respect to the the error between the
+model’s predictions and ground truth. Then the model learns how to
+adjust the model’s parameters to reduce the error.</p>
 </div>
 <div class="section level4">
 <h4 id="example">Example<a class="anchor" aria-label="anchor" href="#example"></a>
@@ -247,9 +248,9 @@ value of <code>0.2</code> means that 20% of the layers inputs will be
 set to 0. This is used to reduce overfitting.</p>
 <p>The <code>sizeEmbedding</code> input specifies the size of the
 embedding used. The first layer is an embedding layer which converts
-each sparse feature to a dense vector which it learns. An embedding is a
-lower dimensional projection of the features where distance between
-points is a measure of similarity.</p>
+each sparse feature to a dense learned vector. An embedding is a lower
+dimensional projection of the features where distance between points is
+a measure of similarity.</p>
 <p>The <code>weightDecay</code> input corresponds to the weight decay in
 the objective function. During model fitting the aim is to minimize the
 objective function. The objective function is made up of the prediction
@@ -344,19 +345,18 @@ try 10 of those.</p>
 <h4 id="overall-concept-1">Overall concept<a class="anchor" aria-label="anchor" href="#overall-concept-1"></a>
 </h4>
 <p>Deep learning models are often trained via a process known as
-gradient descent during backpropogation. During this process the network
-weights are updated based on the gradient of the error function for the
-current weights. However, as the number of layers in the network
-increase, there is a greater chance of experiencing an issue known as
-the vanishing or exploding gradient during this process. The vanishing
-or exploding gradient is when the gradient goes to 0 or infinity, which
-negatively impacts the model fitting.</p>
+gradient descent. During this process the network weights are updated
+based on the gradient of the error function for the current weights.
+However, as the number of layers in the network increase, there is a
+greater chance of experiencing an issue known vanishing or exploding
+gradients. The vanishing or exploding gradient is when the gradient goes
+to 0 or infinity, which negatively impacts the model fitting.</p>
 <p>The residual network (ResNet) was introduced to address the vanishing
 or exploding gradient issue. It works by adding connections between
 non-adjacent layers, termed a ‘skip connection’.</p>
 <p>The ResNet calculates embeddings for every feature and then averages
 them to compute an embedding per patient.</p>
-<p>This implementation of a ResNet for tabular data is based on <a href="https://arxiv.org/abs/2106.11959" class="external-link">this paper</a>.</p>
+<p>Our implementation of a ResNet for tabular data is based on <a href="https://arxiv.org/abs/2106.11959" class="external-link">this paper</a>.</p>
 </div>
 <div class="section level4">
 <h4 id="example-1">Example<a class="anchor" aria-label="anchor" href="#example-1"></a>
@@ -377,7 +377,7 @@ for the network.</p>
 <p><code>numLayers</code>: How many layers to use in the model.</p>
 <p><code>sizeHidden</code>: How many neurons in each hidden layer</p>
 <p><code>hiddenFactor</code>: How much to increase number of neurons in
-each layer</p>
+each layer (see paper)</p>
 <p><code>residualDropout</code> and<code>hiddenDropout</code> : How much
 dropout to apply in hidden layer or residual connection</p>
 <p><code>sizeEmbedding</code> : The size of the initial embedding
@@ -412,11 +412,12 @@ reproducible</p>
 </h5>
 <p>For example, the following code will fit a two layer ResNet where
 each layer has 32 neurons which increases by a factor of two before
-decreasing againg (hiddenFactor). 10% of inputs to each layer and
-residual connection within the layer are randomly zeroed. The embedding
-layer has 32 neurons. Learning rate of 3e-4 with weight decay of 1e-6 is
-used for the optimizer. No hyperparameter search is done since each
-input only includes one option.</p>
+decreasing again (hiddenFactor). 10% of inputs to each layer and
+residual connection within the layer are randomly zeroed during training
+but not testing.The embedding layer has 32 neurons. Learning rate of
+3e-4 with weight decay of 1e-6 is used for the optimizer. No
+hyperparameter search is done since each input only includes one
+option.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">resset</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/setResNet.html">setResNet</a></span><span class="op">(</span></span>
 <span>  numLayers <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2L</span><span class="op">)</span>, </span>
@@ -499,14 +500,15 @@ ResNet.</p>
 <p><code>numBlocks</code> : How many Transformer blocks to use, each
 block includes a self-attention layer and a feedforward block with two
 linear layers.</p>
-<p><code>dimToken</code> : Dimension of the embedding for each feature’s
-embedding</p>
+<p><code>dimToken</code> : Dimension of the embedding for each
+feature.</p>
 <p><code>dimOut</code> : Dimension of output, for binary problems this
 is 1.</p>
 <p><code>numHeads</code> : Number of attention heads for the
-self-attention</p>
-<p><code>attDropout</code> , <code>ffnDropout</code> and
-<code>resDropout</code> : How much dropout to apply on attentions, in
+self-attention, <code>dimToken</code> needs to be divisible by
+<code>numHeads</code>.</p>
+<p><code>attDropout</code>, <code>ffnDropout</code> and
+<code>resDropout</code> : How much dropout to apply on attentions,
 feedforward block or in residual connections</p>
 <p><code>dimHidden</code> : How many neurons in linear layers inside the
 feedforward block</p>
