@@ -149,6 +149,13 @@ the predictions from all but the best performing hyperparameter
 \if{html}{\out{<div class="r">}}\preformatted{trainingCache$trimPerformance(hyperparameterResults)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{hyperparameterResults}}{List of hyperparameter results}
+}
+\if{html}{\out{</div>}}
+}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-TrainingCache-clone"></a>}}

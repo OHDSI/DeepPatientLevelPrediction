@@ -29,7 +29,7 @@ editor_options:
 
 ```{=html}
 <!--
-%\VignetteEngine{knitr}
+%\VignetteEngine{knitr::rmarkdown}
 %\VignetteIndexEntry{Building Deep Learning Models}
 -->
 ```
@@ -83,9 +83,7 @@ current implementation allows us to perform research at scale on the
 value and limitations of Deep Learning using observational healthcare
 data.
 
-In the package we have used
-[torch](https://cran.r-project.org/web/packages/torch/index.html) but we
-invite the community to add other backends.
+In the package we use `pytorch` through the `reticulate` package.
 
 Many network architectures have recently been proposed and we have
 implemented a number of them, however, this list will grow in the near
@@ -98,7 +96,7 @@ examples below.
 
 Note that training Deep Learning models is computationally intensive,
 our implementation therefore supports both GPU and CPU. A GPU
-is highly recommended for Deep Learning!
+is highly recommended and neccesary for most models for Deep Learning!
 
 ## Requirements
 
@@ -110,7 +108,7 @@ installing the package can be found
 
 The `DeepPatientLevelPrediction` package provides additional model
 settings that can be used within the `PatientLevelPrediction` package
-`runPlp()` function. To use both packages you first need to pick the
+`runPlp()` and `runMultiplePlp()` functions. To use both packages you first need to pick the
 deep learning architecture you wish to fit (see below) and then you
 specify this as the modelSettings inside `runPlp()`.
 
@@ -120,7 +118,7 @@ specify this as the modelSettings inside `runPlp()`.
 plpData <- PatientLevelPrediction::loadPlpData('locationOfData')
 
 # pick the set<Model> from  DeepPatientLevelPrediction
-deepLearningModel <- DeepPatientLevelPrediction::setResNet()
+deepLearningModel <- DeepPatientLevelPrediction::setDefaultResNet()
 
 # use PatientLevelPrediction to fit model
 deepLearningResult <- PatientLevelPrediction::runPlp(
@@ -147,7 +145,7 @@ input layer, one or more hidden layers and an output layer. The model
 takes in the input feature values and feeds these forward through the
 graph to determine the output class. A process known as
 'backpropagation' is used to train the model. Backpropagation requires
-labelled data and involves automatically calculating the derivative of
+some ground truth and involves automatically calculating the derivative of
 the model parameters with respect to the the error between the model's
 predictions and ground truth. Then the model learns how to adjust the
 model's parameters to reduce the error.
@@ -170,8 +168,8 @@ value of `0.2` means that 20% of the layers inputs will be set to
 0. This is used to reduce overfitting.
 
 The `sizeEmbedding` input specifies the size of the embedding used. The first
-layer is an embedding layer which converts each sparse feature to a dense vector
-which it learns. An embedding is a lower dimensional projection of the features
+layer is an embedding layer which converts each sparse feature to a dense learned 
+vector. An embedding is a lower dimensional projection of the features
 where distance between points is a measure of similarity.
 
 The `weightDecay` input corresponds to the weight decay in the objective
@@ -269,11 +267,11 @@ mlpResult <- PatientLevelPrediction::runPlp(
 ### Overall concept
 
 Deep learning models are often trained via a process known as gradient
-descent during backpropogation. During this process the network weights
+descent. During this process the network weights
 are updated based on the gradient of the error function for the current
 weights. However, as the number of layers in the network increase, there
-is a greater chance of experiencing an issue known as the vanishing or
-exploding gradient during this process. The vanishing or exploding
+is a greater chance of experiencing an issue known vanishing or
+exploding gradients. The vanishing or exploding
 gradient is when the gradient goes to 0 or infinity, which negatively
 impacts the model fitting.
 
@@ -284,7 +282,7 @@ non-adjacent layers, termed a 'skip connection'.
 The ResNet calculates embeddings for every feature and then averages
 them to compute an embedding per patient.
 
-This implementation of a ResNet for tabular data is based on [this
+Our implementation of a ResNet for tabular data is based on [this
 paper](https://arxiv.org/abs/2106.11959).
 
 ### Example
@@ -302,7 +300,7 @@ function to specify the hyperparameter settings for the network.
 
 `sizeHidden`: How many neurons in each hidden layer
 
-`hiddenFactor`: How much to increase number of neurons in each layer
+`hiddenFactor`: How much to increase number of neurons in each layer (see paper)
 
 `residualDropout` and`hiddenDropout` : How much dropout to apply in
 hidden layer or residual connection
@@ -338,11 +336,11 @@ random samples to use
 
 For example, the following code will fit a two layer ResNet where each
 layer has 32 neurons which increases by a factor of two before
-decreasing againg (hiddenFactor). 10% of inputs to each layer and
-residual connection within the layer are randomly zeroed. The embedding
-layer has 32 neurons. Learning rate of 3e-4 with weight decay of 1e-6 is
-used for the optimizer. No hyperparameter search is done since each
-input only includes one option.
+decreasing again (hiddenFactor). 10% of inputs to each layer and
+residual connection within the layer are randomly zeroed during training but 
+not testing.The embedding layer has 32 neurons. Learning rate of 3e-4 with 
+weight decay of 1e-6 is used for the optimizer. No hyperparameter search is done
+since each input only includes one option.
 
 ```{r, eval=FALSE}
 
@@ -422,14 +420,15 @@ ResNet.
 `numBlocks` : How many Transformer blocks to use, each block includes a
 self-attention layer and a feedforward block with two linear layers.
 
-`dimToken` : Dimension of the embedding for each feature's embedding
+`dimToken` : Dimension of the embedding for each feature.
 
 `dimOut` : Dimension of output, for binary problems this is 1.
 
-`numHeads` : Number of attention heads for the self-attention
+`numHeads` : Number of attention heads for the self-attention, `dimToken` needs
+to be divisible by `numHeads`.
 
-`attDropout` , `ffnDropout` and `resDropout` : How much dropout to apply
-on attentions, in feedforward block or in residual connections
+`attDropout`, `ffnDropout` and `resDropout` : How much dropout to apply
+on attentions, feedforward block or in residual connections
 
 `dimHidden` : How many neurons in linear layers inside the feedforward
 block

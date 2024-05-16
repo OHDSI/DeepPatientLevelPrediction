@@ -102,7 +102,8 @@ trainingCache <- R6::R6Class(
     
     #' @description
     #' Trims the performance of the hyperparameter results by removing 
-    #' the predictions from all but the best performing hyperparameter 
+    #' the predictions from all but the best performing hyperparameter
+    #' @param hyperparameterResults List of hyperparameter results 
     trimPerformance = function(hyperparameterResults) {
       indexOfMax <-
         which.max(unlist(

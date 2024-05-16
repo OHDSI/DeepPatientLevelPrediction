@@ -27,11 +27,9 @@ Imports:
     withr,
     reticulate (>= 1.31)
 Suggests:
-    devtools,
     Eunomia,
     knitr,
     markdown,
-    plyr,  
     testthat,
     PRROC,
     ResultModelManager (>= 0.2.0),
@@ -39,8 +37,6 @@ Suggests:
     Andromeda
 Remotes:
     ohdsi/PatientLevelPrediction,
-    ohdsi/FeatureExtraction,
-    ohdsi/Eunomia,  
     ohdsi/ResultModelManager
 RoxygenNote: 7.3.1
 Encoding: UTF-8

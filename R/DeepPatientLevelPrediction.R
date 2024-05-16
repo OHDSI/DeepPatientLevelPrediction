@@ -27,6 +27,20 @@
 #' @importFrom rlang .data
 "_PACKAGE"
 
+# package level global state
+.globals <- new.env(parent = emptyenv())
+
+#' Pytorch module
+#'
+#' The `torch` module object is the equivalent of
+#' `reticulate::import("torch")` and provided mainly as a convenience.
+#'
+#' @returns the torch Python module
+#' @export
+#' @usage NULL
+#' @format An object of class `python.builtin.module`
+torch <- NULL
+
 .onLoad <- function(libname, pkgname) {
   # use superassignment to update global reference
   reticulate::configure_environment(pkgname)
