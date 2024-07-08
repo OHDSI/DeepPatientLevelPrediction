@@ -12,13 +12,6 @@ header-includes:
   - \renewcommand{\headrulewidth}{0.4pt}
   - \renewcommand{\footrulewidth}{0.4pt}
 output:
-  pdf_document:
-    includes:
-      in_header: preamble.tex
-    number_sections: yes
-    toc: yes
-  word_document:
-    toc: yes
   html_document:
     number_sections: yes
     toc: yes

@@ -9,3 +9,7 @@
 ^deploy.sh$
 ^compare_versions$
 ^.mypy_cache$
+^inst/python/__pycache__
+^.*\.pt$
+^doc$
+^Meta$

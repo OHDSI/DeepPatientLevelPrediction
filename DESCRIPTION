@@ -1,8 +1,8 @@
 Package: DeepPatientLevelPrediction
 Type: Package
 Title: Deep Learning For Patient Level Prediction Using Data In The OMOP Common Data Model
-Version: 2.0.3.9999
-Date: 22-12-2023
+Version: 2.1.0
+Date: 08-07-2024
 Authors@R: c(
     person("Egill", "Fridgeirsson", email = "e.fridgeirsson@erasmusmc.nl", role = c("aut", "cre")),
     person("Jenna", "Reps", email = "jreps@its.jnj.com", role = c("aut")), 
@@ -20,7 +20,6 @@ Depends:
     R (>= 4.0.0)
 Imports:
     dplyr,
-    FeatureExtraction (>= 3.0.0),
     ParallelLogger (>= 2.0.0),
     PatientLevelPrediction (>= 6.3.2),
     rlang,
@@ -29,9 +28,10 @@ Imports:
 Suggests:
     Eunomia,
     knitr,
-    markdown,
+    rmarkdown,
     testthat,
     PRROC,
+    FeatureExtraction (>= 3.0.0),
     ResultModelManager (>= 0.2.0),
     DatabaseConnector (>= 6.0.0),
     Andromeda
@@ -41,6 +41,7 @@ Remotes:
 RoxygenNote: 7.3.1
 Encoding: UTF-8
 Config/testthat/edition: 3
+Config/testthat/parallel: TRUE
 Config/reticulate:
   list(
     packages = list(

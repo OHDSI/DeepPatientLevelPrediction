@@ -1,6 +1,6 @@
 import time
 import pathlib
-import urllib
+from urllib.parse import quote
 
 import polars as pl
 import torch
@@ -16,9 +16,9 @@ class Data(Dataset):
         """
         start = time.time()
         if pathlib.Path(data).suffix == ".sqlite":
-            data = urllib.parse.quote(data)
-            data = pl.read_database(
-                "SELECT * from covariates", connection=f"sqlite://{data}"
+            data = quote(data)
+            data = pl.read_database_uri(
+                "SELECT * from covariates", uri=f"sqlite://{data}"
             ).lazy()
         else:
             data = pl.scan_ipc(pathlib.Path(data).joinpath("covariates/*.arrow"))
@@ -26,7 +26,7 @@ class Data(Dataset):
         # detect features are numeric
         if numerical_features is None:
             self.numerical_features = (
-                data.groupby(by="columnId")
+                data.group_by("columnId")
                 .n_unique()
                 .filter(pl.col("covariateValue") > 1)
                 .select("columnId")

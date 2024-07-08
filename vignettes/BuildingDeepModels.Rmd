@@ -12,13 +12,6 @@ header-includes:
   - \fancyfoot[CO,CE]{PatientLevelPrediction Package Version `r  utils::packageVersion("PatientLevelPrediction")`}
   - \fancyfoot[CO,CE]{DeepPatientLevelPrediction Package Version `r  utils::packageVersion("DeepPatientLevelPrediction")`}
 output:
-  pdf_document:
-    includes:
-      in_header: preamble.tex
-    number_sections: yes
-    toc: yes
-  word_document:
-    toc: yes
   html_document:
     number_sections: yes
     toc: yes
@@ -136,7 +129,7 @@ deepLearningResult <- PatientLevelPrediction::runPlp(
 We implemented the following non-temporal (2D data matrix)
 architectures:
 
-## Simple MLP
+## Simple MultiLayerPerceptron
 
 ### Overall concept
 

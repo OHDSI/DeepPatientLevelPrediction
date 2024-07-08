@@ -33,6 +33,9 @@ navbar:
     firstModel:
       text: My first deep learning model
       href: articles/FirstModel.html
+    transferlearning:
+      text: Transfer learning
+      href: articles/TransferLearning.html
     news:
       text: Changelog
       href: news/index.html

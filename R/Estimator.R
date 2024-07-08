@@ -163,12 +163,6 @@ fitEstimator <- function(trainData,
                          analysisPath,
                          ...) {
   start <- Sys.time()
-
-  # check covariate data
-  if (!FeatureExtraction::isCovariateData(trainData$covariateData)) {
-    stop("Needs correct covariateData")
-  }
-
   if (!is.null(trainData$folds)) {
     trainData$labels <- merge(trainData$labels, trainData$fold, by = "rowId")
   }
