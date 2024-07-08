@@ -473,7 +473,7 @@ createEstimator <- function(modelParameters,
     estimatorSettings$finetune <- TRUE
     plpModel <- PatientLevelPrediction::loadPlpModel(modelParameters$modelPath)
     estimatorSettings$finetuneModelPath <-
-      file.path(normalizePath(plpModel$model), "DeepEstimatorModel.pt")
+      normalizePath(file.path(plpModel$model, "DeepEstimatorModel.pt"))
     modelParameters$modelType <-
       plpModel$modelDesign$modelSettings$modelType
   }
