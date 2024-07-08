@@ -1,6 +1,6 @@
 library(PatientLevelPrediction)
 
-testLoc <- tempdir()
+testLoc <- normalizePath(tempdir())
 torch <- reticulate::import("torch")
 # get connection and data from Eunomia
 connectionDetails <- Eunomia::getEunomiaConnectionDetails()

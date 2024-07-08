@@ -21,9 +21,6 @@ class Estimator:
             self.device = estimator_settings["device"]
         torch.manual_seed(seed=self.seed)
         if "finetune" in estimator_settings.keys() and estimator_settings["finetune"]:
-            # need to resolve symlinks and path shortenings which are sometimes used on macOS and Windows
-            estimator_settings["finetune_model_path"] = str(pathlib.Path(estimator_settings["finetune_model_path"])
-                                                            .resolve())
             path = estimator_settings["finetune_model_path"]
             fitted_estimator = torch.load(path, map_location="cpu")
             fitted_parameters = fitted_estimator["model_parameters"]
