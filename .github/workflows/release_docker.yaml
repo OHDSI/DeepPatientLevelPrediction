@@ -24,7 +24,7 @@ jobs:
   docker:
     runs-on: ubuntu-latest
     env:
-      DOCKER_IMAGE: ${{ inputs.docker_image || secrets.DOCKER_IMAGE }}
+      DOCKER_IMAGE: ${{ inputs.docker_image || secrets.DOCKER_IMAGE }}   
     steps:
       - uses: actions/checkout@v4
 
@@ -56,12 +56,12 @@ jobs:
       - name: Set build parameters
         id: build_params
         run: |
-          echo "::set-output name=sha8::${GITHUB_SHA::8}"
+          echo "SHA8=${GITHUB_SHA::8}" >> $GITHUB_ENV
       - name: Build and push
         id: docker_build
         uses: docker/build-push-action@v6
         with:
-          context: .
+          context: ./
           file: Dockerfile
           platforms: linux/amd64
           push: true
@@ -69,7 +69,7 @@ jobs:
             build_github_pat=${{ secrets.GH_TOKEN }}
           build-args: |
             GIT_BRANCH=${{ steps.docker_meta.outputs.version }}
-            GIT_COMMIT_ID_ABBREV=${{ steps.build_params.outputs.sha8 }}
+            GIT_COMMIT_ID_ABBREV=${{ env.SHA8 }}
           tags: ${{ steps.docker_meta.outputs.tags }}
           # Use runtime labels from docker_meta as well as fixed labels
           labels: |
