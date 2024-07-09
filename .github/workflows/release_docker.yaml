@@ -16,17 +16,12 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
-    inputs:
-      docker_image:
-        description: 'DeepPatientLevelPrediction docker image.'
-        default: 'ohdsi/deep_plp'
-        type: string
 
 jobs:
   docker:
     runs-on: ubuntu-latest
     env:
-      docker_image: ${{ inputs.docker_image }}   
+      DOCKER_IMAGE: 'ohdsi/deep_plp' 
     steps:
       - uses: actions/checkout@v4
 
@@ -40,8 +35,6 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.DOCKER_IMAGE }}
-          tag-match: v(.*)
-          tag-match-group: 1
       # Setup docker build environment
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -54,10 +47,6 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
-
-       # Log environment variables for debugging
-      - name: Debug DOCKER_IMAGE
-        run: echo "DOCKER_IMAGE is ${{ env.DOCKER_IMAGE }}"
 
       - name: Set build parameters
         id: build_params
