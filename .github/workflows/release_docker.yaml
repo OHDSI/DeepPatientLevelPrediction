@@ -12,7 +12,7 @@ name: Release Docker
 on:
   push:
     branches:
-      - 110-docker
+      - '110-docker'
     tags:
       - 'v*'
   workflow_dispatch:
