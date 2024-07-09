@@ -55,6 +55,10 @@ jobs:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
 
+       # Log environment variables for debugging
+      - name: Debug DOCKER_IMAGE
+        run: echo "DOCKER_IMAGE is ${{ env.DOCKER_IMAGE }}"
+
       - name: Set build parameters
         id: build_params
         run: |
