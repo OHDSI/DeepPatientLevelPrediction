@@ -1,3 +1,15 @@
+DeepPatientLevelPrediction 2.1.0
+======================
+  - Added basic transfer learning functionality. See vignette("TransferLearning")
+  - Add a gpu memory cleaner to clean cached memory after out of memory error
+  - The python module torch is now accessed through an exported function instead of loading the module at package load
+  - Added gradient accumulation. Studies running at different sites using different hardware can now use same effective batch size by accumulating gradients.
+  - Refactored out the cross validation from the hyperparameter tuning
+  - Remove predictions from non-optimal hyperparameter combinations to save space
+  - Only use html vignettes 
+  - Rename MLP to MultiLayerPerceptron
+  
+
 DeepPatientLevelPrediction 2.0.3
 ======================
   - Hotfix: Fix count for polars v0.20.x

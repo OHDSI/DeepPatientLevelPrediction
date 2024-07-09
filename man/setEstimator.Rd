@@ -16,6 +16,7 @@ setEstimator(
   criterion = torch$nn$BCEWithLogitsLoss,
   earlyStopping = list(useEarlyStopping = TRUE, params = list(patience = 4)),
   metric = "auc",
+  accumulationSteps = NULL,
   seed = NULL
 )
 }
@@ -29,8 +30,7 @@ setEstimator(
 \item{epochs}{how many epochs to train for}
 
 \item{device}{what device to train on, can be a string or a function to
-that evaluates
-to the device during runtime}
+that evaluates to the device during runtime}
 
 \item{optimizer}{which optimizer to use}
 
@@ -47,6 +47,9 @@ Needs to be a list with function `fun`, mode either `min` or `max` and a
 `name`,
 `fun` needs to be a function that takes in prediction and labels and
 outputs a score.}
+
+\item{accumulationSteps}{how many steps to accumulate gradients before
+updating weights, can also be a function that is evaluated during runtime}
 
 \item{seed}{seed to initialize weights of model with}
 }

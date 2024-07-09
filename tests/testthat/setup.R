@@ -1,6 +1,6 @@
 library(PatientLevelPrediction)
 
-testLoc <- tempdir()
+testLoc <- normalizePath(tempdir())
 torch <- reticulate::import("torch")
 # get connection and data from Eunomia
 connectionDetails <- Eunomia::getEunomiaConnectionDetails()
@@ -111,3 +111,4 @@ fitEstimatorResults <- fitEstimator(trainData$Train,
                                     modelSettings = modelSettings,
                                     analysisId = 1,
                                     analysisPath = fitEstimatorPath)
+PatientLevelPrediction::savePlpModel(fitEstimatorResults, file.path(fitEstimatorPath, "plpModel"))

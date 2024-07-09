@@ -18,7 +18,7 @@ modelSettings <- setMultiLayerPerceptron(
 test_that("setMultiLayerPerceptron works", {
   testthat::expect_s3_class(object = modelSettings, class = "modelSettings")
 
-  testthat::expect_equal(modelSettings$fitFunction, "fitEstimator")
+  testthat::expect_equal(modelSettings$fitFunction, "DeepPatientLevelPrediction::fitEstimator")
 
   testthat::expect_true(length(modelSettings$param) > 0)
 
@@ -86,7 +86,7 @@ test_that("MLP with runPlp working checks", {
 
 
 test_that("MLP nn-module works ", {
-  mlp <- reticulate::import_from_path("MLP", path = path)$MLP
+  mlp <- reticulate::import_from_path("MultiLayerPerceptron", path = path)$MultiLayerPerceptron
   model <- mlp(
     cat_features = 5,
     num_features = 1,
@@ -123,7 +123,7 @@ test_that("MLP nn-module works ", {
     activation = torch$nn$ReLU,
     normalization = torch$nn$BatchNorm1d,
     dropout = 0.3,
-    d_out = 1L
+    dim_out = 1L
   )
   output <- model(input)
   # model works without numeric variables

@@ -3,7 +3,7 @@ from torch import nn
 from ResNet import NumericalEmbedding
 
 
-class MLP(nn.Module):
+class MultiLayerPerceptron(nn.Module):
     def __init__(
         self,
         cat_features: int,
@@ -13,17 +13,18 @@ class MLP(nn.Module):
         num_layers: int,
         activation=nn.ReLU,
         normalization=nn.BatchNorm1d,
-        dropout=None,
-        d_out: int = 1,
+        dropout=0.0,
+        dim_out: int = 1,
+        model_type="MultiLayerPerceptron"
     ):
-        super(MLP, self).__init__()
-        self.name = "MLP"
+        super(MultiLayerPerceptron, self).__init__()
+        self.name = model_type
         cat_features = int(cat_features)
         num_features = int(num_features)
         size_embedding = int(size_embedding)
         size_hidden = int(size_hidden)
         num_layers = int(num_layers)
-        d_out = int(d_out)
+        dim_out = int(dim_out)
 
         self.embedding = nn.EmbeddingBag(
             cat_features + 1, size_embedding, padding_idx=0
@@ -35,7 +36,7 @@ class MLP(nn.Module):
         self.first_layer = nn.Linear(size_embedding, size_hidden)
 
         self.layers = nn.ModuleList(
-            MLPLayer(
+            MlpLayer(
                 size_hidden=size_hidden,
                 normalization=normalization,
                 activation=activation,
@@ -44,7 +45,9 @@ class MLP(nn.Module):
             for _ in range(num_layers)
         )
         self.last_norm = normalization(size_hidden)
-        self.head = nn.Linear(size_hidden, d_out)
+        self.head = nn.Linear(size_hidden, dim_out)
+        self.size_hidden = size_hidden
+        self.dim_out = dim_out
 
         self.last_act = activation()
 
@@ -65,8 +68,11 @@ class MLP(nn.Module):
         x = x.squeeze(-1)
         return x
 
+    def reset_head(self):
+        self.head = nn.Linear(self.size_hidden, self.dim_out)
 
-class MLPLayer(nn.Module):
+
+class MlpLayer(nn.Module):
     def __init__(
         self,
         size_hidden=64,
@@ -75,7 +81,7 @@ class MLPLayer(nn.Module):
         dropout=0.0,
         bias=True,
     ):
-        super(MLPLayer, self).__init__()
+        super(MlpLayer, self).__init__()
         self.norm = normalization(size_hidden)
         self.activation = activation()
         self.linear = nn.Linear(size_hidden, size_hidden, bias=bias)

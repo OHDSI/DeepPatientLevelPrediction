@@ -69,10 +69,12 @@ trainingCache <- R6::R6Class(
     #' Check if cache is full
     #' @returns Boolen
     isFull = function() {
-      return(all(unlist(lapply(private$.paramPersistence$gridSearchPredictions,
-                               function(x) !is.null(x$gridPerformance)))))
+      return(all(unlist(lapply(
+        private$.paramPersistence$gridSearchPredictions,
+        function(x) !is.null(x$gridPerformance)
+      ))))
     },
-    
+
     #' @description
     #' Gets the last index from the cached grid search
     #' @returns Last grid search index
@@ -84,8 +86,10 @@ trainingCache <- R6::R6Class(
         if (length(private$.paramPersistence$gridSearchPredictions) == 1) {
           return(1)
         } else {
-          return(which(sapply(private$.paramPersistence$gridSearchPredictions,
-                              is.null))[1])
+          return(which(sapply(
+            private$.paramPersistence$gridSearchPredictions,
+            is.null
+          ))[1])
         }
       }
     },
@@ -94,6 +98,47 @@ trainingCache <- R6::R6Class(
     #' Remove the training cache from the analysis path
     dropCache = function() {
       # TODO
+    },
+    
+    #' @description
+    #' Trims the performance of the hyperparameter results by removing 
+    #' the predictions from all but the best performing hyperparameter
+    #' @param hyperparameterResults List of hyperparameter results 
+    trimPerformance = function(hyperparameterResults) {
+      indexOfMax <-
+        which.max(unlist(
+          lapply(hyperparameterResults,
+                 function(x)
+                   x$gridPerformance$cvPerformance)
+        ))
+      if (length(indexOfMax) != 0) {
+        for (i in seq_along(hyperparameterResults)) {
+          if (!is.null(hyperparameterResults[[i]]) && i != indexOfMax) {
+            hyperparameterResults[[i]]$prediction <- list(NULL)
+          }
+        }
+        ParallelLogger::logInfo(
+          paste0(
+            "Caching all grid search results and
+                                     prediction for best combination ",
+            indexOfMax
+          )
+        )
+      }
+      return(hyperparameterResults)
     }
   )
 )
+
+setupCache <- function(analysisPath, parameters) {
+  trainCache <- trainingCache$new(analysisPath)
+  if (trainCache$isParamGridIdentical(parameters)) {
+    hyperparameterResults <- trainCache$getGridSearchPredictions()
+  } else {
+    hyperparameterResults <- list()
+    length(hyperparameterResults) <- length(parameters)
+    trainCache$saveGridSearchPredictions(hyperparameterResults)
+    trainCache$saveModelParams(parameters)
+  }
+  return(trainCache)
+}
