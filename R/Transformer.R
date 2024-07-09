@@ -76,13 +76,13 @@ setDefaultTransformer <- function(estimatorSettings =
 #'
 #' @export
 setTransformer <- function(numBlocks = 3,
-                           dimToken = 96,
+                           dimToken = 192,
                            dimOut = 1,
                            numHeads = 8,
-                           attDropout = 0.25,
-                           ffnDropout = 0.25,
+                           attDropout = 0.2,
+                           ffnDropout = 0.1,
                            resDropout = 0,
-                           dimHidden = 512,
+                           dimHidden = 256,
                            dimHiddenRatio = NULL,
                            estimatorSettings = setEstimator(
                              weightDecay = 1e-6,
@@ -146,10 +146,8 @@ setTransformer <- function(numBlocks = 3,
     stop(paste(
       "dimHidden and dimHiddenRatio cannot be both set or both NULL"
     ))
-  } else {
-    if (!is.null(dimHiddenRatio)) {
-      dimHidden <- dimHiddenRatio
-    }
+  } else if (!is.null(dimHiddenRatio)) {
+    dimHidden <- dimHiddenRatio
   }
 
   paramGrid <- list(

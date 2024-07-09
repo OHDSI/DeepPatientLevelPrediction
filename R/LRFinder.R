@@ -15,18 +15,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-createLRFinder <- function(modelParameters,
-                           estimatorSettings,
-                           lrSettings = NULL) {
+getLR <- function(modelParameters,
+                  estimatorSettings,
+                  dataset,
+                  lrSettings = NULL) {
   path <- system.file("python", package = "DeepPatientLevelPrediction")
-  lrFinderClass <-
-    reticulate::import_from_path("LrFinder", path = path)$LrFinder
   estimator <- createEstimator(modelParameters = modelParameters,
                                estimatorSettings = estimatorSettings)
   if (!is.null(lrSettings)) {
     lrSettings <- camelCaseToSnakeCaseNames(lrSettings)
   }
-  lrFinder <- lrFinderClass(estimator = estimator,
-                            lr_settings = lrSettings)
-  return(lrFinder)
+  get_lr <- reticulate::import_from_path("LrFinder", path)$get_lr
+  lr <- get_lr(estimator, dataset, lrSettings)
+  return(lr)
 }

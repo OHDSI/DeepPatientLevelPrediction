@@ -27,8 +27,7 @@
 #' @param batchSize batchSize to use
 #' @param epochs  how many epochs to train for
 #' @param device  what device to train on, can be a string or a function to
-#' that evaluates
-#' to the device during runtime
+#' that evaluates to the device during runtime
 #' @param optimizer which optimizer to use
 #' @param scheduler which learning rate scheduler to use
 #' @param criterion loss function to use
@@ -40,6 +39,8 @@
 #' `name`,
 #' `fun` needs to be a function that takes in prediction and labels and
 #' outputs a score.
+#' @param accumulationSteps how many steps to accumulate gradients before
+#' updating weights, can also be a function that is evaluated during runtime
 #' @param seed seed to initialize weights of model with
 #' @export
 setEstimator <- function(
@@ -59,6 +60,7 @@ setEstimator <- function(
       params = list(patience = 4)
     ),
     metric = "auc",
+    accumulationSteps = NULL,
     seed = NULL) {
   checkIsClass(learningRate, c("numeric", "character"))
   if (inherits(learningRate, "character") && learningRate != "auto") {
@@ -74,7 +76,14 @@ setEstimator <- function(
   checkIsClass(earlyStopping, c("list", "NULL"))
   checkIsClass(metric, c("character", "list"))
   checkIsClass(seed, c("numeric", "integer", "NULL"))
-
+  
+  if (!is.null(accumulationSteps) && !is.function(accumulationSteps)) {
+    checkHigher(accumulationSteps, 0)
+    checkIsClass(accumulationSteps, c("numeric", "integer"))
+    if (batchSize %% accumulationSteps != 0) {
+      stop("Batch size should be divisible by accumulation steps")
+    }
+  }
 
   if (length(learningRate) == 1 && learningRate == "auto") {
     findLR <- TRUE
@@ -93,6 +102,7 @@ setEstimator <- function(
     earlyStopping = earlyStopping,
     findLR = findLR,
     metric = metric,
+    accumulationSteps = accumulationSteps,
     seed = seed[1]
   )
 
@@ -123,6 +133,13 @@ setEstimator <- function(
       class(estimatorSettings$device)
     )
   }
+  
+  if (is.function(accumulationSteps)) {
+    class(estimatorSettings$accumulationSteps) <- c(
+      "delayed",
+      class(estimatorSettings$accumulationSteps)
+    )
+  }
 
   estimatorSettings$paramsToTune <- extractParamsToTune(estimatorSettings)
   return(estimatorSettings)
@@ -146,12 +163,6 @@ fitEstimator <- function(trainData,
                          analysisPath,
                          ...) {
   start <- Sys.time()
-
-  # check covariate data
-  if (!FeatureExtraction::isCovariateData(trainData$covariateData)) {
-    stop("Needs correct covariateData")
-  }
-
   if (!is.null(trainData$folds)) {
     trainData$labels <- merge(trainData$labels, trainData$fold, by = "rowId")
   }
@@ -298,7 +309,14 @@ predictDeepEstimator <- function(plpModel,
   prediction <- cohort
   if (is.character(plpModel$model)) {
     model <- torch$load(file.path(plpModel$model,
-                                  "DeepEstimatorModel.pt"),                        map_location = "cpu")
+                                  "DeepEstimatorModel.pt"),                        
+                        map_location = "cpu")
+    if (is.null(model$model_parameters$model_type)) {
+      # for backwards compatibility
+      model$model_parameters$model_type <- plpModel$modelDesign$modelSettings$modelType
+    }
+    model$estimator_settings$device <-
+      plpModel$modelDesign$modelSettings$estimatorSettings$device
     estimator <-
       createEstimator(modelParameters =
                       snakeCaseToCamelCaseNames(model$model_parameters),
@@ -340,24 +358,12 @@ gridCvDeep <- function(mappedData,
 
   paramSearch <- modelSettings$param
 
-  # TODO below chunk should be in a setupCache function
-  trainCache <- trainingCache$new(analysisPath)
-  if (trainCache$isParamGridIdentical(paramSearch)) {
-    gridSearchPredictons <- trainCache$getGridSearchPredictions()
-  } else {
-    gridSearchPredictons <- list()
-    length(gridSearchPredictons) <- length(paramSearch)
-    trainCache$saveGridSearchPredictions(gridSearchPredictons)
-    trainCache$saveModelParams(paramSearch)
-  }
+  # setup cache for hyperparameterResults
+  trainCache <- setupCache(analysisPath, paramSearch)
+  hyperparameterResults <- trainCache$getGridSearchPredictions()
 
   dataset <- createDataset(data = mappedData, labels = labels)
 
-  fitParams <- names(paramSearch[[1]])[grepl(
-    "^estimator",
-    names(paramSearch[[1]])
-  )]
-  findLR <- modelSettings$estimatorSettings$findLR
   if (!trainCache$isFull()) {
     for (gridId in trainCache$getLastGridSearchIndex():length(paramSearch)) {
       ParallelLogger::logInfo(paste0(
@@ -369,134 +375,58 @@ gridCvDeep <- function(mappedData,
         paramSearch[[gridId]],
         collapse = " | "
       ))
-      currentModelParams <- paramSearch[[gridId]][modelSettings$modelParamNames]
-      attr(currentModelParams, "metaData")$names <-
-        modelSettings$modelParamNames
-      currentModelParams$modelType <- modelSettings$modelType
-      currentEstimatorSettings <-
-        fillEstimatorSettings(modelSettings$estimatorSettings,
-                              fitParams,
-                              paramSearch[[gridId]])
-      currentModelParams$catFeatures <- dataset$get_cat_features()$max()
-      currentModelParams$numFeatures <-
-        dataset$get_numerical_features()$len()
-      if (findLR) {
-        lrFinder <- createLRFinder(modelParameters = currentModelParams,
-                                   estimatorSettings = currentEstimatorSettings)
-        lr <- lrFinder$get_lr(dataset)
-        ParallelLogger::logInfo(paste0("Auto learning rate selected as: ", lr))
-        currentEstimatorSettings$learningRate <- lr
-      }
-
-      crossValidationResults <-
-        doCrossvalidation(dataset,
+      hyperparameterResults[[gridId]] <-
+        doCrossValidation(dataset,
           labels = labels,
-          modelSettings = currentModelParams,
-          estimatorSettings = currentEstimatorSettings
+          parameters = paramSearch[[gridId]],
+          modelSettings = modelSettings
         )
-      learnRates <- crossValidationResults$learnRates
-      prediction <- crossValidationResults$prediction
-
-      gridPerformance <-
-        PatientLevelPrediction::computeGridPerformance(
-          prediction,
-          paramSearch[[gridId]]
-        )
-      maxIndex <- which.max(unlist(sapply(learnRates, `[`, 2)))
-      gridSearchPredictons[[gridId]] <- list(
-        prediction = prediction,
-        param = paramSearch[[gridId]],
-        gridPerformance = gridPerformance
-      )
-      gridSearchPredictons[[gridId]]$gridPerformance$hyperSummary$learnRates <-
-        rep(
-          list(unlist(learnRates[[maxIndex]]$LRs)),
-          nrow(gridSearchPredictons[[gridId]]$gridPerformance$hyperSummary)
-        )
-      gridSearchPredictons[[gridId]]$param$learnSchedule <-
-        learnRates[[maxIndex]]
-      # remove all predictions that are not the max performance
-      indexOfMax <-
-        which.max(unlist(lapply(
-          gridSearchPredictons,
-          function(x) x$gridPerformance$cvPerformance
-        )))
-      for (i in seq_along(gridSearchPredictons)) {
-        if (!is.null(gridSearchPredictons[[i]]) && i != indexOfMax) {
-          gridSearchPredictons[[i]]$prediction <- list(NULL)
-        }
-      }
-      ParallelLogger::logInfo(paste0(
-        "Caching all grid search results and
-                                     prediction for best combination ",
-        indexOfMax
-      ))
-      trainCache$saveGridSearchPredictions(gridSearchPredictons)
+     # remove all predictions that are not the max performance
+     hyperparameterResults <- trainCache$trimPerformance(hyperparameterResults) 
+     trainCache$saveGridSearchPredictions(hyperparameterResults)
     }
   }
-  paramGridSearch <- lapply(gridSearchPredictons, function(x) x$gridPerformance)
+  paramGridSearch <- lapply(hyperparameterResults,
+                            function(x) x$gridPerformance)
   # get best params
   indexOfMax <-
     which.max(unlist(lapply(
-      gridSearchPredictons,
+      hyperparameterResults,
       function(x) x$gridPerformance$cvPerformance
     )))
-  finalParam <- gridSearchPredictons[[indexOfMax]]$param
+  if (length(indexOfMax) == 0) {
+    stop("No hyperparameter combination has valid results")
+  }
+  finalParam <- hyperparameterResults[[indexOfMax]]$param
 
-  paramGridSearch <- lapply(gridSearchPredictons, function(x) x$gridPerformance)
+  paramGridSearch <- lapply(hyperparameterResults,
+                            function(x) x$gridPerformance)
 
   # get best CV prediction
-  cvPrediction <- gridSearchPredictons[[indexOfMax]]$prediction
+  cvPrediction <- hyperparameterResults[[indexOfMax]]$prediction
   cvPrediction$evaluationType <- "CV"
 
   ParallelLogger::logInfo("Training final model using optimal parameters")
-  # get the params
-  modelParams <- finalParam[modelSettings$modelParamNames]
-
-
-  # create the dir
+  trainPrediction <- trainFinalModel(dataset,
+                                     finalParam,
+                                     modelSettings,
+                                     labels)
+  prediction <- rbind(
+    trainPrediction$prediction,
+    cvPrediction
+  )
+  # remove fold index from predictions and remove cohortStartDate
+  prediction <- prediction %>%
+    dplyr::select(-"index")
+  prediction$cohortStartDate <- as.Date(prediction$cohortStartDate,
+    origin = "1970-01-01")
+  numericalIndex <- dataset$get_numerical_features()
+  
+  # save torch code here
   if (!dir.exists(file.path(modelLocation))) {
     dir.create(file.path(modelLocation), recursive = TRUE)
   }
-
-  modelParams$catFeatures <- dataset$get_cat_features()$max()
-  modelParams$numFeatures <- dataset$get_numerical_features()$len()
-  modelParams$modelType <- modelSettings$modelType
-
-  estimatorSettings <- fillEstimatorSettings(
-    modelSettings$estimatorSettings,
-    fitParams,
-    finalParam
-  )
-  estimatorSettings$learningRate <- finalParam$learnSchedule$LRs[[1]]
-  estimator <- createEstimator(modelParameters = modelParams,
-                               estimatorSettings = estimatorSettings)
-  numericalIndex <- dataset$get_numerical_features()
-  estimator$fit_whole_training_set(dataset, finalParam$learnSchedule$LRs)
-
-  ParallelLogger::logInfo("Calculating predictions on all train data...")
-  prediction <- predictDeepEstimator(
-    plpModel = estimator,
-    data = dataset,
-    cohort = labels
-  )
-  prediction$evaluationType <- "Train"
-
-  prediction <- rbind(
-    prediction,
-    cvPrediction
-  )
-  # modify prediction
-  prediction <- prediction %>%
-    dplyr::select(-"index")
-
-  prediction$cohortStartDate <- as.Date(prediction$cohortStartDate,
-    origin = "1970-01-01"
-  )
-
-
-  # save torch code here
-  estimator$save(modelLocation, "DeepEstimatorModel.pt")
+  trainPrediction$estimator$save(modelLocation, "DeepEstimatorModel.pt")
   return(
     list(
       estimator = modelLocation,
@@ -543,7 +473,7 @@ createEstimator <- function(modelParameters,
     estimatorSettings$finetune <- TRUE
     plpModel <- PatientLevelPrediction::loadPlpModel(modelParameters$modelPath)
     estimatorSettings$finetuneModelPath <-
-      file.path(normalizePath(plpModel$model), "DeepEstimatorModel.pt")
+      normalizePath(file.path(plpModel$model, "DeepEstimatorModel.pt"))
     modelParameters$modelType <-
       plpModel$modelDesign$modelSettings$modelType
   }
@@ -565,14 +495,113 @@ createEstimator <- function(modelParameters,
   return(estimator)
 }
 
-doCrossvalidation <- function(dataset,
+doCrossValidation <- function(dataset,
                               labels,
-                              modelSettings,
-                              estimatorSettings) {
+                              parameters,
+                              modelSettings
+                              ) {
+  crossValidationResults <-
+    tryCatch(doCrossValidationImpl(dataset,
+                                   labels,
+                                   parameters,
+                                   modelSettings),
+             error = function(e) {
+               if (inherits(e, "torch.cuda.OutOfMemoryError")) {
+                 ParallelLogger::logError(
+                   "Out of memory error during cross validation, 
+                   trying to continue with next hyperparameter combination"
+                 )
+                 crossValidationResults <- list()
+                 crossValidationResults$prediction <- labels
+                 crossValidationResults$prediction <- 
+                   cbind(crossValidationResults$prediction, value = NA)
+                 attr(crossValidationResults$prediction,
+                      "metaData")$modelType <- "binary"
+                 crossValidationResults$param <- parameters
+                 crossValidationResults$param$learnSchedule <- list(
+                   LRs = NA,
+                   bestEpoch = NA
+                 )
+                 nFolds <- max(labels$index)
+                 hyperSummary <- 
+                   data.frame(metric = rep("computeAuc", nFolds + 1),
+                              fold = c("CV", as.character(1:nFolds)),
+                              value = NA)
+                 hyperSummary <- cbind(hyperSummary, parameters)
+                 hyperSummary$learnRates <- NA
+                                    
+                 gridPerformance <- list(
+                   metric = "computeAuc",
+                   cvPerformance = NA,
+                   cvPerformancePerFold = rep(NA, nFolds),
+                   param = parameters,
+                   hyperSummary = hyperSummary
+                 )
+                crossValidationResults$gridPerformance <- gridPerformance
+                learnRates <- list()
+                for (i in 1:nFolds) {
+                  learnRates[[i]] <- list(
+                    LRs = NA,
+                    bestEpoch = NA
+                  )
+                }
+                crossValidationResults$learnRates <- learnRates
+                return(crossValidationResults)
+                } else {
+                  stop(e)
+                }
+              }
+            )
+  gridSearchPredictions <- list(
+    prediction = crossValidationResults$prediction,
+    param = parameters,
+    gridPerformance = crossValidationResults$gridPerformance
+  ) 
+  maxIndex <- which.max(unlist(sapply(crossValidationResults$learnRates, 
+                                      `[`, 2)))
+  if (length(maxIndex) != 0) {
+    gridSearchPredictions$gridPerformance$hyperSummary$learnRates <-
+      rep(
+        list(unlist(crossValidationResults$learnRates[[maxIndex]]$LRs)),
+        nrow(gridSearchPredictions$gridPerformance$hyperSummary)
+      )
+    gridSearchPredictions$param$learnSchedule <-
+      crossValidationResults$learnRates[[maxIndex]]
+  }
+  return(gridSearchPredictions)
+}
+
+doCrossValidationImpl <- function(dataset,
+                                  labels,
+                                  parameters,
+                                  modelSettings) {
+  fitParams <- names(parameters)[grepl(
+    "^estimator",
+    names(parameters)
+  )]
+  currentModelParams <- parameters[modelSettings$modelParamNames]
+  attr(currentModelParams, "metaData")$names <-
+    modelSettings$modelParamNameCH
+  currentModelParams$modelType <- modelSettings$modelType
+  currentEstimatorSettings <-
+    fillEstimatorSettings(modelSettings$estimatorSettings,
+                          fitParams,
+                          parameters)
+  currentModelParams$catFeatures <- dataset$get_cat_features()$max()
+  currentModelParams$numFeatures <- dataset$get_numerical_features()$len()
+  if (currentEstimatorSettings$findLR) {
+    lr <- getLR(currentModelParams, currentEstimatorSettings, dataset)
+    ParallelLogger::logInfo(paste0("Auto learning rate selected as: ", lr))
+    currentEstimatorSettings$learningRate <- lr
+  }
+
   fold <- labels$index
   ParallelLogger::logInfo(paste0("Max fold: ", max(fold)))
   learnRates <- list()
   prediction <- NULL
+  path <- system.file("python", package = "DeepPatientLevelPrediction")
+  fit_estimator <- reticulate::import_from_path("Estimator",
+                                                path = path)$fit_estimator
   for (i in 1:max(fold)) {
     ParallelLogger::logInfo(paste0("Fold ", i))
 
@@ -586,9 +615,9 @@ doCrossvalidation <- function(dataset,
     testDataset <- torch$utils$data$Subset(dataset,
                                            indices =
                                              as.integer(which(fold == i) - 1))
-    estimator <- createEstimator(modelParameters = modelSettings,
-                                 estimatorSettings = estimatorSettings)
-    estimator$fit(trainDataset, testDataset)
+    estimator <- createEstimator(modelParameters = currentModelParams,
+                                 estimatorSettings = currentEstimatorSettings)
+    fit_estimator(estimator, trainDataset, testDataset)
 
     ParallelLogger::logInfo("Calculating predictions on left out fold set...")
 
@@ -605,11 +634,15 @@ doCrossvalidation <- function(dataset,
       bestEpoch = estimator$best_epoch
     )
   }
+  gridPerformance <- PatientLevelPrediction::computeGridPerformance(prediction,
+                                                                    parameters)
   return(results = list(
     prediction = prediction,
-    learnRates = learnRates
+    learnRates = learnRates,
+    gridPerformance = gridPerformance
   ))
 }
+
 
 extractParamsToTune <- function(estimatorSettings) {
   paramsToTune <- list()
@@ -628,4 +661,35 @@ extractParamsToTune <- function(estimatorSettings) {
     }
   }
   return(paramsToTune)
+}
+
+trainFinalModel <- function(dataset, finalParam, modelSettings, labels) {
+    # get the params
+    modelParams <- finalParam[modelSettings$modelParamNames]
+  
+    fitParams <- names(finalParam)[grepl("^estimator", names(finalParam))]
+    
+    modelParams$catFeatures <- dataset$get_cat_features()$max()
+    modelParams$numFeatures <- dataset$get_numerical_features()$len()
+    modelParams$modelType <- modelSettings$modelType
+  
+    estimatorSettings <- fillEstimatorSettings(
+      modelSettings$estimatorSettings,
+      fitParams,
+      finalParam
+    )
+    estimatorSettings$learningRate <- finalParam$learnSchedule$LRs[[1]]
+    estimator <- createEstimator(modelParameters = modelParams,
+                                 estimatorSettings = estimatorSettings)
+    estimator$fit_whole_training_set(dataset, finalParam$learnSchedule$LRs)
+  
+    ParallelLogger::logInfo("Calculating predictions on all train data...")
+    prediction <- predictDeepEstimator(
+      plpModel = estimator,
+      data = dataset,
+      cohort = labels
+    )
+    prediction$evaluationType <- "Train"
+    return(list(prediction = prediction, 
+                estimator = estimator))
 }

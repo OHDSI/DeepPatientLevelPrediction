@@ -5,6 +5,8 @@ import torch
 from torch.utils.data import DataLoader, BatchSampler, RandomSampler, SequentialSampler
 from tqdm import tqdm
 
+from gpu_memory_cleanup import memory_cleanup
+
 
 class Estimator:
     """
@@ -17,7 +19,6 @@ class Estimator:
             self.device = estimator_settings["device"]()
         else:
             self.device = estimator_settings["device"]
-
         torch.manual_seed(seed=self.seed)
         if "finetune" in estimator_settings.keys() and estimator_settings["finetune"]:
             path = estimator_settings["finetune_model_path"]
@@ -41,7 +42,14 @@ class Estimator:
         self.weight_decay = estimator_settings.get("weight_decay", 1e-5)
         self.batch_size = int(estimator_settings.get("batch_size", 1024))
         self.prefix = estimator_settings.get("prefix", self.model.name)
-
+        
+        if "accumulation_steps" in estimator_settings.keys() and estimator_settings["accumulation_steps"]:
+            self.accumulation_steps = int(estimator_settings["accumulation_steps"])
+            self.sub_batch_size = self.batch_size // self.accumulation_steps
+        else:
+            self.accumulation_steps = 1
+            self.sub_batch_size = self.batch_size
+        
         self.previous_epochs = int(estimator_settings.get("previous_epochs", 0))
         self.model.to(device=self.device)
 
@@ -50,7 +58,7 @@ class Estimator:
             lr=self.learning_rate,
             weight_decay=self.weight_decay,
         )
-        self.criterion = estimator_settings["criterion"]()
+        self.criterion = estimator_settings["criterion"](reduction="sum")
 
         if (
             "metric" in estimator_settings.keys()
@@ -163,15 +171,22 @@ class Estimator:
         training_losses = torch.empty(len(dataloader))
         self.model.train()
         index = 0
+        self.optimizer.zero_grad()
         for batch in tqdm(dataloader):
-            self.optimizer.zero_grad()
-            batch = batch_to_device(batch, device=self.device)
-            out = self.model(batch[0])
-            loss = self.criterion(out, batch[1])
-            loss.backward()
-
+            split_batch = self.split_batch(batch)
+            accumulated_loss = 0
+            all_out = []
+            for sub_batch in split_batch:
+                sub_batch = batch_to_device(sub_batch, device=self.device)
+                out = self.model(sub_batch[0])
+                all_out.append(out.detach())
+                loss = self.criterion(out.squeeze(), sub_batch[1])
+                loss.backward()
+                accumulated_loss += loss.detach()
+            
             self.optimizer.step()
-            training_losses[index] = loss.detach()
+            self.optimizer.zero_grad()
+            training_losses[index] = accumulated_loss / self.batch_size
             index += 1
         return training_losses.mean().item()
 
@@ -183,11 +198,16 @@ class Estimator:
             self.model.eval()
             index = 0
             for batch in tqdm(dataloader):
-                batch = batch_to_device(batch, device=self.device)
-                pred = self.model(batch[0])
-                predictions.append(pred)
-                targets.append(batch[1])
-                loss[index] = self.criterion(pred, batch[1])
+                split_batch = self.split_batch(batch)
+                accumulated_loss = 0
+                for sub_batch in split_batch:
+                    sub_batch = batch_to_device(sub_batch, device=self.device)
+                    pred = self.model(sub_batch[0])
+                    predictions.append(pred)
+                    targets.append(sub_batch[1])
+                    accumulated_loss += self.criterion(pred.squeeze(), sub_batch[1]).detach()
+                loss[index] = accumulated_loss / self.batch_size
+
                 index += 1
             mean_loss = loss.mean().item()
             predictions = torch.concat(predictions)
@@ -260,6 +280,22 @@ class Estimator:
             )
         return
 
+    def split_batch(self, batch):
+        if self.accumulation_steps > 1 and len(batch[0]["cat"]) > self.sub_batch_size:
+            data, labels = batch
+            split_data = {key: list(torch.split(value, self.sub_batch_size))
+                          for key, value in data.items() if value is not None}
+            split_labels = list(torch.split(labels, self.sub_batch_size))
+
+            sub_batches = []
+            for i in range(len(split_labels)):
+                sub_batch = {key: value[i] for key, value in split_data.items()}
+                sub_batch = [sub_batch, split_labels[i]]
+                sub_batches.append(sub_batch)
+        else:
+            sub_batches = [batch]
+        return sub_batches
+
     def fit_whole_training_set(self, dataset, learning_rates=None):
         dataloader = DataLoader(
             dataset=dataset,
@@ -308,9 +344,11 @@ class Estimator:
             predictions = list()
             self.model.eval()
             for batch in tqdm(dataloader):
-                batch = batch_to_device(batch, device=self.device)
-                pred = self.model(batch[0])
-                predictions.append(torch.sigmoid(pred))
+                split_batch = self.split_batch(batch)
+                for sub_batch in split_batch:
+                    sub_batch = batch_to_device(sub_batch, device=self.device)
+                    pred = self.model(sub_batch[0])
+                    predictions.append(torch.sigmoid(pred))
             predictions = torch.concat(predictions).cpu().numpy()
         return predictions
 
@@ -407,3 +445,12 @@ def compute_auc(y_true, y_pred):
     # Compute AUC
     auc = num_crossings / (n_pos * n_neg)
     return auc
+
+
+def fit_estimator(estimator, train, test):
+    try:
+        estimator.fit(train, test)
+    except torch.cuda.OutOfMemoryError as e:
+        memory_cleanup()
+        raise e
+    return estimator

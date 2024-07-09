@@ -12,13 +12,6 @@ header-includes:
   - \renewcommand{\headrulewidth}{0.4pt}
   - \renewcommand{\footrulewidth}{0.4pt}
 output:
-  pdf_document:
-    includes:
-      in_header: preamble.tex
-    number_sections: yes
-    toc: yes
-  word_document:
-    toc: yes
   html_document:
     number_sections: yes
     toc: yes
@@ -26,7 +19,7 @@ output:
 
 ```{=html}
 <!--
-%\VignetteEngine{knitr}
+%\VignetteEngine{knitr::rmarkdown}
 %\VignetteIndexEntry{Installing DeepPLP}
 -->
 ```
@@ -106,7 +99,7 @@ This should install the required python packages. If that doesn't happen it can 
 
 ```
 library(DeepPatientLevelPrediction)
-torch$trandn(10L)
+torch$randn(10L)
 ```
 
 This should print out a tensor with ten different values. 

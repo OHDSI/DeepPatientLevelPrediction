@@ -67,10 +67,11 @@ jobs:
           while read -r cmd
           do
             eval sudo $cmd
-          done < <(Rscript -e 'writeLines(remotes::system_requirements("ubuntu", "20.04"))')
+          done < <(Rscript -e 'writeLines(remotes::system_requirements("ubuntu", "22.04"))')
           
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
+          cache: always
           extra-packages: any::rcmdcheck
           needs: check
           
@@ -78,11 +79,10 @@ jobs:
         shell: Rscript {0}
         run: |
           python_packages <- 
-            c("polars", "tqdm", "connectorx", "pyarrow", "scikit-learn")
+            c("polars", "tqdm", "connectorx", "pyarrow", "pynvml", "numpy==1.26.4")
           
           library(reticulate)
-          virtualenv_create("r-reticulate", Sys.which("python"))
-          virtualenv_install("r-reticulate", python_packages)
+          virtualenv_create("r-reticulate", Sys.which("python"), packages=python_packages)
           virtualenv_install("r-reticulate", "torch", pip_options = c("--index-url https://download.pytorch.org/whl/cpu"))
           
           path_to_python <- virtualenv_python("r-reticulate")
@@ -103,7 +103,7 @@ jobs:
 
       - name: Test coverage
         if: runner.os == 'ubuntu-22.04'
-        run: covr::codecov()
+        run: covr::codecov(token = "${{ secrets.CODECOV_TOKEN }}")
         shell: Rscript {0}
 
       - name: Upload source package

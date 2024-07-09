@@ -6,13 +6,13 @@
 \usage{
 setTransformer(
   numBlocks = 3,
-  dimToken = 96,
+  dimToken = 192,
   dimOut = 1,
   numHeads = 8,
-  attDropout = 0.25,
-  ffnDropout = 0.25,
+  attDropout = 0.2,
+  ffnDropout = 0.1,
   resDropout = 0,
-  dimHidden = 512,
+  dimHidden = 256,
   dimHiddenRatio = NULL,
   estimatorSettings = setEstimator(weightDecay = 1e-06, batchSize = 1024, epochs = 10,
     seed = NULL),

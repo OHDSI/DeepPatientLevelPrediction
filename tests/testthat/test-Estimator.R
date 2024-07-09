@@ -386,3 +386,45 @@ test_that("evaluation works on predictDeepEstimator output", {
   expect_s3_class(evaluation, "plpEvaluation")
   
   })
+
+
+test_that("accumulationSteps as a function argument works", {
+  getSteps <- function() {
+    steps <- Sys.getenv("testAccSteps")
+    if (steps == "") {
+      steps <- "1"
+    } else {
+      steps
+    }
+  }
+
+  estimatorSettings <- setEstimator(accumulationSteps = getSteps,
+                                    learningRate = 3e-4,
+                                    batchSize = 128)
+
+  model <- setDefaultResNet(estimatorSettings = estimatorSettings)
+  model$param[[1]]$catFeatures <- 10
+  model$param[[1]]$modelType <- "ResNet"
+  estimator <- createEstimator(modelParameters = model$param[[1]],
+                               estimatorSettings = estimatorSettings)
+
+  expect_equal(estimator$accumulation_steps, 1)
+
+  Sys.setenv("testAccSteps" = "4")
+
+  estimatorSettings <- setEstimator(accumulationSteps = getSteps,
+                                    learningRate = 3e-4,
+                                    batchSize = 128)
+
+  model <- setDefaultResNet(estimatorSettings = estimatorSettings)
+  model$param[[1]]$catFeatures <- 10
+  model$param[[1]]$modelType <- "ResNet"
+
+  estimator <- createEstimator(modelParameters = model$param[[1]],
+                               estimatorSettings = estimatorSettings)
+
+  expect_equal(estimator$accumulation_steps, 4)
+
+  Sys.unsetenv("testAccSteps")
+
+})

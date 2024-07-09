@@ -1,4 +1,4 @@
-# @file MLP.R
+# @file MultiLayerPerceptron.R
 #
 # Copyright 2022 Observational Health Data Sciences and Informatics
 #
@@ -109,7 +109,7 @@ setMultiLayerPerceptron <- function(numLayers = c(1:8),
       "numLayers", "sizeHidden",
       "dropout", "sizeEmbedding"
     ),
-    modelType = "MLP"
+    modelType = "MultiLayerPerceptron"
   )
   attr(results$param, "settings")$modelType <- results$modelType
 

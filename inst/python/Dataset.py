@@ -1,6 +1,6 @@
 import time
 import pathlib
-import urllib
+from urllib.parse import quote
 
 import polars as pl
 import torch
@@ -16,9 +16,9 @@ class Data(Dataset):
         """
         start = time.time()
         if pathlib.Path(data).suffix == ".sqlite":
-            data = urllib.parse.quote(data)
-            data = pl.read_database(
-                "SELECT * from covariates", connection=f"sqlite://{data}"
+            data = quote(data)
+            data = pl.read_database_uri(
+                "SELECT * from covariates", uri=f"sqlite://{data}"
             ).lazy()
         else:
             data = pl.scan_ipc(pathlib.Path(data).joinpath("covariates/*.arrow"))
@@ -26,7 +26,7 @@ class Data(Dataset):
         # detect features are numeric
         if numerical_features is None:
             self.numerical_features = (
-                data.groupby(by="columnId")
+                data.group_by("columnId")
                 .n_unique()
                 .filter(pl.col("covariateValue") > 1)
                 .select("columnId")
@@ -50,7 +50,7 @@ class Data(Dataset):
             .with_columns(pl.col("rowId") - 1)
             .collect()
         )
-        cat_tensor = torch.as_tensor(data_cat.to_numpy())
+        cat_tensor = torch.tensor(data_cat.to_numpy())
         tensor_list = torch.split(
             cat_tensor[:, 1],
             torch.unique_consecutive(cat_tensor[:, 0], return_counts=True)[1].tolist(),
@@ -94,7 +94,7 @@ class Data(Dataset):
                 numerical_data.select(["rowId", "columnId"]).to_numpy(),
                 dtype=torch.long,
             )
-            values = torch.as_tensor(
+            values = torch.tensor(
                 numerical_data.select("covariateValue").to_numpy(), dtype=torch.float
             )
             self.num = torch.sparse_coo_tensor(
@@ -119,7 +119,7 @@ class Data(Dataset):
             batch = {"cat": self.cat[item, :], "num": self.num[item, :]}
         else:
             batch = {"cat": self.cat[item, :].squeeze(), "num": None}
-        if batch["cat"].dim() == 1 and not isinstance(item, list):
+        if batch["cat"].dim() == 1:
             batch["cat"] = batch["cat"].unsqueeze(0)
         if (
             batch["num"] is not None

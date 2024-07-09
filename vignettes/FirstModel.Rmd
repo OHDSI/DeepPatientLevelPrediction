@@ -12,13 +12,6 @@ header-includes:
   - \renewcommand{\headrulewidth}{0.4pt}
   - \renewcommand{\footrulewidth}{0.4pt}
 output:
-  pdf_document:
-    includes:
-      in_header: preamble.tex
-    number_sections: yes
-    toc: yes
-  word_document:
-    toc: yes
   html_document:
     number_sections: yes
     toc: yes
@@ -26,7 +19,7 @@ output:
 
 ```{=html}
 <!--
-%\VignetteEngine{knitr}
+%\VignetteEngine{knitr::rmarkdown}
 %\VignetteIndexEntry{Developing your first DeepPLP model}
 -->
 ```
@@ -73,7 +66,7 @@ covariateSettings <- FeatureExtraction::createCovariateSettings(
 )
 ```
 
-This means we are extracting gender as a binary variable, age as a continuous variable and conditions occurring in the long term window, which is by default 365 days prior.
+This means we are extracting gender as a binary variable, age as a continuous variable and conditions occurring in the long term window, which is by default 365 days prior to index. If you want to know more about these terms we recommend checking out the [book of OHDSI](https://ohdsi.github.io/TheBookOfOhdsi/).
 
 Next we need to define our database details, which defines from which database we are getting which cohorts. Since we don't have a database we are using Eunomia.
 
@@ -126,11 +119,11 @@ modelSettings <- setDefaultResNet(
 
 ```
 
-We still need to define a few parameters. Device defines on which device to train the model. Usually deep learning models are slow to train so they need a GPU. However this example is small enough that we can use a CPU If you have access to a GPU you can try changing the device to `'cuda'` and see how much faster it goes.
+We still need to define a few parameters. Device defines on which device to train the model. Usually deep learning models are slow to train so they need a GPU. However this example is small enough that we can use a CPU. If you have access to a GPU you can try changing the device to `'cuda'` and see how much faster it goes.
 
 We also need to define our batch size. Usually in deep learning the model sees only a small chunk of the data at a time, in this case 256 patients. After that the model is updated before seeing the next batch. The batch order is random. This is called stochastic gradient descent.
 
-Finally we define our epochs. This is how long we will train the model. One epoch means the model has seen all the data once.
+Finally we define our epochs. This is how long we will train the model. One epoch means the model has seen all the data once. In this case we will train the model for 3 epochs.
 
 Now all that is left is using the PLP to train our first deep learning model. If you have used the PLP this should look familiar to you.
 
@@ -143,6 +136,7 @@ plpResults <- PatientLevelPrediction::runPlp(plpData = plpData,
                populationSettings = populationSettings
                                                       )
 ```
+
 On my computer this takes about 20 seconds per epoch. While you probably won't see any kind of good performance using this model and this data, at least the training loss should be decreasing in the printed output.
 
 Congratulations you have just developed your first deep learning model!

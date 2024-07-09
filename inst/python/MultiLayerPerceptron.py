@@ -3,7 +3,7 @@ from torch import nn
 from ResNet import NumericalEmbedding
 
 
-class MLP(nn.Module):
+class MultiLayerPerceptron(nn.Module):
     def __init__(
         self,
         cat_features: int,
@@ -13,11 +13,11 @@ class MLP(nn.Module):
         num_layers: int,
         activation=nn.ReLU,
         normalization=nn.BatchNorm1d,
-        dropout=None,
+        dropout=0.0,
         dim_out: int = 1,
-        model_type="MLP"
+        model_type="MultiLayerPerceptron"
     ):
-        super(MLP, self).__init__()
+        super(MultiLayerPerceptron, self).__init__()
         self.name = model_type
         cat_features = int(cat_features)
         num_features = int(num_features)
@@ -36,7 +36,7 @@ class MLP(nn.Module):
         self.first_layer = nn.Linear(size_embedding, size_hidden)
 
         self.layers = nn.ModuleList(
-            MLPLayer(
+            MlpLayer(
                 size_hidden=size_hidden,
                 normalization=normalization,
                 activation=activation,
@@ -72,7 +72,7 @@ class MLP(nn.Module):
         self.head = nn.Linear(self.size_hidden, self.dim_out)
 
 
-class MLPLayer(nn.Module):
+class MlpLayer(nn.Module):
     def __init__(
         self,
         size_hidden=64,
@@ -81,7 +81,7 @@ class MLPLayer(nn.Module):
         dropout=0.0,
         bias=True,
     ):
-        super(MLPLayer, self).__init__()
+        super(MlpLayer, self).__init__()
         self.norm = normalization(size_hidden)
         self.activation = activation()
         self.linear = nn.Linear(size_hidden, size_hidden, bias=bias)
