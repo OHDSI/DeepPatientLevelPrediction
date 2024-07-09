@@ -59,6 +59,8 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: ./
+          cache-from: type=gha
+          cache-to: type=gha, mode=max
           file: Dockerfile
           platforms: linux/amd64
           push: true
