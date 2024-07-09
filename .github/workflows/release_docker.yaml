@@ -18,7 +18,7 @@ on:
   workflow_dispatch:
     inputs:
       docker_image:
-        description: 'DeepPatientLevelPrediction Docker image.'
+        description: 'DeepPatientLevelPrediction docker image.'
         default: 'ohdsi/deep_plp'
         type: string
 
@@ -26,7 +26,7 @@ jobs:
   docker:
     runs-on: ubuntu-latest
     env:
-      DOCKER_IMAGE: ${{ inputs.docker_image.default || secrets.DOCKER_IMAGE }}   
+      docker_image: ${{ inputs.docker_image }}   
     steps:
       - uses: actions/checkout@v4
 
