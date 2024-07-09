@@ -1,7 +1,6 @@
 FROM docker.io/rocker/r-ver:4.4.1 AS build
 
-ARG GITHUB_PAT
-ENV GITHUB_PAT=${GITHUB_PAT}
+RUN --mount=type=secret,id=build_github_pat export GITHUB_PAT=$(cat /run/secrets/build_github_pat)
 
 ARG APP_NAME
 
