@@ -35,6 +35,8 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.DOCKER_IMAGE }}
+          tags: |
+            type=semver,pattern={{version}}
       # Setup docker build environment
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
