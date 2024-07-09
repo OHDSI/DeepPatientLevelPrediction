@@ -2,8 +2,6 @@ FROM docker.io/rocker/r-ver:4.4.1 AS build
 
 RUN --mount=type=secret,id=build_github_pat export GITHUB_PAT=$(cat /run/secrets/build_github_pat)
 
-ARG APP_NAME
-
 ARG GIT_BRANCH='main'
 ARG GIT_COMMIT_ID_ABBREV
 
@@ -16,7 +14,7 @@ RUN apt-get -y update && apt-get install -y \
       --no-install-recommends \
       && apt-get clean \
       && rm -rf /var/lib/apt/lists/*
-RUN R cmd javareconf
+RUN R CMD javareconf
 
 RUN install2.r -n -1 \
         remotes \
@@ -61,5 +59,5 @@ RUN apt-get -y update && apt-get install -y \
       --no-install-recommends \
       && apt-get clean \
       && rm -rf /var/lib/apt/lists/* \
-      && R cmd javareconf
+      && R CMD javareconf
 
