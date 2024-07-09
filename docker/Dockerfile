@@ -1,53 +1,67 @@
-FROM docker.io/rocker/r-ver:4.2.3 as build
+FROM docker.io/rocker/r-ver:4.4.1 AS build
+
+ARG GITHUB_PAT
+ENV GITHUB_PAT=${GITHUB_PAT}
+
+ARG APP_NAME
+
+ARG GIT_BRANCH='main'
+ARG GIT_COMMIT_ID_ABBREV
 
 RUN apt-get -y update && apt-get install -y \
       default-jre \
       default-jdk \
-      python3-pip \
-      python3-venv \
       libssl-dev  \
+      python3-pip \
+      python3-dev \
       --no-install-recommends \
-      && apt-get clean
-
-RUN echo "options(repos=list(CRAN='https://packagemanager.posit.co/cran/__linux__/jammy/latest'))" >> /root/.Rprofile
-
+      && apt-get clean \
+      && rm -rf /var/lib/apt/lists/*
 RUN R cmd javareconf
 
-RUN Rscript -e "install.packages(c('remotes', 'testthat', 'Eunomia', 'CirceR', 'devtools'))" \ 
-  && Rscript -e "remotes::install_github(c('ohdsi/CohortGenerator', 'ohdsi/ROhdsiWebApi'))"
-
-RUN Rscript -e "remotes::install_github('ohdsi/DeepPatientLevelPrediction')"
-
+RUN install2.r -n -1 \
+        remotes \
+        CirceR \
+        Eunomia \
+        duckdb \
+    && installGithub.r \
+        OHDSI/CohortGenerator \
+        OHDSI/ROhdsiWebApi \
+        OHDSI/ResultModelManager
+        
 RUN Rscript -e "DatabaseConnector::downloadJdbcDrivers(dbms='all', pathToDriver='/database_drivers/')"
 ENV DATABASECONNECTOR_JAR_FOLDER=/database_drivers/
 
-# set up python
-ENV RETICULATE_MINICONDA_PATH=/opt/conda/
-RUN Rscript -e "reticulate::install_miniconda()" \
-    -e "reticulate::conda_install(envname = 'r-reticulate', packages=c('python=3.11'))"
-
 # install Python packages
-RUN /opt/conda/bin/conda run -n r-reticulate pip install connectorx polars pyarrow torch tqdm pynvml
+RUN pip3 install uv \
+    && uv pip install --system --no-cache-dir \
+    connectorx \
+    polars \
+    pyarrow \
+    torch \
+    tqdm \
+    pynvml \
+    && rm -rf /root/.cache/pip
 
-# without conda and pip caches
-ENV PIP_NO_CACHE_DIR=1
-RUN rm -rf /root/.cache/R/renv \
-    && /opt/conda/bin/conda clean -afy
+RUN Rscript -e "ref <- Sys.getenv('GIT_COMMIT_ID_ABBREV', unset = Sys.getenv('GIT_BRANCH')); remotes::install_github('ohdsi/DeepPatientLevelPrediction', ref=ref)"
 
-FROM docker.io/rocker/rstudio:4.2.3
 
-COPY --from=build /opt/conda /opt/conda
+FROM docker.io/rocker/rstudio:4.4.1
+#
+COPY --from=build /usr/local/lib/python3.10/dist-packages /usr/local/lib/python3.10/dist-packages
 COPY --from=build /database_drivers /database_drivers
 COPY --from=build /usr/local/lib/R/site-library /usr/local/lib/R/site-library
 COPY --from=build /usr/local/lib/R/library /usr/local/lib/R/library
 
-ENV RETICULATE_MINICONDA_PATH=/opt/conda/
-
+ENV RETICULATE_PYTHON=/usr/bin/python3
 # runtime dependanceis
 RUN apt-get -y update && apt-get install -y \
       default-jre \
       libssl3 \
+      python3-dev \
       --no-install-recommends \
       && R cmd javareconf \
-      && apt-get clean
+      && apt-get clean \
+      && rm -rf /var/lib/apt/lists/* \
+      && R cmd javareconf
 
