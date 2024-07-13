@@ -73,7 +73,7 @@ jobs:
         shell: Rscript {0}
         run: |
           python_packages <- 
-            c("polars", "tqdm", "connectorx", "pyarrow", "scikit-learn")
+            c("polars", "tqdm", "connectorx", "pyarrow", "numpy==1.26.4")
           
           library(reticulate)
           virtualenv_create("r-reticulate", Sys.which("python"))
