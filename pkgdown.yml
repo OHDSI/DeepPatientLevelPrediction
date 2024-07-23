@@ -6,4 +6,7 @@ articles:
   FirstModel: FirstModel.html
   Installing: Installing.html
   TransferLearning: TransferLearning.html
-last_built: 2024-07-23T14:12Z
+last_built: 2024-07-23T14:41Z
+urls:
+  reference: https://ohdsi.github.com/DeepPatientLevelPrediction/reference
+  article: https://ohdsi.github.com/DeepPatientLevelPrediction/articles
