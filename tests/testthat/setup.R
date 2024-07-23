@@ -3,9 +3,13 @@ library(PatientLevelPrediction)
 testLoc <- normalizePath(tempdir())
 torch <- reticulate::import("torch")
 # get connection and data from Eunomia
+
+ParallelLogger::logInfo("Getting connectionDetails")
 connectionDetails <- Eunomia::getEunomiaConnectionDetails()
+ParallelLogger::logInfo("Ccreating cohorts")
 Eunomia::createCohorts(connectionDetails)
 
+ParallelLogger::logInfo("Creating covariate settings")
 covSet <- FeatureExtraction::createCovariateSettings(
   useDemographicsGender = TRUE,
   useDemographicsAge = TRUE,
@@ -18,6 +22,7 @@ covSet <- FeatureExtraction::createCovariateSettings(
 )
 
 
+ParallelLogger::logInfo("Create database details")
 databaseDetails <- PatientLevelPrediction::createDatabaseDetails(
   connectionDetails = connectionDetails,
   cdmDatabaseSchema = "main",
@@ -30,12 +35,14 @@ databaseDetails <- PatientLevelPrediction::createDatabaseDetails(
   cdmDatabaseName = "eunomia"
 )
 
+ParallelLogger::logInfo("Create restrictPlpDataSettings")
 restrictPlpDataSettings <-
   PatientLevelPrediction::createRestrictPlpDataSettings(
     firstExposureOnly = TRUE,
     washoutPeriod = 365
   )
 
+ParallelLogger::logInfo("Get plpData")
 plpData <- PatientLevelPrediction::getPlpData(
   databaseDetails = databaseDetails,
   restrictPlpDataSettings = restrictPlpDataSettings,
