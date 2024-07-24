@@ -1,87 +1,32 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>/articles/BuildingDeepModels.html</loc>
-  </url>
-  <url>
-    <loc>/articles/FirstModel.html</loc>
-  </url>
-  <url>
-    <loc>/articles/Installing.html</loc>
-  </url>
-  <url>
-    <loc>/articles/index.html</loc>
-  </url>
-  <url>
-    <loc>/authors.html</loc>
-  </url>
-  <url>
-    <loc>/index.html</loc>
-  </url>
-  <url>
-    <loc>/news/index.html</loc>
-  </url>
-  <url>
-    <loc>/reference/DeepPatientLevelPrediction.html</loc>
-  </url>
-  <url>
-    <loc>/reference/camelCaseToSnakeCase.html</loc>
-  </url>
-  <url>
-    <loc>/reference/camelCaseToSnakeCaseNames.html</loc>
-  </url>
-  <url>
-    <loc>/reference/checkHigher.html</loc>
-  </url>
-  <url>
-    <loc>/reference/checkHigherEqual.html</loc>
-  </url>
-  <url>
-    <loc>/reference/checkIsClass.html</loc>
-  </url>
-  <url>
-    <loc>/reference/fitEstimator.html</loc>
-  </url>
-  <url>
-    <loc>/reference/gridCvDeep.html</loc>
-  </url>
-  <url>
-    <loc>/reference/index.html</loc>
-  </url>
-  <url>
-    <loc>/reference/predictDeepEstimator.html</loc>
-  </url>
-  <url>
-    <loc>/reference/setDefaultResNet.html</loc>
-  </url>
-  <url>
-    <loc>/reference/setDefaultTransformer.html</loc>
-  </url>
-  <url>
-    <loc>/reference/setEstimator.html</loc>
-  </url>
-  <url>
-    <loc>/reference/setFinetuner.html</loc>
-  </url>
-  <url>
-    <loc>/reference/setMultiLayerPerceptron.html</loc>
-  </url>
-  <url>
-    <loc>/reference/setResNet.html</loc>
-  </url>
-  <url>
-    <loc>/reference/setTransformer.html</loc>
-  </url>
-  <url>
-    <loc>/reference/snakeCaseToCamelCase.html</loc>
-  </url>
-  <url>
-    <loc>/reference/snakeCaseToCamelCaseNames.html</loc>
-  </url>
-  <url>
-    <loc>/reference/torch.html</loc>
-  </url>
-  <url>
-    <loc>/reference/trainingCache.html</loc>
-  </url>
+<urlset xmlns = 'http://www.sitemaps.org/schemas/sitemap/0.9'>
+<url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/dev/articles/BuildingDeepModels.html</loc></url>
+<url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/dev/articles/FirstModel.html</loc></url>
+<url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/dev/articles/Installing.html</loc></url>
+<url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/dev/articles/TransferLearning.html</loc></url>
+<url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/dev/articles/index.html</loc></url>
+<url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/dev/authors.html</loc></url>
+<url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/dev/index.html</loc></url>
+<url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/dev/news/index.html</loc></url>
+<url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/DeepPatientLevelPrediction.html</loc></url>
+<url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/camelCaseToSnakeCase.html</loc></url>
+<url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/camelCaseToSnakeCaseNames.html</loc></url>
+<url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/checkHigher.html</loc></url>
+<url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/checkHigherEqual.html</loc></url>
+<url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/checkIsClass.html</loc></url>
+<url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/fitEstimator.html</loc></url>
+<url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/gridCvDeep.html</loc></url>
+<url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/index.html</loc></url>
+<url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/predictDeepEstimator.html</loc></url>
+<url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setDefaultResNet.html</loc></url>
+<url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setDefaultTransformer.html</loc></url>
+<url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setEstimator.html</loc></url>
+<url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setFinetuner.html</loc></url>
+<url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setMultiLayerPerceptron.html</loc></url>
+<url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setResNet.html</loc></url>
+<url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setTransformer.html</loc></url>
+<url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/snakeCaseToCamelCase.html</loc></url>
+<url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/snakeCaseToCamelCaseNames.html</loc></url>
+<url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/torch.html</loc></url>
+<url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/trainingCache.html</loc></url>
 </urlset>
+
