@@ -13,3 +13,5 @@
 ^.*\.pt$
 ^doc$
 ^Meta$
+^Dockerfile$
+^.devcontainer
