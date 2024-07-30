@@ -26,16 +26,19 @@ RUN apt-get -y update && apt-get install -y \
       && rm -rf /var/lib/apt/lists/*
 RUN R CMD javareconf
 
-RUN install2.r -n -1 \
-        remotes \
-        CirceR \
-        Eunomia \
-        duckdb \
-    && installGithub.r \
-        OHDSI/CohortGenerator \
-        OHDSI/ROhdsiWebApi \
-        OHDSI/ResultModelManager
-        
+RUN install2.r pak 
+
+RUN Rscript -e "options('repos'=c(RHUB='https://raw.githubusercontent.com/r-hub/repos/main/ubuntu-22.04-aarch64/4.4', \
+                                   PPM='https://p3m.dev/cran/__linux__/jammy/latest')); \
+     pak::pkg_install(c('remotes', \
+                        'CirceR', \
+                        'Eunomia', \
+                        'duckdb', \
+                        'DatabaseConnector', \
+                        'ohdsi/CohortGenerator', \
+                        'ohdsi/ROhdsiWebApi', \
+                        'ResultModelManager'))"
+
 RUN Rscript -e "DatabaseConnector::downloadJdbcDrivers(dbms='all', pathToDriver='/database_drivers/')"
 ENV DATABASECONNECTOR_JAR_FOLDER=/database_drivers/
 
