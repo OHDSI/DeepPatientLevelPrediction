@@ -27,8 +27,8 @@ RUN apt-get -y update && apt-get install -y \
 RUN R CMD javareconf
 
 
-RUN Rscript -e "install.packages("pak", \
-                                 repos = sprintf("https://r-lib.github.io/p/pak/stable/%s/%s/%s", \
+RUN Rscript -e "install.packages('pak', \
+                                 repos = sprintf('https://r-lib.github.io/p/pak/stable/%s/%s/%s', \
                                  .Platform$pkgType, R.Version()$os, R.Version()$arch))"
 
 RUN Rscript -e "options('repos'=c(RHUB='https://raw.githubusercontent.com/r-hub/repos/main/ubuntu-22.04-aarch64/4.4', \
