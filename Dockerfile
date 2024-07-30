@@ -27,7 +27,10 @@ RUN apt-get -y update && apt-get install -y \
 RUN R CMD javareconf
 
 
-RUN Rscript -e "install.packages('pak', \
+RUN Rscript -e "print(.Platform$pkgType); \
+                print(R.Version()$os); \
+                print(R.Version()$arch); \
+                install.packages('pak', \
                                  repos = sprintf('https://r-lib.github.io/p/pak/stable/%s/%s/%s', \
                                  .Platform$pkgType, R.Version()$os, R.Version()$arch))"
 
