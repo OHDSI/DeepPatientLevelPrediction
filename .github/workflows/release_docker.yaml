@@ -21,6 +21,9 @@ jobs:
     env:
       DOCKER_IMAGE: 'ohdsi/deep_plp' 
     steps:
+      - name: Delete huge unnecessary tools folder
+        run: rm -rf /opt/hostedtoolcache
+
       - uses: actions/checkout@v4
 
       # ------------------------------------
