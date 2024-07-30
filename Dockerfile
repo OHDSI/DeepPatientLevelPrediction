@@ -31,7 +31,7 @@ RUN R CMD javareconf
 
 RUN Rscript -e "install.packages('pak', \
                                  repos = sprintf('https://r-lib.github.io/p/pak/stable/%s/%s/%s', \
-                                 'source', 'linux-gnu', if Sys.getenv('ARCH') == 'x86_64' 'amd64' else 'aarch64'))"
+                                 'source', 'linux-gnu', if (Sys.getenv('ARCH') == 'x86_64') 'amd64' else 'aarch64'))"
 
 RUN Rscript -e "options('repos'=c(RHUB='https://raw.githubusercontent.com/r-hub/repos/main/ubuntu-22.04-aarch64/4.4', \
                                    PPM='https://p3m.dev/cran/__linux__/jammy/latest')); \
