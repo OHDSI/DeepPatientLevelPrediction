@@ -36,8 +36,7 @@ RUN Rscript -e "options('repos'=c(RHUB='https://raw.githubusercontent.com/r-hub/
                         'duckdb', \
                         'DatabaseConnector', \
                         'ohdsi/CohortGenerator', \
-                        'ohdsi/ROhdsiWebApi', \
-                        'ResultModelManager'))"
+                        'ohdsi/ROhdsiWebApi'))"
 
 RUN Rscript -e "DatabaseConnector::downloadJdbcDrivers(dbms='all', pathToDriver='/database_drivers/')"
 ENV DATABASECONNECTOR_JAR_FOLDER=/database_drivers/
