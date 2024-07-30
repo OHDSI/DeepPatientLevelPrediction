@@ -27,7 +27,7 @@ RUN apt-get -y update && apt-get install -y \
 RUN R CMD javareconf
 
 
-RUN Rscript -e "pgkType <- .Platform$pkgType; \
+RUN Rscript -e "pkgType <- .Platform$pkgType; \
                 os <- R.Version()$os; \
                 arch <- R.Version()$arch; \
                 install.packages('pak', \
