@@ -17,18 +17,18 @@ on:
 
 jobs:
   docker:
-    runs-on: ubuntu-latest
+    name: "${{ matrix.config.arch }}"
+    runs-on: ${{ matrix.config.runs_on}}
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - { runs_on: "ubuntu-latest", arch: "amd64"}
+          - { runs_on: "ubuntu-latest", arch: "arm64"}
     env:
       DOCKER_IMAGE: 'ohdsi/deep_plp' 
     steps:
-      - name: Delete huge unnecessary tools folder
-        run: rm -rf /opt/hostedtoolcache
-
       - uses: actions/checkout@v4
-
-      # ------------------------------------
-      # The pattern for the following steps is specified
-      # in OHDSI/WebAPI.
 
       # Add Docker labels and tags
       - name: Docker meta
@@ -40,6 +40,7 @@ jobs:
             type=semver,pattern={{version}}
       # Setup docker build environment
       - name: Set up QEMU
+        if: matrix.config.arch == 'arm64'
         uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
@@ -55,6 +56,7 @@ jobs:
         id: build_params
         run: |
           echo "SHA8=${GITHUB_SHA::8}" >> $GITHUB_ENV
+
       - name: Build and push
         id: docker_build
         uses: docker/build-push-action@v6
@@ -63,7 +65,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha, mode=max
           file: Dockerfile
-          platforms: linux/amd64, linux/arm64
+          platforms: "linux/${{ matrix.config.arch }}"
           push: true
           secrets: |
             build_github_pat=${{ secrets.GH_TOKEN }}
