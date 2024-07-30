@@ -16,7 +16,7 @@ RUN apt-get -y update && apt-get install -y \
       python3-dev \
       libxml2-dev \
       libicu-dev \
-      libbz2-dev \
+      libbz2-dev \
       liblzma-dev \
       libdeflate-dev \
       libpcre2-dev \
