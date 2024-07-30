@@ -5,12 +5,22 @@ RUN --mount=type=secret,id=build_github_pat export GITHUB_PAT=$(cat /run/secrets
 ARG GIT_BRANCH='main'
 ARG GIT_COMMIT_ID_ABBREV
 
+# optimize compilation
+ENV MAKEFLAGS="-j$(2)"
+
 RUN apt-get -y update && apt-get install -y \
       default-jre \
       default-jdk \
       libssl-dev  \
       python3-pip \
       python3-dev \
+      libxml2-dev \
+      libicu-dev \
+      libbz2-dev \
+      liblzma-dev \
+      libdeflate-dev \
+      libpcre2-dev \
+      libcurl4-openssl-dev \
       --no-install-recommends \
       && apt-get clean \
       && rm -rf /var/lib/apt/lists/*
@@ -57,6 +67,13 @@ RUN apt-get -y update && apt-get install -y \
       default-jdk \
       libssl3 \
       python3-dev \
+      libxml2 \
+      libicu70 \
+      libbz2-1.0 \
+      liblzma5 \
+      libdeflate0 \
+      libpcre2-8-0 \
+      libcurl4 \
       --no-install-recommends \
       && apt-get clean \
       && rm -rf /var/lib/apt/lists/* \
