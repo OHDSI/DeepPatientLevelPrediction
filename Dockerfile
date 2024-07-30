@@ -30,6 +30,7 @@ RUN R CMD javareconf
 RUN Rscript -e "pkgType <- .Platform$pkgType; \
                 os <- R.Version()$os; \
                 arch <- R.Version()$arch; \
+                message(pkgType, os, arch); \
                 install.packages('pak', \
                                  repos = sprintf('https://r-lib.github.io/p/pak/stable/%s/%s/%s', \
                                  pkgType, os, arch))"
