@@ -4,6 +4,8 @@ RUN --mount=type=secret,id=build_github_pat export GITHUB_PAT=$(cat /run/secrets
 
 ARG GIT_BRANCH='main'
 ARG GIT_COMMIT_ID_ABBREV
+ARG ARCH='x86_64'
+
 
 # optimize compilation
 ENV MAKEFLAGS="-j$(2)"
@@ -27,13 +29,9 @@ RUN apt-get -y update && apt-get install -y \
 RUN R CMD javareconf
 
 
-RUN Rscript -e "pkgType <- .Platform$pkgType; \
-                os <- R.Version()$os; \
-                arch <- R.Version()$arch; \
-                message(pkgType, os, arch); \
-                install.packages('pak', \
+RUN Rscript -e "install.packages('pak', \
                                  repos = sprintf('https://r-lib.github.io/p/pak/stable/%s/%s/%s', \
-                                 pkgType, os, arch))"
+                                 'source', 'linux-gnu', if Sys.getenv('ARCH') == 'x86_64' 'amd64' else 'aarch64'))"
 
 RUN Rscript -e "options('repos'=c(RHUB='https://raw.githubusercontent.com/r-hub/repos/main/ubuntu-22.04-aarch64/4.4', \
                                    PPM='https://p3m.dev/cran/__linux__/jammy/latest')); \
