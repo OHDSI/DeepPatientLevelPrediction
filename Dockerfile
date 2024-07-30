@@ -27,12 +27,12 @@ RUN apt-get -y update && apt-get install -y \
 RUN R CMD javareconf
 
 
-RUN Rscript -e "print(.Platform$pkgType); \
-                print(R.Version()$os); \
-                print(R.Version()$arch); \
+RUN Rscript -e "pgkType <- .Platform$pkgType; \
+                os <- R.Version()$os; \
+                arch <- R.Version()$arch; \
                 install.packages('pak', \
                                  repos = sprintf('https://r-lib.github.io/p/pak/stable/%s/%s/%s', \
-                                 .Platform$pkgType, R.Version()$os, R.Version()$arch))"
+                                 pkgType, os, arch))"
 
 RUN Rscript -e "options('repos'=c(RHUB='https://raw.githubusercontent.com/r-hub/repos/main/ubuntu-22.04-aarch64/4.4', \
                                    PPM='https://p3m.dev/cran/__linux__/jammy/latest')); \
