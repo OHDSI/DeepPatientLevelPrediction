@@ -65,7 +65,6 @@ jobs:
         id: docker_build
         uses: docker/build-push-action@v6
         with:
-          context: ./
           cache-from: type=gha
           cache-to: type=gha, mode=max
           platforms: "linux/${{ matrix.config.arch }}"
