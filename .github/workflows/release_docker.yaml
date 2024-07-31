@@ -28,6 +28,9 @@ jobs:
     env:
       DOCKER_IMAGE: 'ohdsi/deep_plp' 
     steps:
+      - name: Delete huge unnecessary tools folder
+        run: rm -rf /opt/hostedtoolcache
+
       - name: Prepare
         run: |
           platform=${{ matrix.config.arch }}
