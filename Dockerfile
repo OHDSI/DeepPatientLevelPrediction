@@ -31,19 +31,18 @@ RUN R CMD javareconf
 
 RUN Rscript -e "install.packages('pak', \
                                  repos = sprintf('https://r-lib.github.io/p/pak/stable/%s/%s/%s', \
-                                 'source', 'linux-gnu', if (Sys.getenv('ARCH') == 'amd64') 'amd64' else 'aarch64'))"
+                                 'source', 'linux-gnu', if (Sys.getenv('ARCH') == 'amd64') 'x86_64' else 'aarch64'))"
 
-ENV DEBUGME=pkgdepends
-
-RUN Rscript -e "options('repos'=c(RHUB='https://raw.githubusercontent.com/r-hub/repos/main/ubuntu-22.04-aarch64/4.4', \
-                                   PPM='https://p3m.dev/cran/__linux__/jammy/latest')); \
-     pak::pkg_install(c('remotes', \
-                        'CirceR', \
-                        'Eunomia', \
-                        'duckdb', \
-                        'DatabaseConnector', \
-                        'ohdsi/CohortGenerator', \
-                        'ohdsi/ROhdsiWebApi'))"
+RUN Rscript -e "if (Sys.getenv('ARCH')=='arm64') {options('repos'=c(RHUB='https://raw.githubusercontent.com/r-hub/repos/main/ubuntu-22.04-aarch64/4.4', \
+                                   CRAN='https://cloud.r-project.org'))} else { \
+                                   options('repos'='https://p3m.dev/cran/__linux__/jammy/latest') } ; \
+                pak::pkg_install(c('remotes', \
+                                   'CirceR', \
+                                   'Eunomia', \
+                                   'duckdb', \
+                                   'DatabaseConnector', \
+                                   'ohdsi/CohortGenerator', \
+                                   'ohdsi/ROhdsiWebApi'))"
 
 RUN Rscript -e "DatabaseConnector::downloadJdbcDrivers(dbms='all', pathToDriver='/database_drivers/')"
 ENV DATABASECONNECTOR_JAR_FOLDER=/database_drivers/
