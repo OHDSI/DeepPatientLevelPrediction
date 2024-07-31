@@ -15,6 +15,9 @@ on:
       - 'v*'
   workflow_dispatch:
 
+env:
+  DOCKER_IMAGE: 'ohdsi/deep_plp' 
+  
 jobs:
   build:
     name: "${{ matrix.config.arch }}"
@@ -25,8 +28,6 @@ jobs:
         config:
           - { runs_on: "ubuntu-latest", arch: "amd64"}
           - { runs_on: "ubuntu-latest", arch: "arm64"}
-    env:
-      DOCKER_IMAGE: 'ohdsi/deep_plp' 
     steps:
       - name: Delete huge unnecessary tools folder
         run: rm -rf /opt/hostedtoolcache
