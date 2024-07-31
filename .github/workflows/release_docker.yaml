@@ -16,7 +16,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  docker:
+  build:
     name: "${{ matrix.config.arch }}"
     runs-on: ${{ matrix.config.runs_on}}
     strategy:
