@@ -77,7 +77,6 @@ jobs:
             GIT_BRANCH=${{ steps.docker_meta.outputs.version }}
             GIT_COMMIT_ID_ABBREV=${{ env.SHA8 }}
             ARCH=${{ matrix.config.arch }}
-          tags: ${{ steps.docker_meta.outputs.tags }}
           # Use runtime labels from docker_meta as well as fixed labels
           labels: |
             ${{ steps.docker_meta.outputs.labels }}
