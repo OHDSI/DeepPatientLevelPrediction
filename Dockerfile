@@ -23,7 +23,7 @@ RUN apt-get -y update && apt-get install -y \
       libdeflate-dev \
       libpcre2-dev \
       libcurl4-openssl-dev \
-      ligpng-dev \
+      libpng-dev \
       --no-install-recommends \
       && apt-get clean \
       && rm -rf /var/lib/apt/lists/*
