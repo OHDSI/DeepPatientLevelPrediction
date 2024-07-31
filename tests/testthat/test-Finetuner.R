@@ -44,7 +44,6 @@ test_that("Finetuner fitEstimator works", {
   
   fineTunedModel <- torch$load(file.path(fineTunerResults$model,
                                          "DeepEstimatorModel.pt"))
-  expect_true(fineTunedModel$estimator_settings$finetune)
   expect_equal(fineTunedModel$estimator_settings$finetune_model_path, 
                normalizePath(file.path(fitEstimatorPath, "plpModel", "model",
                          "DeepEstimatorModel.pt")))

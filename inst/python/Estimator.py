@@ -6,31 +6,23 @@ from torch.utils.data import DataLoader, BatchSampler, RandomSampler, Sequential
 from tqdm import tqdm
 
 from gpu_memory_cleanup import memory_cleanup
-
+from InitStrategy import InitStrategy, DefaultInitStrategy
 
 class Estimator:
     """
     A class that wraps around pytorch models.
     """
 
-    def __init__(self, model, model_parameters, estimator_settings):
+    def __init__(self, model, model_parameters, estimator_settings, init_strategy: InitStrategy = DefaultInitStrategy()):
         self.seed = estimator_settings["seed"]
         if callable(estimator_settings["device"]):
             self.device = estimator_settings["device"]()
         else:
             self.device = estimator_settings["device"]
         torch.manual_seed(seed=self.seed)
-        if "finetune" in estimator_settings.keys() and estimator_settings["finetune"]:
-            path = estimator_settings["finetune_model_path"]
-            fitted_estimator = torch.load(path, map_location="cpu")
-            fitted_parameters = fitted_estimator["model_parameters"]
-            self.model = model(**fitted_parameters)
-            self.model.load_state_dict(fitted_estimator["model_state_dict"])
-            for param in self.model.parameters():
-                param.requires_grad = False
-            self.model.reset_head()
-        else:
-            self.model = model(**model_parameters)
+
+        self.model = init_strategy.initialize(model, model_parameters, estimator_settings)
+
         self.model_parameters = model_parameters
         self.estimator_settings = estimator_settings
 
