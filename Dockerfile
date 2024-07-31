@@ -23,6 +23,7 @@ RUN apt-get -y update && apt-get install -y \
       libdeflate-dev \
       libpcre2-dev \
       libcurl4-openssl-dev \
+      ligpng-dev \
       --no-install-recommends \
       && apt-get clean \
       && rm -rf /var/lib/apt/lists/*
@@ -58,7 +59,7 @@ RUN pip3 install uv \
     pynvml \
     && rm -rf /root/.cache/pip
 
-RUN Rscript -e "ref <- Sys.getenv('GIT_COMMIT_ID_ABBREV', unset = Sys.getenv('GIT_BRANCH')); remotes::install_github('ohdsi/DeepPatientLevelPrediction', ref=ref)"
+RUN Rscript -e "ref <- Sys.getenv('GIT_COMMIT_ID_ABBREV', unset = Sys.getenv('GIT_BRANCH')); pak::pkg_install(paste0('ohdsi/DeepPatientLevelPrediction@', ref))"
 
 
 FROM docker.io/rocker/rstudio:4.4.1
@@ -82,6 +83,7 @@ RUN apt-get -y update && apt-get install -y \
       libdeflate0 \
       libpcre2-8-0 \
       libcurl4 \
+      libpng16-16 \
       --no-install-recommends \
       && apt-get clean \
       && rm -rf /var/lib/apt/lists/* \
