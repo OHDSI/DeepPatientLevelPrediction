@@ -73,6 +73,7 @@ COPY --from=build /usr/local/lib/R/library /usr/local/lib/R/library
 ENV RETICULATE_PYTHON=/usr/bin/python3
 # runtime dependanceis
 RUN apt-get -y update && apt-get install -y \
+      qpdf \
       default-jre \
       default-jdk \
       libssl3 \

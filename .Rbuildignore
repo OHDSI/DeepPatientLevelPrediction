@@ -13,3 +13,6 @@
 ^.*\.pt$
 ^doc$
 ^Meta$
+^Dockerfile$
+^\.devcontainer
+^\.vscode
