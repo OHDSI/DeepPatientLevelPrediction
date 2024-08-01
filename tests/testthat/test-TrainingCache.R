@@ -10,10 +10,10 @@ resNetSettings <- setResNet(numLayers = c(1, 2, 4),
                                            device = "cpu",
                                            batchSize = 64,
                                            epochs = 1,
-                                           seed = NULL),
+                                           seed = 42),
                             hyperParamSearch = "random",
                             randomSample = 3,
-                            randomSampleSeed = NULL)
+                            randomSampleSeed = 42)
 
 trainCache <- trainingCache$new(testLoc)
 paramSearch <- resNetSettings$param
