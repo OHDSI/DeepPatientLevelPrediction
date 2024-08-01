@@ -124,7 +124,14 @@ jobs:
       - name: Run R CMD check
         run: |
           digest=$(ls /tmp/digests)
-          docker run --rm -v $(pwd):/workspace -w /workspace ${{ env.DOCKER_IMAGE }}@sha256:$digest R CMD check .
+          # Build the package
+          docker run --rm -v $(pwd):/workspace -w /workspace ${{ env.DOCKER_IMAGE }}@sha256:$digest R CMD build .
+
+          # Extract the name of the generated tar.gz file
+          package_file=$(ls *.tar.gz)
+
+          # Run package checks on the tar.gz file
+          docker run --rm -v $(pwd):/workspace -w /workspace ${{ env.DOCKER_IMAGE }}@sha256:$digest R CMD check $package_file
 
   merge:
     runs-on: ubuntu-latest
