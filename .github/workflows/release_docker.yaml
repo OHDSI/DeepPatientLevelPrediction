@@ -7,7 +7,7 @@
 # - DOCKER_HUB_ACCESS_TOKEN
 # - GITHUBPAT - The github account to use for downloading CRAN dependencies.
 #                      Needed to avoid "API rate limit exceeded" from github.
-name: Release Docker
+name: release docker
 
 on:
   push:
@@ -27,7 +27,7 @@ jobs:
       matrix:
         config:
           - { runs_on: "ubuntu-latest", arch: "amd64"}
-          - { runs_on: "ubuntu-latest", arch: "arm64"}
+          # - { runs_on: "ubuntu-latest", arch: "arm64"}
     steps:
       - name: Delete huge unnecessary tools folder
         run: rm -rf /opt/hostedtoolcache
@@ -100,11 +100,30 @@ jobs:
           path: /tmp/digests/*
           if-no-files-found: error
           retention-days: 1
+  test:
+    name: Run R CMD check with containers
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          name: digests-${{ env.PLATFORM_PAIR }}
+          path: /tmp/digests
+
+      - name: Run R CMD check
+        run: |
+          digest=$(ls /tmp/digests)
+          docker run --rm -v $(pwd):/workspace -w /workspace ${{ env.DOCKER_IMAGE }}@sha256:$digest R CMD check .
 
   merge:
     runs-on: ubuntu-latest
     needs:
       - build
+      - test
     steps:
       - name: Download digests
         uses: actions/download-artifact@v4
@@ -121,6 +140,9 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.DOCKER_IMAGE }}
+          tags: |
+            type=semver,pattern={{version}}
+
 
       - name: Login to DockerHub
         uses: docker/login-action@v3
