@@ -101,8 +101,14 @@ jobs:
           if-no-files-found: error
           retention-days: 1
   test:
-    name: Run R CMD check with containers
-    runs-on: ubuntu-latest
+    name: "test-${{ matrix.config.arch }}-docker"
+    runs-on: ${{ matrix.config.runs_on}}
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - { runs_on: "ubuntu-latest", arch: "amd64"}
+          # - { runs_on: "ubuntu-latest", arch: "arm64"}
     needs: build
     steps:
       - name: Check out repository
@@ -113,6 +119,7 @@ jobs:
         with:
           name: digests-${{ env.PLATFORM_PAIR }}
           path: /tmp/digests
+          pattern: "digests-${{ matrix.config.arch }}*"
 
       - name: Run R CMD check
         run: |
