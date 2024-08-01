@@ -42,6 +42,16 @@ setFinetuner <- function(modelPath,
                 modelPath))
   }
   
+  plpModel <- PatientLevelPrediction::loadPlpModel(modelPath)
+  estimatorSettings$finetuneModelPath <-
+    normalizePath(file.path(plpModel$model, "DeepEstimatorModel.pt"))
+  modelType <-
+    plpModel$modelDesign$modelSettings$modelType
+  
+  path <- system.file("python", package = "DeepPatientLevelPrediction")
+  estimatorSettings$initStrategy <-
+    reticulate::import_from_path("InitStrategy",
+                                 path = path)$FinetuneInitStrategy()
   
   param <- list()
   param[[1]] <- list(modelPath = modelPath)
@@ -52,9 +62,9 @@ setFinetuner <- function(modelPath,
     estimatorSettings = estimatorSettings,
     saveType = "file",
     modelParamNames = c("modelPath"),
-    modelType = "Finetuner"
+    modelType = modelType
   )
-  attr(results$param, "settings")$modelType <- results$modelType
+  attr(results$param, "settings")$modelType <- "Finetuner"
 
   class(results) <- "modelSettings"
 

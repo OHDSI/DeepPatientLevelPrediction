@@ -468,18 +468,6 @@ evalEstimatorSettings <- function(estimatorSettings) {
 createEstimator <- function(modelParameters,
                             estimatorSettings) {
   path <- system.file("python", package = "DeepPatientLevelPrediction")
-
-  if (modelParameters$modelType == "Finetuner") {
-    plpModel <- PatientLevelPrediction::loadPlpModel(modelParameters$modelPath)
-    estimatorSettings$finetuneModelPath <-
-      normalizePath(file.path(plpModel$model, "DeepEstimatorModel.pt"))
-    modelParameters$modelType <-
-      plpModel$modelDesign$modelSettings$modelType
-    initStrategy <- reticulate::import_from_path("InitStrategy", path = path)$FinetuneInitStrategy()
-  } else {
-    initStrategy <- reticulate::import_from_path("InitStrategy", path = path)$DefaultInitStrategy()
-  }
-
   model <-
     reticulate::import_from_path(modelParameters$modelType,
                                  path = path)[[modelParameters$modelType]]
@@ -492,8 +480,7 @@ createEstimator <- function(modelParameters,
   estimator <- estimator(
     model = model,
     model_parameters = modelParameters,
-    estimator_settings = estimatorSettings,
-    init_strategy = initStrategy
+    estimator_settings = estimatorSettings
   )
   return(estimator)
 }

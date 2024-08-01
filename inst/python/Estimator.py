@@ -13,7 +13,7 @@ class Estimator:
     A class that wraps around pytorch models.
     """
 
-    def __init__(self, model, model_parameters, estimator_settings, init_strategy: InitStrategy = DefaultInitStrategy()):
+    def __init__(self, model, model_parameters, estimator_settings):
         self.seed = estimator_settings["seed"]
         if callable(estimator_settings["device"]):
             self.device = estimator_settings["device"]()
@@ -21,8 +21,11 @@ class Estimator:
             self.device = estimator_settings["device"]
         torch.manual_seed(seed=self.seed)
 
-        self.model = init_strategy.initialize(model, model_parameters, estimator_settings)
-
+        if "init_strategy" in estimator_settings:
+            self.model = estimator_settings["init_strategy"].initialize(model, model_parameters, estimator_settings)
+        else:
+            self.model = DefaultInitStrategy().initialize(model, model_parameters, estimator_settings)
+            
         self.model_parameters = model_parameters
         self.estimator_settings = estimator_settings
 
