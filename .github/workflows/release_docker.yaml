@@ -123,6 +123,7 @@ jobs:
       - name: Run R CMD check
         run: |
           digest=$(ls /tmp/digests)
+          echo $digest
           docker run --rm -v $(pwd):/workspace -w /workspace ${{ env.DOCKER_IMAGE }}@sha256:$digest R CMD check .
 
   merge:
