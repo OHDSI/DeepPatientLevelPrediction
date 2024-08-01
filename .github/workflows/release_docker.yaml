@@ -124,8 +124,9 @@ jobs:
       - name: Run R CMD check
         run: |
           digest=$(ls /tmp/digests)
+
           # Run package checks
-          docker run --rm \ 
+          docker run --rm \
           -e _R_CHECK_FORCE_SUGGESTS_=false \
           -e _R_CHECK_CRAN_INCOMING_=false \
           -v $(pwd):/workspace -w /workspace \
