@@ -42,6 +42,7 @@ RUN Rscript -e "if (Sys.getenv('ARCH')=='arm64') {options('repos'=c(RHUB='https:
                                    'Eunomia', \
                                    'duckdb', \
                                    'DatabaseConnector', \
+                                   'testthat', \
                                    'ohdsi/CohortGenerator', \
                                    'ohdsi/ROhdsiWebApi'))"
 
