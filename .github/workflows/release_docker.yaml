@@ -117,7 +117,6 @@ jobs:
       - name: Download digests
         uses: actions/download-artifact@v4
         with:
-          name: digests-${{ env.PLATFORM_PAIR }}
           path: /tmp/digests
           pattern: "digests-${{ matrix.config.arch }}*"
 
