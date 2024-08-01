@@ -27,7 +27,7 @@ jobs:
       matrix:
         config:
           - { runs_on: "ubuntu-latest", arch: "amd64"}
-          # - { runs_on: "ubuntu-latest", arch: "arm64"}
+          - { runs_on: "ubuntu-latest", arch: "arm64"}
     steps:
       - name: Delete huge unnecessary tools folder
         run: rm -rf /opt/hostedtoolcache
@@ -108,7 +108,7 @@ jobs:
       matrix:
         config:
           - { runs_on: "ubuntu-latest", arch: "amd64"}
-          # - { runs_on: "ubuntu-latest", arch: "arm64"}
+          - { runs_on: "ubuntu-latest", arch: "arm64"}
     needs: build
     steps:
       - name: Check out repository
