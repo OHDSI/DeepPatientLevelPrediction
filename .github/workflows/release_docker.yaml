@@ -127,7 +127,7 @@ jobs:
 
           # Run package checks
           docker run --rm \
-          --platform ${{ matrix.config.arch }} \
+          --platform "linux-${{ matrix.config.arch }}" \
           -e _R_CHECK_FORCE_SUGGESTS_=false \
           -e _R_CHECK_CRAN_INCOMING_=false \
           -v $(pwd):/workspace -w /workspace \
