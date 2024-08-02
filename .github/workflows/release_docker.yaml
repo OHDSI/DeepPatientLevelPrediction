@@ -120,9 +120,13 @@ jobs:
           path: /tmp/digests
           pattern: "digests-${{ matrix.config.arch }}*"
           merge-multiple: true
-
+      - name: Verify digest
+        run: |
+          ls /tmp/digests
+   
       - name: Run R CMD check
         run: |
+          echo "Running on architecture: ${{ matrix.config.arch }}"
           digest=$(ls /tmp/digests)
 
           # Run package checks
