@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader, BatchSampler, RandomSampler, Sequential
 from tqdm import tqdm
 
 from gpu_memory_cleanup import memory_cleanup
-
+from InitStrategy import InitStrategy, DefaultInitStrategy
 
 class Estimator:
     """
@@ -20,17 +20,12 @@ class Estimator:
         else:
             self.device = estimator_settings["device"]
         torch.manual_seed(seed=self.seed)
-        if "finetune" in estimator_settings.keys() and estimator_settings["finetune"]:
-            path = estimator_settings["finetune_model_path"]
-            fitted_estimator = torch.load(path, map_location="cpu")
-            fitted_parameters = fitted_estimator["model_parameters"]
-            self.model = model(**fitted_parameters)
-            self.model.load_state_dict(fitted_estimator["model_state_dict"])
-            for param in self.model.parameters():
-                param.requires_grad = False
-            self.model.reset_head()
+
+        if "init_strategy" in estimator_settings:
+            self.model = estimator_settings["init_strategy"].initialize(model, model_parameters, estimator_settings)
         else:
-            self.model = model(**model_parameters)
+            self.model = DefaultInitStrategy().initialize(model, model_parameters, estimator_settings)
+            
         self.model_parameters = model_parameters
         self.estimator_settings = estimator_settings
 

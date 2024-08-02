@@ -6,6 +6,10 @@ fineTunerSettings <- setFinetuner(
                                    epochs = 1)
 )
 
+plpModel <- PatientLevelPrediction::loadPlpModel(file.path(fitEstimatorPath,
+                                                           "plpModel"))
+modelType <- plpModel$modelDesign$modelSettings$modelType
+
 test_that("Finetuner settings work", {
   expect_equal(fineTunerSettings$param[[1]]$modelPath,
                file.path(fitEstimatorPath, "plpModel"))
@@ -14,7 +18,7 @@ test_that("Finetuner settings work", {
   expect_equal(fineTunerSettings$estimatorSettings$epochs, 1)  
   expect_equal(fineTunerSettings$fitFunction, "fitEstimator")
   expect_equal(fineTunerSettings$saveType, "file")
-  expect_equal(fineTunerSettings$modelType, "Finetuner")
+  expect_equal(fineTunerSettings$modelType, modelType)
   expect_equal(fineTunerSettings$modelParamNames, "modelPath")
   expect_equal(class(fineTunerSettings), "modelSettings")
   expect_equal(attr(fineTunerSettings$param, "settings")$modelType, "Finetuner")
@@ -44,7 +48,6 @@ test_that("Finetuner fitEstimator works", {
   
   fineTunedModel <- torch$load(file.path(fineTunerResults$model,
                                          "DeepEstimatorModel.pt"))
-  expect_true(fineTunedModel$estimator_settings$finetune)
   expect_equal(fineTunedModel$estimator_settings$finetune_model_path, 
                normalizePath(file.path(fitEstimatorPath, "plpModel", "model",
                          "DeepEstimatorModel.pt")))
