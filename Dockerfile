@@ -67,7 +67,8 @@ FROM docker.io/rocker/rstudio:4.4.1
 
 RUN Rscript -e "if (Sys.getenv('ARCH')=='arm64') {options('repos'=c(RHUB='https://raw.githubusercontent.com/r-hub/repos/main/ubuntu-22.04-aarch64/4.4', \
                                    CRAN='https://cloud.r-project.org'))} else { \
-                                   options('repos'='https://p3m.dev/cran/__linux__/jammy/latest') 
+                                   options('repos'='https://p3m.dev/cran/__linux__/jammy/latest')}"
+
 COPY --from=build /usr/local/lib/python3.10/dist-packages /usr/local/lib/python3.10/dist-packages
 COPY --from=build /database_drivers /database_drivers
 COPY --from=build /usr/local/lib/R/site-library /usr/local/lib/R/site-library
