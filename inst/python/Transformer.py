@@ -6,6 +6,14 @@ import torch.nn.functional as F
 
 from ResNet import NumericalEmbedding
 
+class LogMap0(nn.Module):
+    def forward(self, y):
+        curvature=1.0
+        norm_y = torch.norm(y, dim=-1, keepdim=True)
+        sqrt_c = torch.sqrt(torch.tensor(curvature, dtype=y.dtype, device=y.device))
+        scale = torch.arctanh(sqrt_c * norm_y) / (sqrt_c * norm_y)
+        scale[torch.isnan(scale)] = 1.0
+        return scale * y
 
 def reglu(x):
     a, b = x.chunk(2, dim=-1)
@@ -21,6 +29,7 @@ class Transformer(nn.Module):
     def __init__(
         self,
         cat_features: int,
+        cat_2_features: int,
         num_features: int,
         num_blocks: int,
         dim_token: int,
@@ -40,6 +49,7 @@ class Transformer(nn.Module):
         super(Transformer, self).__init__()
         self.name = model_type
         cat_features = int(cat_features)
+        cat_2_features = int(cat_2_features)
         num_features = int(num_features)
         num_blocks = int(num_blocks)
         dim_token = int(dim_token)
@@ -50,6 +60,12 @@ class Transformer(nn.Module):
         self.categorical_embedding = nn.Embedding(
             cat_features + 1, dim_token, padding_idx=0
         )
+
+        self.categorical_embedding_2 = nn.Embedding(
+            cat_2_features + 1, 3, padding_idx=0
+        )
+
+        self.cat_2_transform = nn.Linear(3, dim_token)
 
         if num_features != 0 and num_features is not None:
             self.numerical_embedding = NumericalEmbedding(num_features, dim_token)
@@ -93,24 +109,43 @@ class Transformer(nn.Module):
         self.head_activation = head_activation
         self.head_normalization = head_norm
         self.dim_out = dim_out
+        self.logmap0 = LogMap0()
 
     def forward(self, x):
         mask = torch.where(x["cat"] == 0, True, False)
         cat = self.categorical_embedding(x["cat"])
+
+        cat_2 = self.categorical_embedding_2(x["cat_2"])
+        cat_2_tangent = self.logmap0(cat_2)
+        cat_2_transformed = self.cat_2_transform(cat_2_tangent)
+
         if self.use_numerical:
             num = self.numerical_embedding(x["num"])
-            x = torch.cat([cat, num], dim=1)
+            x = torch.cat([cat, cat_2_transformed, num], dim=1)
             mask = torch.cat(
                 [
                     mask,
                     torch.zeros(
                         [x.shape[0], num.shape[1]], device=mask.device, dtype=mask.dtype
                     ),
+                    torch.zeros(
+                        [x.shape[0], cat_2_transformed.shape[1]], device=mask.device, dtype=mask.dtype
+                    ),
                 ],
                 dim=1,
             )
         else:
-            x = cat
+            x = torch.cat([cat, cat_2_transformed], dim=1)
+            mask = torch.cat(
+                [
+                    mask,
+                    torch.zeros(
+                        [x.shape[0], cat_2_transformed.shape[1]], device=mask.device, dtype=mask.dtype
+                    ),
+                ],
+                dim=1,
+            )
+            
         x = self.class_token(x)
         mask = torch.cat(
             [mask, torch.zeros([x.shape[0], 1], device=mask.device, dtype=mask.dtype)],
