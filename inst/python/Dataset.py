@@ -10,6 +10,7 @@ from pathlib import Path
 import json
 import os
 
+
 class Data(Dataset):
     def __init__(self, data, labels=None, numerical_features=None,
                  cat2_feature_names=None):
@@ -73,6 +74,9 @@ class Data(Dataset):
 
         if cat2_feature_names is None:
             cat2_feature_names = []
+
+        self.feature_mapping = {}
+
         cat2_feature_names += embed_names
 
         # filter by categorical columns,
@@ -85,16 +89,17 @@ class Data(Dataset):
             .collect()
         )
 
-        # Fetch mapped_cat2_feature_names after collecting and take 'columnId' with select()
-        mapped_cat2_feature_names = (
+        # find concepts from the embedding that are available in the data
+        cat2_ref = (
             self.data_ref
             .filter(pl.col("conceptId").is_in(cat2_feature_names))
             .select("columnId")
             .collect()
         )
-        
-        # Now, use 'mapped_cat2_feature_names' as a normal DataFrame and access "columnId"
-        data_cat_1 = data_cat.filter(~pl.col("columnId").is_in(mapped_cat2_feature_names["columnId"]))
+
+        # Now, use 'cat2_ref' as a normal DataFrame and access "columnId"
+        data_cat_1 = data_cat.filter(
+            ~pl.col("columnId").is_in(cat2_ref["columnId"]))
         cat_tensor = torch.tensor(data_cat_1.to_numpy())
         tensor_list = torch.split(
             cat_tensor[:, 1],
@@ -112,7 +117,7 @@ class Data(Dataset):
 
         # process cat_2 features
         data_cat_2 = data_cat.filter(
-            pl.col("columnId").is_in(cat2_feature_names))
+            pl.col("columnId").is_in(cat2_ref))
         cat_2_tensor = torch.tensor(data_cat_2.to_numpy())
         tensor_list_2 = torch.split(
             cat_2_tensor[:, 1],
@@ -195,8 +200,4 @@ class Data(Dataset):
 		):
             batch["num"] = batch["num"].unsqueeze(0)
         return [batch, self.target[item].squeeze()]
-
-
-
-
 
