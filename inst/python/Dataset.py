@@ -15,10 +15,12 @@ class Data(Dataset):
     def __init__(self, data, labels=None, numerical_features=None,
                  cat2_feature_names=None):
         desktop_path = Path.home() / "Desktop"
+
+        desktop_path = Path.home() / "Desktop"
         with open(desktop_path / "data_path.txt", 'w') as f:
-          f.write(data)
+            f.write(data)
         with open(desktop_path / "labels.json", 'w') as f:
-          json.dump(labels, f)
+            json.dump(labels, f)
 
         # desktop_path = Path.home() / "Desktop"
         # with open(desktop_path / "data_path.txt", 'r') as f:
@@ -83,8 +85,8 @@ class Data(Dataset):
         # select rowId and columnId
         data_cat = (
             data.filter(~pl.col("columnId").is_in(self.numerical_features))
-            .select(pl.col("rowId"), pl.col("columnId"))
-            .sort(["rowId", "columnId"])
+            .select(pl.col("rowId"), pl.col("covariateId"))
+            .sort(["rowId", "covariateId"])
             .with_columns(pl.col("rowId") - 1)
             .collect()
         )
@@ -93,13 +95,34 @@ class Data(Dataset):
         cat2_ref = (
             self.data_ref
             .filter(pl.col("conceptId").is_in(cat2_feature_names))
-            .select("columnId")
+            .select("covariateId")
             .collect()
         )
 
+        cat2_concepts = (
+            self.data_ref
+            .filter(pl.col("conceptId").is_in(cat2_feature_names))
+            .select("conceptId")
+            .collect()
+        )
+        concept_ids = cat2_concepts["conceptId"].to_list()
+        cat2_indices = [cat2_feature_names.index(concept_id) for concept_id in
+                        concept_ids]
+        with open(desktop_path / "cat2_indices.json", 'w') as f:
+            json.dump(cat2_indices, f)
+
         # Now, use 'cat2_ref' as a normal DataFrame and access "columnId"
         data_cat_1 = data_cat.filter(
-            ~pl.col("columnId").is_in(cat2_ref["columnId"]))
+            ~pl.col("covariateId").is_in(cat2_ref["covariateId"]))
+        cat_1_mapping = pl.DataFrame({
+            "covariateId": data_cat_1["covariateId"].unique(),
+            "index": pl.Series(range(1, len(data_cat_1["covariateId"].unique()) + 1))
+        })
+        cat_1_mapping.write_json(str(desktop_path / "cat1_mapping.json"))
+
+        data_cat_1 = data_cat_1.join(cat_1_mapping, on="covariateId", how="left") \
+            .select(pl.col("rowId"), pl.col("index").alias("covariateId"))
+
         cat_tensor = torch.tensor(data_cat_1.to_numpy())
         tensor_list = torch.split(
             cat_tensor[:, 1],
@@ -113,11 +136,20 @@ class Data(Dataset):
         for i, i2 in enumerate(idx):
             total_list[i2] = tensor_list[i]
         self.cat = torch.nn.utils.rnn.pad_sequence(total_list, batch_first=True)
-        self.cat_features = data_cat_1["columnId"].unique()
+        self.cat_features = data_cat_1["covariateId"].unique()
 
         # process cat_2 features
         data_cat_2 = data_cat.filter(
-            pl.col("columnId").is_in(cat2_ref))
+            pl.col("covariateId").is_in(cat2_ref))
+        cat_2_mapping = pl.DataFrame({
+            "covariateId": data_cat_2["covariateId"].unique(),
+            "index": pl.Series(range(1, len(data_cat_2["covariateId"].unique()) + 1))
+        })
+        cat_2_mapping.write_json(str(desktop_path / "cat2_mapping.json"))
+
+        data_cat_2 = data_cat_2.join(cat_2_mapping, on="covariateId", how="left") \
+            .select(pl.col("rowId"), pl.col("index").alias("covariateId")) # maybe rename this to something else
+
         cat_2_tensor = torch.tensor(data_cat_2.to_numpy())
         tensor_list_2 = torch.split(
             cat_2_tensor[:, 1],
@@ -131,7 +163,7 @@ class Data(Dataset):
             total_list_2[i2] = tensor_list_2[i]
         self.cat_2 = torch.nn.utils.rnn.pad_sequence(total_list_2,
                                                      batch_first=True)
-        self.cat_2_features = data_cat_2["columnId"].unique()
+        self.cat_2_features = data_cat_2["covariateId"].unique()
 
         # numerical data,
         # N x C, dense matrix with values for N patients/visits for C numerical features
