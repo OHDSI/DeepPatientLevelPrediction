@@ -3,6 +3,8 @@ from abc import ABC, abstractmethod
 import torch
 import os
 from torchviz import make_dot
+import json
+import polars as pl
 
 class InitStrategy(ABC):
     @abstractmethod
@@ -31,11 +33,65 @@ class CustomEmbeddingInitStrategy(InitStrategy):
         file_path = estimator_settings.get("embedding_file_path")
 
         # Ensure `cat_2_features` is added to `model_parameters`
-        cat_2_features_default = 20  # Set a default value if you don't have one
-        model_parameters['cat_2_features'] = model_parameters.get('cat_2_features', cat_2_features_default)
+        # cat_2_features_default = 20  # Set a default value if you don't have one
+        print(model_parameters['cat_2_features'])
+        print(model_parameters['cat_features'])
+        print(model_parameters['num_features'])
+
 
         # Instantiate the model with the provided parameters
         model_temp = model(**model_parameters)
+
+        if file_path and os.path.exists(file_path):
+            state = torch.load(file_path)
+            state_dict = state["state_dict"]
+            embedding_key = "embedding.weight"
+
+            if embedding_key not in state_dict:
+                raise KeyError(f"The key '{embedding_key}' does not exist in the state dictionary")
+
+            new_embeddings = state_dict[embedding_key].float()
+            print(f"new_embeddings: {new_embeddings}")
+
+            # Ensure that model_temp.categorical_embedding_2 exists
+            if not hasattr(model_temp, 'categorical_embedding_2'):
+                raise AttributeError("The model does not have an attribute 'categorical_embedding_2'")
+
+            # # replace weights
+            # cat2_concept_mapping = pl.read_json(os.path.expanduser("~/Desktop/cat2_concept_mapping.json"))
+            cat2_mapping = pl.read_json(os.path.expanduser("~/Desktop/cat2_mapping.json"))
+            print(f"cat2_mapping: {cat2_mapping}")
+
+            concept_df = pl.DataFrame({"conceptId": state['names']}).with_columns(pl.col("conceptId"))
+            print(f"concept_df: {concept_df}")
+
+            # Initialize tensor for mapped embeddings
+            mapped_embeddings = torch.zeros((cat2_mapping.shape[0] + 1, new_embeddings.shape[1]))
+            
+            # Map embeddings to their corresponding indices
+            for row in cat2_mapping.iter_rows():
+                concept_id, covariate_id, index = row
+                if concept_id in concept_df["conceptId"]:
+                    concept_idx = concept_df["conceptId"].to_list().index(concept_id)
+                    mapped_embeddings[index] = new_embeddings[concept_idx]
+            
+            print(f"mapped_embeddings: {mapped_embeddings}")
+            
+            # Assign the mapped embeddings to the model
+            model_temp.categorical_embedding_2.weight = torch.nn.Parameter(mapped_embeddings)
+            model_temp.categorical_embedding_2.weight.requires_grad = False
+            
+            print("New Embeddings:")
+            print(new_embeddings)
+            print(f"Restored Epoch: {state['epoch']}")
+            print(f"Restored Mean Rank: {state['mean_rank']}")
+            print(f"Restored Loss: {state['loss']}")
+            print(f"Restored Names: {state['names'][:5]}")
+            print(f"Number of names: {len(state['names'])}")
+            # print(f"Filtered Embeddings: {filtered_embeddings}")
+        else:
+            raise FileNotFoundError(f"File not found or path is incorrect: {file_path}")
+
 
         # Create a dummy input batch that matches the model inputs
         dummy_input = {
@@ -55,47 +111,8 @@ class CustomEmbeddingInitStrategy(InitStrategy):
                 initial_graph.render("initial_model_architecture", format="png")
             except Exception as e:
                 print(f"Error during initial model visualization: {e}")
-        
+
         else:
             raise AttributeError("The model does not have a forward method.")
-
-        if file_path and os.path.exists(file_path):
-            state = torch.load(file_path)
-            state_dict = state["state_dict"]
-            embedding_key = "embedding.weight"  # Key in the state dict for the embedding
-
-            if embedding_key not in state_dict:
-                raise KeyError(f"The key '{embedding_key}' does not exist in the state dictionary")
-
-            new_embeddings = state_dict[embedding_key].float()
-
-            # Ensure that model_temp.categorical_embedding_2 exists
-            if not hasattr(model_temp, 'categorical_embedding_2'):
-                raise AttributeError("The model does not have an attribute 'categorical_embedding_2'")
-
-            # Replace the weights of `model_temp.categorical_embedding_2`
-            if isinstance(model_temp.categorical_embedding_2, torch.nn.Embedding):
-                with torch.no_grad():
-                    model_temp.categorical_embedding_2.weight = torch.nn.Parameter(new_embeddings)
-            else:
-                raise TypeError("The attribute 'categorical_embedding_2' is not of type `torch.nn.Embedding`")
-
-            print("New Embeddings:")
-            print(new_embeddings)
-            print(f"Restored Epoch: {state['epoch']}")
-            print(f"Restored Mean Rank: {state['mean_rank']}")
-            print(f"Restored Loss: {state['loss']}")
-            print(f"Restored Names: {state['names']}")
-        else:
-            raise FileNotFoundError(f"File not found or path is incorrect: {file_path}")
-
-        # Visualize the modified model architecture again
-        try:
-            output = model_temp(dummy_input)
-            modified_graph = make_dot(output, params=dict(model_temp.named_parameters()))
-            modified_graph.render("modified_model_architecture", format="png")
-            print("Modified model architecture rendered successfully.")
-        except Exception as e:
-            print(f"Error during modified model visualization: {e}")
-
+        
         return model_temp

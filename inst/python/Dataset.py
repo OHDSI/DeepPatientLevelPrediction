@@ -10,6 +10,7 @@ from pathlib import Path
 import json
 import os
 
+# this one needs to have a parameter to not do the mapping again
 
 class Data(Dataset):
     def __init__(self, data, labels=None, numerical_features=None,
@@ -99,18 +100,6 @@ class Data(Dataset):
             .collect()
         )
 
-        cat2_concepts = (
-            self.data_ref
-            .filter(pl.col("conceptId").is_in(cat2_feature_names))
-            .select("conceptId")
-            .collect()
-        )
-        concept_ids = cat2_concepts["conceptId"].to_list()
-        cat2_indices = [cat2_feature_names.index(concept_id) for concept_id in
-                        concept_ids]
-        with open(desktop_path / "cat2_indices.json", 'w') as f:
-            json.dump(cat2_indices, f)
-
         # Now, use 'cat2_ref' as a normal DataFrame and access "columnId"
         data_cat_1 = data_cat.filter(
             ~pl.col("covariateId").is_in(cat2_ref["covariateId"]))
@@ -145,10 +134,19 @@ class Data(Dataset):
             "covariateId": data_cat_2["covariateId"].unique(),
             "index": pl.Series(range(1, len(data_cat_2["covariateId"].unique()) + 1))
         })
+        cat_2_mapping = cat_2_mapping.lazy()
+        cat_2_mapping = (
+            self.data_ref
+            .filter(pl.col("covariateId").is_in(data_cat_2["covariateId"].unique()))
+            .select(pl.col("conceptId"), pl.col("covariateId"))
+            .join(cat_2_mapping, on="covariateId", how="left")
+            .collect()
+        )
         cat_2_mapping.write_json(str(desktop_path / "cat2_mapping.json"))
+        # cat_2_mapping.write_json(str(desktop_path / "cat2_mapping.json"))
 
         data_cat_2 = data_cat_2.join(cat_2_mapping, on="covariateId", how="left") \
-            .select(pl.col("rowId"), pl.col("index").alias("covariateId")) # maybe rename this to something else
+            .select(pl.col("rowId"), pl.col("index").alias("covariateId"))  # maybe rename this to something else
 
         cat_2_tensor = torch.tensor(data_cat_2.to_numpy())
         tensor_list_2 = torch.split(
@@ -227,9 +225,9 @@ class Data(Dataset):
         if batch["cat_2"].dim() == 1:
             batch["cat_2"] = batch["cat_2"].unsqueeze(0)
         if (batch["num"] is not None
-			and batch["num"].dim() == 1
-			and not isinstance(item, list)
-		):
+                and batch["num"].dim() == 1
+                and not isinstance(item, list)
+        ):
             batch["num"] = batch["num"].unsqueeze(0)
         return [batch, self.target[item].squeeze()]
 
