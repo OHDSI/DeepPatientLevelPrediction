@@ -32,12 +32,9 @@ class CustomEmbeddingInitStrategy(InitStrategy):
     def initialize(self, model, model_parameters, estimator_settings):
         file_path = estimator_settings.get("embedding_file_path")
 
-        # Ensure `cat_2_features` is added to `model_parameters`
-        # cat_2_features_default = 20  # Set a default value if you don't have one
-        print(model_parameters['cat_2_features'])
-        print(model_parameters['cat_features'])
-        print(model_parameters['num_features'])
-
+        # print(model_parameters['cat_2_features'])
+        # print(model_parameters['cat_features'])
+        # print(model_parameters['num_features'])
 
         # Instantiate the model with the provided parameters
         model_temp = model(**model_parameters)
@@ -51,7 +48,7 @@ class CustomEmbeddingInitStrategy(InitStrategy):
                 raise KeyError(f"The key '{embedding_key}' does not exist in the state dictionary")
 
             new_embeddings = state_dict[embedding_key].float()
-            print(f"new_embeddings: {new_embeddings}")
+            # print(f"new_embeddings: {new_embeddings}")
 
             # Ensure that model_temp.categorical_embedding_2 exists
             if not hasattr(model_temp, 'categorical_embedding_2'):
@@ -60,10 +57,10 @@ class CustomEmbeddingInitStrategy(InitStrategy):
             # # replace weights
             # cat2_concept_mapping = pl.read_json(os.path.expanduser("~/Desktop/cat2_concept_mapping.json"))
             cat2_mapping = pl.read_json(os.path.expanduser("~/Desktop/cat2_mapping.json"))
-            print(f"cat2_mapping: {cat2_mapping}")
+            # print(f"cat2_mapping: {cat2_mapping}")
 
             concept_df = pl.DataFrame({"conceptId": state['names']}).with_columns(pl.col("conceptId"))
-            print(f"concept_df: {concept_df}")
+            # print(f"concept_df: {concept_df}")
 
             # Initialize tensor for mapped embeddings
             mapped_embeddings = torch.zeros((cat2_mapping.shape[0] + 1, new_embeddings.shape[1]))
@@ -75,20 +72,19 @@ class CustomEmbeddingInitStrategy(InitStrategy):
                     concept_idx = concept_df["conceptId"].to_list().index(concept_id)
                     mapped_embeddings[index] = new_embeddings[concept_idx]
             
-            print(f"mapped_embeddings: {mapped_embeddings}")
+            # print(f"mapped_embeddings: {mapped_embeddings}")
             
             # Assign the mapped embeddings to the model
             model_temp.categorical_embedding_2.weight = torch.nn.Parameter(mapped_embeddings)
             model_temp.categorical_embedding_2.weight.requires_grad = False
             
-            print("New Embeddings:")
-            print(new_embeddings)
-            print(f"Restored Epoch: {state['epoch']}")
-            print(f"Restored Mean Rank: {state['mean_rank']}")
-            print(f"Restored Loss: {state['loss']}")
-            print(f"Restored Names: {state['names'][:5]}")
-            print(f"Number of names: {len(state['names'])}")
-            # print(f"Filtered Embeddings: {filtered_embeddings}")
+            # print("New Embeddings:")
+            # print(new_embeddings)
+            # print(f"Restored Epoch: {state['epoch']}")
+            # print(f"Restored Mean Rank: {state['mean_rank']}")
+            # print(f"Restored Loss: {state['loss']}")
+            # print(f"Restored Names: {state['names'][:5]}")
+            # print(f"Number of names: {len(state['names'])}")
         else:
             raise FileNotFoundError(f"File not found or path is incorrect: {file_path}")
 

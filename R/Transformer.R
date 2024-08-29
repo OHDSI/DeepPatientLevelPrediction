@@ -64,8 +64,8 @@ setCustomEmbeddingTransformer <- function(
       setEstimator(
         learningRate = "auto",
         weightDecay = 1e-4,
-        batchSize = 512,
-        epochs = 10,
+        batchSize = 256,
+        epochs = 2,
         seed = NULL,
         device = "cpu"
       )
@@ -77,13 +77,13 @@ setCustomEmbeddingTransformer <- function(
   estimatorSettings$embeddingFilePath <- embeddingFilePath
   transformerSettings <- setTransformer(
     numBlocks = 3,
-    dimToken = 192,
+    dimToken = 16,
     dimOut = 1,
-    numHeads = 8,
+    numHeads = 4,
     attDropout = 0.2,
     ffnDropout = 0.1,
     resDropout = 0.0,
-    dimHidden = 256,
+    dimHidden = 32,
     estimatorSettings = estimatorSettings,
     hyperParamSearch = "random",
     randomSample = 1

@@ -219,7 +219,9 @@ fitEstimator <- function(trainData,
       covariateValue = 0,
       isNumeric = .data$columnId %in% cvResult$numericalIndex
       # get mapping maybe here
-    )
+    ) %>%
+    left_join(cvResult$cat1Mapping %>% rename(cat1Idx = index), by = "covariateId") %>%
+    left_join(cvResult$cat2Mapping %>% rename(cat2Idx = index), by = "covariateId")
 
   comp <- start - Sys.time()
   result <- list(
@@ -298,7 +300,14 @@ predictDeepEstimator <- function(plpModel,
     plpModel <- list(model = plpModel)
     attr(plpModel, "modelType") <- "binary"
   }
-  if ("plpData" %in% class(data)) {
+  
+  if (!is.null(plpModel$covariateImportance)) {
+    # this means that the model finished training since only in the end covariateImportance is added
+    browser()
+    
+    # data <- createDataset(mappedData, plpModel = plpModel)
+    
+  } else if ("plpData" %in% class(data)) {
     mappedData <- PatientLevelPrediction::MapIds(data$covariateData,
       cohort = cohort,
       mapping = plpModel$covariateImportance %>%
@@ -424,7 +433,8 @@ gridCvDeep <- function(mappedData,
   prediction$cohortStartDate <- as.Date(prediction$cohortStartDate,
     origin = "1970-01-01")
   numericalIndex <- dataset$get_numerical_features()
-  # get mapping as above
+  cat1Mapping <- as.data.frame(dataset$get_cat_1_mapping())
+  cat2Mapping <- as.data.frame(dataset$get_cat_2_mapping())
   
   # save torch code here
   if (!dir.exists(file.path(modelLocation))) {
@@ -437,8 +447,9 @@ gridCvDeep <- function(mappedData,
       prediction = prediction,
       finalParam = finalParam,
       paramGridSearch = paramGridSearch,
-      numericalIndex = numericalIndex$to_list()
-      # add mapping here, two columns [covariateId, columnId]
+      numericalIndex = numericalIndex$to_list(),
+      cat1Mapping = cat1Mapping,
+      cat2Mapping = cat2Mapping
     )
   )
 }

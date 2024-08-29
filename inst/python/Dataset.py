@@ -78,8 +78,6 @@ class Data(Dataset):
         if cat2_feature_names is None:
             cat2_feature_names = []
 
-        self.feature_mapping = {}
-
         cat2_feature_names += embed_names
 
         # filter by categorical columns,
@@ -103,13 +101,13 @@ class Data(Dataset):
         # Now, use 'cat2_ref' as a normal DataFrame and access "columnId"
         data_cat_1 = data_cat.filter(
             ~pl.col("covariateId").is_in(cat2_ref["covariateId"]))
-        cat_1_mapping = pl.DataFrame({
+        self.cat_1_mapping = pl.DataFrame({
             "covariateId": data_cat_1["covariateId"].unique(),
             "index": pl.Series(range(1, len(data_cat_1["covariateId"].unique()) + 1))
         })
-        cat_1_mapping.write_json(str(desktop_path / "cat1_mapping.json"))
+        self.cat_1_mapping.write_json(str(desktop_path / "cat1_mapping.json"))
 
-        data_cat_1 = data_cat_1.join(cat_1_mapping, on="covariateId", how="left") \
+        data_cat_1 = data_cat_1.join(self.cat_1_mapping, on="covariateId", how="left") \
             .select(pl.col("rowId"), pl.col("index").alias("covariateId"))
 
         cat_tensor = torch.tensor(data_cat_1.to_numpy())
@@ -130,22 +128,22 @@ class Data(Dataset):
         # process cat_2 features
         data_cat_2 = data_cat.filter(
             pl.col("covariateId").is_in(cat2_ref))
-        cat_2_mapping = pl.DataFrame({
+        self.cat_2_mapping = pl.DataFrame({
             "covariateId": data_cat_2["covariateId"].unique(),
             "index": pl.Series(range(1, len(data_cat_2["covariateId"].unique()) + 1))
         })
-        cat_2_mapping = cat_2_mapping.lazy()
-        cat_2_mapping = (
+        self.cat_2_mapping = self.cat_2_mapping.lazy()
+        self.cat_2_mapping = (
             self.data_ref
             .filter(pl.col("covariateId").is_in(data_cat_2["covariateId"].unique()))
             .select(pl.col("conceptId"), pl.col("covariateId"))
-            .join(cat_2_mapping, on="covariateId", how="left")
+            .join(self.cat_2_mapping, on="covariateId", how="left")
             .collect()
         )
-        cat_2_mapping.write_json(str(desktop_path / "cat2_mapping.json"))
+        self.cat_2_mapping.write_json(str(desktop_path / "cat2_mapping.json"))
         # cat_2_mapping.write_json(str(desktop_path / "cat2_mapping.json"))
 
-        data_cat_2 = data_cat_2.join(cat_2_mapping, on="covariateId", how="left") \
+        data_cat_2 = data_cat_2.join(self.cat_2_mapping, on="covariateId", how="left") \
             .select(pl.col("rowId"), pl.col("index").alias("covariateId"))  # maybe rename this to something else
 
         cat_2_tensor = torch.tensor(data_cat_2.to_numpy())
@@ -211,6 +209,12 @@ class Data(Dataset):
 
     def get_cat_2_features(self):
         return self.cat_2_features
+      
+    def get_cat_2_mapping(self):
+        return self.cat_2_mapping
+    
+    def get_cat_1_mapping(self):
+        return self.cat_1_mapping
 
     def __len__(self):
         return self.target.size()[0]
