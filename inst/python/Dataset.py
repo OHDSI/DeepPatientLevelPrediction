@@ -14,7 +14,7 @@ import os
 
 class Data(Dataset):
     def __init__(self, data, labels=None, numerical_features=None,
-                 cat2_feature_names=None):
+                 in_cat_1_mapping=None, in_cat_2_mapping=None):
         desktop_path = Path.home() / "Desktop"
 
         desktop_path = Path.home() / "Desktop"
@@ -75,9 +75,7 @@ class Data(Dataset):
         else:
             self.target = torch.zeros(size=(observations,))
 
-        if cat2_feature_names is None:
-            cat2_feature_names = []
-
+        cat2_feature_names = []
         cat2_feature_names += embed_names
 
         # filter by categorical columns,
@@ -101,11 +99,19 @@ class Data(Dataset):
         # Now, use 'cat2_ref' as a normal DataFrame and access "columnId"
         data_cat_1 = data_cat.filter(
             ~pl.col("covariateId").is_in(cat2_ref["covariateId"]))
-        self.cat_1_mapping = pl.DataFrame({
-            "covariateId": data_cat_1["covariateId"].unique(),
-            "index": pl.Series(range(1, len(data_cat_1["covariateId"].unique()) + 1))
-        })
-        self.cat_1_mapping.write_json(str(desktop_path / "cat1_mapping.json"))
+        
+        self.cat_1_mapping = None
+        if in_cat_1_mapping is None:
+            self.cat_1_mapping = pl.DataFrame({
+                "covariateId": data_cat_1["covariateId"].unique(),
+                "index": pl.Series(range(1, len(data_cat_1["covariateId"].unique()) + 1))
+            })
+            # self.cat_1_mapping = pl.DataFrame(self.cat_1_mapping)
+            self.cat_1_mapping.write_json(str(desktop_path / "cat1_mapping_train.json"))
+        else:
+            self.cat_1_mapping = pl.DataFrame(in_cat_1_mapping).with_columns(pl.col('index').cast(pl.Int64), pl.col('covariateId').cast(pl.Float64))
+            self.cat_1_mapping.write_json(str(desktop_path / "cat1_mapping_test.json"))
+        
 
         data_cat_1 = data_cat_1.join(self.cat_1_mapping, on="covariateId", how="left") \
             .select(pl.col("rowId"), pl.col("index").alias("covariateId"))
@@ -128,19 +134,26 @@ class Data(Dataset):
         # process cat_2 features
         data_cat_2 = data_cat.filter(
             pl.col("covariateId").is_in(cat2_ref))
-        self.cat_2_mapping = pl.DataFrame({
-            "covariateId": data_cat_2["covariateId"].unique(),
-            "index": pl.Series(range(1, len(data_cat_2["covariateId"].unique()) + 1))
-        })
-        self.cat_2_mapping = self.cat_2_mapping.lazy()
-        self.cat_2_mapping = (
-            self.data_ref
-            .filter(pl.col("covariateId").is_in(data_cat_2["covariateId"].unique()))
-            .select(pl.col("conceptId"), pl.col("covariateId"))
-            .join(self.cat_2_mapping, on="covariateId", how="left")
-            .collect()
-        )
-        self.cat_2_mapping.write_json(str(desktop_path / "cat2_mapping.json"))
+        
+        self.cat_2_mapping = None
+        if in_cat_2_mapping is None:
+            self.cat_2_mapping = pl.DataFrame({
+                "covariateId": data_cat_2["covariateId"].unique(),
+                "index": pl.Series(range(1, len(data_cat_2["covariateId"].unique()) + 1))
+            })
+            self.cat_2_mapping = self.cat_2_mapping.lazy()
+            self.cat_2_mapping = (
+                self.data_ref
+                .filter(pl.col("covariateId").is_in(data_cat_2["covariateId"].unique()))
+                .select(pl.col("conceptId"), pl.col("covariateId"))
+                .join(self.cat_2_mapping, on="covariateId", how="left")
+                .collect()
+            )
+            self.cat_2_mapping.write_json(str(desktop_path / "cat2_mapping_train.json"))
+        else:
+            self.cat_2_mapping = pl.DataFrame(in_cat_2_mapping).with_columns(pl.col('index').cast(pl.Int64), pl.col('covariateId').cast(pl.Float64))
+            self.cat_2_mapping.write_json(str(desktop_path / "cat2_mapping_test.json"))
+        
         # cat_2_mapping.write_json(str(desktop_path / "cat2_mapping.json"))
 
         data_cat_2 = data_cat_2.join(self.cat_2_mapping, on="covariateId", how="left") \

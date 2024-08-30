@@ -56,7 +56,7 @@ class CustomEmbeddingInitStrategy(InitStrategy):
 
             # # replace weights
             # cat2_concept_mapping = pl.read_json(os.path.expanduser("~/Desktop/cat2_concept_mapping.json"))
-            cat2_mapping = pl.read_json(os.path.expanduser("~/Desktop/cat2_mapping.json"))
+            cat2_mapping = pl.read_json(os.path.expanduser("~/Desktop/cat2_mapping_train.json"))
             # print(f"cat2_mapping: {cat2_mapping}")
 
             concept_df = pl.DataFrame({"conceptId": state['names']}).with_columns(pl.col("conceptId"))

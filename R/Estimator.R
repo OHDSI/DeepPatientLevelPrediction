@@ -303,20 +303,22 @@ predictDeepEstimator <- function(plpModel,
   
   if (!is.null(plpModel$covariateImportance)) {
     # this means that the model finished training since only in the end covariateImportance is added
-    browser()
-    
-    # data <- createDataset(mappedData, plpModel = plpModel)
+    mappedData <- PatientLevelPrediction::MapIds(data$covariateData,
+                                                 cohort = cohort,
+                                                 mapping = plpModel$covariateImportance %>%
+                                                   dplyr::select("columnId", "covariateId")
+    )
+    data <- createDataset(mappedData, plpModel = plpModel)
     
   } else if ("plpData" %in% class(data)) {
     mappedData <- PatientLevelPrediction::MapIds(data$covariateData,
       cohort = cohort,
       mapping = plpModel$covariateImportance %>%
         dplyr::select("columnId", "covariateId")
-      # check this if it is correclty passing the mapped data rather than creating a new mapping
     )
     data <- createDataset(mappedData, plpModel = plpModel)
   }
-
+  
   # get predictions
   prediction <- cohort
   if (is.character(plpModel$model)) {
@@ -336,6 +338,7 @@ predictDeepEstimator <- function(plpModel,
                       snakeCaseToCamelCaseNames(model$estimator_settings))
     estimator$model$load_state_dict(model$model_state_dict)
     prediction$value <- estimator$predict_proba(data)
+    browser()
   } else {
     prediction$value <- plpModel$model$predict_proba(data)
   }
