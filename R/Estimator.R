@@ -338,7 +338,6 @@ predictDeepEstimator <- function(plpModel,
                       snakeCaseToCamelCaseNames(model$estimator_settings))
     estimator$model$load_state_dict(model$model_state_dict)
     prediction$value <- estimator$predict_proba(data)
-    browser()
   } else {
     prediction$value <- plpModel$model$predict_proba(data)
   }
