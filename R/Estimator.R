@@ -218,12 +218,12 @@ fitEstimator <- function(trainData,
       included = incs,
       covariateValue = 0,
       isNumeric = .data$columnId %in% cvResult$numericalIndex
-      # get mapping maybe here
     ) %>%
     left_join(cvResult$cat1Mapping %>% rename(cat1Idx = index), by = "covariateId") %>%
     left_join(cvResult$cat2Mapping %>% rename(cat2Idx = index), by = "covariateId")
 
   comp <- start - Sys.time()
+  modelSettings$estimatorSettings$initStrategy <- NULL
   result <- list(
     model = cvResult$estimator,
     preprocessing = list(
@@ -271,7 +271,6 @@ fitEstimator <- function(trainData,
       hyperParamSearch = hyperSummary
     ),
     covariateImportance = covariateRef
-    # also return mapping as part of covariateRef above, not necessary to do separately
   )
 
   class(result) <- "plpModel"
@@ -318,7 +317,7 @@ predictDeepEstimator <- function(plpModel,
     )
     data <- createDataset(mappedData, plpModel = plpModel)
   }
-  
+
   # get predictions
   prediction <- cohort
   if (is.character(plpModel$model)) {

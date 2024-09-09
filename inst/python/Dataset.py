@@ -10,8 +10,6 @@ from pathlib import Path
 import json
 import os
 
-# this one needs to have a parameter to not do the mapping again
-
 class Data(Dataset):
     def __init__(self, data, labels=None, numerical_features=None,
                  in_cat_1_mapping=None, in_cat_2_mapping=None):
@@ -50,12 +48,6 @@ class Data(Dataset):
             ).lazy()
         else:
             data = pl.scan_ipc(pathlib.Path(data).joinpath("covariates/*.arrow"))
-
-        # # Fetch only the first few rows
-        # data_head = data.limit(100).collect()
-        # print("Head of the data:")
-        # print(data_head)
-
         observations = data.select(pl.col("rowId").max()).collect()[0, 0]
         # detect features are numeric
         if numerical_features is None:
@@ -247,4 +239,8 @@ class Data(Dataset):
         ):
             batch["num"] = batch["num"].unsqueeze(0)
         return [batch, self.target[item].squeeze()]
+
+
+
+
 
