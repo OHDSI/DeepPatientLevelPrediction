@@ -218,9 +218,12 @@ fitEstimator <- function(trainData,
       included = incs,
       covariateValue = 0,
       isNumeric = .data$columnId %in% cvResult$numericalIndex
-    )
+    ) %>%
+    left_join(cvResult$cat1Mapping %>% rename(cat1Idx = index), by = "covariateId") %>%
+    left_join(cvResult$cat2Mapping %>% rename(cat2Idx = index), by = "covariateId")
 
   comp <- start - Sys.time()
+  modelSettings$estimatorSettings$initStrategy <- NULL
   result <- list(
     model = cvResult$estimator,
     preprocessing = list(
@@ -296,7 +299,17 @@ predictDeepEstimator <- function(plpModel,
     plpModel <- list(model = plpModel)
     attr(plpModel, "modelType") <- "binary"
   }
-  if ("plpData" %in% class(data)) {
+  
+  if (!is.null(plpModel$covariateImportance)) {
+    # this means that the model finished training since only in the end covariateImportance is added
+    mappedData <- PatientLevelPrediction::MapIds(data$covariateData,
+                                                 cohort = cohort,
+                                                 mapping = plpModel$covariateImportance %>%
+                                                   dplyr::select("columnId", "covariateId")
+    )
+    data <- createDataset(mappedData, plpModel = plpModel)
+    
+  } else if ("plpData" %in% class(data)) {
     mappedData <- PatientLevelPrediction::MapIds(data$covariateData,
       cohort = cohort,
       mapping = plpModel$covariateImportance %>%
@@ -421,6 +434,8 @@ gridCvDeep <- function(mappedData,
   prediction$cohortStartDate <- as.Date(prediction$cohortStartDate,
     origin = "1970-01-01")
   numericalIndex <- dataset$get_numerical_features()
+  cat1Mapping <- as.data.frame(dataset$get_cat_1_mapping())
+  cat2Mapping <- as.data.frame(dataset$get_cat_2_mapping())
   
   # save torch code here
   if (!dir.exists(file.path(modelLocation))) {
@@ -433,7 +448,9 @@ gridCvDeep <- function(mappedData,
       prediction = prediction,
       finalParam = finalParam,
       paramGridSearch = paramGridSearch,
-      numericalIndex = numericalIndex$to_list()
+      numericalIndex = numericalIndex$to_list(),
+      cat1Mapping = cat1Mapping,
+      cat2Mapping = cat2Mapping
     )
   )
 }
@@ -577,8 +594,9 @@ doCrossValidationImpl <- function(dataset,
     fillEstimatorSettings(modelSettings$estimatorSettings,
                           fitParams,
                           parameters)
-  currentModelParams$catFeatures <- dataset$get_cat_features()$max()
+  currentModelParams$catFeatures <- dataset$get_cat_features()$len()
   currentModelParams$numFeatures <- dataset$get_numerical_features()$len()
+  currentModelParams$cat2Features <- dataset$get_cat_2_features()$len()
   if (currentEstimatorSettings$findLR) {
     lr <- getLR(currentModelParams, currentEstimatorSettings, dataset)
     ParallelLogger::logInfo(paste0("Auto learning rate selected as: ", lr))
@@ -659,7 +677,8 @@ trainFinalModel <- function(dataset, finalParam, modelSettings, labels) {
   
     fitParams <- names(finalParam)[grepl("^estimator", names(finalParam))]
     
-    modelParams$catFeatures <- dataset$get_cat_features()$max()
+    modelParams$catFeatures <- dataset$get_cat_features()$len()
+    modelParams$cat2Features <- dataset$get_cat_2_features()$len()
     modelParams$numFeatures <- dataset$get_numerical_features()$len()
     modelParams$modelType <- modelSettings$modelType
   
