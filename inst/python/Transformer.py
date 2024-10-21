@@ -28,9 +28,7 @@ class ReGLU(nn.Module):
 class Transformer(nn.Module):
     def __init__(
         self,
-        cat_features: int,
-        cat_2_features: int,
-        num_features: int,
+        feature_info,
         num_blocks: int,
         dim_token: int,
         num_heads: int,
@@ -48,24 +46,17 @@ class Transformer(nn.Module):
     ):
         super(Transformer, self).__init__()
         self.name = model_type
-        cat_features = int(cat_features)
-        cat_2_features = int(cat_2_features)
-        num_features = int(num_features)
         num_blocks = int(num_blocks)
         dim_token = int(dim_token)
         num_heads = int(num_heads)
         dim_hidden = int(dim_hidden)
         dim_out = int(dim_out)
+        cat_features = feature_info["cat_features"]
+        num_features = feature_info["num_features"]
 
-        self.categorical_embedding = nn.Embedding(
+        self.embedding = nn.Embedding(
             cat_features + 1, dim_token, padding_idx=0
         )
-
-        self.categorical_embedding_2 = nn.Embedding(
-            cat_2_features + 1, 3, padding_idx=0
-        )
-
-        self.cat_2_transform = nn.Linear(3, dim_token)
 
         if num_features != 0 and num_features is not None:
             self.numerical_embedding = NumericalEmbedding(num_features, dim_token)
@@ -113,17 +104,13 @@ class Transformer(nn.Module):
 
     def forward(self, x):
         mask = torch.where(x["cat"] == 0, True, False)
-		mask2 = torch.where(x["cat_2"] == 0, True, False)
-		mask = torch.cat([mask, mask2], dim=1) # dim 0 may be batch size, dim 1 should it be
+        mask = torch.cat([mask], dim=1) # dim 0 may be batch size, dim 1 should it be
 		
-        cat = self.categorical_embedding(x["cat"])
-        cat_2 = self.categorical_embedding_2(x["cat_2"])
-        cat_2_tangent = self.logmap0(cat_2)
-        cat_2_transformed = self.cat_2_transform(cat_2_tangent)
+        cat = self.embedding(x["cat"])
 
         if self.use_numerical:
             num = self.numerical_embedding(x["num"])
-            x = torch.cat([cat, cat_2_transformed, num], dim=1)
+            x = torch.cat([cat, num], dim=1)
             mask = torch.cat(
                 [
                     mask,
@@ -134,7 +121,7 @@ class Transformer(nn.Module):
                 dim=1,
             )
         else:
-            x = torch.cat([cat, cat_2_transformed], dim=1)           
+            x = cat
         x = self.class_token(x)
         mask = torch.cat(
             [mask, torch.zeros([x.shape[0], 1], device=mask.device, dtype=mask.dtype)],

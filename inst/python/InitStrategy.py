@@ -1,23 +1,21 @@
 from abc import ABC, abstractmethod
+import pathlib
 
 import torch
-import os
-from torchviz import make_dot
-import json
 import polars as pl
 
 class InitStrategy(ABC):
     @abstractmethod
-    def initialize(self, model, model_parameters, estimator_settings):
+    def initialize(self, model, parameters):
         pass
       
 class DefaultInitStrategy(InitStrategy):
-    def initialize(self, model, model_parameters, estimator_settings):
-        return model(**model_parameters)
+    def initialize(self, model, parameters):
+        return model(**parameters["model_parameters"])
 
 class FinetuneInitStrategy(InitStrategy):
-    def initialize(self, model, model_parameters, estimator_settings):
-        path = estimator_settings["finetune_model_path"]
+    def initialize(self, model, parameters):
+        path = parameters["estimator_settings"]["finetune_model_path"]
         fitted_estimator = torch.load(path, map_location="cpu")
         fitted_parameters = fitted_estimator["model_parameters"]
         model_instance = model(**fitted_parameters)
@@ -29,17 +27,13 @@ class FinetuneInitStrategy(InitStrategy):
 
 
 class CustomEmbeddingInitStrategy(InitStrategy):
-    def initialize(self, model, model_parameters, estimator_settings):
-        file_path = estimator_settings.get("embedding_file_path")
-
-        # print(model_parameters['cat_2_features'])
-        # print(model_parameters['cat_features'])
-        # print(model_parameters['num_features'])
+    def initialize(self, model, parameters):
+        file_path = pathlib.Path(parameters["estimator_settings"].get("embedding_file_path")).expanduser()
 
         # Instantiate the model with the provided parameters
-        model_temp = model(**model_parameters)
+        model = model(**parameters["model_parameters"])
 
-        if file_path and os.path.exists(file_path):
+        if file_path.exists():
             state = torch.load(file_path)
             state_dict = state["state_dict"]
             embedding_key = "embedding.weight"
@@ -47,21 +41,17 @@ class CustomEmbeddingInitStrategy(InitStrategy):
             if embedding_key not in state_dict:
                 raise KeyError(f"The key '{embedding_key}' does not exist in the state dictionary")
 
-            new_embeddings = state_dict[embedding_key].float()
-            # print(f"new_embeddings: {new_embeddings}")
+            custom_embeddings = state_dict[embedding_key].float()
 
             # Ensure that model_temp.categorical_embedding_2 exists
-            if not hasattr(model_temp, 'categorical_embedding_2'):
-                raise AttributeError("The model does not have an attribute 'categorical_embedding_2'")
+            if not hasattr(model, 'embedding'):
+                raise AttributeError("The model does not have an embedding layer named 'embedding'")
 
             # # replace weights
-            # cat2_concept_mapping = pl.read_json(os.path.expanduser("~/Desktop/cat2_concept_mapping.json"))
             cat2_mapping = pl.read_json(os.path.expanduser("~/Desktop/cat2_mapping_train.json"))
-            # print(f"cat2_mapping: {cat2_mapping}")
 
             concept_df = pl.DataFrame({"conceptId": state['names']}).with_columns(pl.col("conceptId"))
-            # print(f"concept_df: {concept_df}")
-
+            
             # Initialize tensor for mapped embeddings
             mapped_embeddings = torch.zeros((cat2_mapping.shape[0] + 1, new_embeddings.shape[1]))
             
@@ -72,19 +62,10 @@ class CustomEmbeddingInitStrategy(InitStrategy):
                     concept_idx = concept_df["conceptId"].to_list().index(concept_id)
                     mapped_embeddings[index] = new_embeddings[concept_idx]
             
-            # print(f"mapped_embeddings: {mapped_embeddings}")
-            
             # Assign the mapped embeddings to the model
             model_temp.categorical_embedding_2.weight = torch.nn.Parameter(mapped_embeddings)
             model_temp.categorical_embedding_2.weight.requires_grad = False
             
-            # print("New Embeddings:")
-            # print(new_embeddings)
-            # print(f"Restored Epoch: {state['epoch']}")
-            # print(f"Restored Mean Rank: {state['mean_rank']}")
-            # print(f"Restored Loss: {state['loss']}")
-            # print(f"Restored Names: {state['names'][:5]}")
-            # print(f"Number of names: {len(state['names'])}")
         else:
             raise FileNotFoundError(f"File not found or path is incorrect: {file_path}")
 
@@ -100,15 +81,4 @@ class CustomEmbeddingInitStrategy(InitStrategy):
         if model_parameters['num_features'] == 0:
             del dummy_input["num"]
 
-        if hasattr(model_temp, 'forward'):
-            try:
-                output = model_temp(dummy_input)
-                initial_graph = make_dot(output, params=dict(model_temp.named_parameters()), show_attrs=False, show_saved=False)
-                initial_graph.render("initial_model_architecture", format="png")
-            except Exception as e:
-                print(f"Error during initial model visualization: {e}")
-
-        else:
-            raise AttributeError("The model does not have a forward method.")
-        
         return model_temp

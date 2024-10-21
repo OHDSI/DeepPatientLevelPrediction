@@ -482,22 +482,20 @@ evalEstimatorSettings <- function(estimatorSettings) {
   estimatorSettings
 }
 
-createEstimator <- function(modelParameters,
-                            estimatorSettings) {
+createEstimator <- function(parameters) {
   path <- system.file("python", package = "DeepPatientLevelPrediction")
   model <-
-    reticulate::import_from_path(modelParameters$modelType,
-                                 path = path)[[modelParameters$modelType]]
+    reticulate::import_from_path(parameters$modelParameters$modelType,
+                                 path = path)[[parameters$modelParameters$modelType]]
   estimator <- reticulate::import_from_path("Estimator", path = path)$Estimator
 
-  modelParameters <- camelCaseToSnakeCaseNames(modelParameters)
-  estimatorSettings <- camelCaseToSnakeCaseNames(estimatorSettings)
-  estimatorSettings <- evalEstimatorSettings(estimatorSettings)
-
+  parameters$modelParameters <- camelCaseToSnakeCaseNames(parameters$modelParameters)
+  parameters$estimatorSettings <- camelCaseToSnakeCaseNames(parameters$estimatorSettings)
+  parameters$estimatorSettings <- evalEstimatorSettings(parameters$estimatorSettings)
+  parameters <- camelCaseToSnakeCaseNames(parameters)
   estimator <- estimator(
     model = model,
-    model_parameters = modelParameters,
-    estimator_settings = estimatorSettings
+    parameters = parameters
   )
   return(estimator)
 }
@@ -588,17 +586,19 @@ doCrossValidationImpl <- function(dataset,
   )]
   currentModelParams <- parameters[modelSettings$modelParamNames]
   attr(currentModelParams, "metaData")$names <-
-    modelSettings$modelParamNameCH
+    modelSettings$modelParamNames
   currentModelParams$modelType <- modelSettings$modelType
   currentEstimatorSettings <-
     fillEstimatorSettings(modelSettings$estimatorSettings,
                           fitParams,
                           parameters)
-  currentModelParams$catFeatures <- dataset$get_cat_features()$len()
-  currentModelParams$numFeatures <- dataset$get_numerical_features()$len()
-  currentModelParams$cat2Features <- dataset$get_cat_2_features()$len()
+  currentModelParams$feature_info <- dataset$get_feature_info()
+  currentParameters <- list(
+    modelParameters = currentModelParams,
+    estimatorSettings = currentEstimatorSettings
+  )
   if (currentEstimatorSettings$findLR) {
-    lr <- getLR(currentModelParams, currentEstimatorSettings, dataset)
+    lr <- getLR(currentParameters, dataset)
     ParallelLogger::logInfo(paste0("Auto learning rate selected as: ", lr))
     currentEstimatorSettings$learningRate <- lr
   }
@@ -623,8 +623,7 @@ doCrossValidationImpl <- function(dataset,
     testDataset <- torch$utils$data$Subset(dataset,
                                            indices =
                                              as.integer(which(fold == i) - 1))
-    estimator <- createEstimator(modelParameters = currentModelParams,
-                                 estimatorSettings = currentEstimatorSettings)
+    estimator <- createEstimator(parameters)
     fit_estimator(estimator, trainDataset, testDataset)
 
     ParallelLogger::logInfo("Calculating predictions on left out fold set...")
