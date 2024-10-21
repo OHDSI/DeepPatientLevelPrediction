@@ -17,12 +17,17 @@
 # limitations under the License.
 #' Create default settings a model using custom embeddings
 #'
-#' @description A model that uses custom embeddings such as Poincare embeddings
-#' @param embeddingFilePath path to the saved Poincare embedding
+#' @description A model that uses custom embeddings such as Poincare embeddings or 
+#' embeddings form a foundation model
+#' @param embeddingFilePath path to the saved embeddings. The embeddings file 
+#' should be a pytorch file including a dictionary with two two fields: 
+#' `concept_ids`: a pytorch long tensor with the concept ids and `embeddings`: 
+#' a pytorch float tensor with the embeddings
 #' @param estimatorSettings created with `setEstimator`
-#' @param modelSettings for the model to use, needs to have an embedding layer
+#' @param modelSettings for the model to use, needs to have an embedding layer 
+#' with a name `embedding` which will be replaced by the custom embeddings
 #' 
-#' @return settings for a model using custom embeddings:w
+#' @return settings for a model using custom embeddings
 #'
 #' @export
 setCustomEmbeddingModel <- function(
@@ -50,6 +55,11 @@ setCustomEmbeddingModel <- function(
       randomSample = 1
     )
 ) {
+  embeddingFilePath <- normalizePath(embeddingFilePath)
+  checkIsClass(embeddingFilePath, "character")
+  checkFileExists(embeddingFilePath)
+  
+  
   path <- system.file("python", package = "DeepPatientLevelPrediction")
   estimatorSettings$initStrategy <-
     reticulate::import_from_path("InitStrategy",

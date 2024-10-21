@@ -4,6 +4,8 @@ import pathlib
 import torch
 import polars as pl
 
+from CustomEmbeddings import CustomEmbeddings
+
 class InitStrategy(ABC):
     @abstractmethod
     def initialize(self, model, parameters):
@@ -28,57 +30,36 @@ class FinetuneInitStrategy(InitStrategy):
 
 class CustomEmbeddingInitStrategy(InitStrategy):
     def initialize(self, model, parameters):
-        file_path = pathlib.Path(parameters["estimator_settings"].get("embedding_file_path")).expanduser()
+        file_path = pathlib.Path(parameters["estimator_settings"].get("embedding_file_path"))
+        data_reference = parameters["model_parameters"]["feature_info"]["reference"]
 
         # Instantiate the model with the provided parameters
         model = model(**parameters["model_parameters"])
 
-        if file_path.exists():
-            state = torch.load(file_path)
-            state_dict = state["state_dict"]
-            embedding_key = "embedding.weight"
+        embeddings = torch.load(file_path, weights_only=True)
 
-            if embedding_key not in state_dict:
-                raise KeyError(f"The key '{embedding_key}' does not exist in the state dictionary")
+        if "concept_ids" not in embeddings.keys() :
+            raise KeyError(f"The embeddings file does not contain the required 'concept_ids' key")
+        if "embeddings" not in embeddings.keys():
+            raise KeyError(f"The embeddings file does not contain the required 'embeddings' key")
+        if embeddings["concept_ids"].dtype != torch.long:
+            raise TypeError(f"The 'concept_ids' key in the embeddings file must be of type torch.long")
+        if embeddings["embeddings"].dtype != torch.float:
+            raise TypeError(f"The 'embeddings' key in the embeddings file must be of type torch.float")
 
-            custom_embeddings = state_dict[embedding_key].float()
+        # Ensure that the model has an embedding layer
+        if not hasattr(model, 'embedding'):
+            raise AttributeError(f"The model: {model.name} does not have an embedding layer named 'embedding' as "
+                                 f"required for custom embeddings")
 
-            # Ensure that model_temp.categorical_embedding_2 exists
-            if not hasattr(model, 'embedding'):
-                raise AttributeError("The model does not have an embedding layer named 'embedding'")
+        # get indices of the custom embeddings from embeddings["concept_ids"]
+        # I need to select the rows from data_reference where embeddings["concept_ids"] is in data_reference["conceptId"]
+        # data reference is a polars lazyframe
+        custom_indices = data_reference.filter(pl.col("conceptId").is_in(embeddings["concept_ids"].tolist())).select("columnId").collect() - 1
+        custom_indices = custom_indices.to_torch().squeeze()
 
-            # # replace weights
-            cat2_mapping = pl.read_json(os.path.expanduser("~/Desktop/cat2_mapping_train.json"))
-
-            concept_df = pl.DataFrame({"conceptId": state['names']}).with_columns(pl.col("conceptId"))
-            
-            # Initialize tensor for mapped embeddings
-            mapped_embeddings = torch.zeros((cat2_mapping.shape[0] + 1, new_embeddings.shape[1]))
-            
-            # Map embeddings to their corresponding indices
-            for row in cat2_mapping.iter_rows():
-                concept_id, covariate_id, index = row
-                if concept_id in concept_df["conceptId"]:
-                    concept_idx = concept_df["conceptId"].to_list().index(concept_id)
-                    mapped_embeddings[index] = new_embeddings[concept_idx]
-            
-            # Assign the mapped embeddings to the model
-            model_temp.categorical_embedding_2.weight = torch.nn.Parameter(mapped_embeddings)
-            model_temp.categorical_embedding_2.weight.requires_grad = False
-            
-        else:
-            raise FileNotFoundError(f"File not found or path is incorrect: {file_path}")
-
-
-        # Create a dummy input batch that matches the model inputs
-        dummy_input = {
-            "cat": torch.randint(0, model_parameters['cat_features'], (1, 10)).long(),
-            "cat_2": torch.randint(0, model_parameters['cat_2_features'], (1, 10)).long(),
-            "num": torch.randn(1, model_parameters['num_features']) if model_parameters['num_features'] > 0 else None
-        }
-
-        # Ensure that the dummy input does not contain `None` values if num_features == 0
-        if model_parameters['num_features'] == 0:
-            del dummy_input["num"]
-
-        return model_temp
+        model.embedding = CustomEmbeddings(custom_embedding_weights=embeddings["embeddings"],
+                                           embedding_dim=model.embedding.embedding_dim,
+                                           num_regular_embeddings=model.embedding.num_embeddings,
+                                           custom_indices=custom_indices)
+        return model

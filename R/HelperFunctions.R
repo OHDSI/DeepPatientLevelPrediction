@@ -105,3 +105,13 @@ checkHigherEqual <- function(parameter, value) {
   }
   return(TRUE)
 }
+
+#' helper function to check if a file exists
+#' @param file the file to check
+checkFileExists <- function(file) {
+  if (!file.exists(file)) {
+    ParallelLogger::logError(paste0("File ", file, " does not exist"))
+    stop(paste0("File ", file, " does not exist"))
+  }
+  return(TRUE)
+}

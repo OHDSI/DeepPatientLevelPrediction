@@ -110,8 +110,8 @@ class Data(Dataset):
 
     def get_feature_info(self):
         return {
-            "numerical_features": self.numerical_features,
-            "cat_features": self.cat_features,
+            "numerical_features": torch.tensor(self.numerical_features),
+            "categorical_features": torch.tensor(self.cat_features),
             "reference": self.data_ref
         }
 
