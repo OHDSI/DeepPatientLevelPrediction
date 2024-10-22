@@ -1,4 +1,5 @@
 import math
+from idlelib.debugger_r import wrap_info
 
 import torch
 from torch import nn
@@ -51,10 +52,8 @@ class Transformer(nn.Module):
         num_heads = int(num_heads)
         dim_hidden = int(dim_hidden)
         dim_out = int(dim_out)
-        cat_features = feature_info["categorical_features"]
-        num_features = feature_info["numerical_features"]
-        cat_feature_size = len(cat_features)
-        num_feature_size = len(num_features)
+        cat_feature_size = int(feature_info["categorical_features"])
+        num_feature_size = int(feature_info.get("numerical_features", 0))
 
         self.embedding = nn.Embedding(
             cat_feature_size + 1, dim_token, padding_idx=0

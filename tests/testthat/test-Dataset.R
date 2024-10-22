@@ -1,7 +1,6 @@
 test_that("number of num and cat features sum correctly", {
   testthat::expect_equal(
-    length(dataset$get_numerical_features()) +
-      length(dataset$get_cat_features()),
+      dataset$get_feature_info()[["categorical_features"]],
     dplyr::n_distinct(mappedData$covariates %>%
                         dplyr::collect() %>%
                         dplyr::pull(covariateId))
@@ -56,7 +55,6 @@ test_that(".getbatch works", {
 
 test_that("Column order is preserved when features are missing", {
   # important for transfer learning and external validation
-
   reducedCovData <- Andromeda::copyAndromeda(trainData$Train$covariateData)
 
   # remove one numerical and one categorical
@@ -119,7 +117,7 @@ test_that("Column order is preserved when features are missing", {
   reducedCounts <- reducedCounts[-1]
 
   expect_false(isTRUE(all.equal(counts, reducedCounts)))
-  expect_equal(dataset$get_cat_features()$max(),
-               reducedDataset$get_cat_features()$max())
+  expect_equal(max(dataset$categorical_features$to_list()),
+               max(reducedDataset$categorical_features$to_list()))
 
 })

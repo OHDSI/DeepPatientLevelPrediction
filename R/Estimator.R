@@ -218,9 +218,7 @@ fitEstimator <- function(trainData,
       included = incs,
       covariateValue = 0,
       isNumeric = .data$columnId %in% cvResult$numericalIndex
-    ) %>%
-    left_join(cvResult$cat1Mapping %>% rename(cat1Idx = index), by = "covariateId") %>%
-    left_join(cvResult$cat2Mapping %>% rename(cat2Idx = index), by = "covariateId")
+    )
 
   comp <- start - Sys.time()
   modelSettings$estimatorSettings$initStrategy <- NULL
@@ -330,11 +328,12 @@ predictDeepEstimator <- function(plpModel,
     }
     model$estimator_settings$device <-
       plpModel$modelDesign$modelSettings$estimatorSettings$device
+    modelParameters <- snakeCaseToCamelCaseNames(model$model_parameters)
+    estimatorSettings <- snakeCaseToCamelCaseNames(model$estimator_settings)
+    parameters <- list(modelParameters = modelParameters,
+                       estimatorSettings = estimatorSettings)
     estimator <-
-      createEstimator(modelParameters =
-                      snakeCaseToCamelCaseNames(model$model_parameters),
-                      estimatorSettings =
-                      snakeCaseToCamelCaseNames(model$estimator_settings))
+      createEstimator(parameters = parameters)
     estimator$model$load_state_dict(model$model_state_dict)
     prediction$value <- estimator$predict_proba(data)
   } else {
@@ -433,9 +432,7 @@ gridCvDeep <- function(mappedData,
     dplyr::select(-"index")
   prediction$cohortStartDate <- as.Date(prediction$cohortStartDate,
     origin = "1970-01-01")
-  numericalIndex <- dataset$get_numerical_features()
-  cat1Mapping <- as.data.frame(dataset$get_cat_1_mapping())
-  cat2Mapping <- as.data.frame(dataset$get_cat_2_mapping())
+  numericalIndex <- dataset$numerical_features$to_list()
   
   # save torch code here
   if (!dir.exists(file.path(modelLocation))) {
@@ -448,9 +445,7 @@ gridCvDeep <- function(mappedData,
       prediction = prediction,
       finalParam = finalParam,
       paramGridSearch = paramGridSearch,
-      numericalIndex = numericalIndex$to_list(),
-      cat1Mapping = cat1Mapping,
-      cat2Mapping = cat2Mapping
+      numericalIndex = numericalIndex
     )
   )
 }
@@ -623,7 +618,7 @@ doCrossValidationImpl <- function(dataset,
     testDataset <- torch$utils$data$Subset(dataset,
                                            indices =
                                              as.integer(which(fold == i) - 1))
-    estimator <- createEstimator(parameters)
+    estimator <- createEstimator(currentParameters)
     fit_estimator(estimator, trainDataset, testDataset)
 
     ParallelLogger::logInfo("Calculating predictions on left out fold set...")
@@ -676,9 +671,7 @@ trainFinalModel <- function(dataset, finalParam, modelSettings, labels) {
   
     fitParams <- names(finalParam)[grepl("^estimator", names(finalParam))]
     
-    modelParams$catFeatures <- dataset$get_cat_features()$len()
-    modelParams$cat2Features <- dataset$get_cat_2_features()$len()
-    modelParams$numFeatures <- dataset$get_numerical_features()$len()
+    modelParams$featureInfo <- dataset$get_feature_info()
     modelParams$modelType <- modelSettings$modelType
   
     estimatorSettings <- fillEstimatorSettings(
@@ -687,8 +680,11 @@ trainFinalModel <- function(dataset, finalParam, modelSettings, labels) {
       finalParam
     )
     estimatorSettings$learningRate <- finalParam$learnSchedule$LRs[[1]]
-    estimator <- createEstimator(modelParameters = modelParams,
-                                 estimatorSettings = estimatorSettings)
+    parameters <- list(
+      modelParameters = modelParams,
+      estimatorSettings = estimatorSettings
+    )
+    estimator <- createEstimator(parameters = parameters)
     estimator$fit_whole_training_set(dataset, finalParam$learnSchedule$LRs)
   
     ParallelLogger::logInfo("Calculating predictions on all train data...")

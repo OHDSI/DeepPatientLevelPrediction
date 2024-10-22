@@ -47,8 +47,8 @@ class Data(Dataset):
         # select rowId and columnId
         data_cat = (
             data.filter(~pl.col("columnId").is_in(self.numerical_features))
-            .select(pl.col("rowId"), pl.col("covariateId"))
-            .sort(["rowId", "covariateId"])
+            .select(pl.col("rowId"), pl.col("columnId"))
+            .sort(["rowId", "columnId"])
             .with_columns(pl.col("rowId") - 1)
             .collect()
         )
@@ -66,7 +66,7 @@ class Data(Dataset):
         for i, i2 in enumerate(idx):
             total_list[i2] = tensor_list[i]
         self.cat = torch.nn.utils.rnn.pad_sequence(total_list, batch_first=True)
-        self.cat_features = data_cat["covariateId"].unique()
+        self.categorical_features = data_cat["columnId"].unique()
         
         # numerical data,
         # N x C, dense matrix with values for N patients/visits for C numerical features
@@ -110,8 +110,8 @@ class Data(Dataset):
 
     def get_feature_info(self):
         return {
-            "numerical_features": torch.tensor(self.numerical_features),
-            "categorical_features": torch.tensor(self.cat_features),
+            "numerical_features": len(self.numerical_features),
+            "categorical_features": self.categorical_features.max(),
             "reference": self.data_ref
         }
 

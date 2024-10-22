@@ -23,7 +23,6 @@
 #' should be a pytorch file including a dictionary with two two fields: 
 #' `concept_ids`: a pytorch long tensor with the concept ids and `embeddings`: 
 #' a pytorch float tensor with the embeddings
-#' @param estimatorSettings created with `setEstimator`
 #' @param modelSettings for the model to use, needs to have an embedding layer 
 #' with a name `embedding` which will be replaced by the custom embeddings
 #' 
@@ -32,15 +31,6 @@
 #' @export
 setCustomEmbeddingModel <- function(
     embeddingFilePath,
-    estimatorSettings =
-      setEstimator(
-        learningRate = "auto",
-        weightDecay = 1e-4,
-        batchSize = 256,
-        epochs = 2,
-        seed = NULL,
-        device = "cpu"
-      ),
     modelSettings = setTransformer(
       numBlocks = 3,
       dimToken = 16,
@@ -50,7 +40,12 @@ setCustomEmbeddingModel <- function(
       ffnDropout = 0.1,
       resDropout = 0.0,
       dimHidden = 32,
-      estimatorSettings = estimatorSettings,
+      estimatorSettings = setEstimator(learningRate = "auto",
+                                       weightDecay = 1e-4,
+                                       batchSize = 256,
+                                       epochs = 2,
+                                       seed = NULL,
+                                       device = "cpu"),
       hyperParamSearch = "random",
       randomSample = 1
     )
@@ -61,12 +56,12 @@ setCustomEmbeddingModel <- function(
   
   
   path <- system.file("python", package = "DeepPatientLevelPrediction")
-  estimatorSettings$initStrategy <-
+  modelSettings$estimatorSettings$initStrategy <-
     reticulate::import_from_path("InitStrategy",
                                  path = path)$CustomEmbeddingInitStrategy()
-  estimatorSettings$embeddingFilePath <- embeddingFilePath
+  modelSettings$estimatorSettings$embeddingFilePath <- embeddingFilePath
   transformerSettings <- modelSettings
 
-  attr(transformerSettings, "settings")$name <- "CustomEmbeddingTransformer"
+  attr(transformerSettings, "settings")$name <- "CustomEmbeddingModel"
   return(transformerSettings)
 }
