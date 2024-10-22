@@ -15,13 +15,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-getLR <- function(modelParameters,
-                  estimatorSettings,
+getLR <- function(parameters,
                   dataset,
                   lrSettings = NULL) {
   path <- system.file("python", package = "DeepPatientLevelPrediction")
-  estimator <- createEstimator(modelParameters = modelParameters,
-                               estimatorSettings = estimatorSettings)
+  estimator <- createEstimator(parameters = parameters)
   if (!is.null(lrSettings)) {
     lrSettings <- camelCaseToSnakeCaseNames(lrSettings)
   }

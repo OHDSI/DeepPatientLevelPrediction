@@ -3,7 +3,7 @@
 export(fitEstimator)
 export(gridCvDeep)
 export(predictDeepEstimator)
-export(setCustomEmbeddingTransformer)
+export(setCustomEmbeddingModel)
 export(setDefaultResNet)
 export(setDefaultTransformer)
 export(setEstimator)

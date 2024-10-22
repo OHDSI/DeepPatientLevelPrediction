@@ -1,6 +1,20 @@
 
 test_that("Poincare Transformer works", {
-  settings <- setCustomEmbeddingTransformer("/Users/henrikjohn/Desktop/poincare_model_dim_3.pt")
+  concept_ids <- torch$Tensor(plpData$covariateData$covariateRef %>% dplyr::filter(
+    analysisId == 210) %>% dplyr::pull("conceptId"))$long()
+  
+  customEmbeddings <- list("concept_ids" = concept_ids, "embeddings" = torch$randn(3L, concept_ids$shape[0]))
+  torch$save(customEmbeddings, file.path(testLoc, "custom_embeddings.pt"))
+  settings <- setCustomEmbeddingModel(embeddingFilePath = file.path(testLoc, "custom_embeddings.pt"),
+                                      modelSettings = setTransformer(
+                                        numBlocks = 1,
+                                        dimToken = 6,
+                                        numHeads = 1,
+                                        dimHidden = 12,
+                                        estimatorSettings = setEstimator(learningRate = 1e-3,
+                                                                         epochs = 1,
+                                                                         device = "cpu")
+                                      ))
   
   results <- PatientLevelPrediction::runPlp(
     plpData = plpData,
@@ -25,15 +39,4 @@ test_that("Poincare Transformer works", {
   )
   
   
-  params <- defaultTransformer$param[[1]]
-
-  expect_equal(params$numBlocks, 3)
-  expect_equal(params$dimToken, 192)
-  expect_equal(params$numHeads, 8)
-  expect_equal(params$resDropout, 0.0)
-  expect_equal(params$attDropout, 0.2)
-
-  settings <- attr(defaultTransformer, "settings")
-
-  expect_equal(settings$name, "defaultTransformer")
 })

@@ -88,8 +88,8 @@ test_that("MLP with runPlp working checks", {
 test_that("MLP nn-module works ", {
   mlp <- reticulate::import_from_path("MultiLayerPerceptron", path = path)$MultiLayerPerceptron
   model <- mlp(
-    cat_features = 5,
-    num_features = 1,
+    feature_info = list("categorical_features" = 5L,
+                        "numerical_features" = 1L),
     size_embedding = 5,
     size_hidden = 16,
     num_layers = 1,
@@ -115,8 +115,7 @@ test_that("MLP nn-module works ", {
 
   input$num <- NULL
   model <- mlp(
-    cat_features = 5L,
-    num_features = 0,
+    feature_info = list(categorical_features = 5L),
     size_embedding = 5L,
     size_hidden = 16L,
     num_layers = 1L,
