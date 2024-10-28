@@ -321,7 +321,8 @@ predictDeepEstimator <- function(plpModel,
   if (is.character(plpModel$model)) {
     model <- torch$load(file.path(plpModel$model,
                                   "DeepEstimatorModel.pt"),                        
-                        map_location = "cpu")
+                        map_location = "cpu",
+                        weights_only = FALSE)
     if (is.null(model$model_parameters$model_type)) {
       # for backwards compatibility
       model$model_parameters$model_type <- plpModel$modelDesign$modelSettings$modelType

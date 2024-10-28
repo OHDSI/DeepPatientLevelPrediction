@@ -29,16 +29,17 @@ class FinetuneInitStrategy(InitStrategy):
 
 
 class CustomEmbeddingInitStrategy(InitStrategy):
-    def __init__(self, embedding_class: str, embedding_file: str):
+    def __init__(self, embedding_class: str, embedding_file: str, freeze: bool = True):
         self.embedding_class = embedding_class
         self.embedding_file = embedding_file
+        self.freeze = freeze
         self.class_names_to_class = {
             "CustomEmbeddings": CustomEmbeddings,
             "PoincareEmbeddings": PoincareEmbeddings
         }
 
     def initialize(self, model, parameters):
-        file_path = pathlib.Path(parameters["estimator_settings"].get("embedding_file_path"))
+        file_path = pathlib.Path(self.embedding_file)
         data_reference = parameters["model_parameters"]["feature_info"]["reference"]
 
         # Instantiate the model with the provided parameters
@@ -62,13 +63,17 @@ class CustomEmbeddingInitStrategy(InitStrategy):
 
         # get indices of the custom embeddings from embeddings["concept_ids"]
         # I need to select the rows from data_reference where embeddings["concept_ids"] is in data_reference["conceptId"]
-        # data reference is a polars lazyframe
+        # data reference is a polars lazyframe. Note at this point data_reference only contains concepts in the training set
         custom_indices = data_reference.filter(pl.col("conceptId").is_in(embeddings["concept_ids"].tolist())).select("columnId").collect() - 1
         custom_indices = custom_indices.to_torch().squeeze()
+        # filter embeddings to concepts in training data, rest is OOV (out of vocabulary)
+        concepts_in_data = data_reference.select("conceptId").collect()
+        embeddings = {k: v[torch.isin(embeddings["concept_ids"], concepts_in_data["conceptId"].to_torch())] for k, v in embeddings.items()}
 
         embedding_class = self.class_names_to_class[self.embedding_class]
         model.embedding = embedding_class(custom_embedding_weights=embeddings["embeddings"],
                                           embedding_dim=model.embedding.embedding_dim,
                                           num_regular_embeddings=model.embedding.num_embeddings,
-                                          custom_indices=custom_indices)
+                                          custom_indices=custom_indices,
+                                          freeze=self.freeze)
         return model

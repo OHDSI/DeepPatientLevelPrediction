@@ -9,16 +9,29 @@ class CustomEmbeddings(nn.Module):
                  custom_indices: torch.Tensor,
                  freeze: bool = True):
         super(CustomEmbeddings, self).__init__()
-
+        num_custom_embeddings = custom_embedding_weights.shape[0] # +1 for padding at 0
         # make sure padding idx refers to all zero embeddings at position 0
         custom_embedding_weights = torch.cat([torch.zeros(1, custom_embedding_weights.shape[1]), custom_embedding_weights])
         self.custom_embeddings = nn.Embedding.from_pretrained(custom_embedding_weights, freeze=freeze,
                                                               padding_idx=0)
-        self.regular_embeddings = nn.Embedding(num_regular_embeddings, embedding_dim, padding_idx=0)
+        self.regular_embeddings = nn.Embedding(num_regular_embeddings - num_custom_embeddings + 1, embedding_dim, padding_idx=0)
 
         self.custom_indices = custom_indices
 
-        self.linear_transform = nn.Linear(custom_embedding_weights.shape[1], embedding_dim)
+        if custom_embedding_weights.shape[1] != embedding_dim:
+            self.linear_transform = nn.Linear(custom_embedding_weights.shape[1], embedding_dim)
+        else:
+            self.linear_transform = nn.Identity()
+
+        # create a tensor that such that tensor[input] will give the index of the custom embedding in self.custom_embeddings
+        vocab_to_custom = torch.zeros(num_regular_embeddings, dtype=torch.long)
+        vocab_to_custom[custom_indices] = torch.arange(1, custom_indices.shape[0] + 1)
+        self.vocab_to_custom = vocab_to_custom
+
+        vocab_to_regular = torch.zeros(num_regular_embeddings, dtype=torch.long)
+        regular_indices = torch.where(vocab_to_custom == 0)[0]
+        vocab_to_regular[regular_indices] = torch.arange(1, num_regular_embeddings - num_custom_embeddings + 1)
+        self.vocab_to_regular = vocab_to_regular
 
     @staticmethod
     def process_custom_embeddings(embeddings: torch.Tensor):
@@ -29,9 +42,9 @@ class CustomEmbeddings(nn.Module):
         custom_features = torch.where(custom_embeddings_mask, x, torch.tensor(0))
         regular_features = torch.where(~custom_embeddings_mask, x, torch.tensor(0))
 
-        custom_embeddings = self.custom_embeddings(custom_features)
+        custom_embeddings = self.custom_embeddings(self.vocab_to_custom[custom_features])
         custom_embeddings = self.process_custom_embeddings(custom_embeddings)
-        regular_embeddings = self.regular_embeddings(regular_features)
+        regular_embeddings = self.regular_embeddings(self.vocab_to_custom[regular_features])
 
         custom_embeddings = self.linear_transform(custom_embeddings)
 

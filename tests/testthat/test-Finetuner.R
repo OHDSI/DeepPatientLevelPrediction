@@ -47,7 +47,8 @@ test_that("Finetuner fitEstimator works", {
                fitEstimatorResults$covariateImportance$covariateId)
   
   fineTunedModel <- torch$load(file.path(fineTunerResults$model,
-                                         "DeepEstimatorModel.pt"))
+                                         "DeepEstimatorModel.pt"),
+                               weights_only = FALSE)
   expect_equal(fineTunedModel$estimator_settings$finetune_model_path, 
                normalizePath(file.path(fitEstimatorPath, "plpModel", "model",
                          "DeepEstimatorModel.pt")))
