@@ -4,7 +4,7 @@ import pathlib
 import torch
 import polars as pl
 
-from CustomEmbeddings import CustomEmbeddings
+from CustomEmbeddings import CustomEmbeddings, PoincareEmbeddings
 
 class InitStrategy(ABC):
     @abstractmethod
@@ -29,6 +29,14 @@ class FinetuneInitStrategy(InitStrategy):
 
 
 class CustomEmbeddingInitStrategy(InitStrategy):
+    def __init__(self, embedding_class: str, embedding_file: str):
+        self.embedding_class = embedding_class
+        self.embedding_file = embedding_file
+        self.class_names_to_class = {
+            "CustomEmbeddings": CustomEmbeddings,
+            "PoincareEmbeddings": PoincareEmbeddings
+        }
+
     def initialize(self, model, parameters):
         file_path = pathlib.Path(parameters["estimator_settings"].get("embedding_file_path"))
         data_reference = parameters["model_parameters"]["feature_info"]["reference"]
@@ -58,8 +66,9 @@ class CustomEmbeddingInitStrategy(InitStrategy):
         custom_indices = data_reference.filter(pl.col("conceptId").is_in(embeddings["concept_ids"].tolist())).select("columnId").collect() - 1
         custom_indices = custom_indices.to_torch().squeeze()
 
-        model.embedding = CustomEmbeddings(custom_embedding_weights=embeddings["embeddings"],
-                                           embedding_dim=model.embedding.embedding_dim,
-                                           num_regular_embeddings=model.embedding.num_embeddings,
-                                           custom_indices=custom_indices)
+        embedding_class = self.class_names_to_class[self.embedding_class]
+        model.embedding = embedding_class(custom_embedding_weights=embeddings["embeddings"],
+                                          embedding_dim=model.embedding.embedding_dim,
+                                          num_regular_embeddings=model.embedding.num_embeddings,
+                                          custom_indices=custom_indices)
         return model

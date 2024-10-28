@@ -25,6 +25,8 @@
 #' a pytorch float tensor with the embeddings
 #' @param modelSettings for the model to use, needs to have an embedding layer 
 #' with a name `embedding` which will be replaced by the custom embeddings
+#' @param embeddingsClass the class of the custom embeddings, e.g. `CustomEmbeddings` 
+#' or `PoincareEmbeddings`
 #' 
 #' @return settings for a model using custom embeddings
 #'
@@ -48,18 +50,22 @@ setCustomEmbeddingModel <- function(
                                        device = "cpu"),
       hyperParamSearch = "random",
       randomSample = 1
-    )
+    ),
+    embeddingsClass = "CustomEmbeddings"
 ) {
   embeddingFilePath <- normalizePath(embeddingFilePath)
   checkIsClass(embeddingFilePath, "character")
   checkFileExists(embeddingFilePath)
-  
+  checkIsClass(embeddingsClass, "character")
+  checkInStringVector(embeddingsClass, c("CustomEmbeddings", "PoincareEmbeddings"))
   
   path <- system.file("python", package = "DeepPatientLevelPrediction")
   modelSettings$estimatorSettings$initStrategy <-
     reticulate::import_from_path("InitStrategy",
-                                 path = path)$CustomEmbeddingInitStrategy()
-  modelSettings$estimatorSettings$embeddingFilePath <- embeddingFilePath
+                                 path = path)$CustomEmbeddingInitStrategy(
+                                   embedding_class = embeddingsClass,
+                                   embedding_file = embeddingFilePath
+                                 )
   transformerSettings <- modelSettings
 
   attr(transformerSettings, "settings")$name <- "CustomEmbeddingModel"

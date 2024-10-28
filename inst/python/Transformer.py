@@ -6,15 +6,6 @@ import torch.nn.functional as F
 
 from ResNet import NumericalEmbedding
 
-class LogMap0(nn.Module):
-    def forward(self, y):
-        curvature=1.0
-        norm_y = torch.norm(y, dim=-1, keepdim=True)
-        sqrt_c = torch.sqrt(torch.tensor(curvature, dtype=y.dtype, device=y.device))
-        scale = torch.arctanh(sqrt_c * norm_y) / (sqrt_c * norm_y)
-        scale[torch.isnan(scale)] = 1.0
-        return scale * y
-
 def reglu(x):
     a, b = x.chunk(2, dim=-1)
     return a * F.relu(b)
@@ -100,7 +91,6 @@ class Transformer(nn.Module):
         self.head_activation = head_activation
         self.head_normalization = head_norm
         self.dim_out = dim_out
-        self.logmap0 = LogMap0()
 
     def forward(self, x):
         mask = torch.where(x["cat"] == 0, True, False)

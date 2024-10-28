@@ -9,7 +9,8 @@ setCustomEmbeddingModel(
   modelSettings = setTransformer(numBlocks = 3, dimToken = 16, dimOut = 1, numHeads = 4,
     attDropout = 0.2, ffnDropout = 0.1, resDropout = 0, dimHidden = 32, estimatorSettings
     = setEstimator(learningRate = "auto", weightDecay = 1e-04, batchSize = 256, epochs =
-    2, seed = NULL, device = "cpu"), hyperParamSearch = "random", randomSample = 1)
+    2, seed = NULL, device = "cpu"), hyperParamSearch = "random", randomSample = 1),
+  embeddingsClass = "CustomEmbeddings"
 )
 }
 \arguments{
@@ -20,6 +21,9 @@ a pytorch float tensor with the embeddings}
 
 \item{modelSettings}{for the model to use, needs to have an embedding layer 
 with a name `embedding` which will be replaced by the custom embeddings}
+
+\item{embeddingsClass}{the class of the custom embeddings, e.g. `CustomEmbeddings` 
+or `PoincareEmbeddings`}
 }
 \value{
 settings for a model using custom embeddings
