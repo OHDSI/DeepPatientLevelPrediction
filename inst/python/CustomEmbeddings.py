@@ -16,7 +16,7 @@ class CustomEmbeddings(nn.Module):
                                                               padding_idx=0)
         self.regular_embeddings = nn.Embedding(num_regular_embeddings - num_custom_embeddings + 1, embedding_dim, padding_idx=0)
 
-        self.custom_indices = custom_indices
+        self.register_buffer("custom_indices", custom_indices)
 
         if custom_embedding_weights.shape[1] != embedding_dim:
             self.linear_transform = nn.Linear(custom_embedding_weights.shape[1], embedding_dim)
@@ -26,12 +26,12 @@ class CustomEmbeddings(nn.Module):
         # create a tensor that such that tensor[input] will give the index of the custom embedding in self.custom_embeddings
         vocab_to_custom = torch.zeros(num_regular_embeddings, dtype=torch.long)
         vocab_to_custom[custom_indices] = torch.arange(1, custom_indices.shape[0] + 1)
-        self.vocab_to_custom = vocab_to_custom
+        self.register_buffer("vocab_to_custom", vocab_to_custom)
 
         vocab_to_regular = torch.zeros(num_regular_embeddings, dtype=torch.long)
         regular_indices = torch.where(vocab_to_custom == 0)[0]
         vocab_to_regular[regular_indices] = torch.arange(1, num_regular_embeddings - num_custom_embeddings + 1)
-        self.vocab_to_regular = vocab_to_regular
+        self.register_buffer("vocab_to_regular", vocab_to_regular)
 
     @staticmethod
     def process_custom_embeddings(embeddings: torch.Tensor):
