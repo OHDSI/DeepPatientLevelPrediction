@@ -1,6 +1,10 @@
 
 DeepPatientLevelPrediction 2.1.0.999
 ======================
+  - Add an option to use torch compile
+  - More efficient conversions from polars to torch in dataset processing
+  - Automatically detect broken links in docs using github actions
+  - Model initialization made more flexible with classes
 
 DeepPatientLevelPrediction 2.1.0
 ======================
