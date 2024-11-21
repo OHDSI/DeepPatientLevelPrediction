@@ -99,7 +99,7 @@ class Estimator:
         self.best_score = None
         self.best_epoch = None
         self.learn_rate_schedule = None
-        if parameters["estimator_settings"]["compile"]:
+        if estimator_settings["compile"]:
             self.model = torch.compile(self.model, dynamic=False)
 
     def fit(self, dataset, test_dataset):
