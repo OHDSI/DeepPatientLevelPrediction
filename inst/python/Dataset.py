@@ -50,7 +50,7 @@ class Data(Dataset):
             .with_columns(pl.col("rowId") - 1)
             .collect()
         )
-        cat_tensor = torch.tensor(data_cat.to_numpy())
+        cat_tensor = data_cat.to_torch()
         tensor_list = torch.split(
             cat_tensor[:, 1],
             torch.unique_consecutive(cat_tensor[:, 0], return_counts=True)[1].tolist(),
@@ -90,13 +90,8 @@ class Data(Dataset):
                 )
                 .collect()
             )
-            indices = torch.as_tensor(
-                numerical_data.select(["rowId", "columnId"]).to_numpy(),
-                dtype=torch.long,
-            )
-            values = torch.tensor(
-                numerical_data.select("covariateValue").to_numpy(), dtype=torch.float
-            )
+            indices = numerical_data.select(["rowId", "columnId"]).to_torch(dtype=pl.Int64)
+            values = numerical_data.select("covariateValue").to_torch(dtype=pl.Float32)
             self.num = torch.sparse_coo_tensor(
                 indices=indices.T,
                 values=values.squeeze(),
