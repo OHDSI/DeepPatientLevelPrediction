@@ -99,6 +99,9 @@ class Estimator:
         self.best_score = None
         self.best_epoch = None
         self.learn_rate_schedule = None
+        torch_compile = estimator_settings.get("compile", False)
+        if torch_compile:
+            self.model = torch.compile(self.model, dynamic=False)
 
     def fit(self, dataset, test_dataset):
         train_dataloader = DataLoader(
