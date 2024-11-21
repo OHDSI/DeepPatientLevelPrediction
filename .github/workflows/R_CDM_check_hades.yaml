@@ -71,6 +71,10 @@ jobs:
           extra-packages: any::rcmdcheck
           needs: check
           
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          
       - name: setup r-reticulate venv
         shell: Rscript {0}
         run: |
