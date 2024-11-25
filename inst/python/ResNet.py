@@ -66,6 +66,8 @@ class ResNet(nn.Module):
     def forward(self, x):
         x_cat = x["cat"]
         x_cat = self.embedding(x_cat)
+        if x_cat.dim() == 3:
+            x_cat = x_cat.mean(dim=1)
         if (
             "num" in x.keys()
             and x["num"] is not None

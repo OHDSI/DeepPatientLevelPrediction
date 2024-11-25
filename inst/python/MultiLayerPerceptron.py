@@ -53,6 +53,8 @@ class MultiLayerPerceptron(nn.Module):
     def forward(self, input):
         x_cat = input["cat"]
         x_cat = self.embedding(x_cat)
+        if x_cat.dim() == 3:
+            x_cat = x_cat.mean(dim=1)
         if "num" in input.keys() and self.num_embedding is not None:
             x_num = input["num"]
             x = (x_cat + self.num_embedding(x_num).mean(dim=1)) / 2
