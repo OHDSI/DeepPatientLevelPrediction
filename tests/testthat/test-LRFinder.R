@@ -2,7 +2,8 @@ resNet <- reticulate::import_from_path("ResNet", path)$ResNet
 
 test_that("LR scheduler that changes per batch works", {
 
-  model <- resNet(cat_features = 10L, num_features = 1L,
+  model <- resNet(feature_info = list(categorical_features = 10L,
+                                      numerical_features = 1L),
                   size_embedding = 32L, size_hidden = 64L,
                   num_layers = 1L, hidden_factor = 1L)
   optimizer <- torch$optim$AdamW(model$parameters(), lr = 1e-7)
@@ -32,8 +33,7 @@ test_that("LR scheduler that changes per batch works", {
 test_that("LR finder works", {
   estimatorSettings <- setEstimator(batchSize = 32L,
                                     seed = 42)
-  modelParameters <- list(cat_features = dataset$get_cat_features()$max(),
-                          num_features = dataset$get_numerical_features()$len(),
+  modelParameters <- list(feature_info = dataset$get_feature_info(),
                           size_embedding = 32L,
                           size_hidden = 64L,
                           num_layers = 1L,
@@ -45,9 +45,11 @@ test_that("LR finder works", {
                     numLr = 20L,
                     divergenceThreshold = 1.1)  
  # initial LR should be the minLR
-  
-  lr <- getLR(modelParameters = modelParameters,
-              estimatorSettings = estimatorSettings,
+  parameters <- list(
+    modelParameters = modelParameters,
+    estimatorSettings = estimatorSettings
+  )
+  lr <- getLR(parameters = parameters,
               lrSettings = lrSettings,
               dataset = dataset)
   tol <- 1e-10
@@ -62,8 +64,7 @@ test_that("LR finder works with device specified by a function", {
     dev
   }
   modelParameters <-
-      list(cat_features = dataset$get_cat_features()$max(),
-           num_features = dataset$get_numerical_features()$len(),
+      list(feature_info = dataset$get_feature_info(),
            size_embedding = 8L,
            size_hidden = 16L,
            num_layers = 1L,
@@ -76,8 +77,9 @@ test_that("LR finder works with device specified by a function", {
                      maxLr = 0.03,
                      numLr = 20L,
                      divergenceThreshold = 1.1)
-  lr <- getLR(modelParameters = modelParameters,
-              estimatorSettings = estimatorSettings,
+  parameters <- list(modelParameters = modelParameters,
+                     estimatorSettings = estimatorSettings)
+  lr <- getLR(parameters = parameters,
               lrSettings = lrSettings,
               dataset = dataset)
 

@@ -50,48 +50,6 @@ setDefaultTransformer <- function(estimatorSettings =
   return(transformerSettings)
 }
 
-#' Create default settings for a non-temporal transformer
-#'
-#' @description A transformer model with a Poincare embedding of diseases
-#' @details Hierarchical embedding of disease concept in SNOMED medical terms
-#' @param estimatorSettings created with `setEstimator`
-#' @param embeddingFilePath path to the saved Poincare embedding
-#'
-#' @export
-setCustomEmbeddingTransformer <- function(
-    embeddingFilePath,
-    estimatorSettings =
-      setEstimator(
-        learningRate = "auto",
-        weightDecay = 1e-4,
-        batchSize = 256,
-        epochs = 2,
-        seed = NULL,
-        device = "cpu"
-      )
-    ) {
-  path <- system.file("python", package = "DeepPatientLevelPrediction")
-  estimatorSettings$initStrategy <-
-    reticulate::import_from_path("InitStrategy",
-                                 path = path)$CustomEmbeddingInitStrategy()
-  estimatorSettings$embeddingFilePath <- embeddingFilePath
-  transformerSettings <- setTransformer(
-    numBlocks = 3,
-    dimToken = 16,
-    dimOut = 1,
-    numHeads = 4,
-    attDropout = 0.2,
-    ffnDropout = 0.1,
-    resDropout = 0.0,
-    dimHidden = 32,
-    estimatorSettings = estimatorSettings,
-    hyperParamSearch = "random",
-    randomSample = 1
-  )
-  attr(transformerSettings, "settings")$name <- "customEmbeddingTransformer"
-  return(transformerSettings)
-}
-
 #' create settings for training a non-temporal transformer
 #'
 #' @description A transformer model

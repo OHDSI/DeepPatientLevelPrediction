@@ -32,27 +32,11 @@ createDataset <- function(data, labels, plpModel = NULL) {
                     r_to_py(labels$outcomeCount),
                     numericalIndex)
   } else {
-    cat_1_mapping <- plpModel$covariateImportance %>%
-      dplyr::select(covariateId, cat1Idx) %>%
-      dplyr::rename(index = cat1Idx) %>%
-      dplyr::filter(!is.na(index)) %>%
-      as.data.frame() %>%
-      r_to_py()
-    
-    cat_2_mapping <- plpModel$covariateImportance %>%
-      dplyr::select(covariateId, cat2Idx) %>%
-      dplyr::rename(index = cat2Idx) %>%
-      dplyr::filter(!is.na(index)) %>%
-      as.data.frame() %>%
-      r_to_py()
-    
     numericalFeatures <-
       r_to_py(as.array(which(plpModel$covariateImportance$isNumeric)))
     data <- dataset(r_to_py(normalizePath(attributes(data)$path)),
-      numerical_features = numericalFeatures,
-      in_cat_2_mapping = cat_2_mapping,
-      in_cat_1_mapping = cat_1_mapping
-    )
+      numerical_features = numericalFeatures
+      )
   }
 
   return(data)

@@ -7,8 +7,7 @@ from torch import nn
 class ResNet(nn.Module):
     def __init__(
         self,
-        cat_features: int,
-        num_features: int = 0,
+        feature_info: dict,
         size_embedding: int = 256,
         size_hidden: int = 256,
         num_layers: int = 2,
@@ -23,8 +22,8 @@ class ResNet(nn.Module):
     ):
         super(ResNet, self).__init__()
         self.name = model_type
-        cat_features = int(cat_features)
-        num_features = int(num_features)
+        cat_features = int(feature_info["categorical_features"])
+        num_features = int(feature_info.get("numerical_features", 0))
         size_embedding = int(size_embedding)
         size_hidden = int(size_hidden)
         num_layers = int(num_layers)
@@ -67,6 +66,8 @@ class ResNet(nn.Module):
     def forward(self, x):
         x_cat = x["cat"]
         x_cat = self.embedding(x_cat)
+        if x_cat.dim() == 3:
+            x_cat = x_cat.mean(dim=1)
         if (
             "num" in x.keys()
             and x["num"] is not None

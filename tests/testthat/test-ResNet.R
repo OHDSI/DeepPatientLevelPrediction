@@ -95,8 +95,8 @@ test_that("ResNet with runPlp working checks", {
 test_that("ResNet nn-module works ", {
   resNet <- reticulate::import_from_path("ResNet", path = path)$ResNet
   model <- resNet(
-    cat_features = 5,
-    num_features = 1,
+    feature_info = list("categorical_features" = 5L,
+                    "numerical_features" = 1L),
     size_embedding = 5,
     size_hidden = 16,
     num_layers = 1,
@@ -124,8 +124,8 @@ test_that("ResNet nn-module works ", {
 
   input$num <- NULL
   model <- resNet(
-    cat_features = 5,
-    num_features = 0,
+    feature_info = list("categorical_features" = 5L,
+                    "numerical_features" = 0),
     size_embedding = 5,
     size_hidden = 16,
     num_layers = 1,

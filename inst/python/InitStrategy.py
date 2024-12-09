@@ -1,23 +1,23 @@
 from abc import ABC, abstractmethod
+import pathlib
 
 import torch
-import os
-from torchviz import make_dot
-import json
 import polars as pl
+
+from CustomEmbeddings import CustomEmbeddings, PoincareEmbeddings
 
 class InitStrategy(ABC):
     @abstractmethod
-    def initialize(self, model, model_parameters, estimator_settings):
+    def initialize(self, model, parameters):
         pass
       
 class DefaultInitStrategy(InitStrategy):
-    def initialize(self, model, model_parameters, estimator_settings):
-        return model(**model_parameters)
+    def initialize(self, model, parameters):
+        return model(**parameters["model_parameters"])
 
 class FinetuneInitStrategy(InitStrategy):
-    def initialize(self, model, model_parameters, estimator_settings):
-        path = estimator_settings["finetune_model_path"]
+    def initialize(self, model, parameters):
+        path = parameters["estimator_settings"]["finetune_model_path"]
         fitted_estimator = torch.load(path, map_location="cpu")
         fitted_parameters = fitted_estimator["model_parameters"]
         model_instance = model(**fitted_parameters)
@@ -29,86 +29,51 @@ class FinetuneInitStrategy(InitStrategy):
 
 
 class CustomEmbeddingInitStrategy(InitStrategy):
-    def initialize(self, model, model_parameters, estimator_settings):
-        file_path = estimator_settings.get("embedding_file_path")
-
-        # print(model_parameters['cat_2_features'])
-        # print(model_parameters['cat_features'])
-        # print(model_parameters['num_features'])
-
-        # Instantiate the model with the provided parameters
-        model_temp = model(**model_parameters)
-
-        if file_path and os.path.exists(file_path):
-            state = torch.load(file_path)
-            state_dict = state["state_dict"]
-            embedding_key = "embedding.weight"
-
-            if embedding_key not in state_dict:
-                raise KeyError(f"The key '{embedding_key}' does not exist in the state dictionary")
-
-            new_embeddings = state_dict[embedding_key].float()
-            # print(f"new_embeddings: {new_embeddings}")
-
-            # Ensure that model_temp.categorical_embedding_2 exists
-            if not hasattr(model_temp, 'categorical_embedding_2'):
-                raise AttributeError("The model does not have an attribute 'categorical_embedding_2'")
-
-            # # replace weights
-            # cat2_concept_mapping = pl.read_json(os.path.expanduser("~/Desktop/cat2_concept_mapping.json"))
-            cat2_mapping = pl.read_json(os.path.expanduser("~/Desktop/cat2_mapping_train.json"))
-            # print(f"cat2_mapping: {cat2_mapping}")
-
-            concept_df = pl.DataFrame({"conceptId": state['names']}).with_columns(pl.col("conceptId"))
-            # print(f"concept_df: {concept_df}")
-
-            # Initialize tensor for mapped embeddings
-            mapped_embeddings = torch.zeros((cat2_mapping.shape[0] + 1, new_embeddings.shape[1]))
-            
-            # Map embeddings to their corresponding indices
-            for row in cat2_mapping.iter_rows():
-                concept_id, covariate_id, index = row
-                if concept_id in concept_df["conceptId"]:
-                    concept_idx = concept_df["conceptId"].to_list().index(concept_id)
-                    mapped_embeddings[index] = new_embeddings[concept_idx]
-            
-            # print(f"mapped_embeddings: {mapped_embeddings}")
-            
-            # Assign the mapped embeddings to the model
-            model_temp.categorical_embedding_2.weight = torch.nn.Parameter(mapped_embeddings)
-            model_temp.categorical_embedding_2.weight.requires_grad = False
-            
-            # print("New Embeddings:")
-            # print(new_embeddings)
-            # print(f"Restored Epoch: {state['epoch']}")
-            # print(f"Restored Mean Rank: {state['mean_rank']}")
-            # print(f"Restored Loss: {state['loss']}")
-            # print(f"Restored Names: {state['names'][:5]}")
-            # print(f"Number of names: {len(state['names'])}")
-        else:
-            raise FileNotFoundError(f"File not found or path is incorrect: {file_path}")
-
-
-        # Create a dummy input batch that matches the model inputs
-        dummy_input = {
-            "cat": torch.randint(0, model_parameters['cat_features'], (1, 10)).long(),
-            "cat_2": torch.randint(0, model_parameters['cat_2_features'], (1, 10)).long(),
-            "num": torch.randn(1, model_parameters['num_features']) if model_parameters['num_features'] > 0 else None
+    def __init__(self, embedding_class: str, embedding_file: str, freeze: bool = True):
+        self.embedding_class = embedding_class
+        self.embedding_file = embedding_file
+        self.freeze = freeze
+        self.class_names_to_class = {
+            "CustomEmbeddings": CustomEmbeddings,
+            "PoincareEmbeddings": PoincareEmbeddings
         }
 
-        # Ensure that the dummy input does not contain `None` values if num_features == 0
-        if model_parameters['num_features'] == 0:
-            del dummy_input["num"]
+    def initialize(self, model, parameters):
+        file_path = pathlib.Path(self.embedding_file)
+        data_reference = parameters["model_parameters"]["feature_info"]["reference"]
 
-        if hasattr(model_temp, 'forward'):
-            try:
-                output = model_temp(dummy_input)
-                initial_graph = make_dot(output, params=dict(model_temp.named_parameters()), show_attrs=False, show_saved=False)
-                initial_graph.render("initial_model_architecture", format="png")
-            except Exception as e:
-                print(f"Error during initial model visualization: {e}")
+        # Instantiate the model with the provided parameters
+        model = model(**parameters["model_parameters"])
 
-        else:
-            raise AttributeError("The model does not have a forward method.")
-        
-        return model_temp
+        embeddings = torch.load(file_path, weights_only=True)
+
+        if "concept_ids" not in embeddings.keys() :
+            raise KeyError(f"The embeddings file does not contain the required 'concept_ids' key")
+        if "embeddings" not in embeddings.keys():
+            raise KeyError(f"The embeddings file does not contain the required 'embeddings' key")
+        if embeddings["concept_ids"].dtype != torch.long:
+            raise TypeError(f"The 'concept_ids' key in the embeddings file must be of type torch.long")
+        if embeddings["embeddings"].dtype != torch.float:
+            raise TypeError(f"The 'embeddings' key in the embeddings file must be of type torch.float")
+
+        # Ensure that the model has an embedding layer
+        if not hasattr(model, 'embedding'):
+            raise AttributeError(f"The model: {model.name} does not have an embedding layer named 'embedding' as "
+                                 f"required for custom embeddings")
+
+        # get indices of the custom embeddings from embeddings["concept_ids"]
+        # I need to select the rows from data_reference where embeddings["concept_ids"] is in data_reference["conceptId"]
+        # data reference is a polars lazyframe. Note at this point data_reference only contains concepts in the training set
+        custom_indices = data_reference.filter(pl.col("conceptId").is_in(embeddings["concept_ids"].tolist())).select("columnId").collect() - 1
+        custom_indices = custom_indices.to_torch().squeeze()
+        # filter embeddings to concepts in training data, rest is OOV (out of vocabulary)
+        concepts_in_data = data_reference.select("conceptId").collect()
+        embeddings = {k: v[torch.isin(embeddings["concept_ids"], concepts_in_data["conceptId"].to_torch())] for k, v in embeddings.items()}
+
+        embedding_class = self.class_names_to_class[self.embedding_class]
+        model.embedding = embedding_class(custom_embedding_weights=embeddings["embeddings"],
+                                          embedding_dim=model.embedding.embedding_dim,
+                                          num_regular_embeddings=model.embedding.num_embeddings,
+                                          custom_indices=custom_indices,
+                                          freeze=self.freeze)
+        return model

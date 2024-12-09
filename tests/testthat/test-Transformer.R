@@ -51,8 +51,8 @@ test_that("transformer nn-module works", {
   transformer <-
     reticulate::import_from_path("Transformer", path = path)$Transformer
   model <- transformer(
-    cat_features = 5,
-    num_features = 1,
+    feature_info = list("categorical_features" = 5L,
+                        "numerical_features" = 1L),
     num_blocks = 2,
     dim_token = 16,
     num_heads = 2,
@@ -79,8 +79,7 @@ test_that("transformer nn-module works", {
   input$num <- NULL
 
   model <- transformer(
-    cat_features = 5,
-    num_features = 0,
+    feature_info = list(categorical_features = 5),
     num_blocks = 2,
     dim_token = 16,
     num_heads = 2,
