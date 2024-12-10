@@ -58,7 +58,7 @@ jobs:
           
       - uses: actions/setup-python@v4
         with:
-          python-version: '3.10' 
+          python-version: '3.11' 
 
       - uses: r-lib/actions/setup-tinytex@v2
 
@@ -73,7 +73,7 @@ jobs:
         shell: Rscript {0}
         run: |
           python_packages <- 
-            c("polars", "tqdm", "connectorx", "pyarrow", "scikit-learn")
+            c("polars", "tqdm", "connectorx", "pyarrow")
           
           library(reticulate)
           virtualenv_create("r-reticulate", Sys.which("python"))
