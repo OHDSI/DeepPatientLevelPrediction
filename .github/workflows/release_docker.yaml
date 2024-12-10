@@ -23,7 +23,7 @@ jobs:
     env:
       DOCKER_IMAGE: 'ohdsi/deep_plp' 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
 
       # ------------------------------------
       # The pattern for the following steps is specified
