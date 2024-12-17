@@ -83,7 +83,7 @@ jobs:
           uv pip install polars tqdm connectorx pyarrow pynvml numpy && \
           uv pip install torch --index https://download.pytorch.org/whl/cpu/ && \
           export RETICULATE_PYTHON="./venv/bin/python" && \
-          Rscript -e "reticulate::py_discover_config()"
+          uv run Rscript -e "reticulate::py_discover_config()"
           
       - uses: r-lib/actions/check-r-package@v2
         with:
