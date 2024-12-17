@@ -79,8 +79,8 @@ jobs:
           
       - name: setup r-reticulate venv
         run: | 
-          uv venv -p 3.11 \
-          uv pip install polars tqdm connectorx pyarrow pynvml numpy \
+          uv venv -p 3.11 && \
+          uv pip install polars tqdm connectorx pyarrow pynvml numpy && \
           uv pip install torch --index https://download.pytorch.org/whl/cpu/
         env: 
           UV_SYSTEM_PYTHON: 1
