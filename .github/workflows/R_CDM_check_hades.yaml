@@ -79,10 +79,8 @@ jobs:
           
       - name: setup r-reticulate venv
         run: | 
-          uv venv -p 3.11 && \
           uv pip install polars tqdm connectorx pyarrow pynvml numpy && \
           uv pip install torch --index https://download.pytorch.org/whl/cpu/ && \
-          export RETICULATE_PYTHON="./venv/bin/python" && \
           uv run Rscript -e "reticulate::py_discover_config()"
           
       - uses: r-lib/actions/check-r-package@v2
