@@ -82,9 +82,7 @@ jobs:
           uv venv -p 3.11 && \
           uv pip install polars tqdm connectorx pyarrow pynvml numpy && \
           uv pip install torch --index https://download.pytorch.org/whl/cpu/
-        env: 
-          UV_SYSTEM_PYTHON: 1
-          
+
       - uses: r-lib/actions/check-r-package@v2
         with:
           args: 'c("--no-manual", "--as-cran")'
