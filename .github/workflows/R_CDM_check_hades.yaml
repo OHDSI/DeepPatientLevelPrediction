@@ -83,15 +83,8 @@ jobs:
           needs: check
           
       - name: setup r-reticulate venv
-        if: runner.os != 'Windows'
         run: | 
-          uv pip install polars tqdm connectorx pyarrow pynvml numpy && \
-          uv pip install torch --index https://download.pytorch.org/whl/cpu/
-      
-      - name: setup r-reticulate venv windows
-        if: runner.os == 'Windows'
-        run: | 
-          uv pip install polars tqdm connectorx pyarrow pynvml numpy;
+          uv pip install polars tqdm connectorx pyarrow pynvml numpy
           uv pip install torch --index https://download.pytorch.org/whl/cpu/
           
       - uses: r-lib/actions/check-r-package@v2
