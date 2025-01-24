@@ -2,8 +2,30 @@
 % Please edit documentation in R/DeepPatientLevelPrediction.R
 \docType{package}
 \name{DeepPatientLevelPrediction}
+\alias{DeepPatientLevelPrediction-package}
 \alias{DeepPatientLevelPrediction}
 \title{DeepPatientLevelPrediction}
 \description{
-A package containing deep learning extensions for developing prediction models using data in the OMOP CDM
+A package containing deep learning extensions for developing
+prediction models using data in the OMOP CDM
+}
+\seealso{
+Useful links:
+\itemize{
+  \item \url{https://github.com/OHDSI/DeepPatientLevelPrediction}
+  \item Report bugs at \url{https://github.com/OHDSI/DeepPatientLevelPrediction/issues}
+}
+
+}
+\author{
+\strong{Maintainer}: Egill Fridgeirsson \email{e.fridgeirsson@erasmusmc.nl}
+
+Authors:
+\itemize{
+  \item Jenna Reps \email{jreps@its.jnj.com}
+  \item Seng Chan You
+  \item Chungsoo Kim
+  \item Henrik John
+}
+
 }

@@ -12,13 +12,6 @@ header-includes:
   - \fancyfoot[CO,CE]{PatientLevelPrediction Package Version `r  utils::packageVersion("PatientLevelPrediction")`}
   - \fancyfoot[CO,CE]{DeepPatientLevelPrediction Package Version `r  utils::packageVersion("DeepPatientLevelPrediction")`}
 output:
-  pdf_document:
-    includes:
-      in_header: preamble.tex
-    number_sections: yes
-    toc: yes
-  word_document:
-    toc: yes
   html_document:
     number_sections: yes
     toc: yes
@@ -29,7 +22,7 @@ editor_options:
 
 ```{=html}
 <!--
-%\VignetteEngine{knitr}
+%\VignetteEngine{knitr::rmarkdown}
 %\VignetteIndexEntry{Building Deep Learning Models}
 -->
 ```
@@ -83,9 +76,7 @@ current implementation allows us to perform research at scale on the
 value and limitations of Deep Learning using observational healthcare
 data.
 
-In the package we have used
-[torch](https://cran.r-project.org/web/packages/torch/index.html) but we
-invite the community to add other backends.
+In the package we use `pytorch` through the `reticulate` package.
 
 Many network architectures have recently been proposed and we have
 implemented a number of them, however, this list will grow in the near
@@ -97,9 +88,8 @@ enable the extraction of both data formats as will be described with
 examples below.
 
 Note that training Deep Learning models is computationally intensive,
-our implementation therefore supports both GPU and CPU. It will
-automatically check whether there is GPU or not in your computer. A GPU
-is highly recommended for Deep Learning!
+our implementation therefore supports both GPU and CPU. A GPU
+is highly recommended and neccesary for most models for Deep Learning!
 
 ## Requirements
 
@@ -111,7 +101,7 @@ installing the package can be found
 
 The `DeepPatientLevelPrediction` package provides additional model
 settings that can be used within the `PatientLevelPrediction` package
-`runPlp()` function. To use both packages you first need to pick the
+`runPlp()` and `runMultiplePlp()` functions. To use both packages you first need to pick the
 deep learning architecture you wish to fit (see below) and then you
 specify this as the modelSettings inside `runPlp()`.
 
@@ -121,7 +111,7 @@ specify this as the modelSettings inside `runPlp()`.
 plpData <- PatientLevelPrediction::loadPlpData('locationOfData')
 
 # pick the set<Model> from  DeepPatientLevelPrediction
-deepLearningModel <- DeepPatientLevelPrediction::setResNet()
+deepLearningModel <- DeepPatientLevelPrediction::setDefaultResNet()
 
 # use PatientLevelPrediction to fit model
 deepLearningResult <- PatientLevelPrediction::runPlp(
@@ -139,7 +129,7 @@ deepLearningResult <- PatientLevelPrediction::runPlp(
 We implemented the following non-temporal (2D data matrix)
 architectures:
 
-## Simple MLP
+## Simple MultiLayerPerceptron
 
 ### Overall concept
 
@@ -148,7 +138,7 @@ input layer, one or more hidden layers and an output layer. The model
 takes in the input feature values and feeds these forward through the
 graph to determine the output class. A process known as
 'backpropagation' is used to train the model. Backpropagation requires
-labelled data and involves automatically calculating the derivative of
+some ground truth and involves automatically calculating the derivative of
 the model parameters with respect to the the error between the model's
 predictions and ground truth. Then the model learns how to adjust the
 model's parameters to reduce the error.
@@ -170,9 +160,9 @@ randomly sets some inputs to 0 at each step during training time. A
 value of `0.2` means that 20% of the layers inputs will be set to
 0. This is used to reduce overfitting.
 
-The `sizeEmbedding` input specifices the size of the embedding used. The first
-layer is an embedding layer which converts each sparse feature to a dense vector
-which it learns. An embedding is a lower dimensional projection of the features
+The `sizeEmbedding` input specifies the size of the embedding used. The first
+layer is an embedding layer which converts each sparse feature to a dense learned 
+vector. An embedding is a lower dimensional projection of the features
 where distance between points is a measure of similarity.
 
 The `weightDecay` input corresponds to the weight decay in the objective
@@ -229,17 +219,19 @@ combinations are 2*2*2*2 or 16 but specify ```randomSample=10``` to only try
 ```{r, eval=FALSE}
 
 modelSettings <- setMultiLayerPerceptron(
-                                numLayers = c(3, 5),
-                                numHidden = c(64, 128), 
-                                dropout = c(0.2),
-                                sizeEmbedding = c(32, 64),
-                                learningRate = c(1e-3, 1e-4), 
-                                weightDecay = c(1e-5), 
-                                randomSample=10,
-                                batchSize = c(100), 
-                                epochs = c(5),  
-                                seed = 12
-                                )
+  numLayers = c(3L, 5L),
+  sizeHidden = c(64L, 128L), 
+  dropout = c(0.2),
+  sizeEmbedding = c(32L, 64L),
+  estimatorSettings = setEstimator(
+    learningRate = c(1e-3, 1e-4),
+    weightDecay = c(1e-5),
+    batchSize = c(128L),
+    epochs=c(5L),
+    seed=12L
+  ),
+  randomSample=10L
+)
 
 mlpResult <- PatientLevelPrediction::runPlp(
     plpData = plpData, 
@@ -249,8 +241,6 @@ mlpResult <- PatientLevelPrediction::runPlp(
     analysisName = 'Testing Deep Learning', 
     populationSettings = populationSet, 
     splitSettings = PatientLevelPrediction::createDefaultSplitSetting(), 
-    sampleSettings = PatientLevelPrediction::createSampleSettings(),  # none 
-    featureEngineeringSettings = PatientLevelPrediction::createFeatureEngineeringSettings(), # none 
     preprocessSettings = PatientLevelPrediction::createPreprocessSettings(), 
     executeSettings = PatientLevelPrediction::createExecuteSettings(
       runSplitData = T, 
@@ -270,24 +260,22 @@ mlpResult <- PatientLevelPrediction::runPlp(
 ### Overall concept
 
 Deep learning models are often trained via a process known as gradient
-descent during backpropogation. During this process the network weights
+descent. During this process the network weights
 are updated based on the gradient of the error function for the current
 weights. However, as the number of layers in the network increase, there
-is a greater chance of experiencing an issue known as the vanishing or
-exploding gradient during this process. The vanishing or exploding
+is a greater chance of experiencing an issue known vanishing or
+exploding gradients. The vanishing or exploding
 gradient is when the gradient goes to 0 or infinity, which negatively
 impacts the model fitting.
 
 The residual network (ResNet) was introduced to address the vanishing or
 exploding gradient issue. It works by adding connections between
-non-adjacent layers, termed a 'skip connection'. Using some form of
-regularization with these 'skip connections' enables the network to
-ignore any problematic layer that resulted due to gradient issues.
+non-adjacent layers, termed a 'skip connection'.
 
 The ResNet calculates embeddings for every feature and then averages
 them to compute an embedding per patient.
 
-This implementation of a ResNet for tabular data is based on [this
+Our implementation of a ResNet for tabular data is based on [this
 paper](https://arxiv.org/abs/2106.11959).
 
 ### Example
@@ -305,23 +293,23 @@ function to specify the hyperparameter settings for the network.
 
 `sizeHidden`: How many neurons in each hidden layer
 
-`hiddenFactor`: How much to increase number of neurons in each layer
+`hiddenFactor`: How much to increase number of neurons in each layer (see paper)
 
 `residualDropout` and`hiddenDropout` : How much dropout to apply in
 hidden layer or residual connection
 
 `sizeEmbedding` : The size of the initial embedding layer
 
-##### Training process inputs:
+##### Estimator inputs:
 
 `weightDecay` : How much weight decay to apply, which penalizes bigger
 weights
 
 `learningRate` : Which learning rate to use
 
-`seed` : Use a seed for reproducibility
+`seed` : seed for weight initialization
 
-`device` : Which device to use, such as a cpu or a gpu
+`device` : Which device to use, such as a `cpu` or a `gpu`
 
 `batchSize` : Size of batch of data used per iteration during training
 
@@ -335,33 +323,35 @@ random sampling or exhaustive (grid) search
 `randomSample`: If doing a random search for hyperparameters, how many
 random samples to use
 
+`randomSampleSeed`: Seed to make hyperparameter search reproducible
+
 #### Example Code
 
 For example, the following code will fit a two layer ResNet where each
 layer has 32 neurons which increases by a factor of two before
-decreasing againg (hiddenFactor). 10% of inputs to each layer and
-residual connection within the layer are randomly zeroed. The embedding
-layer has 32 neurons. Learning rate of 3e-4 with weight decay of 1e-6 is
-used for the optimizer. No hyperparameter search is done since each
-input only includes one option.
+decreasing again (hiddenFactor). 10% of inputs to each layer and
+residual connection within the layer are randomly zeroed during training but 
+not testing.The embedding layer has 32 neurons. Learning rate of 3e-4 with 
+weight decay of 1e-6 is used for the optimizer. No hyperparameter search is done
+since each input only includes one option.
 
 ```{r, eval=FALSE}
 
 resset <- setResNet(
-  numLayers = c(2), 
-  sizeHidden = c(32),
-  hiddenFactor = c(2),
+  numLayers = c(2L), 
+  sizeHidden = c(32L),
+  hiddenFactor = c(2L),
   residualDropout = c(0.1), 
   hiddenDropout = c(0.1),
-  sizeEmbedding = c(32), 
-  weightDecay = c(1e-6),
-  learningRate = c(3e-4), 
-  seed = 42, 
+  sizeEmbedding = c(32L),
+  estimatorSettings = setEstimator(learningRate = c(3e-4),
+                                   weightDecay = c(1e-6),
+                                   #device='cuda:0', # uncomment to use GPU
+                                   batchSize = 128L, 
+                                   epochs = 3L,
+                                   seed = 42L),
   hyperParamSearch = 'random',
-  randomSample = 1, 
-  #device='cuda:0', # uncomment to use GPU
-  batchSize = 128, 
-  epochs = 3
+  randomSample = 1
 )
 
 resResult <- PatientLevelPrediction::runPlp(
@@ -372,8 +362,6 @@ resResult <- PatientLevelPrediction::runPlp(
     analysisName = 'Testing ResNet', 
     populationSettings = populationSet, 
     splitSettings = PatientLevelPrediction::createDefaultSplitSetting(), 
-    sampleSettings = PatientLevelPrediction::createSampleSettings(),  
-    featureEngineeringSettings = PatientLevelPrediction::createFeatureEngineeringSettings(), 
     preprocessSettings = PatientLevelPrediction::createPreprocessSettings(), 
     executeSettings = PatientLevelPrediction::createExecuteSettings(
       runSplitData = T, 
@@ -405,7 +393,7 @@ longer sequence length. In this case the sequence is the amount of
 features each patient has. Users need to be aware of how many features
 they are feeding to the model since this will effect the computation
 time heavily. This is something you control in `FeatureExtraction` when
-you create your covariate settings.
+you create your `covariateSettings`.
 
 ### Examples
 
@@ -425,14 +413,15 @@ ResNet.
 `numBlocks` : How many Transformer blocks to use, each block includes a
 self-attention layer and a feedforward block with two linear layers.
 
-`dimToken` : Dimension of the embedding for each feature's embedding
+`dimToken` : Dimension of the embedding for each feature.
 
 `dimOut` : Dimension of output, for binary problems this is 1.
 
-`numHeads` : Number of attention heads for the self-attention
+`numHeads` : Number of attention heads for the self-attention, `dimToken` needs
+to be divisible by `numHeads`.
 
-`attDropout` , `ffnDropout` and `resDropout` : How much dropout to apply
-on attentions, in feedforward block or in residual connections
+`attDropout`, `ffnDropout` and `resDropout` : How much dropout to apply
+on attentions, feedforward block or in residual connections
 
 `dimHidden` : How many neurons in linear layers inside the feedforward
 block
@@ -441,20 +430,23 @@ block
 
 ```{r, eval=FALSE}
 
-modelSettings <- setTransformer(numBlocks = 3,
-                                dimToken = 32,
+modelSettings <- setTransformer(numBlocks = 3L,
+                                dimToken = 32L,
                                 dimOut = 1, 
-                                numHeads = 4,
+                                numHeads = 4L,
                                 attDropout = 0.25,
                                 ffnDropout = 0.25,
                                 resDropout = 0,
-                                dimHidden = 128,
-                                weightDecay = 1e-06,
-                                learningRate = 3e-04
-                                batchSize = 128,
-                                epochs = 10,
-                                device = 'cpu',  # or 'cuda' for GPU
-                                randomSample = 1)
+                                dimHidden = 128L,
+                                estimatorSettings = setEstimator(
+                                  learningRate = 3e-4,
+                                  weightDecay = 1e-6,
+                                  batchSize = 128L,
+                                  epochs = 10L,
+                                  device = 'cpu'
+                                ),
+                                randomSample=1L)
+                              
 
 
 TransformerResult <- PatientLevelPrediction::runPlp(
@@ -465,8 +457,6 @@ TransformerResult <- PatientLevelPrediction::runPlp(
     analysisName = 'Testing transformer', 
     populationSettings = populationSet, 
     splitSettings = PatientLevelPrediction::createDefaultSplitSetting(), 
-    sampleSettings = PatientLevelPrediction::createSampleSettings(),  # none 
-    featureEngineeringSettings = PatientLevelPrediction::createFeatureEngineeringSettings(), # none 
     preprocessSettings = PatientLevelPrediction::createPreprocessSettings(), 
     executeSettings = PatientLevelPrediction::createExecuteSettings(
       runSplitData = T, 

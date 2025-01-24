@@ -6,21 +6,19 @@
 \usage{
 setTransformer(
   numBlocks = 3,
-  dimToken = 96,
+  dimToken = 192,
   dimOut = 1,
   numHeads = 8,
-  attDropout = 0.25,
-  ffnDropout = 0.25,
+  attDropout = 0.2,
+  ffnDropout = 0.1,
   resDropout = 0,
-  dimHidden = 512,
-  weightDecay = 1e-06,
-  learningRate = 3e-04,
-  batchSize = 1024,
-  epochs = 10,
-  device = "cpu",
+  dimHidden = 256,
+  dimHiddenRatio = NULL,
+  estimatorSettings = setEstimator(weightDecay = 1e-06, batchSize = 1024, epochs = 10,
+    seed = NULL),
   hyperParamSearch = "random",
   randomSample = 1,
-  seed = NULL
+  randomSampleSeed = NULL
 )
 }
 \arguments{
@@ -28,7 +26,8 @@ setTransformer(
 
 \item{dimToken}{dimension of each token (embedding size)}
 
-\item{dimOut}{dimension of output, usually 1 for binary problems}
+\item{dimOut}{dimension of output, usually 1 for binary
+problems}
 
 \item{numHeads}{number of attention heads}
 
@@ -40,21 +39,19 @@ setTransformer(
 
 \item{dimHidden}{dimension of the feedworward block}
 
-\item{weightDecay}{weightdecay to use}
+\item{dimHiddenRatio}{dimension of the feedforward block as a ratio
+of dimToken (embedding size)}
 
-\item{learningRate}{learning rate to use}
+\item{estimatorSettings}{created with `setEstimator`}
 
-\item{batchSize}{batchSize to use}
+\item{hyperParamSearch}{what kind of hyperparameter search to do,
+default 'random'}
 
-\item{epochs}{How many epochs to run the model for}
+\item{randomSample}{How many samples to use in hyperparameter
+search if random}
 
-\item{device}{Which device to use, cpu or cuda}
-
-\item{hyperParamSearch}{what kind of hyperparameter search to do, default 'random'}
-
-\item{randomSample}{How many samples to use in hyperparameter search if random}
-
-\item{seed}{Random seed to use}
+\item{randomSampleSeed}{Random seed to sample hyperparameter
+combinations}
 }
 \description{
 A transformer model

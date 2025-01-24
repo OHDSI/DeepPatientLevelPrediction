@@ -1,11 +1,11 @@
 Package: DeepPatientLevelPrediction
 Type: Package
 Title: Deep Learning For Patient Level Prediction Using Data In The OMOP Common Data Model
-Version: 1.0.1
-Date: 09-10-2022
+Version: 2.1.0.9999
+Date: 08-07-2024
 Authors@R: c(
-    person("Jenna", "Reps", email = "jreps@its.jnj.com", role = c("aut")), 
     person("Egill", "Fridgeirsson", email = "e.fridgeirsson@erasmusmc.nl", role = c("aut", "cre")),
+    person("Jenna", "Reps", email = "jreps@its.jnj.com", role = c("aut")), 
     person("Seng", "Chan You", role = c("aut")),
     person("Chungsoo", "Kim", role = c("aut")),
     person("Henrik", "John", role = c("aut"))
@@ -13,30 +13,43 @@ Authors@R: c(
 Maintainer: Egill Fridgeirsson <e.fridgeirsson@erasmusmc.nl>
 Description: A package for creating deep learning patient level prediction models following the OHDSI PatientLevelPrediction framework.
 License: Apache License 2.0
-URL: https://ohdsi.github.io/PatientLevelPrediction, https://github.com/OHDSI/DeepPatientLevelPrediction
+URL: https://github.com/OHDSI/DeepPatientLevelPrediction
 BugReports: https://github.com/OHDSI/DeepPatientLevelPrediction/issues
 VignetteBuilder: knitr
 Depends:
-    R (>= 3.5.0)
+    R (>= 4.0.0)
 Imports:
     dplyr,
-    data.table,
-    FeatureExtraction (>= 3.0.0),
     ParallelLogger (>= 2.0.0),
-    PatientLevelPrediction (>= 6.0.4),
+    PatientLevelPrediction (>= 6.3.2),
     rlang,
-    torch (>= 0.8.0)
+    withr,
+    reticulate (>= 1.31)
 Suggests:
-    devtools,
     Eunomia,
     knitr,
-    markdown,
-    plyr,  
-    testthat
+    rmarkdown,
+    testthat,
+    PRROC,
+    FeatureExtraction (>= 3.0.0),
+    ResultModelManager (>= 0.2.0),
+    DatabaseConnector (>= 6.0.0),
+    Andromeda
 Remotes:
     ohdsi/PatientLevelPrediction,
-    ohdsi/FeatureExtraction,
-    ohdsi/Eunomia
-RoxygenNote: 7.2.3
+    ohdsi/ResultModelManager
+RoxygenNote: 7.3.2
 Encoding: UTF-8
 Config/testthat/edition: 3
+Config/testthat/parallel: TRUE
+Config/reticulate:
+  list(
+    packages = list(
+      list(package = "torch"),
+      list(package = "polars"),
+      list(package = "tqdm"),
+      list(package = "connectorx"),
+      list(package = "pyarrow"),
+      list(package = "pynvml")
+      )
+  )

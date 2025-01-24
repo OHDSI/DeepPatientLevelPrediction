@@ -1,6 +1,12 @@
+url: https://ohdsi.github.com/DeepPatientLevelPrediction
+
 template:
-  params:
-    bootswatch: cosmo
+    bootstrap: 5
+    bslib:
+      bootswatch: cosmo
+    
+development:
+  mode: auto
 
 home:
   links:
@@ -30,6 +36,9 @@ navbar:
     firstModel:
       text: My first deep learning model
       href: articles/FirstModel.html
+    transferlearning:
+      text: Transfer learning
+      href: articles/TransferLearning.html
     news:
       text: Changelog
       href: news/index.html

@@ -1,8 +1,8 @@
 DeepPatientLevelPrediction
 ======================
 
-[![Build Status](https://github.com/OHDSI/DeepPatientLevelPrediction/workflows/R-CMD-check/badge.svg)](https://github.com/OHDSI/DeepPatientLevelPrediction/actions?query=workflow%3AR-CMD-check?branch=develop)
-[![codecov.io](https://codecov.io/github/OHDSI/DeepPatientLevelPrediction/coverage.svg?branch=master)](https://codecov.io/github/OHDSI/DeepPatientLevelPrediction?branch=main)
+[![Build Status](https://github.com/OHDSI/DeepPatientLevelPrediction/workflows/R-CMD-check/badge.svg)](https://github.com/OHDSI/DeepPatientLevelPrediction/actions?query=workflow%3AR-CMD-check?branch=main)
+[![codecov.io](https://codecov.io/github/OHDSI/DeepPatientLevelPrediction/coverage.svg?branch=main)](https://codecov.io/github/OHDSI/DeepPatientLevelPrediction?branch=main)
 
 
 Introduction
@@ -27,13 +27,13 @@ DeepPatientLevelPrediction is an R package. It uses [torch in R](https://torch.m
 
 System Requirements
 ===================
-Requires R (version 3.5.0 or higher). Installation on Windows requires [RTools](http://cran.r-project.org/bin/windows/Rtools/). For training deep learning models in most cases an nvidia GPU is required using either Windows or Linux.
+Requires R (version 4.0.0 or higher). Installation on Windows requires [RTools](http://cran.r-project.org/bin/windows/Rtools/). For training deep learning models in most cases an nvidia GPU is required using either Windows or Linux.
 
 
 Getting Started
 ===============
 
-- To install the package please read the [Package installation guide]()
+- To install the package please read the [Package installation guide](https://ohdsi.github.io/DeepPatientLevelPrediction/articles/Installing.html)
 - Please read the main vignette for the package:
 [Building Deep Learning Models](https://ohdsi.github.io/DeepPatientLevelPrediction/articles/BuildingDeepModels.html)
 

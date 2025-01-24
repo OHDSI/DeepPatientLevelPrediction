@@ -18,11 +18,31 @@
 
 #' DeepPatientLevelPrediction
 #'
-#' @description A package containing deep learning extensions for developing prediction models using data in the OMOP CDM
+#' @description A package containing deep learning extensions for developing
+#' prediction models using data in the OMOP CDM
 #'
-#' @docType package
 #' @name DeepPatientLevelPrediction
 #' @importFrom dplyr %>%
-#' @importFrom data.table :=
+#' @importFrom reticulate r_to_py py_to_r
 #' @importFrom rlang .data
-NULL
+"_PACKAGE"
+
+# package level global state
+.globals <- new.env(parent = emptyenv())
+
+#' Pytorch module
+#'
+#' The `torch` module object is the equivalent of
+#' `reticulate::import("torch")` and provided mainly as a convenience.
+#'
+#' @returns the torch Python module
+#' @export
+#' @usage NULL
+#' @format An object of class `python.builtin.module`
+torch <- NULL
+
+.onLoad <- function(libname, pkgname) {
+  # use superassignment to update global reference
+  reticulate::configure_environment(pkgname)
+  torch <<- reticulate::import("torch", delay_load = TRUE)
+}

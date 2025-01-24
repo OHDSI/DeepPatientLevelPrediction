@@ -5,3 +5,12 @@
 results
 config.yml
 docs
+.idea/
+renv.lock
+extras/
+.Renviron
+inst/python/__pycache__
+.mypy_cache
+/doc/
+/Meta/
+*.pt

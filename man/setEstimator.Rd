@@ -3,10 +3,35 @@
 \name{setEstimator}
 \alias{setEstimator}
 \title{setEstimator}
+\usage{
+setEstimator(
+  learningRate = "auto",
+  weightDecay = 0,
+  batchSize = 512,
+  epochs = 30,
+  device = "cpu",
+  optimizer = torch$optim$AdamW,
+  scheduler = list(fun = torch$optim$lr_scheduler$ReduceLROnPlateau, params =
+    list(patience = 1)),
+  criterion = torch$nn$BCEWithLogitsLoss,
+  earlyStopping = list(useEarlyStopping = TRUE, params = list(patience = 4)),
+  compile = FALSE,
+  metric = "auc",
+  accumulationSteps = NULL,
+  seed = NULL
+)
+}
 \arguments{
 \item{learningRate}{what learning rate to use}
 
 \item{weightDecay}{what weight_decay to use}
+
+\item{batchSize}{batchSize to use}
+
+\item{epochs}{how many epochs to train for}
+
+\item{device}{what device to train on, can be a string or a function to
+that evaluates to the device during runtime}
 
 \item{optimizer}{which optimizer to use}
 
@@ -14,13 +39,22 @@
 
 \item{criterion}{loss function to use}
 
-\item{earlyStopping}{If earlyStopping should be used which stops the training of your metric is not improving}
+\item{earlyStopping}{If earlyStopping should be used which stops the
+training of your metric is not improving}
 
-\item{earlyStoppingMetric}{Which parameter to use for early stopping}
+\item{compile}{if the model should be compiled before training, default FALSE}
 
-\item{patience}{patience for earlyStopper}
+\item{metric}{either `auc` or `loss` or a custom metric to use. This is the
+metric used for scheduler and earlyStopping.
+Needs to be a list with function `fun`, mode either `min` or `max` and a
+`name`,
+`fun` needs to be a function that takes in prediction and labels and
+outputs a score.}
 
-\item{hyperparameterMetric}{which metric to use for hyperparameter, loss, auc, auprc or a custom function}
+\item{accumulationSteps}{how many steps to accumulate gradients before
+updating weights, can also be a function that is evaluated during runtime}
+
+\item{seed}{seed to initialize weights of model with}
 }
 \description{
 creates settings for the Estimator, which takes a model and trains it

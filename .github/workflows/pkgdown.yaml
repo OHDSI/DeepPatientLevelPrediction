@@ -2,7 +2,7 @@
 # Need help debugging build failures? Start at https://github.com/r-lib/actions#where-to-find-help
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
   release:
     types: [published]
   workflow_dispatch:
@@ -18,7 +18,7 @@ jobs:
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - uses: r-lib/actions/setup-pandoc@v2
 
@@ -28,18 +28,22 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: any::pkgdown, ohdsi/OhdsiRTools
+          extra-packages: any::pkgdown, ohdsi/OhdsiRTools, local::.
           needs: website
 
+      - uses: lycheeverse/lychee-action@v2
+        with:
+          args: --base . --verbose --no-progress --accept '100..=103, 200..=299, 403' './**/*.md' './**/*.Rmd'
+
       - name: Build site
-        run: Rscript -e 'pkgdown::build_site_github_pages(new_process = FALSE, install = TRUE)'
+        run: Rscript -e 'pkgdown::build_site_github_pages(new_process = FALSE)'
         
       - name: Fix Hades Logo
         run: Rscript -e 'OhdsiRTools::fixHadesLogo()'
 
       - name: Deploy to GitHub pages 🚀
         if: github.event_name != 'pull_request'
-        uses: JamesIves/github-pages-deploy-action@4.1.4
+        uses: JamesIves/github-pages-deploy-action@v4
         with:
           clean: false
           branch: gh-pages
