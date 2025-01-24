@@ -15,6 +15,7 @@ setEstimator(
     list(patience = 1)),
   criterion = torch$nn$BCEWithLogitsLoss,
   earlyStopping = list(useEarlyStopping = TRUE, params = list(patience = 4)),
+  compile = FALSE,
   metric = "auc",
   accumulationSteps = NULL,
   seed = NULL
@@ -40,6 +41,8 @@ that evaluates to the device during runtime}
 
 \item{earlyStopping}{If earlyStopping should be used which stops the
 training of your metric is not improving}
+
+\item{compile}{if the model should be compiled before training, default FALSE}
 
 \item{metric}{either `auc` or `loss` or a custom metric to use. This is the
 metric used for scheduler and earlyStopping.

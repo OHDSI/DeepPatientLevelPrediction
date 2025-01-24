@@ -33,6 +33,7 @@
 #' @param criterion loss function to use
 #' @param earlyStopping If earlyStopping should be used which stops the
 #' training of your metric is not improving
+#' @param compile if the model should be compiled before training, default FALSE
 #' @param metric either `auc` or `loss` or a custom metric to use. This is the
 #' metric used for scheduler and earlyStopping.
 #' Needs to be a list with function `fun`, mode either `min` or `max` and a
@@ -59,6 +60,7 @@ setEstimator <- function(
       useEarlyStopping = TRUE,
       params = list(patience = 4)
     ),
+    compile = FALSE,
     metric = "auc",
     accumulationSteps = NULL,
     seed = NULL) {
@@ -74,6 +76,7 @@ setEstimator <- function(
   checkIsClass(epochs, c("numeric", "integer"))
   checkHigher(epochs, 0)
   checkIsClass(earlyStopping, c("list", "NULL"))
+  checkIsClass(compile, "logical")
   checkIsClass(metric, c("character", "list"))
   checkIsClass(seed, c("numeric", "integer", "NULL"))
   
@@ -100,6 +103,7 @@ setEstimator <- function(
     epochs = epochs,
     device = device,
     earlyStopping = earlyStopping,
+    compile = compile,
     findLR = findLR,
     metric = metric,
     accumulationSteps = accumulationSteps,
