@@ -100,7 +100,7 @@ class Estimator:
         self.best_score = None
         self.best_epoch = None
         self.learn_rate_schedule = None
-        torch_compile = estimator_settings.get("compile", False)
+        torch_compile = parameters["estimator_settings"].get("compile", False)
         if torch_compile:
             self.model = torch.compile(self.model, dynamic=False)
 

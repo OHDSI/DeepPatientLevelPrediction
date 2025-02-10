@@ -150,12 +150,12 @@ plpResults <- PatientLevelPrediction::runPlp(plpData = plpData,
                featureEngineeringSettings = createFeatureEngineeringSettings(), 
                preprocessSettings = createPreprocessSettings(),
                logSettings = createLogSettings(),
-               executeSettings = createExecuteSettings(runSplitData = T,
-                                                      runSampleData = F,
-                                                      runfeatureEngineering = F,
-                                                      runPreprocessData = T,
-                                                      runModelDevelopment = T,
-                                                      runCovariateSummary = T
+               executeSettings = createExecuteSettings(runSplitData = TRUE,
+                                                      runSampleData = FALSE,
+                                                      runFeatureEngineering = FALSE,
+                                                      runPreprocessData = TRUE,
+                                                      runModelDevelopment = TRUE,
+                                                      runCovariateSummary = TRUE
                                                       ))
 ```
 

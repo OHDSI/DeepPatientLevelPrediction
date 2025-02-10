@@ -34,7 +34,7 @@ RUN pip3 install uv \
     && uv pip install --system --no-cache-dir \
     connectorx \
     polars \
-    pyarrow \
+    duckdb \
     torch \
     tqdm \
     pynvml \

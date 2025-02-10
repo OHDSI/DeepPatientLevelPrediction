@@ -82,13 +82,9 @@ jobs:
           extra-packages: any::rcmdcheck
           needs: check
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          
       - name: setup r-reticulate venv
         run: | 
-          uv pip install polars tqdm connectorx pyarrow pynvml numpy
+          uv pip install polars tqdm connectorx duckdb pynvml numpy
           uv pip install torch --index https://download.pytorch.org/whl/cpu/
           
       - uses: r-lib/actions/check-r-package@v2

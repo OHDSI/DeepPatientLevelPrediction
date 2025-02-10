@@ -243,12 +243,12 @@ mlpResult <- PatientLevelPrediction::runPlp(
     splitSettings = PatientLevelPrediction::createDefaultSplitSetting(), 
     preprocessSettings = PatientLevelPrediction::createPreprocessSettings(), 
     executeSettings = PatientLevelPrediction::createExecuteSettings(
-      runSplitData = T, 
-      runSampleData = F, 
-      runfeatureEngineering = F, 
-      runPreprocessData = T, 
-      runModelDevelopment = T, 
-      runCovariateSummary = F
+      runSplitData = TRUE, 
+      runSampleData = FALSE, 
+      runFeatureEngineering = FALSE, 
+      runPreprocessData = TRUE, 
+      runModelDevelopment = TRUE, 
+      runCovariateSummary = FALSE
     ), 
     saveDirectory = file.path(testLoc, 'DeepNNTorch')
   )
@@ -364,12 +364,12 @@ resResult <- PatientLevelPrediction::runPlp(
     splitSettings = PatientLevelPrediction::createDefaultSplitSetting(), 
     preprocessSettings = PatientLevelPrediction::createPreprocessSettings(), 
     executeSettings = PatientLevelPrediction::createExecuteSettings(
-      runSplitData = T, 
-      runSampleData = F, 
-      runfeatureEngineering = F, 
-      runPreprocessData = T, 
-      runModelDevelopment = T, 
-      runCovariateSummary = F
+      runSplitData = TRUE, 
+      runSampleData = FALSE, 
+      runFeatureEngineering = FALSE, 
+      runPreprocessData = TRUE, 
+      runModelDevelopment = TRUE, 
+      runCovariateSummary = FALSE
     ), 
     saveDirectory = file.path(getwd(), 'ResNet') # change to save elsewhere
   )
@@ -459,12 +459,12 @@ TransformerResult <- PatientLevelPrediction::runPlp(
     splitSettings = PatientLevelPrediction::createDefaultSplitSetting(), 
     preprocessSettings = PatientLevelPrediction::createPreprocessSettings(), 
     executeSettings = PatientLevelPrediction::createExecuteSettings(
-      runSplitData = T, 
-      runSampleData = F, 
-      runfeatureEngineering = F, 
-      runPreprocessData = T, 
-      runModelDevelopment = T, 
-      runCovariateSummary = F
+      runSplitData = TRUE, 
+      runSampleData = FALSE, 
+      runFeatureEngineering = FALSE, 
+      runPreprocessData = TRUE, 
+      runModelDevelopment = TRUE, 
+      runCovariateSummary = FALSE
     ), 
     saveDirectory = file.path(getwd(), 'Transformer') # change to save elsewhere
   )

@@ -47,9 +47,9 @@ Config/reticulate:
     packages = list(
       list(package = "torch"),
       list(package = "polars"),
+      list(package = "duckdb"),
       list(package = "tqdm"),
       list(package = "connectorx"),
-      list(package = "pyarrow"),
       list(package = "pynvml")
       )
   )

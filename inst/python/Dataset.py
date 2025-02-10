@@ -1,8 +1,10 @@
 import time
 import pathlib
+import shutil
 from urllib.parse import quote
 
 import polars as pl
+import duckdb
 import torch
 from torch.utils.data import Dataset
 
@@ -22,8 +24,18 @@ class Data(Dataset):
             data = pl.read_database_uri(
                 "SELECT * from covariates", uri=f"sqlite://{data}"
             ).lazy()
+        elif pathlib.Path(data).suffix == ".duckdb":
+            data = quote(data)
+            destination = pathlib.Path(data).parent.joinpath("python_copy.duckdb")
+            path = shutil.copy(data, destination)
+            conn = duckdb.connect(path)
+            self.data_ref = conn.sql("SELECT * from covariateRef").pl().lazy()
+            data = conn.sql("SELECT * from covariates").pl().lazy()
+            # close connection
+            conn.close()
+            path.unlink()
         else:
-            data = pl.scan_ipc(pathlib.Path(data).joinpath("covariates/*.arrow"))
+            raise ValueError("Only .sqlite and .duckdb files are supported")
         observations = data.select(pl.col("rowId").max()).collect()[0, 0]
         # detect features are numeric
         if numerical_features is None:

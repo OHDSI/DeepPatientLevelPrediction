@@ -31,7 +31,7 @@ test_that("Poincare Transformer works", {
     executeSettings = PatientLevelPrediction::createExecuteSettings(
       runSplitData = TRUE,
       runSampleData = FALSE,
-      runfeatureEngineering = FALSE,
+      runFeatureEngineering = FALSE,
       runPreprocessData = FALSE,
       runModelDevelopment = TRUE,
       runCovariateSummary = FALSE
@@ -83,7 +83,7 @@ test_that("ResNet with poincare works", {
     executeSettings = PatientLevelPrediction::createExecuteSettings(
       runSplitData = TRUE,
       runSampleData = FALSE,
-      runfeatureEngineering = FALSE,
+      runFeatureEngineering = FALSE,
       runPreprocessData = FALSE,
       runModelDevelopment = TRUE,
       runCovariateSummary = FALSE
@@ -134,7 +134,7 @@ test_that("MLP with poincare works", {
     executeSettings = PatientLevelPrediction::createExecuteSettings(
       runSplitData = TRUE,
       runSampleData = FALSE,
-      runfeatureEngineering = FALSE,
+      runFeatureEngineering = FALSE,
       runPreprocessData = FALSE,
       runModelDevelopment = TRUE,
       runCovariateSummary = FALSE
