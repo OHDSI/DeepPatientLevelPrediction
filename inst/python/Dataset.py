@@ -11,7 +11,7 @@ from torch.utils.data import Dataset
 class Data(Dataset):
     def __init__(self, data, labels=None, numerical_features=None):
         """
-        data: path to a covariates dataframe either arrow dataset or sqlite object
+        data: path to the covariateData from Andromeda
         labels: a list of either 0 or 1, 1 if the patient got the outcome
         numerical_features: list of indices where the numerical features are
         """

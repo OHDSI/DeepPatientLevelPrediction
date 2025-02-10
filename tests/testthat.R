@@ -7,7 +7,7 @@ withCallingHandlers({
   traceback()
   message(e)
   if (!is.null(reticulate::py_last_error())) {
-    message(reticulate::py_last_error())
+    reticulate::py_last_error()
   }
   stop(e)
 })
