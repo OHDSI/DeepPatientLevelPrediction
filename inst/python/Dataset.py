@@ -1,27 +1,41 @@
 import time
 import pathlib
+import shutil
 from urllib.parse import quote
 
 import polars as pl
+import duckdb
 import torch
 from torch.utils.data import Dataset
-
 
 class Data(Dataset):
     def __init__(self, data, labels=None, numerical_features=None):
         """
-        data: path to a covariates dataframe either arrow dataset or sqlite object
+        data: path to the covariateData from Andromeda
         labels: a list of either 0 or 1, 1 if the patient got the outcome
         numerical_features: list of indices where the numerical features are
         """
         start = time.time()
         if pathlib.Path(data).suffix == ".sqlite":
             data = quote(data)
+            self.data_ref = pl.read_database_uri(
+                "SELECT * from covariateRef", uri=f"sqlite://{data}"
+            ).lazy()
             data = pl.read_database_uri(
                 "SELECT * from covariates", uri=f"sqlite://{data}"
             ).lazy()
+        elif pathlib.Path(data).suffix == ".duckdb":
+            data = quote(data)
+            destination = pathlib.Path(data).parent.joinpath("python_copy.duckdb")
+            path = shutil.copy(data, destination)
+            conn = duckdb.connect(path)
+            self.data_ref = conn.sql("SELECT * from covariateRef").pl().lazy()
+            data = conn.sql("SELECT * from covariates").pl().lazy()
+            # close connection
+            conn.close()
+            path.unlink()
         else:
-            data = pl.scan_ipc(pathlib.Path(data).joinpath("covariates/*.arrow"))
+            raise ValueError("Only .sqlite and .duckdb files are supported")
         observations = data.select(pl.col("rowId").max()).collect()[0, 0]
         # detect features are numeric
         if numerical_features is None:
@@ -63,8 +77,8 @@ class Data(Dataset):
         for i, i2 in enumerate(idx):
             total_list[i2] = tensor_list[i]
         self.cat = torch.nn.utils.rnn.pad_sequence(total_list, batch_first=True)
-        self.cat_features = data_cat["columnId"].unique()
-
+        self.categorical_features = data_cat["columnId"].unique()
+        
         # numerical data,
         # N x C, dense matrix with values for N patients/visits for C numerical features
         if self.numerical_features.count() == 0:
@@ -100,11 +114,12 @@ class Data(Dataset):
         delta = time.time() - start
         print(f"Processed data in {delta:.2f} seconds")
 
-    def get_numerical_features(self):
-        return self.numerical_features
-
-    def get_cat_features(self):
-        return self.cat_features
+    def get_feature_info(self):
+        return {
+            "numerical_features": len(self.numerical_features),
+            "categorical_features": self.categorical_features.max(),
+            "reference": self.data_ref
+        }
 
     def __len__(self):
         return self.target.size()[0]
@@ -116,10 +131,9 @@ class Data(Dataset):
             batch = {"cat": self.cat[item, :].squeeze(), "num": None}
         if batch["cat"].dim() == 1:
             batch["cat"] = batch["cat"].unsqueeze(0)
-        if (
-            batch["num"] is not None
-            and batch["num"].dim() == 1
-            and not isinstance(item, list)
+        if (batch["num"] is not None
+                and batch["num"].dim() == 1
+                and not isinstance(item, list)
         ):
             batch["num"] = batch["num"].unsqueeze(0)
         return [batch, self.target[item].squeeze()]

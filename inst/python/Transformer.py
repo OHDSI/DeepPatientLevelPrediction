@@ -6,7 +6,6 @@ import torch.nn.functional as F
 
 from ResNet import NumericalEmbedding
 
-
 def reglu(x):
     a, b = x.chunk(2, dim=-1)
     return a * F.relu(b)
@@ -20,8 +19,7 @@ class ReGLU(nn.Module):
 class Transformer(nn.Module):
     def __init__(
         self,
-        cat_features: int,
-        num_features: int,
+        feature_info,
         num_blocks: int,
         dim_token: int,
         num_heads: int,
@@ -39,20 +37,20 @@ class Transformer(nn.Module):
     ):
         super(Transformer, self).__init__()
         self.name = model_type
-        cat_features = int(cat_features)
-        num_features = int(num_features)
         num_blocks = int(num_blocks)
         dim_token = int(dim_token)
         num_heads = int(num_heads)
         dim_hidden = int(dim_hidden)
         dim_out = int(dim_out)
+        cat_feature_size = int(feature_info["categorical_features"])
+        num_feature_size = int(feature_info.get("numerical_features", 0))
 
-        self.categorical_embedding = nn.Embedding(
-            cat_features + 1, dim_token, padding_idx=0
+        self.embedding = nn.Embedding(
+            cat_feature_size + 1, dim_token, padding_idx=0
         )
 
-        if num_features != 0 and num_features is not None:
-            self.numerical_embedding = NumericalEmbedding(num_features, dim_token)
+        if num_feature_size != 0 and num_feature_size is not None:
+            self.numerical_embedding = NumericalEmbedding(num_feature_size, dim_token)
             self.use_numerical = True
         else:
             self.use_numerical = False
@@ -96,7 +94,10 @@ class Transformer(nn.Module):
 
     def forward(self, x):
         mask = torch.where(x["cat"] == 0, True, False)
-        cat = self.categorical_embedding(x["cat"])
+        mask = torch.cat([mask], dim=1) # dim 0 may be batch size, dim 1 should it be
+		
+        cat = self.embedding(x["cat"])
+
         if self.use_numerical:
             num = self.numerical_embedding(x["num"])
             x = torch.cat([cat, num], dim=1)

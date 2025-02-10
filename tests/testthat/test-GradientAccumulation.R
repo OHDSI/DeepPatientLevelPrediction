@@ -21,7 +21,8 @@ generateData <- function(observations, features, totalFeatures = 6,
   }
   
   labels <- as.numeric(sample(0:1, observations, replace = TRUE))
-  data <- Andromeda::andromeda(covariates = covariates)
+  data <- Andromeda::andromeda(covariates = covariates,
+                               covariateRef = data.frame(columnId = columnId))
   data <- attr(data, "dbname")
   Data <- reticulate::import_from_path("Dataset", path = path)$Data
   dataset <- Data(data, labels)
@@ -34,7 +35,7 @@ model <- reticulate::import_from_path("ResNet", path = path)$ResNet
 modelParams <- list("num_layers" = 1L,
                     "size_hidden" = 32,
                     "size_embedding" = 32,
-                    "cat_features" = dataset$get_cat_features()$max(),
+                    "feature_info" = dataset$get_feature_info(),
                     "normalization" = torch$nn$LayerNorm)
 Estimator <- reticulate::import_from_path("Estimator", path = path)$Estimator
 estimatorSettings <- list(
@@ -49,11 +50,11 @@ estimatorSettings <- list(
   optimizer = torch$optim$AdamW,
   criterion = torch$nn$BCEWithLogitsLoss
 )
-
+parameters <- list(model_parameters = modelParams,
+                   estimator_settings = estimatorSettings)
 estimator <- Estimator(
   model = model,
-  model_parameters = modelParams,
-  estimator_settings = estimatorSettings
+  parameters = parameters
 )
 
 
@@ -61,10 +62,11 @@ test_that("Gradient accumulation provides same results as without, ", {
   predsWithout <- estimator$predict_proba(dataset)
   
   estimatorSettings$accumulation_steps <- 2
+  parameters <- list(model_parameters = modelParams,
+                     estimator_settings = camelCaseToSnakeCaseNames(estimatorSettings))
   estimatorWith <- Estimator(
     model = model,
-    model_parameters = modelParams,
-    estimator_settings = estimatorSettings
+    parameters = parameters
   )
   predsWith <- estimatorWith$predict_proba(dataset)
   
@@ -72,18 +74,17 @@ test_that("Gradient accumulation provides same results as without, ", {
   
   dataset <- generateData(observations = 5, features = 3, totalFeatures = 6, 
                           numCovs = TRUE) 
-  modelParams$num_features <- 1L 
+  parameters$model_parameters$feature_info$numerical_features <- 1L 
+  
   estimatorWith <- Estimator(
     model = model,
-    model_parameters = modelParams,
-    estimator_settings = estimatorSettings
+    parameters = parameters
   )
-  estimatorSettings$accumulation_steps <- 1
+  parameters$estimator_settings$accumulation_steps <- 1
   estimator <- Estimator(
     model = model,
-    model_parameters = modelParams,
-    estimator_settings = estimatorSettings
-  )
+    parameters = parameters
+    )
   predsWith <- estimator$predict_proba(dataset)
   predsWithout <- estimatorWith$predict_proba(dataset)
   
@@ -99,11 +100,10 @@ test_that("Loss is equal without dropout and layernorm",  {
                                             ))  
   loss <- estimator$fit_epoch(dataloader)
   
-  estimatorSettings$accumulation_steps <- 2
+  parameters$estimator_settings$accumulation_steps <- 2
   estimatorWith <- Estimator(
     model = model,
-    model_parameters = modelParams,
-    estimator_settings = estimatorSettings
+    parameters = parameters
   )
   lossWith <- estimatorWith$fit_epoch(dataloader)
   
@@ -112,22 +112,21 @@ test_that("Loss is equal without dropout and layernorm",  {
 })
 
 test_that("LR finder works same with and without accumulation", {
-  modelParams$modelType <- "ResNet"
-  
+  parameters$modelParameters <- modelParams
+  parameters$modelParameters$modelType <- "ResNet"
+  parameters$estimatorSettings <- estimatorSettings
   lrSettings <- list(minLr = 1e-8,
                      maxLr = 0.01,
                      numLr = 10L,
                      divergenceThreshold = 1.1)
 
-  lr <- getLR(estimatorSettings = estimatorSettings,
-              modelParameters = modelParams,
+  lr <- getLR(parameters = parameters,
               dataset = dataset,
               lrSettings = lrSettings)
   
-  estimatorSettings$accumulation_steps <- 2
+  parameters$estimatorSettings$accumulation_steps <- 2
  
-  lrWith <- getLR(estimatorSettings = estimatorSettings,
-                  modelParameters = modelParams,
+  lrWith <- getLR(parameters = parameters,
                   dataset = dataset,
                   lrSettings = lrSettings) 
   
@@ -141,7 +140,7 @@ test_that("Gradient accumulation works when batch is smaller than batch_size * s
   modelParams <- list("num_layers" = 1L,
                       "size_hidden" = 32,
                       "size_embedding" = 32,
-                      "cat_features" = 6,
+                      "feature_info" = list(categorical_features=6),
                       "normalization" = torch$nn$LayerNorm)
   Estimator <- reticulate::import_from_path("Estimator", path = path)$Estimator
   estimatorSettings <- list(
@@ -156,12 +155,12 @@ test_that("Gradient accumulation works when batch is smaller than batch_size * s
     optimizer = torch$optim$AdamW,
     criterion = torch$nn$BCEWithLogitsLoss
   )
-  
+  parameters <- list(model_parameters = camelCaseToSnakeCaseNames(modelParams),
+                     estimator_settings = camelCaseToSnakeCaseNames(estimatorSettings)) 
   estimator <- Estimator(
     model = model,
-    model_parameters = modelParams,
-    estimator_settings = estimatorSettings
-  ) 
+    parameters = parameters
+    ) 
   
   preds <- estimator$predict_proba(dataset)
   

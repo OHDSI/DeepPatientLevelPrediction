@@ -36,7 +36,7 @@ createDataset <- function(data, labels, plpModel = NULL) {
       r_to_py(as.array(which(plpModel$covariateImportance$isNumeric)))
     data <- dataset(r_to_py(normalizePath(attributes(data)$path)),
       numerical_features = numericalFeatures
-    )
+      )
   }
 
   return(data)

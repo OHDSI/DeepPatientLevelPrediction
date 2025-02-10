@@ -6,8 +6,7 @@ from ResNet import NumericalEmbedding
 class MultiLayerPerceptron(nn.Module):
     def __init__(
         self,
-        cat_features: int,
-        num_features: int,
+        feature_info: dict,
         size_embedding: int,
         size_hidden: int,
         num_layers: int,
@@ -19,8 +18,8 @@ class MultiLayerPerceptron(nn.Module):
     ):
         super(MultiLayerPerceptron, self).__init__()
         self.name = model_type
-        cat_features = int(cat_features)
-        num_features = int(num_features)
+        cat_features = int(feature_info["categorical_features"])
+        num_features = int(feature_info.get("numerical_features", 0))
         size_embedding = int(size_embedding)
         size_hidden = int(size_hidden)
         num_layers = int(num_layers)
@@ -54,6 +53,8 @@ class MultiLayerPerceptron(nn.Module):
     def forward(self, input):
         x_cat = input["cat"]
         x_cat = self.embedding(x_cat)
+        if x_cat.dim() == 3:
+            x_cat = x_cat.mean(dim=1)
         if "num" in input.keys() and self.num_embedding is not None:
             x_num = input["num"]
             x = (x_cat + self.num_embedding(x_num).mean(dim=1)) / 2

@@ -16,11 +16,11 @@ resSet <- setResNet(
 )
 
 test_that("setResNet works", {
-  testthat::expect_s3_class(object = resSet, class = "modelSettings")
+  expect_s3_class(object = resSet, class = "modelSettings")
 
-  testthat::expect_equal(resSet$fitFunction, "DeepPatientLevelPrediction::fitEstimator")
+  expect_equal(resSet$fitFunction, "DeepPatientLevelPrediction::fitEstimator")
 
-  testthat::expect_true(length(resSet$param) > 0)
+  expect_true(length(resSet$param) > 0)
 
   expect_error(setResNet(numLayers = 2,
                          sizeHidden = 32,
@@ -56,7 +56,7 @@ res2 <- tryCatch(
       executeSettings = PatientLevelPrediction::createExecuteSettings(
         runSplitData = TRUE,
         runSampleData = FALSE,
-        runfeatureEngineering = FALSE,
+        runFeatureEngineering = FALSE,
         runPreprocessData = TRUE,
         runModelDevelopment = TRUE,
         runCovariateSummary = FALSE
@@ -72,31 +72,31 @@ res2 <- tryCatch(
 sink()
 
 test_that("ResNet with runPlp working checks", {
-  testthat::expect_false(is.null(res2))
+  expect_false(is.null(res2))
 
   # check structure
-  testthat::expect_true("prediction" %in% names(res2))
-  testthat::expect_true("model" %in% names(res2))
-  testthat::expect_true("covariateSummary" %in% names(res2))
-  testthat::expect_true("performanceEvaluation" %in% names(res2))
+  expect_true("prediction" %in% names(res2))
+  expect_true("model" %in% names(res2))
+  expect_true("covariateSummary" %in% names(res2))
+  expect_true("performanceEvaluation" %in% names(res2))
 
   # check prediction same size as pop
-  testthat::expect_equal(nrow(res2$prediction %>%
+  expect_equal(nrow(res2$prediction %>%
                                 dplyr::filter(evaluationType %in% c("Train",
                                                                     "Test"))),
                          nrow(population))
 
   # check prediction between 0 and 1
-  testthat::expect_gte(min(res2$prediction$value), 0)
-  testthat::expect_lte(max(res2$prediction$value), 1)
+  expect_gte(min(res2$prediction$value), 0)
+  expect_lte(max(res2$prediction$value), 1)
 })
 
 
 test_that("ResNet nn-module works ", {
   resNet <- reticulate::import_from_path("ResNet", path = path)$ResNet
   model <- resNet(
-    cat_features = 5,
-    num_features = 1,
+    feature_info = list("categorical_features" = 5L,
+                    "numerical_features" = 1L),
     size_embedding = 5,
     size_hidden = 16,
     num_layers = 1,
@@ -124,8 +124,8 @@ test_that("ResNet nn-module works ", {
 
   input$num <- NULL
   model <- resNet(
-    cat_features = 5,
-    num_features = 0,
+    feature_info = list("categorical_features" = 5L,
+                    "numerical_features" = 0),
     size_embedding = 5,
     size_hidden = 16,
     num_layers = 1,
@@ -183,7 +183,7 @@ test_that("Can upload results to database", {
                           cohortDefinitions = cohortDefinitions)
   sink()
 
-  testthat::expect_true(file.exists(sqliteFile))
+  expect_true(file.exists(sqliteFile))
 
   cdmDatabaseSchema <- "main"
   ohdsiDatabaseSchema <- "main"

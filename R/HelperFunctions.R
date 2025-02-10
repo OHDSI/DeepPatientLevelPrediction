@@ -86,7 +86,7 @@ checkIsClass <- function(parameter, classes) {
 #' @param value which value it should be higher than
 checkHigher <- function(parameter, value) {
   name <- deparse(substitute(parameter))
-  if (!is.numeric(parameter) || all(parameter == value)) {
+  if (!is.numeric(parameter) || all(parameter <= value)) {
     ParallelLogger::logError(paste0(name, " needs to be > ", value))
     stop(paste0(name, " needs to be > ", value))
   }
@@ -102,6 +102,27 @@ checkHigherEqual <- function(parameter, value) {
   if (!is.numeric(parameter) || all(parameter < value)) {
     ParallelLogger::logError(paste0(name, " needs to be >= ", value))
     stop(paste0(name, " needs to be >= ", value))
+  }
+  return(TRUE)
+}
+
+#' helper function to check if a file exists
+#' @param file the file to check
+checkFileExists <- function(file) {
+  if (!file.exists(file)) {
+    ParallelLogger::logError(paste0("File ", file, " does not exist"))
+    stop(paste0("File ", file, " does not exist"))
+  }
+  return(TRUE)
+}
+
+checkInStringVector <- function(parameter, values) {
+  name <- deparse(substitute(parameter))
+  if (!parameter %in% values) {
+    ParallelLogger::logError(paste0(name, " should be ",
+                                    paste0(as.character(values),
+                                           collapse = "or ")))      
+    stop(paste0(name, " has incorrect value"))
   }
   return(TRUE)
 }

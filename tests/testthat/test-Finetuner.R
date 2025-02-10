@@ -26,13 +26,13 @@ test_that("Finetuner settings work", {
   expect_error(setFinetuner(modelPath = fitEstimatorPath, estimatorSettings = setEstimator()))
   fakeDir <- file.path(fitEstimatorPath, "fakeDir")
   fakeSubdir <- file.path(fakeDir, "model")
-  dir.create(fakeSubdir, recursive = TRUE)
+  dir.create(fakeSubdir, recursive = TRUE, showWarnings = FALSE)
   expect_error(setFinetuner(modelPath = fakeDir, estimatorSettings = setEstimator()))
   })
 
 test_that("Finetuner fitEstimator works", {
   fineTunerPath <- file.path(testLoc, "fineTuner")
-  dir.create(fineTunerPath)
+  dir.create(fineTunerPath, showWarnings = FALSE)
   fineTunerResults <- fitEstimator(trainData$Train,
                                    modelSettings = fineTunerSettings,
                                    analysisId = 1,
@@ -47,7 +47,8 @@ test_that("Finetuner fitEstimator works", {
                fitEstimatorResults$covariateImportance$covariateId)
   
   fineTunedModel <- torch$load(file.path(fineTunerResults$model,
-                                         "DeepEstimatorModel.pt"))
+                                         "DeepEstimatorModel.pt"),
+                               weights_only = FALSE)
   expect_equal(fineTunedModel$estimator_settings$finetune_model_path, 
                normalizePath(file.path(fitEstimatorPath, "plpModel", "model",
                          "DeepEstimatorModel.pt")))
