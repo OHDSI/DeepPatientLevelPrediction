@@ -18,7 +18,9 @@ class DefaultInitStrategy(InitStrategy):
 class FinetuneInitStrategy(InitStrategy):
     def initialize(self, model, parameters):
         path = parameters["estimator_settings"]["finetune_model_path"]
-        fitted_estimator = torch.load(path, map_location="cpu")
+        # weights only false because seralizing lazyframe doesn't work
+        # TODO fix
+        fitted_estimator = torch.load(path, map_location="cpu", weights_only=False)
         fitted_parameters = fitted_estimator["model_parameters"]
         model_instance = model(**fitted_parameters)
         model_instance.load_state_dict(fitted_estimator["model_state_dict"])
