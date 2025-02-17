@@ -51,6 +51,7 @@ Config/reticulate:
       list(package = "pyarrow"),
       list(package = "tqdm"),
       list(package = "connectorx"),
-      list(package = "pynvml")
+      list(package = "pynvml"),
+      list(package = "hypll")
       )
   )

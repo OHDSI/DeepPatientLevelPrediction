@@ -7,6 +7,7 @@ from tqdm import tqdm
 
 from gpu_memory_cleanup import memory_cleanup
 from InitStrategy import InitStrategy, DefaultInitStrategy
+from hypll.optim import RiemannianSGD
 
 class Estimator:
     """
@@ -49,11 +50,29 @@ class Estimator:
         self.previous_epochs = int(parameters["estimator_settings"].get("previous_epochs", 0))
         self.model.to(device=self.device)
 
+        if hasattr(self.model, "embedding") and hasattr(self.model.embedding, "custom_embeddings_trainable"):
+            trainable_embedding_params = list(self.model.embedding.custom_embeddings_trainable.parameters())
+        else:
+            trainable_embedding_params = []
+        
+        all_params = list(self.model.parameters())
+        trainable_ids = {id(p) for p in trainable_embedding_params}
+        euclidean_params = [p for p in all_params if id(p) not in trainable_ids]
+
         self.optimizer = parameters["estimator_settings"]["optimizer"](
-            params=self.model.parameters(),
+            params=euclidean_params,
             lr=self.learning_rate,
             weight_decay=self.weight_decay,
         )
+        if trainable_embedding_params:
+            print("Model has trainable embedding parameters")
+            self.riemannian_optimizer = RiemannianSGD(
+                params=trainable_embedding_params,
+                lr=self.learning_rate
+            )
+        else:
+            self.riemannian_optimizer = None
+        
         self.criterion = parameters["estimator_settings"]["criterion"](reduction="sum")
 
         if (
@@ -171,6 +190,7 @@ class Estimator:
         self.model.train()
         index = 0
         self.optimizer.zero_grad()
+        self.riemannian_optimizer.zero_grad()
         for batch in tqdm(dataloader):
             split_batch = self.split_batch(batch)
             accumulated_loss = 0
@@ -183,7 +203,9 @@ class Estimator:
                 loss.backward()
                 accumulated_loss += loss.detach()
             
+            self.riemannian_optimizer.step()
             self.optimizer.step()
+            self.riemannian_optimizer.zero_grad()
             self.optimizer.zero_grad()
             training_losses[index] = accumulated_loss / self.batch_size
             index += 1
