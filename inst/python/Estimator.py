@@ -158,6 +158,10 @@ class Estimator:
             lr = self.optimizer.param_groups[0]["lr"]
             self.print_progress(scores, training_loss, delta_time, current_epoch)
             self.scheduler.step(scores["metric"])
+            if self.riemannian_optimizer is not None:
+                new_lr = self.optimizer.param_groups[0]["lr"]
+                for group in self.riemannian_optimizer.param_groups:
+                    group["lr"] = new_lr
             all_scores.append(scores)
             learning_rates.append(lr)
             times.append(round(delta_time, 3))
@@ -190,7 +194,8 @@ class Estimator:
         self.model.train()
         index = 0
         self.optimizer.zero_grad()
-        self.riemannian_optimizer.zero_grad()
+        if not self.riemannian_optimizer == None:
+            self.riemannian_optimizer.zero_grad()
         for batch in tqdm(dataloader):
             split_batch = self.split_batch(batch)
             accumulated_loss = 0
@@ -203,9 +208,11 @@ class Estimator:
                 loss.backward()
                 accumulated_loss += loss.detach()
             
-            self.riemannian_optimizer.step()
+            if not self.riemannian_optimizer == None:
+                self.riemannian_optimizer.step()
             self.optimizer.step()
-            self.riemannian_optimizer.zero_grad()
+            if not self.riemannian_optimizer == None:
+                self.riemannian_optimizer.zero_grad()
             self.optimizer.zero_grad()
             training_losses[index] = accumulated_loss / self.batch_size
             index += 1
