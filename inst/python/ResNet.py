@@ -1,7 +1,7 @@
-import math
-
 import torch
 from torch import nn
+
+from inst.python.Embeddings import NumericalEmbedding
 
 
 class ResNet(nn.Module):
@@ -22,7 +22,7 @@ class ResNet(nn.Module):
     ):
         super(ResNet, self).__init__()
         self.name = model_type
-        cat_features = int(feature_info["categorical_features"])
+        cat_features = int(feature_info["vocabulary_size"])
         num_features = int(feature_info.get("numerical_features", 0))
         size_embedding = int(size_embedding)
         size_hidden = int(size_hidden)
@@ -131,21 +131,3 @@ class ResLayer(nn.Module):
         return z
 
 
-class NumericalEmbedding(nn.Module):
-    def __init__(self, num_embeddings, embedding_dim, bias=True):
-        super(NumericalEmbedding, self).__init__()
-        self.weight = nn.Parameter(torch.empty(num_embeddings, embedding_dim))
-        if bias:
-            self.bias = nn.Parameter(torch.empty(num_embeddings, embedding_dim))
-        else:
-            self.bias = None
-
-        for parameter in [self.weight, self.bias]:
-            if parameter is not None:
-                nn.init.kaiming_uniform_(parameter, a=math.sqrt(5))
-
-    def forward(self, input):
-        x = self.weight[None] * input[..., None]
-        if self.bias is not None:
-            x = x + self.bias[None]
-        return x

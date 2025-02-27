@@ -588,6 +588,7 @@ doCrossValidationImpl <- function(dataset,
   attr(currentModelParams, "metaData")$names <-
     modelSettings$modelParamNames
   currentModelParams$modelType <- modelSettings$modelType
+  currentModelParams$temporal <- attr(modelSettings$param, "temporalModel")
   currentEstimatorSettings <-
     fillEstimatorSettings(modelSettings$estimatorSettings,
                           fitParams,

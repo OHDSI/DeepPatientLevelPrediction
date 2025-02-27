@@ -1,6 +1,6 @@
 from torch import nn
 
-from ResNet import NumericalEmbedding
+from inst.python.Embeddings import NumericalEmbedding
 
 
 class MultiLayerPerceptron(nn.Module):

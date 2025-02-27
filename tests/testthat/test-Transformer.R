@@ -14,18 +14,18 @@ settings <- setTransformer(
 )
 
 test_that("Transformer settings work", {
-  testthat::expect_s3_class(object = settings, class = "modelSettings")
-  testthat::expect_equal(settings$fitFunction, "DeepPatientLevelPrediction::fitEstimator")
-  testthat::expect_true(length(settings$param) > 0)
-  testthat::expect_error(setTransformer(
+  expect_s3_class(object = settings, class = "modelSettings")
+  expect_equal(settings$fitFunction, "DeepPatientLevelPrediction::fitEstimator")
+  expect_true(length(settings$param) > 0)
+  expect_error(setTransformer(
     numBlocks = 1, dimToken = 50,
     numHeads = 7
   ))
-  testthat::expect_error(setTransformer(
+  expect_error(setTransformer(
     numBlocks = 1, dimToken = c(2, 4),
     numHeads = c(2, 4)
   ))
-  testthat::expect_error(setTransformer(
+  expect_error(setTransformer(
     numBlocks = 1, dimToken = c(4, 6),
     numHeads = c(2, 4)
   ))

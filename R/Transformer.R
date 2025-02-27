@@ -50,10 +50,10 @@ setDefaultTransformer <- function(estimatorSettings =
   return(transformerSettings)
 }
 
-#' create settings for training a non-temporal transformer
+#' create settings for training a transformer
 #'
 #' @description A transformer model
-#' @details from https://arxiv.org/abs/2106.11959
+#' @details The non-temporal transformer is from https://arxiv.org/abs/2106.11959
 #'
 #' @param numBlocks               number of transformer blocks
 #' @param dimToken                dimension of each token (embedding size)
@@ -73,6 +73,8 @@ setDefaultTransformer <- function(estimatorSettings =
 #' search if random
 #' @param randomSampleSeed        Random seed to sample hyperparameter
 #' combinations
+#' @param temporal                Whether to use a transformer with temporal data
+#' @return list of settings for the transformer model
 #'
 #' @export
 setTransformer <- function(numBlocks = 3,
@@ -84,6 +86,7 @@ setTransformer <- function(numBlocks = 3,
                            resDropout = 0,
                            dimHidden = 256,
                            dimHiddenRatio = NULL,
+                           temporal = FALSE,
                            estimatorSettings = setEstimator(
                              weightDecay = 1e-6,
                              batchSize = 1024,
@@ -118,6 +121,7 @@ setTransformer <- function(numBlocks = 3,
   if (!is.null(dimHidden)) {
     checkHigherEqual(dimHidden, 1)
   }
+  checkIsClass(temporal, "logical")
 
   checkIsClass(dimHiddenRatio, c("numeric", "NULL"))
   if (!is.null(dimHiddenRatio)) {
@@ -200,6 +204,9 @@ setTransformer <- function(numBlocks = 3,
     ),
     modelType = "Transformer"
   )
+  if (temporal) {
+    attr(results$param, "temporalModel") <- TRUE
+  }
   attr(results$param, "settings")$modelType <- results$modelType
   class(results) <- "modelSettings"
   return(results)

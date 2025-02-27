@@ -4,7 +4,8 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 
-from ResNet import NumericalEmbedding
+from inst.python.Embeddings import Embedding, ClassToken
+
 
 def reglu(x):
     a, b = x.chunk(2, dim=-1)
@@ -20,20 +21,21 @@ class Transformer(nn.Module):
     def __init__(
         self,
         feature_info,
-        num_blocks: int,
-        dim_token: int,
-        num_heads: int,
-        att_dropout,
+        num_blocks: int, # model architecture
+        dim_token: int, # embedding size
+        num_heads: int, # number of heads in multihead attention
+        att_dropout, #
         ffn_dropout,
         res_dropout,
-        dim_hidden: int,
+        dim_hidden: int, # hidden layer size
         dim_out: int = 1,
         head_activation=nn.ReLU,
         activation=ReGLU,
         ffn_norm=nn.LayerNorm,
         head_norm=nn.LayerNorm,
         att_norm=nn.LayerNorm,
-        model_type="Transformer"
+        model_type="Transformer",
+        temporal = False
     ):
         super(Transformer, self).__init__()
         self.name = model_type
@@ -42,26 +44,23 @@ class Transformer(nn.Module):
         num_heads = int(num_heads)
         dim_hidden = int(dim_hidden)
         dim_out = int(dim_out)
-        cat_feature_size = int(feature_info["categorical_features"])
-        num_feature_size = int(feature_info.get("numerical_features", 0))
 
-        self.embedding = nn.Embedding(
-            cat_feature_size + 1, dim_token, padding_idx=0
-        )
+        self.embedding = Embedding(embedding_dim=dim_token,
+                                   feature_info=feature_info)
 
-        if num_feature_size != 0 and num_feature_size is not None:
-            self.numerical_embedding = NumericalEmbedding(num_feature_size, dim_token)
-            self.use_numerical = True
-        else:
-            self.use_numerical = False
         self.class_token = ClassToken(dim_token)
 
         self.layers = nn.ModuleList([])
         for layer_idx in range(num_blocks):
             layer = nn.ModuleDict(
                 {
-                    "attention": nn.MultiheadAttention(
-                        dim_token, num_heads, dropout=att_dropout
+                    "attention": MultiHeadAttention(
+                        E_q=dim_token,
+                        E_k=dim_token,
+                        E_v=dim_token,
+                        E_total=dim_token,
+                        nheads=num_heads,
+                        dropout_p=att_dropout
                     ),
                     "ffn": FeedForwardBlock(
                         dim_token,
@@ -93,59 +92,33 @@ class Transformer(nn.Module):
         self.dim_out = dim_out
 
     def forward(self, x):
-        mask = torch.where(x["cat"] == 0, True, False)
-        mask = torch.cat([mask], dim=1) # dim 0 may be batch size, dim 1 should it be
-		
-        cat = self.embedding(x["cat"])
-
-        if self.use_numerical:
-            num = self.numerical_embedding(x["num"])
-            x = torch.cat([cat, num], dim=1)
-            mask = torch.cat(
-                [
-                    mask,
-                    torch.zeros(
-                        [x.shape[0], num.shape[1]], device=mask.device, dtype=mask.dtype
-                    ),
-                ],
-                dim=1,
-            )
-        else:
-            x = cat
+        x = self.embedding(x)
         x = self.class_token(x)
-        mask = torch.cat(
-            [mask, torch.zeros([x.shape[0], 1], device=mask.device, dtype=mask.dtype)],
-            dim=1,
-        )
-
+        mask = (x != 0).any(dim=-1)
+        mask = mask.unsqueeze(1).expand(-1, mask.size(1), -1)
         for i, layer in enumerate(self.layers):
-            x_residual = self.start_residual(layer, "attention", x)
-
-            if i == len(self.layers) - 1:
-                dims = x_residual.shape
+            if i < len(self.layers) - 1:
+                x_residual = self.start_residual(layer, "attention", x)
                 x_residual = layer["attention"](
-                    x_residual[:, -1].view([dims[0], 1, dims[2]]).transpose(0, 1),
-                    x_residual.transpose(0, 1),
-                    x_residual.transpose(0, 1),
-                    mask,
-                )
-                x_residual = x_residual[0]
-                x = x[:, -1].view([dims[0], 1, dims[2]])
+                    x_residual,
+                    x_residual,
+                    x_residual,
+                    mask)
+                x = self.end_residual(layer, "attention", x, x_residual)
             else:
+                x_residual = self.start_residual(layer, "attention", x)
                 x_residual = layer["attention"](
-                    x_residual.transpose(0, 1),
-                    x_residual.transpose(0, 1),
-                    x_residual.transpose(0, 1),
-                    mask,
-                )[0]
-            x = self.end_residual(layer, "attention", x, x_residual.transpose(0, 1))
-
+                    x_residual[:, :1],
+                    x_residual,
+                    x_residual,
+                    mask[:, :1]
+                )
+                x = self.end_residual(layer, "attention", x[:, :1], x_residual)
             x_residual = self.start_residual(layer, "ffn", x)
             x_residual = layer["ffn"](x_residual)
             x = self.end_residual(layer, "ffn", x, x_residual)
-
-        x = self.head(x)[:, 0]
-        return x
+        x = self.head(x)
+        return x.squeeze()
 
     def reset_head(self):
         self.head = Head(
@@ -201,22 +174,86 @@ class Head(nn.Module):
         self.linear = nn.Linear(dim_in, dim_out, bias=bias)
 
     def forward(self, x):
-        x = x[:, -1]
         x = self.normalization(x)
         x = self.activation(x)
         x = self.linear(x)
         return x
 
 
-class ClassToken(nn.Module):
-    def __init__(self, dim_token):
-        super(ClassToken, self).__init__()
-        self.weight = nn.Parameter(torch.empty(dim_token, 1))
-        nn.init.kaiming_uniform_(self.weight, a=math.sqrt(5))
+class MultiHeadAttention(nn.Module):
+    """
+    Computes multi-head attention. Supports nested or padded tensors.
 
-    def expand(self, dims):
-        new_dims = [1] * (len(dims) - 1)
-        return self.weight.view(new_dims + [-1]).expand(dims + [-1])
+    Args:
+        E_q (int): Size of embedding dim for query
+        E_k (int): Size of embedding dim for key
+        E_v (int): Size of embedding dim for value
+        E_total (int): Total embedding dim of combined heads post input projection. Each head
+            has dim E_total // nheads
+        nheads (int): Number of heads
+        dropout_p (float, optional): Dropout probability. Default: 0.0
+    """
+    def __init__(self, E_q: int, E_k: int, E_v: int, E_total: int,
+                 nheads: int, dropout_p: float = 0.0):
+        super().__init__()
+        self.nheads = nheads
+        self.dropout_p = dropout_p
+        self.query_proj = nn.Linear(E_q, E_total)
+        self.key_proj = nn.Linear(E_k, E_total)
+        self.value_proj = nn.Linear(E_v, E_total)
+        E_out = E_q
+        self.out_proj = nn.Linear(E_total, E_out)
+        assert E_total % nheads == 0, "Embedding dim is not divisible by nheads"
+        self.E_head = E_total // nheads
 
-    def forward(self, x):
-        return torch.cat([x, self.expand([x.shape[0], 1])], dim=1)
+    def forward(self, query: torch.Tensor, key: torch.Tensor, value: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
+        """
+        Forward pass; runs the following process:
+            1. Apply input projection
+            2. Split heads and prepare for SDPA
+            3. Run SDPA
+            4. Apply output projection
+
+        Args:
+            query (torch.Tensor): query of shape (N, L_t, E_q)
+            key (torch.Tensor): key of shape (N, L_s, E_k)
+            value (torch.Tensor): value of shape (N, L_s, E_v)
+            mask (torch.Tensor): mask of shape (N, L_t, E_q)
+
+        Returns:
+            attn_output (torch.Tensor): output of shape (N, L_t, E_q)
+        """
+        # Step 1. Apply input projection
+        # TODO: demonstrate packed projection
+        query = self.query_proj(query)
+        key = self.key_proj(key)
+        value = self.value_proj(value)
+
+        # Step 2. Split heads and prepare for SDPA
+        # reshape query, key, value to separate by head
+        # (N, L_t, E_total) -> (N, L_t, nheads, E_head) -> (N, nheads, L_t, E_head)
+        query = query.unflatten(-1, [self.nheads, self.E_head]).transpose(1, 2)
+        # (N, L_s, E_total) -> (N, L_s, nheads, E_head) -> (N, nheads, L_s, E_head)
+        key = key.unflatten(-1, [self.nheads, self.E_head]).transpose(1, 2)
+        # (N, L_s, E_total) -> (N, L_s, nheads, E_head) -> (N, nheads, L_s, E_head)
+        value = value.unflatten(-1, [self.nheads, self.E_head]).transpose(1, 2)
+
+        mask = mask.unsqueeze(1)
+
+        # Step 3. Run SDPA
+        # (N, nheads, L_t, E_head)
+        attn_output = F.scaled_dot_product_attention(
+            query, key, value, dropout_p=self.dropout_p, is_causal=False,
+            attn_mask=mask
+        )
+        # (N, nheads, L_t, E_head) -> (N, L_t, nheads, E_head) -> (N, L_t, E_total)
+        attn_output = attn_output.transpose(1, 2).flatten(-2)
+
+        # Step 4. Apply output projection
+        # (N, L_t, E_total) -> (N, L_t, E_out)
+        attn_output = self.out_proj(attn_output)
+
+        return attn_output
+
+
+
