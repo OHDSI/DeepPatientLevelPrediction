@@ -44,6 +44,7 @@ jobs:
       CDM5_SQL_SERVER_SERVER: ${{ secrets.CDM5_SQL_SERVER_SERVER }}
       CDM5_SQL_SERVER_USER: ${{ secrets.CDM5_SQL_SERVER_USER }}
       UV_SYSTEM_PYTHON: 1
+      RETICULATE_USE_MANAGED_VENV: "no"
 
     steps:
       - uses: actions/checkout@v4
@@ -87,12 +88,6 @@ jobs:
           uv pip install polars tqdm connectorx pyarrow duckdb pynvml numpy
           uv pip install torch --index https://download.pytorch.org/whl/cpu/
 
-      - name: Setup tmate session
-        uses: mxschmitt/action-tmate@v3
-        with:
-          detached: false
-          limit-access-to-actor: true
-          
       - uses: r-lib/actions/check-r-package@v2
         with:
           args: 'c("--no-manual", "--as-cran")'
