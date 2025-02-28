@@ -96,14 +96,14 @@ class LrFinder:
         # I added -5 to make sure it is not still in the minimum
         global_minimum = torch.argmin(losses[:i + 1])
         if global_minimum == 0:
-            biggest_gradient = 0
+            smallest_gradient = 0
         else:
             gradient = torch.diff(losses[: (global_minimum - self.min_factor) + 1])
-            biggest_gradient = torch.argmax(gradient)
+            smallest_gradient = torch.argmin(gradient)
 
-        suggested_lr = lrs[biggest_gradient]
+        suggested_lr = lrs[smallest_gradient]
         self.losses = losses[:i]
-        self.loss_index = biggest_gradient
+        self.loss_index = smallest_gradient
         self.lrs = lrs
         return suggested_lr.item()
 

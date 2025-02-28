@@ -600,7 +600,8 @@ doCrossValidationImpl <- function(dataset,
   if (currentEstimatorSettings$findLR) {
     lr <- getLR(currentParameters, dataset)
     ParallelLogger::logInfo(paste0("Auto learning rate selected as: ", lr))
-    currentEstimatorSettings$learningRate <- lr
+    currentParameters$estimatorSettings$learningRate <- lr
+    currentParameters$estimatorSettings$findLR <- FALSE
   }
 
   fold <- labels$index
