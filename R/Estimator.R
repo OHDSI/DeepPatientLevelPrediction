@@ -191,8 +191,6 @@ fitEstimator <- function(trainData,
     )
   }
 
-  covariateRef <- mappedCovariateData$covariateRef
-
   outLoc <- PatientLevelPrediction::createTempModelLoc()
   cvResult <- do.call(
     what = gridCvDeep,
@@ -210,6 +208,7 @@ fitEstimator <- function(trainData,
     function(x) x$hyperSummary
   ))
   prediction <- cvResult$prediction
+  covariateRef <- as.data.frame(cvResult[["featureInfo"]]$data_reference)
   incs <- rep(1, covariateRef %>%
       dplyr::tally() %>%
       dplyr::collect() %>%
@@ -220,8 +219,7 @@ fitEstimator <- function(trainData,
     dplyr::collect() %>%
     dplyr::mutate(
       included = incs,
-      covariateValue = 0,
-      isNumeric = .data$columnId %in% cvResult$numericalIndex
+      covariateValue = 0
     )
 
   comp <- start - Sys.time()
@@ -437,7 +435,7 @@ gridCvDeep <- function(mappedData,
     dplyr::select(-"index")
   prediction$cohortStartDate <- as.Date(prediction$cohortStartDate,
     origin = "1970-01-01")
-  numericalIndex <- dataset$numerical_features$to_list()
+  featureInfo <- dataset$get_feature_info()
   
   # save torch code here
   if (!dir.exists(file.path(modelLocation))) {
@@ -450,7 +448,7 @@ gridCvDeep <- function(mappedData,
       prediction = prediction,
       finalParam = finalParam,
       paramGridSearch = paramGridSearch,
-      numericalIndex = numericalIndex
+      featureInfo = featureInfo
     )
   )
 }

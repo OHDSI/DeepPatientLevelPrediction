@@ -22,7 +22,9 @@ class Embedding(nn.Module):
             feature_info["data_reference"]
             .filter(pl.col("isBinary") == "N")
             .select("columnId")
+            .sort("columnId")
             .to_torch()
+            .squeeze()
         )
 
         self.embedding = nn.Embedding(
@@ -49,7 +51,7 @@ class Embedding(nn.Module):
         numerical_mask = torch.isin(x["feature_ids"], self.numerical_feature_ids.to(x["feature_ids"].device))
         numerical_features = torch.where(numerical_mask, x["feature_ids"], torch.tensor(0))
         numerical_mapped_features = self.input_to_numeric[numerical_features]
-        numerical_values = x["feature_values"][numerical_mask]
+        numerical_values = torch.where(numerical_mask, x["feature_values"], torch.tensor(0.0))
         numerical_embeddings = self.numerical_embedding(numerical_mapped_features, numerical_values)
         categorical_features = torch.where(~numerical_mask, x["feature_ids"], torch.tensor(0))
         categorical_mapped_features = self.input_to_categorical[categorical_features]
@@ -72,11 +74,13 @@ class NumericalEmbedding(nn.Module):
                 nn.init.kaiming_uniform_(parameter, a=math.sqrt(5))
 
     def forward(self, *inputs):
-        values = inputs[1]# only use values in this one
-        x = self.weight * values.unsqueeze(1)
+        values = inputs[1]
+        ids = inputs[0]
+        # ids are 1-indexed
+        emb = self.weight[ids - 1] * values.unsqueeze(-1)
         if self.bias is not None:
-            x = x.unsqueeze(1) + self.bias[None]
-        return x
+            emb = emb + self.bias[ids - 1]
+        return emb
 
 
 class NumericalEmbedding2(nn.Module):

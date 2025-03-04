@@ -10,39 +10,25 @@ from torch.utils.data import Dataset
 from torch.nested import nested_tensor
 
 class Data(Dataset):
-    def __init__(self, data, labels=None, numerical_features=None):
+    def __init__(self, data, labels=None, data_reference=None):
         """
         data: path to the covariateData from Andromeda
         labels: a list of either 0 or 1, 1 if the patient got the outcome
         numerical_features: list of indices where the numerical features are
         """
         start = time.time()
-        if pathlib.Path(data).suffix == ".sqlite":
-            data = quote(data)
-            data_ref = pl.read_database_uri(
-                "SELECT * from covariateRef", uri=f"sqlite://{data}"
-            )
-            analysis_ref = pl.read_database_uri(
-                "SELECT * from analysisRef", uri=f"sqlite://{data}"
-            )
-            self.data_ref = data_ref.join(analysis_ref, on="analysisId").select(pl.all().exclude("collisions"))
-            original_data = pl.read_database_uri(
-                "SELECT * from covariates", uri=f"sqlite://{data}"
-            ).lazy()
-        elif pathlib.Path(data).suffix == ".duckdb":
-            data = quote(data)
-            destination = pathlib.Path(data).parent.joinpath("python_copy.duckdb")
-            path = shutil.copy(data, destination)
-            conn = duckdb.connect(path)
-            data_ref = conn.sql("SELECT * from covariateRef").pl().lazy()
-            analysis_ref = conn.sql("SELECT * from analysisRef").pl().lazy()
-            self.data_ref = data_ref.join(analysis_ref, on="analysisId").select(pl.all().exclude("collisions"))
-            original_data = conn.sql("SELECT * from covariates").pl().lazy()
-            # close connection
-            conn.close()
-            path.unlink()
+
+        reader = DBReader(data)
+        analysis_ref = reader.read_table("analysisRef", lazy = True)
+        if data_reference is None:
+            data_ref = reader.read_table("covariateRef", lazy = True)
         else:
-            raise ValueError("Only .sqlite and .duckdb files are supported")
+            data_ref = pl.from_pandas(data_reference).lazy()
+        self.data_ref = (data_ref
+                         .join(analysis_ref, on="analysisId")
+                         .select(pl.all().exclude("collisions")))
+        original_data = reader.read_table("covariates", lazy=True)
+
         observations = original_data.select(pl.col("rowId").max()).collect()[0, 0]
         if labels:
             self.target = torch.as_tensor(labels)
@@ -50,21 +36,39 @@ class Data(Dataset):
             self.target = torch.zeros(size=(observations,))
 
         all_observations = (
-            original_data.
-            select("rowId").
-            with_columns(pl.col('rowId') - 1).
-            unique()
+            original_data
+            .select("rowId")
+            .with_columns(pl.col('rowId') - 1)
+            .unique()
         )
 
-        # filter by categorical columns,
         # select rowId and columnId
         # static data
         data = (
             original_data
             .select(pl.col("rowId"), pl.col("columnId"), pl.col("covariateValue"))
+        )
+        missing_means_zero = self.data_ref.filter(pl.col("missingMeansZero") == "Y").select("columnId")
+        all_combinations = (
+            all_observations
+            .join(missing_means_zero, how="cross")
+        )
+        data_mmz = (
+            data
+            .filter(pl.col("columnId").is_in(missing_means_zero.select("columnId").collect()))
+            .join(all_combinations, on=["rowId", "columnId"], how="right")
+            .with_columns(pl.col("covariateValue").fill_null(0.0))
+            .select(["rowId", "columnId", "covariateValue"])
+        )
+        data_remaining = (
+            data.filter(pl.col("columnId").is_in(missing_means_zero.select("columnId").collect()).not_())
+        )
+        data = (
+            pl.concat([data_mmz, data_remaining])
             .sort(["rowId", "columnId"])
             .with_columns(pl.col("rowId") - 1)
-        )
+            )
+
         # the following gives me a dataframe with column rowId and then the sequence
         data = (
             data
@@ -83,13 +87,13 @@ class Data(Dataset):
                 pl.col("feature_ids").fill_null(pl.lit([0], dtype=pl.List(pl.Int64))),
                 pl.col("feature_values").fill_null(pl.lit([], dtype=pl.List(pl.Float32))),
             )
-            .collect()
         )
 
+
         self.data = {
-            "row_ids": data["rowId"],
-            "feature_ids": data["feature_ids"],
-            "feature_values": data["feature_values"],
+            "row_ids": data.collect()["rowId"],
+            "feature_ids": data.collect()["feature_ids"],
+            "feature_values": data.collect()["feature_values"],
         }
         delta = time.time() - start
         print(f"Processed data in {delta:.2f} seconds")
@@ -118,44 +122,24 @@ class Data(Dataset):
 
 
 class TemporalData(Dataset):
-    def __init__(self, data, labels=None, numerical_features=None):
+    def __init__(self, data, labels=None, data_reference=None):
         """
         data: path to the covariateData from Andromeda
         labels: a list of either 0 or 1, 1 if the patient got the outcome
         numerical_features: list of indices where the numerical features are
         """
         start = time.time()
-        if pathlib.Path(data).suffix == ".sqlite":
-            data_path = quote(data)
-            data_ref = pl.read_database_uri(
-                "SELECT * from covariateRef", uri=f"sqlite://{data_path}"
-            ).lazy()
-            analysis_ref = pl.read_database_uri(
-                "SELECT * from analysisRef", uri=f"sqlite://{data_path}"
-            ).lazy()
-            self.data_ref = data_ref.join(analysis_ref, on="analysisId").select(pl.all().exclude("collisions"))
-            original_data = pl.read_database_uri(
-                "SELECT * from covariates", uri=f"sqlite://{data_path}"
-            ).lazy()
-            self.time_ref = pl.read_database_uri(
-                "SELECT * from timeRef", uri=f"sqlite://{data_path}"
-            ).lazy()
-        elif pathlib.Path(data).suffix == ".duckdb":
-            data = quote(data)
-            destination = pathlib.Path(data).parent.joinpath("python_copy.duckdb")
-            path = shutil.copy(data, destination)
-            conn = duckdb.connect(path)
-            data_ref = conn.sql("SELECT * from covariateRef").pl().lazy()
-            analysis_ref = conn.sql("SELECT * from analysisRef").pl().lazy()
-            time_ref = conn.sql("SELECT * from timeRef").pl().lazy()
-            self.data_ref = data_ref.join(analysis_ref, on="analysisId").select(pl.all().exclude("collisions"))
-            self.time_ref = time_ref
-            original_data = conn.sql("SELECT * from covariates").pl().lazy()
-            # close connection
-            conn.close()
-            path.unlink()
+        reader = DBReader(data)
+
+        analysis_ref = reader.read_table("analysisRef", lazy=True)
+        if data_reference is None:
+            data_ref = reader.read_table("covariateRef", lazy=True)
         else:
-            raise ValueError("Only .sqlite and .duckdb files are supported")
+            data_ref = pl.from_pandas(data_reference).lazy()
+        self.data_ref = data_ref.join(analysis_ref, on="analysisId").select(pl.all().exclude("collisions"))
+        self.time_ref = reader.read_table("timeRef", lazy=True)
+        original_data = reader.read_table("covariates", lazy=True)
+
         observations = original_data.select(pl.col("rowId").max()).collect()[0, 0]
 
         if labels:
@@ -170,11 +154,39 @@ class TemporalData(Dataset):
             unique()
         )
 
+        missing_means_zero = self.data_ref.filter(pl.col("missingMeansZero") == "Y").select("columnId")
+        all_combinations = (
+            all_observations
+            .join(missing_means_zero, how="cross")
+        )
+
+        data = (
+            original_data
+            .select(pl.col("rowId"), pl.col("columnId"), pl.col("timeId").cast(pl.Int64), pl.col("covariateValue"))
+        )
+
+        data_mmz = (
+            data
+            .filter(pl.col("columnId").is_in(missing_means_zero.select("columnId").collect()))
+            .join(all_combinations, on=["rowId", "columnId"], how="right")
+            .with_columns(pl.col("covariateValue").fill_null(0.0))
+            .select(["rowId", "columnId", "timeId", "covariateValue"])
+        )
+        data_remaining = (
+            data.filter(pl.col("columnId")
+                        .is_in(missing_means_zero.select("columnId").collect())
+                        .not_())
+        )
+        data = (
+            pl.concat([data_mmz, data_remaining])
+            .sort(["rowId", "columnId"])
+            .with_columns(pl.col("rowId") - 1)
+        )
         # filter by categorical columns,
         # select rowId and columnId
         # static data
         data = (
-            original_data
+            data
             .select(pl.col("rowId"), pl.col("columnId"), pl.col("timeId").cast(pl.Int64), pl.col("covariateValue"))
             .sort(["rowId", "columnId", "timeId"])
             .with_columns(pl.col("rowId") - 1,
@@ -238,3 +250,24 @@ class TemporalData(Dataset):
         return [batch, self.target[item].squeeze()]
 
 
+class DBReader:
+    def __init__(self, db_path: str):
+        self.db_path = db_path
+        self.suffix = pathlib.Path(db_path).suffix
+        self.data_quoted = quote(db_path)
+
+    def read_table(self, table: str, *, lazy: bool=False) -> pl.DataFrame | pl.LazyFrame:
+        query = f"SELECT * FROM {table}"
+
+        if self.suffix == ".sqlite":
+            df = pl.read_database_uri(query, uri=f"sqlite://{self.data_quoted}")
+        elif self.suffix == ".duckdb":
+            dest_path = pathlib.Path(self.data_quoted).parent.joinpath("python_copy.duckdb")
+            temp_path = pathlib.Path(shutil.copy(self.data_quoted, dest_path))
+            conn = duckdb.connect(str(temp_path))
+            df = conn.sql(query).pl()
+            conn.close()
+            temp_path.unlink()
+        else:
+            raise ValueError("Only .sqlite and .duckdb files are supported")
+        return df.lazy() if lazy else df
