@@ -24,7 +24,7 @@ class Embedding(nn.Module):
             .select("columnId")
             .sort("columnId")
             .to_torch()
-            .squeeze()
+            .squeeze(1)
         )
 
         self.embedding = nn.Embedding(

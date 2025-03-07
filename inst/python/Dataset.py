@@ -212,8 +212,23 @@ class TemporalData(Dataset):
                 pl.col("feature_values").fill_null(pl.lit([], dtype=pl.List(pl.Float32))),
                 pl.col("time_ids").fill_null(pl.lit([-1], dtype=pl.List(pl.Int64)))
             )
-            .collect()
         )
+        max_seq_length = 256
+        truncation_strategy = "tail"
+        if max_seq_length is not None:
+            if truncation_strategy != "tail":
+                raise NotImplementedError("Only tail truncation is implemented")
+            data = data.with_columns([
+                pl.col("feature_ids").list.slice(0, max_seq_length).alias(
+                    "feature_ids"),
+                pl.col("feature_values").list.slice(0, max_seq_length).alias(
+                    "feature_values"),
+                pl.col("time_ids").list.slice(0, max_seq_length).alias(
+                    "time_ids")
+            ])
+
+        data = data.collect()
+
 
         self.data = {
             "row_ids": data["rowId"],
