@@ -219,11 +219,17 @@ class TemporalData(Dataset):
             if truncation_strategy != "tail":
                 raise NotImplementedError("Only tail truncation is implemented")
             data = data.with_columns([
-                pl.col("feature_ids").list.slice(0, max_seq_length).alias(
+                pl.col("feature_ids").list.eval(
+                    pl.element().extend_constant(0, max_seq_length).
+                    slice(0, max_seq_length)).alias(
                     "feature_ids"),
-                pl.col("feature_values").list.slice(0, max_seq_length).alias(
+                pl.col("feature_values").list.eval(
+                    pl.element().extend_constant(0.0, max_seq_length).
+                    slice(0, max_seq_length)).alias(
                     "feature_values"),
-                pl.col("time_ids").list.slice(0, max_seq_length).alias(
+                pl.col("time_ids").list.eval(
+                    pl.element().extend_constant(-1, max_seq_length).
+                    slice(0, max_seq_length)).alias(
                     "time_ids")
             ])
 
@@ -252,15 +258,9 @@ class TemporalData(Dataset):
     def __getitem__(self, item):
         batch = {
             "row_ids": self.data["row_ids"][item].to_torch(),
-            "feature_ids": nested_tensor(self.data["feature_ids"][item].to_list(),
-                                                  dtype=torch.long,
-                                                  layout=torch.jagged).to_padded_tensor(padding=0),
-            "time_ids": nested_tensor(self.data["time_ids"][item].to_list(),
-                                      dtype=torch.long,
-                                      layout=torch.jagged).to_padded_tensor(padding=0),
-            "feature_values": nested_tensor(self.data["feature_values"][item].to_list(),
-                                                     dtype=torch.float32,
-                                                     layout=torch.jagged).to_padded_tensor(padding=0),
+            "feature_ids":torch.as_tensor(self.data["feature_ids"][item].to_list(), dtype=torch.long),
+            "time_ids": torch.as_tensor(self.data["time_ids"][item].to_list(), dtype=torch.long),
+            "feature_values": torch.as_tensor(self.data["feature_values"][item].to_list(), dtype=torch.float32),
         }
         return [batch, self.target[item].squeeze()]
 

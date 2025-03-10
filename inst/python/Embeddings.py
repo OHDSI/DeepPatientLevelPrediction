@@ -63,9 +63,10 @@ class Embedding(nn.Module):
 class NumericalEmbedding(nn.Module):
     def __init__(self, num_embeddings, embedding_dim, bias=True):
         super(NumericalEmbedding, self).__init__()
-        self.weight = nn.Parameter(torch.empty(num_embeddings, embedding_dim))
+        # +1 for padding
+        self.weight = nn.Parameter(torch.empty(num_embeddings + 1, embedding_dim))
         if bias:
-            self.bias = nn.Parameter(torch.empty(num_embeddings, embedding_dim))
+            self.bias = nn.Parameter(torch.empty(num_embeddings + 1, embedding_dim))
         else:
             self.bias = None
 
@@ -73,13 +74,18 @@ class NumericalEmbedding(nn.Module):
             if parameter is not None:
                 nn.init.kaiming_uniform_(parameter, a=math.sqrt(5))
 
+        with torch.no_grad():
+            self.weight[0].fill_(0)
+            if self.bias is not None:
+                self.bias[0].fill_(0)
+
     def forward(self, *inputs):
         values = inputs[1]
         ids = inputs[0]
         # ids are 1-indexed
-        emb = self.weight[ids - 1] * values.unsqueeze(-1)
+        emb = self.weight[ids] * values.unsqueeze(-1)
         if self.bias is not None:
-            emb = emb + self.bias[ids - 1]
+            emb = emb + self.bias[ids]
         return emb
 
 
