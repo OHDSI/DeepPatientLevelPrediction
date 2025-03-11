@@ -213,7 +213,7 @@ class TemporalData(Dataset):
                 pl.col("time_ids").fill_null(pl.lit([-1], dtype=pl.List(pl.Int64)))
             )
         )
-        max_seq_length = 256
+        max_seq_length = 255
         truncation_strategy = "tail"
         if max_seq_length is not None:
             if truncation_strategy != "tail":

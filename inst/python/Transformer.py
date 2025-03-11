@@ -31,9 +31,8 @@ class Transformer(nn.Module):
         dim_out: int = 1,
         head_activation=nn.ReLU,
         activation=ReGLU,
-        ffn_norm=nn.LayerNorm,
+        norm_layer=nn.LayerNorm,
         head_norm=nn.LayerNorm,
-        att_norm=nn.LayerNorm,
         model_type="Transformer",
         temporal = False
     ):
@@ -50,34 +49,20 @@ class Transformer(nn.Module):
 
         self.class_token = ClassToken(dim_token)
 
-        self.layers = nn.ModuleList([])
+        self.layers = nn.ModuleList()
         for layer_idx in range(num_blocks):
-            layer = nn.ModuleDict(
-                {
-                    "attention": MultiHeadAttention(
-                        E_q=dim_token,
-                        E_k=dim_token,
-                        E_v=dim_token,
-                        E_total=dim_token,
-                        nheads=num_heads,
-                        dropout_p=att_dropout
-                    ),
-                    "ffn": FeedForwardBlock(
-                        dim_token,
-                        dim_hidden,
-                        bias_first=True,
-                        bias_second=True,
-                        dropout=ffn_dropout,
-                        activation=activation,
-                    ),
-                    "attention_res_dropout": nn.Dropout(res_dropout),
-                    "ffn_res_dropout": nn.Dropout(res_dropout),
-                    "ffn_norm": ffn_norm(dim_token),
-                }
+            block = TransformerBlock(
+                dim_token=dim_token,
+                num_heads=num_heads,
+                att_dropout=att_dropout,
+                ffn_dropout=ffn_dropout,
+                dim_hidden=dim_hidden,
+                norm_layer=norm_layer,
+                activation=activation,
+                skip_attn_norm=(layer_idx==0),
+                only_class_token=(layer_idx == num_blocks - 1)
             )
-            if layer_idx != 0:
-                layer["attention_norm"] = att_norm(dim_token)
-            self.layers.append(layer)
+            self.layers.append(block)
 
         self.head = Head(
             dim_token,
@@ -97,26 +82,7 @@ class Transformer(nn.Module):
         mask = (x != 0).any(dim=-1)
         mask = mask.unsqueeze(1).expand(-1, mask.size(1), -1)
         for i, layer in enumerate(self.layers):
-            if i < len(self.layers) - 1:
-                x_residual = self.start_residual(layer, "attention", x)
-                x_residual = layer["attention"](
-                    x_residual,
-                    x_residual,
-                    x_residual,
-                    mask)
-                x = self.end_residual(layer, "attention", x, x_residual)
-            else:
-                x_residual = self.start_residual(layer, "attention", x)
-                x_residual = layer["attention"](
-                    x_residual[:, :1],
-                    x_residual,
-                    x_residual,
-                    mask[:, :1]
-                )
-                x = self.end_residual(layer, "attention", x[:, :1], x_residual)
-            x_residual = self.start_residual(layer, "ffn", x)
-            x_residual = layer["ffn"](x_residual)
-            x = self.end_residual(layer, "ffn", x, x_residual)
+            x = layer(x, mask)
         x = self.head(x)
         return x.squeeze()
 
@@ -129,17 +95,62 @@ class Transformer(nn.Module):
             dim_out=self.dim_out
         )
 
-    @staticmethod
-    def start_residual(layer, stage, x):
-        norm = f"{stage}_norm"
-        if norm in layer.keys():
-            x = layer[stage + "_norm"](x)
-        return x
 
-    @staticmethod
-    def end_residual(layer, stage, x, x_residual):
-        x_residual = layer[f"{stage}_res_dropout"](x_residual)
-        return x + x_residual
+
+class TransformerBlock(nn.Module):
+    def __init__(self,
+                 dim_token: int,
+                 num_heads: int,
+                 att_dropout: float,
+                 ffn_dropout: float,
+                 dim_hidden: int,
+                 norm_layer = nn.LayerNorm,
+                 activation = ReGLU,
+                 skip_attn_norm: bool = False,
+                 only_class_token: bool = False):
+        super(TransformerBlock, self).__init__()
+        if skip_attn_norm:
+            self.attn_norm = nn.Identity()
+        else:
+            self.attn_norm = norm_layer(dim_token)
+
+        self.query_selector = (lambda x: x[:, :1, :]) if only_class_token else (
+            lambda x: x)
+        self.residual_selector = (
+            lambda x: x[:, :1, :]) if only_class_token else (lambda x: x)
+        self.mask_selector = (lambda m: m[:, :1, :]) if only_class_token else (
+            lambda m: m)
+
+        self.attn = MultiHeadAttention(
+            E_q=dim_token,
+            E_k=dim_token,
+            E_v=dim_token,
+            E_total=dim_token,
+            nheads=num_heads,
+            dropout_p=att_dropout
+        )
+        self.attn_dropout = nn.Dropout(att_dropout)
+
+        self.ffn_norm = norm_layer(dim_token)
+        self.ffn = FeedForwardBlock(
+            dim_token=dim_token,
+            dim_hidden=dim_hidden,
+            dropout=ffn_dropout,
+            activation=activation
+        )
+        self.ffn_dropout = nn.Dropout(ffn_dropout)
+
+    def forward(self, x: torch.Tensor, mask: torch.Tensor, time_ids: torch.Tensor = None) -> torch.Tensor:
+        x_norm = self.attn_norm(x)
+        attn_out = self.attn(query=self.query_selector(x_norm), key=x_norm, value=x_norm, mask=self.mask_selector(mask))
+        attn_out = self.attn_dropout(attn_out)
+        x = self.residual_selector(x) + attn_out
+
+        x_norm = self.ffn_norm(x)
+        ffn_out = self.ffn(x_norm)
+        ffn_out = self.ffn_dropout(ffn_out)
+        x = self.residual_selector(x) + ffn_out
+        return x
 
 
 class FeedForwardBlock(nn.Module):
