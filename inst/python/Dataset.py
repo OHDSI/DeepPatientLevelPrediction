@@ -150,7 +150,7 @@ class TemporalData(Dataset):
         all_observations = (
             original_data.
             select("rowId").
-            with_columns(pl.col('rowId') - 1).
+            with_columns(pl.col('rowId') - 1). # R to Py
             unique()
         )
 
@@ -163,6 +163,10 @@ class TemporalData(Dataset):
         data = (
             original_data
             .select(pl.col("rowId"), pl.col("columnId"), pl.col("timeId").cast(pl.Int64), pl.col("covariateValue"))
+            .with_columns(
+                pl.col('rowId') - 1, # R to Py
+                pl.col("columnId") - 1 # R to Py
+            )
         )
 
         data_mmz = (
@@ -180,7 +184,7 @@ class TemporalData(Dataset):
         data = (
             pl.concat([data_mmz, data_remaining])
             .sort(["rowId", "columnId"])
-            .with_columns(pl.col("rowId") - 1)
+            .with_columns(pl.col("rowId"))
         )
         # filter by categorical columns,
         # select rowId and columnId
@@ -189,7 +193,7 @@ class TemporalData(Dataset):
             data
             .select(pl.col("rowId"), pl.col("columnId"), pl.col("timeId").cast(pl.Int64), pl.col("covariateValue"))
             .sort(["rowId", "columnId", "timeId"])
-            .with_columns(pl.col("rowId") - 1,
+            .with_columns(pl.col("rowId"),
                           pl.col("timeId").fill_null(-1))
         )
         # the following gives me a dataframe with column rowId and then the sequence
@@ -237,10 +241,10 @@ class TemporalData(Dataset):
 
 
         self.data = {
-            "row_ids": data["rowId"],
-            "feature_ids": data["feature_ids"],
-            "time_ids": data["time_ids"],
-            "feature_values": data["feature_values"],
+            "row_ids": data["rowId"].to_torch(),
+            "feature_ids": torch.as_tensor(data["feature_ids"].list.to_array(width=max_seq_length).to_numpy(writable=True), dtype=torch.long),
+            "time_ids": torch.as_tensor(data["time_ids"].list.to_array(width=max_seq_length).to_numpy(writable=True), dtype=torch.long),
+            "feature_values": torch.as_tensor(data["feature_values"].list.to_array(width=max_seq_length).to_numpy(writable=True), dtype=torch.float32),
         }
         delta = time.time() - start
         print(f"Processed data in {delta:.2f} seconds")
@@ -257,10 +261,10 @@ class TemporalData(Dataset):
 
     def __getitem__(self, item):
         batch = {
-            "row_ids": self.data["row_ids"][item].to_torch(),
-            "feature_ids":torch.as_tensor(self.data["feature_ids"][item].to_list(), dtype=torch.long),
-            "time_ids": torch.as_tensor(self.data["time_ids"][item].to_list(), dtype=torch.long),
-            "feature_values": torch.as_tensor(self.data["feature_values"][item].to_list(), dtype=torch.float32),
+            "row_ids": self.data["row_ids"][item],
+            "feature_ids": self.data["feature_ids"][item],
+            "time_ids": self.data["time_ids"][item],
+            "feature_values": self.data["feature_values"][item],
         }
         return [batch, self.target[item].squeeze()]
 
