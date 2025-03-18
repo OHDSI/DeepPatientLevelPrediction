@@ -2,7 +2,7 @@
 % Please edit documentation in R/Transformer.R
 \name{setTransformer}
 \alias{setTransformer}
-\title{create settings for training a non-temporal transformer}
+\title{create settings for training a transformer}
 \usage{
 setTransformer(
   numBlocks = 3,
@@ -11,9 +11,11 @@ setTransformer(
   numHeads = 8,
   attDropout = 0.2,
   ffnDropout = 0.1,
-  resDropout = 0,
   dimHidden = 256,
   dimHiddenRatio = NULL,
+  temporal = FALSE,
+  useRope = FALSE,
+  maxSequenceLength = 256,
   estimatorSettings = setEstimator(weightDecay = 1e-06, batchSize = 1024, epochs = 10,
     seed = NULL),
   hyperParamSearch = "random",
@@ -35,12 +37,12 @@ problems}
 
 \item{ffnDropout}{dropout to use in feedforward block}
 
-\item{resDropout}{dropout to use in residual connections}
-
 \item{dimHidden}{dimension of the feedworward block}
 
 \item{dimHiddenRatio}{dimension of the feedforward block as a ratio
 of dimToken (embedding size)}
+
+\item{temporal}{Whether to use a transformer with temporal data}
 
 \item{estimatorSettings}{created with `setEstimator`}
 
@@ -53,9 +55,12 @@ search if random}
 \item{randomSampleSeed}{Random seed to sample hyperparameter
 combinations}
 }
+\value{
+list of settings for the transformer model
+}
 \description{
 A transformer model
 }
 \details{
-from https://arxiv.org/abs/2106.11959
+The non-temporal transformer is from https://arxiv.org/abs/2106.11959
 }

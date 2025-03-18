@@ -40,7 +40,6 @@ setDefaultTransformer <- function(estimatorSettings =
     numHeads = 8,
     attDropout = 0.2,
     ffnDropout = 0.1,
-    resDropout = 0.0,
     dimHidden = 256,
     estimatorSettings = estimatorSettings,
     hyperParamSearch = "random",
@@ -62,10 +61,14 @@ setDefaultTransformer <- function(estimatorSettings =
 #' @param numHeads                number of attention heads
 #' @param attDropout              dropout to use on attentions
 #' @param ffnDropout              dropout to use in feedforward block
-#' @param resDropout              dropout to use in residual connections
 #' @param dimHidden               dimension of the feedworward block
 #' @param dimHiddenRatio          dimension of the feedforward block as a ratio
 #' of dimToken (embedding size)
+#' @param temporal                Whether to use a transformer with temporal data
+#' @param useRope                 Whether to use ROPE (Relative Positional Encoding)
+#' @param maxSequenceLength       Maximum sequence length, sequences longer than
+#' this will be truncated and/or padded to this length
+#' @param truncation              Truncation method, only 'tail' is supported
 #' @param estimatorSettings       created with `setEstimator`
 #' @param hyperParamSearch        what kind of hyperparameter search to do,
 #' default 'random'
@@ -73,7 +76,6 @@ setDefaultTransformer <- function(estimatorSettings =
 #' search if random
 #' @param randomSampleSeed        Random seed to sample hyperparameter
 #' combinations
-#' @param temporal                Whether to use a transformer with temporal data
 #' @return list of settings for the transformer model
 #'
 #' @export
@@ -83,10 +85,12 @@ setTransformer <- function(numBlocks = 3,
                            numHeads = 8,
                            attDropout = 0.2,
                            ffnDropout = 0.1,
-                           resDropout = 0,
                            dimHidden = 256,
                            dimHiddenRatio = NULL,
                            temporal = FALSE,
+                           useRope = FALSE,
+                           maxSequenceLength = 256,
+                           truncation = "tail",
                            estimatorSettings = setEstimator(
                              weightDecay = 1e-6,
                              batchSize = 1024,
@@ -113,9 +117,6 @@ setTransformer <- function(numBlocks = 3,
 
   checkIsClass(ffnDropout, c("numeric"))
   checkHigherEqual(ffnDropout, 0)
-
-  checkIsClass(resDropout, c("numeric"))
-  checkHigherEqual(resDropout, 0)
 
   checkIsClass(dimHidden, c("integer", "numeric", "NULL"))
   if (!is.null(dimHidden)) {
@@ -154,6 +155,19 @@ setTransformer <- function(numBlocks = 3,
     dimHidden <- dimHiddenRatio
   }
 
+  checkIsClass(useRope, "logical")
+  checkIsClass(maxSequenceLength, c("integer", "numeric"))
+  checkHigherEqual(maxSequenceLength, 1)
+  if (inherits(maxSequenceLength, "numeric")) {
+    maxSequenceLength <- as.integer(round(maxSequenceLength))
+  }
+  checkIsClass(truncation, "character")
+  if (truncation != "tail") {
+    stop(paste(
+      "Only truncation method 'tail' is supported. truncation =", truncation
+    ))
+  }
+
   paramGrid <- list(
     numBlocks = numBlocks,
     dimToken = dimToken,
@@ -161,9 +175,11 @@ setTransformer <- function(numBlocks = 3,
     numHeads = numHeads,
     dimHidden = dimHidden,
     attDropout = attDropout,
-    ffnDropout = ffnDropout,
-    resDropout = resDropout
+    ffnDropout = ffnDropout
   )
+  if (temporal) {
+    paramGrid[["useRope"]] <- useRope
+  }
 
   paramGrid <- c(paramGrid, estimatorSettings$paramsToTune)
 
@@ -200,12 +216,15 @@ setTransformer <- function(numBlocks = 3,
     saveType = "file",
     modelParamNames = c(
       "numBlocks", "dimToken", "dimOut", "numHeads",
-      "attDropout", "ffnDropout", "resDropout", "dimHidden"
+      "attDropout", "ffnDropout", "dimHidden"
     ),
     modelType = "Transformer"
   )
   if (temporal) {
     attr(results$param, "temporalModel") <- TRUE
+    attr(results$param, "truncation") <- truncation
+    attr(results$param, "maxSequenceLength") <- maxSequenceLength
+    results$modelParamNames <- c(results$modelParamNames, "useRope")
   }
   attr(results$param, "settings")$modelType <- results$modelType
   class(results) <- "modelSettings"

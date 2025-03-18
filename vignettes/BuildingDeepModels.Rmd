@@ -420,8 +420,8 @@ self-attention layer and a feedforward block with two linear layers.
 `numHeads` : Number of attention heads for the self-attention, `dimToken` needs
 to be divisible by `numHeads`.
 
-`attDropout`, `ffnDropout` and `resDropout` : How much dropout to apply
-on attentions, feedforward block or in residual connections
+`attDropout`, `ffnDropout` : How much dropout to apply
+on attentions or feedforward block
 
 `dimHidden` : How many neurons in linear layers inside the feedforward
 block
@@ -436,7 +436,6 @@ modelSettings <- setTransformer(numBlocks = 3L,
                                 numHeads = 4L,
                                 attDropout = 0.25,
                                 ffnDropout = 0.25,
-                                resDropout = 0,
                                 dimHidden = 128L,
                                 estimatorSettings = setEstimator(
                                   learningRate = 3e-4,

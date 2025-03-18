@@ -1,10 +1,10 @@
-import math
+from typing import Optional, Type
 
 import torch
 from torch import nn
 import torch.nn.functional as F
 
-from inst.python.Embeddings import Embedding, ClassToken
+from inst.python.Embeddings import Embedding, ClassToken, RotaryEmbedding
 
 
 def reglu(x):
@@ -21,20 +21,19 @@ class Transformer(nn.Module):
     def __init__(
         self,
         feature_info,
-        num_blocks: int, # model architecture
-        dim_token: int, # embedding size
-        num_heads: int, # number of heads in multihead attention
-        att_dropout, #
-        ffn_dropout,
-        res_dropout,
-        dim_hidden: int, # hidden layer size
+        num_blocks: int,
+        dim_token: int,
+        num_heads: int,
+        att_dropout: float,
+        ffn_dropout: float,
+        dim_hidden: int,
         dim_out: int = 1,
-        head_activation=nn.ReLU,
-        activation=ReGLU,
-        norm_layer=nn.LayerNorm,
-        head_norm=nn.LayerNorm,
+        head_activation: Type[nn.Module] = nn.ReLU,
+        activation: Type[nn.Module] = ReGLU,
+        norm_layer: Type[nn.Module] = nn.LayerNorm,
+        head_norm: Type[nn.Module] = nn.LayerNorm,
+        use_rope: bool = False,
         model_type="Transformer",
-        temporal = False
     ):
         super(Transformer, self).__init__()
         self.name = model_type
@@ -44,8 +43,7 @@ class Transformer(nn.Module):
         dim_hidden = int(dim_hidden)
         dim_out = int(dim_out)
 
-        self.embedding = Embedding(embedding_dim=dim_token,
-                                   feature_info=feature_info)
+        self.embedding = Embedding(embedding_dim=dim_token, feature_info=feature_info)
 
         self.class_token = ClassToken(dim_token)
 
@@ -59,8 +57,10 @@ class Transformer(nn.Module):
                 dim_hidden=dim_hidden,
                 norm_layer=norm_layer,
                 activation=activation,
-                skip_attn_norm=(layer_idx==0),
-                only_class_token=(layer_idx == num_blocks - 1)
+                skip_attn_norm=(layer_idx == 0),
+                only_class_token=(layer_idx == num_blocks - 1),
+                use_rope=use_rope,
+                max_time_id=feature_info["max_time_id"],
             )
             self.layers.append(block)
 
@@ -77,12 +77,16 @@ class Transformer(nn.Module):
         self.dim_out = dim_out
 
     def forward(self, x):
+        if "time_ids" in x.keys() and x["time_ids"] is not None:
+            time_ids = x["time_ids"]
+        else:
+            time_ids = None
         x = self.embedding(x)
         x = self.class_token(x)
         mask = (x != 0).any(dim=-1)
         mask = mask.unsqueeze(1).expand(-1, mask.size(1), -1)
-        for i, layer in enumerate(self.layers):
-            x = layer(x, mask)
+        for layer in self.layers:
+            x = layer(x, mask, time_ids)
         x = self.head(x)
         return x.squeeze()
 
@@ -92,34 +96,43 @@ class Transformer(nn.Module):
             bias=True,
             activation=self.head_activation,
             normalization=self.head_normalization,
-            dim_out=self.dim_out
+            dim_out=self.dim_out,
         )
 
 
-
 class TransformerBlock(nn.Module):
-    def __init__(self,
-                 dim_token: int,
-                 num_heads: int,
-                 att_dropout: float,
-                 ffn_dropout: float,
-                 dim_hidden: int,
-                 norm_layer = nn.LayerNorm,
-                 activation = ReGLU,
-                 skip_attn_norm: bool = False,
-                 only_class_token: bool = False):
+    def __init__(
+        self,
+        dim_token: int,
+        num_heads: int,
+        att_dropout: float,
+        ffn_dropout: float,
+        dim_hidden: int,
+        norm_layer: Type[nn.Module] = nn.LayerNorm,
+        activation: Type[nn.Module] = ReGLU,
+        skip_attn_norm: bool = False,
+        only_class_token: bool = False,
+        use_rope: bool = False,
+        max_time_id: int = 512,
+    ):
         super(TransformerBlock, self).__init__()
         if skip_attn_norm:
             self.attn_norm = nn.Identity()
         else:
             self.attn_norm = norm_layer(dim_token)
 
-        self.query_selector = (lambda x: x[:, :1, :]) if only_class_token else (
-            lambda x: x)
+        self.query_selector = (
+            (lambda x: x[:, :1, :]) if only_class_token else (lambda x: x)
+        )
         self.residual_selector = (
-            lambda x: x[:, :1, :]) if only_class_token else (lambda x: x)
-        self.mask_selector = (lambda m: m[:, :1, :]) if only_class_token else (
-            lambda m: m)
+            (lambda x: x[:, :1, :]) if only_class_token else (lambda x: x)
+        )
+        self.mask_selector = (
+            (lambda m: m[:, :1, :]) if only_class_token else (lambda m: m)
+        )
+        self.time_ids_selector = (
+            (lambda t: t[:, :1]) if only_class_token else (lambda t: t)
+        )
 
         self.attn = MultiHeadAttention(
             E_q=dim_token,
@@ -127,7 +140,9 @@ class TransformerBlock(nn.Module):
             E_v=dim_token,
             E_total=dim_token,
             nheads=num_heads,
-            dropout_p=att_dropout
+            dropout_p=att_dropout,
+            use_rope=use_rope,
+            max_time_id=max_time_id,
         )
         self.attn_dropout = nn.Dropout(att_dropout)
 
@@ -136,13 +151,24 @@ class TransformerBlock(nn.Module):
             dim_token=dim_token,
             dim_hidden=dim_hidden,
             dropout=ffn_dropout,
-            activation=activation
+            activation=activation,
         )
         self.ffn_dropout = nn.Dropout(ffn_dropout)
 
-    def forward(self, x: torch.Tensor, mask: torch.Tensor, time_ids: torch.Tensor = None) -> torch.Tensor:
+    def forward(
+        self,
+        x: torch.Tensor,
+        mask: torch.Tensor,
+        time_ids: Optional[torch.Tensor] = None,
+    ) -> torch.Tensor:
         x_norm = self.attn_norm(x)
-        attn_out = self.attn(query=self.query_selector(x_norm), key=x_norm, value=x_norm, mask=self.mask_selector(mask))
+        attn_out = self.attn(
+            query=self.query_selector(x_norm),
+            key=x_norm,
+            value=x_norm,
+            mask=self.mask_selector(mask),
+            time_ids=self.time_ids_selector(time_ids) if time_ids is not None else None,
+        )
         attn_out = self.attn_dropout(attn_out)
         x = self.residual_selector(x) + attn_out
 
@@ -156,12 +182,12 @@ class TransformerBlock(nn.Module):
 class FeedForwardBlock(nn.Module):
     def __init__(
         self,
-        dim_token,
-        dim_hidden,
-        bias_first=True,
-        bias_second=True,
-        dropout=0.0,
-        activation=ReGLU,
+        dim_token: int,
+        dim_hidden: int,
+        bias_first: bool=True,
+        bias_second: bool=True,
+        dropout: float=0.0,
+        activation: Type[nn.Module]=ReGLU,
     ):
         super(FeedForwardBlock, self).__init__()
         self.linear0 = nn.Linear(dim_token, int(dim_hidden * 2), bias=bias_first)
@@ -199,13 +225,27 @@ class MultiHeadAttention(nn.Module):
         E_q (int): Size of embedding dim for query
         E_k (int): Size of embedding dim for key
         E_v (int): Size of embedding dim for value
-        E_total (int): Total embedding dim of combined heads post input projection. Each head
-            has dim E_total // nheads
+        E_total (int): Total embedding dim of combined heads post input
+            projection. Each head has dim E_total // nheads
         nheads (int): Number of heads
         dropout_p (float, optional): Dropout probability. Default: 0.0
+        use_rope (bool, optional): Whether to use RoPE (rotary positional
+            embedding). Default: False
+        max_time_id (int, optional): Maximum time_id for RoPE.
+            Default: 512
     """
-    def __init__(self, E_q: int, E_k: int, E_v: int, E_total: int,
-                 nheads: int, dropout_p: float = 0.0):
+
+    def __init__(
+        self,
+        E_q: int,
+        E_k: int,
+        E_v: int,
+        E_total: int,
+        nheads: int,
+        dropout_p: float = 0.0,
+        use_rope: bool = False,
+        max_time_id: int = 512,
+    ):
         super().__init__()
         self.nheads = nheads
         self.dropout_p = dropout_p
@@ -217,7 +257,22 @@ class MultiHeadAttention(nn.Module):
         assert E_total % nheads == 0, "Embedding dim is not divisible by nheads"
         self.E_head = E_total // nheads
 
-    def forward(self, query: torch.Tensor, key: torch.Tensor, value: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
+        self.use_rope = use_rope
+        if self.use_rope:
+            self.rope = RotaryEmbedding(
+                head_dim=self.E_head, base=10000, max_time_id=max_time_id
+            )
+        else:
+            self.rope = nn.Identity()
+
+    def forward(
+        self,
+        query: torch.Tensor,
+        key: torch.Tensor,
+        value: torch.Tensor,
+        mask: torch.Tensor,
+        time_ids: Optional[torch.Tensor] = None,
+    ) -> torch.Tensor:
         """
         Forward pass; runs the following process:
             1. Apply input projection
@@ -230,6 +285,7 @@ class MultiHeadAttention(nn.Module):
             key (torch.Tensor): key of shape (N, L_s, E_k)
             value (torch.Tensor): value of shape (N, L_s, E_v)
             mask (torch.Tensor): mask of shape (N, L_t, E_q)
+            time_ids (torch.Tensor, optional): time ids of shape (N, L_t) for RoPE
 
         Returns:
             attn_output (torch.Tensor): output of shape (N, L_t, E_q)
@@ -249,13 +305,15 @@ class MultiHeadAttention(nn.Module):
         # (N, L_s, E_total) -> (N, L_s, nheads, E_head) -> (N, nheads, L_s, E_head)
         value = value.unflatten(-1, [self.nheads, self.E_head]).transpose(1, 2)
 
+        if self.use_rope and time_ids is not None:
+            query = self.rope(query, time_ids)
+            key = self.rope(key, time_ids)
         mask = mask.unsqueeze(1)
 
         # Step 3. Run SDPA
         # (N, nheads, L_t, E_head)
         attn_output = F.scaled_dot_product_attention(
-            query, key, value, dropout_p=self.dropout_p, is_causal=False,
-            attn_mask=mask
+            query, key, value, dropout_p=self.dropout_p, is_causal=False, attn_mask=mask
         )
         # (N, nheads, L_t, E_head) -> (N, L_t, nheads, E_head) -> (N, L_t, E_total)
         attn_output = attn_output.transpose(1, 2).flatten(-2)
@@ -265,6 +323,3 @@ class MultiHeadAttention(nn.Module):
         attn_output = self.out_proj(attn_output)
 
         return attn_output
-
-
-

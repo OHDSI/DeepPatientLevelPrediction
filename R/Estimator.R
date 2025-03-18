@@ -45,26 +45,25 @@
 #' @param seed seed to initialize weights of model with
 #' @export
 setEstimator <- function(
-  learningRate = "auto",
-  weightDecay = 0.0,
-  batchSize = 512,
-  epochs = 30,
-  device = "cpu",
-  optimizer = torch$optim$AdamW,
-  scheduler = list(
-    fun = torch$optim$lr_scheduler$ReduceLROnPlateau,
-    params = list(patience = 1)
-  ),
-  criterion = torch$nn$BCEWithLogitsLoss,
-  earlyStopping = list(
-    useEarlyStopping = TRUE,
-    params = list(patience = 4)
-  ),
-  compile = FALSE,
-  metric = "auc",
-  accumulationSteps = NULL,
-  seed = NULL
-) {
+    learningRate = "auto",
+    weightDecay = 0.0,
+    batchSize = 512,
+    epochs = 30,
+    device = "cpu",
+    optimizer = torch$optim$AdamW,
+    scheduler = list(
+      fun = torch$optim$lr_scheduler$ReduceLROnPlateau,
+      params = list(patience = 1)
+    ),
+    criterion = torch$nn$BCEWithLogitsLoss,
+    earlyStopping = list(
+      useEarlyStopping = TRUE,
+      params = list(patience = 4)
+    ),
+    compile = FALSE,
+    metric = "auc",
+    accumulationSteps = NULL,
+    seed = NULL) {
   checkIsClass(learningRate, c("numeric", "character"))
   if (inherits(learningRate, "character") && learningRate != "auto") {
     stop(paste0(
@@ -165,12 +164,11 @@ setEstimator <- function(
 #'
 #' @export
 fitEstimator <- function(
-  trainData,
-  modelSettings,
-  analysisId,
-  analysisPath,
-  ...
-) {
+    trainData,
+    modelSettings,
+    analysisId,
+    analysisPath,
+    ...) {
   start <- Sys.time()
   if (!is.null(trainData$folds)) {
     trainData$labels <- merge(trainData$labels, trainData$fold, by = "rowId")
@@ -321,7 +319,10 @@ predictDeepEstimator <- function(plpModel, data, cohort) {
       mapping = plpModel$covariateImportance %>%
         dplyr::select("columnId", "covariateId")
     )
-    data <- createDataset(mappedData, plpModel = plpModel)
+    data <- createDataset(mappedData,
+                          plpModel = plpModel,
+                          maxSequenceLength = attr(plpModel$modelDesign$modelSettings$param, "maxSequenceLength"),
+                          truncation = attr(plpModel$modelDesign$modelSettings$param, "truncation"))
   } else if ("plpData" %in% class(data)) {
     mappedData <- PatientLevelPrediction::MapIds(
       data$covariateData,
@@ -329,7 +330,8 @@ predictDeepEstimator <- function(plpModel, data, cohort) {
       mapping = plpModel$covariateImportance %>%
         dplyr::select("columnId", "covariateId")
     )
-    data <- createDataset(mappedData, plpModel = plpModel)
+    data <- createDataset(mappedData,
+                          plpModel = plpModel)
   }
 
   # get predictions
@@ -379,12 +381,11 @@ predictDeepEstimator <- function(plpModel, data, cohort) {
 #'
 #' @export
 gridCvDeep <- function(
-  mappedData,
-  labels,
-  modelSettings,
-  modelLocation,
-  analysisPath
-) {
+    mappedData,
+    labels,
+    modelSettings,
+    modelLocation,
+    analysisPath) {
   ParallelLogger::logInfo(paste0(
     "Running hyperparameter search for ",
     modelSettings$modelType,
@@ -397,8 +398,13 @@ gridCvDeep <- function(
   # setup cache for hyperparameterResults
   trainCache <- setupCache(analysisPath, paramSearch)
   hyperparameterResults <- trainCache$getGridSearchPredictions()
+  dataset <- createDataset(
+    data = mappedData,
+    labels = labels,
+    maxSequenceLength = attr(paramSearch, "maxSequenceLength"),
+    truncation = attr(paramSearch, "truncation")
+  )
 
-  dataset <- createDataset(data = mappedData, labels = labels)
 
   if (!trainCache$isFull()) {
     for (gridId in trainCache$getLastGridSearchIndex():length(paramSearch)) {
@@ -538,7 +544,7 @@ doCrossValidation <- function(dataset, labels, parameters, modelSettings) {
       error = function(e) {
         if (inherits(e, "torch.cuda.OutOfMemoryError")) {
           ParallelLogger::logError(
-            "Out of memory error during cross validation, trying to continue 
+            "Out of memory error during cross validation, trying to continue
             with next hyperparameter combination"
           )
           crossValidationResults <- list()
@@ -616,7 +622,6 @@ doCrossValidationImpl <- function(dataset, labels, parameters, modelSettings) {
   attr(currentModelParams, "metaData")$names <-
     modelSettings$modelParamNames
   currentModelParams$modelType <- modelSettings$modelType
-  currentModelParams$temporal <- attr(modelSettings$param, "temporalModel")
   currentEstimatorSettings <- fillEstimatorSettings(
     modelSettings$estimatorSettings,
     fitParams,

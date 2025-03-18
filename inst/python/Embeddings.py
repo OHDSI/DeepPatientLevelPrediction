@@ -105,7 +105,7 @@ class ClassTokenNested(nn.Module):
         """
 
         def __init__(self, dim_token):
-            super(ClassToken, self).__init__()
+            super(ClassTokenNested, self).__init__()
             self.weight = nn.Parameter(torch.empty(1, dim_token))
             nn.init.kaiming_uniform_(self.weight, a=math.sqrt(5))
 
@@ -134,3 +134,69 @@ class ClassToken(nn.Module):
     def forward(self, x):
         return torch.cat([self.expand([x.shape[0], 1]), x], dim=1)
 
+
+def rotate_every_two(x: torch.Tensor) -> torch.Tensor:
+    """
+    Helper function that rotates every two elements in the final dimension.
+    Works on a tensor with shape (..., head_dim). It splits the last dimension into pairs,
+    then rotates them by replacing (a, b) with (-b, a).
+
+    Args:
+        x (torch.Tensor): Input tensor with shape (..., head_dim).
+
+    Returns:
+        torch.Tensor: Rotated tensor with the same shape as input.
+    """
+    x1 = x[..., ::2]
+    x2 = x[..., 1::2]
+    x_rotated = torch.stack((-x2, x1), dim=-1).reshape_as(x)
+    return x_rotated
+
+
+class RotaryEmbedding(nn.Module):
+    """
+    Implements Rotary Positional Embedding (ROPE) that can optionally be scaled.
+
+    Args:
+        head_dim (int): the dimension for each attention head.
+        base (float): used to compute the inverse frequencies.
+        max_time_id (int): the maximum time_id to be supported.
+    """
+    def __init__(self, head_dim: int, base: float, max_time_id: int = 512):
+        super(RotaryEmbedding, self).__init__()
+        self.head_dim = head_dim
+        self.base = base
+
+        half_dim = head_dim // 2
+        inv_freq = 1 / (base ** (torch.arange(0, half_dim, dtype=torch.float32) / half_dim))
+        self.register_buffer("inv_freq", inv_freq)
+
+        pos = torch.arange(max_time_id, dtype=torch.float32).unsqueeze(1)  # shape: (max_seq_len, 1)
+        angles = pos * inv_freq.unsqueeze(0)  # shape: (max_seq_len, half_dim)
+
+        sin = torch.sin(angles).repeat_interleave(2, dim=-1)  # (max_seq_len, head_dim)
+        cos = torch.cos(angles).repeat_interleave(2, dim=-1)  # (max_seq_len, head_dim)
+        self.register_buffer("precomputed_sin", sin)
+        self.register_buffer("precomputed_cos", cos)
+
+    def forward(self, x, time_ids):
+        """
+
+        Applies the rotary embedding to the input tensor.
+
+        Args:
+               x (torch.Tensor): Tensor of shape (batch, nheads, seq_len, head_dim).
+               time_ids (torch.Tensor): Discrete time IDs of shape (batch, seq_len).
+        Returns:
+            torch.tensor: Tensor of the same shape as input x with rotary embeddings applied.
+        """
+        max_pos = self.precomputed_sin.shape[0]
+        if time_ids.max() >= max_pos:
+            raise ValueError(
+                "time_ids exceed precomputed maximum sequence length!")
+
+        sin_emb = self.precomputed_sin[time_ids].unsqueeze(1)  # (batch, 1, seq_len, head_dim)
+        cos_emb = self.precomputed_cos[time_ids].unsqueeze(1)  # (batch, 1, seq_len, head_dim)
+
+        # Apply the rotary transformation: x_rotated = x * cos + rotate_every_two(x) * sin.
+        return (x * cos_emb) + (rotate_every_two(x) * sin_emb)

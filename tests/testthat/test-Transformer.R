@@ -5,7 +5,6 @@ settings <- setTransformer(
   numHeads = 2,
   attDropout = 0.0,
   ffnDropout = 0.2,
-  resDropout = 0.0,
   dimHidden = 32,
   estimatorSettings = setEstimator(learningRate = 3e-4,
                                    batchSize = 64,
@@ -105,7 +104,6 @@ test_that("Default Transformer works", {
   expect_equal(params$numBlocks, 3)
   expect_equal(params$dimToken, 192)
   expect_equal(params$numHeads, 8)
-  expect_equal(params$resDropout, 0.0)
   expect_equal(params$attDropout, 0.2)
 
   settings <- attr(defaultTransformer, "settings")
