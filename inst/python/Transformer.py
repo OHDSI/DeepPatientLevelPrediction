@@ -60,7 +60,7 @@ class Transformer(nn.Module):
                 skip_attn_norm=(layer_idx == 0),
                 only_class_token=(layer_idx == num_blocks - 1),
                 use_rope=use_rope,
-                max_time_id=feature_info["max_time_id"],
+                max_time_id=feature_info["max_time_id"] if use_rope else None,
             )
             self.layers.append(block)
 
@@ -113,7 +113,7 @@ class TransformerBlock(nn.Module):
         skip_attn_norm: bool = False,
         only_class_token: bool = False,
         use_rope: bool = False,
-        max_time_id: int = 512,
+        max_time_id: Optional[int] = 512,
     ):
         super(TransformerBlock, self).__init__()
         if skip_attn_norm:
@@ -244,7 +244,7 @@ class MultiHeadAttention(nn.Module):
         nheads: int,
         dropout_p: float = 0.0,
         use_rope: bool = False,
-        max_time_id: int = 512,
+        max_time_id: Optional[int] = 512,
     ):
         super().__init__()
         self.nheads = nheads
@@ -258,7 +258,7 @@ class MultiHeadAttention(nn.Module):
         self.E_head = E_total // nheads
 
         self.use_rope = use_rope
-        if self.use_rope:
+        if self.use_rope and max_time_id is not None:
             self.rope = RotaryEmbedding(
                 head_dim=self.E_head, base=10000, max_time_id=max_time_id
             )
