@@ -57,7 +57,7 @@ package and
 package to build Deep Learning models. This vignette assumes you have
 read and are comfortable with building patient level prediction models
 as described in the [`BuildingPredictiveModels`
-vignette](https://github.com/OHDSI/PatientLevelPrediction/blob/main/inst/doc/BuildingPredictiveModels.pdf).
+vignette](https://ohdsi.github.io/PatientLevelPrediction/articles/BuildingPredictiveModels.html).
 Furthermore, this vignette assumes you are familiar with Deep Learning
 methods.
 
