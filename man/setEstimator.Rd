@@ -18,7 +18,8 @@ setEstimator(
   compile = FALSE,
   metric = "auc",
   accumulationSteps = NULL,
-  seed = NULL
+  seed = NULL,
+  trainValidationSplit = FALSE
 )
 }
 \arguments{
@@ -55,6 +56,9 @@ outputs a score.}
 updating weights, can also be a function that is evaluated during runtime}
 
 \item{seed}{seed to initialize weights of model with}
+
+\item{trainValidationSplit}{if TRUE, perform a train-validation split for 
+model selection instead of cross validation}
 }
 \description{
 creates settings for the Estimator, which takes a model and trains it
