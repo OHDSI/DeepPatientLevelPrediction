@@ -36,7 +36,7 @@ Suggests:
     DatabaseConnector (>= 6.0.0),
     Andromeda
 Remotes:
-    ohdsi/PatientLevelPrediction,
+    ohdsi/PatientLevelPrediction@develop,
     ohdsi/ResultModelManager
 RoxygenNote: 7.3.2
 Encoding: UTF-8
