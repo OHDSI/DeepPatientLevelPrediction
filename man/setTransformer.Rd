@@ -16,6 +16,7 @@ setTransformer(
   temporal = FALSE,
   useRope = FALSE,
   maxSequenceLength = 256,
+  truncation = "tail",
   estimatorSettings = setEstimator(weightDecay = 1e-06, batchSize = 1024, epochs = 10,
     seed = NULL),
   hyperParamSearch = "random",
@@ -43,6 +44,13 @@ problems}
 of dimToken (embedding size)}
 
 \item{temporal}{Whether to use a transformer with temporal data}
+
+\item{useRope}{Whether to use ROPE (Relative Positional Encoding)}
+
+\item{maxSequenceLength}{Maximum sequence length, sequences longer than
+this will be truncated and/or padded to this length}
+
+\item{truncation}{Truncation method, only 'tail' is supported}
 
 \item{estimatorSettings}{created with `setEstimator`}
 
