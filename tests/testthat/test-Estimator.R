@@ -433,6 +433,37 @@ test_that("accumulationSteps as a function argument works", {
 
   expect_equal(estimator$accumulation_steps, 4)
 
+
   Sys.unsetenv("testAccSteps")
 
+})
+
+test_that("train-validation split functionality works", {
+  estimatorSettings <-
+    setEstimator(learningRate = 3e-4,
+                 weightDecay = 0.0,
+                 batchSize = 128,
+                 epochs = 1,
+                 device = "cpu",
+                 seed = 42,
+                 optimizer = torch$optim$AdamW,
+                 criterion = torch$nn$BCEWithLogitsLoss,
+                 metric = "loss",
+                 scheduler =
+                 list(fun = torch$optim$lr_scheduler$ReduceLROnPlateau,
+                      params = list(patience = 1)),
+                 earlyStopping = NULL,
+                 trainValidationSplit = TRUE)
+  modelSettings <- setResNet(numLayers = 1, sizeHidden = 16,
+                             hiddenFactor = 1, residualDropout = 0,
+                             hiddenDropout = 0, sizeEmbedding = 8,
+                             estimatorSettings = estimatorSettings,
+                             randomSample = 1)
+
+  fitResult <- fitEstimator(trainData$Train, modelSettings, analysisId = 1, analysisPath = tempdir())
+
+  expect_s3_class(fitResult, "plpModel")
+  uniqueEvalTypes <- unique(fitResult$prediction$evaluationType)
+  expect_true("Validation" %in% uniqueEvalTypes)
+  expect_true("Train" %in% uniqueEvalTypes)
 })
