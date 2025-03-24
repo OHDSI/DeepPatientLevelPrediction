@@ -85,7 +85,7 @@ jobs:
 
       - name: setup r-reticulate venv
         run: | 
-          uv pip install polars tqdm connectorx pyarrow duckdb pynvml numpy
+          uv pip install polars pandas tqdm connectorx pyarrow duckdb pynvml numpy
           uv pip install torch --index https://download.pytorch.org/whl/cpu/
 
       - uses: r-lib/actions/check-r-package@v2
