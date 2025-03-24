@@ -66,7 +66,7 @@
 Egill Fridgeirsson, Chungsoo Kim, Henrik John, Seng Chan You, Xiaoyong
 Pan</h4>
             
-            <h4 data-toc-skip class="date">2024-12-17</h4>
+            <h4 data-toc-skip class="date">2025-03-24</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/OHDSI/DeepPatientLevelPrediction/blob/develop/vignettes/BuildingDeepModels.Rmd" class="external-link"><code>vignettes/BuildingDeepModels.Rmd</code></a></small>
       <div class="d-none name"><code>BuildingDeepModels.Rmd</code></div>
@@ -102,7 +102,7 @@ Sciences and Informatics (OHDSI) <a href="http://github.com/OHDSI/PatientLevelPr
 package and <a href="http://github.com/OHDSI/DeepPatientLevelPrediction" class="external-link"><code>DeepPatientLevelPrediction</code></a>
 package to build Deep Learning models. This vignette assumes you have
 read and are comfortable with building patient level prediction models
-as described in the <a href="https://github.com/OHDSI/PatientLevelPrediction/blob/main/inst/doc/BuildingPredictiveModels.pdf" class="external-link"><code>BuildingPredictiveModels</code>
+as described in the <a href="https://ohdsi.github.io/PatientLevelPrediction/articles/BuildingPredictiveModels.html" class="external-link"><code>BuildingPredictiveModels</code>
 vignette</a>. Furthermore, this vignette assumes you are familiar with
 Deep Learning methods.</p>
 </div>
@@ -286,12 +286,12 @@ try 10 of those.</p>
 <span>    splitSettings <span class="op">=</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createDefaultSplitSetting.html" class="external-link">createDefaultSplitSetting</a></span><span class="op">(</span><span class="op">)</span>, </span>
 <span>    preprocessSettings <span class="op">=</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createPreprocessSettings.html" class="external-link">createPreprocessSettings</a></span><span class="op">(</span><span class="op">)</span>, </span>
 <span>    executeSettings <span class="op">=</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createExecuteSettings.html" class="external-link">createExecuteSettings</a></span><span class="op">(</span></span>
-<span>      runSplitData <span class="op">=</span> <span class="cn">T</span>, </span>
-<span>      runSampleData <span class="op">=</span> <span class="cn">F</span>, </span>
-<span>      runfeatureEngineering <span class="op">=</span> <span class="cn">F</span>, </span>
-<span>      runPreprocessData <span class="op">=</span> <span class="cn">T</span>, </span>
-<span>      runModelDevelopment <span class="op">=</span> <span class="cn">T</span>, </span>
-<span>      runCovariateSummary <span class="op">=</span> <span class="cn">F</span></span>
+<span>      runSplitData <span class="op">=</span> <span class="cn">TRUE</span>, </span>
+<span>      runSampleData <span class="op">=</span> <span class="cn">FALSE</span>, </span>
+<span>      runFeatureEngineering <span class="op">=</span> <span class="cn">FALSE</span>, </span>
+<span>      runPreprocessData <span class="op">=</span> <span class="cn">TRUE</span>, </span>
+<span>      runModelDevelopment <span class="op">=</span> <span class="cn">TRUE</span>, </span>
+<span>      runCovariateSummary <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span>    <span class="op">)</span>, </span>
 <span>    saveDirectory <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">testLoc</span>, <span class="st">'DeepNNTorch'</span><span class="op">)</span></span>
 <span>  <span class="op">)</span></span></code></pre></div>
@@ -406,12 +406,12 @@ option.</p>
 <span>    splitSettings <span class="op">=</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createDefaultSplitSetting.html" class="external-link">createDefaultSplitSetting</a></span><span class="op">(</span><span class="op">)</span>, </span>
 <span>    preprocessSettings <span class="op">=</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createPreprocessSettings.html" class="external-link">createPreprocessSettings</a></span><span class="op">(</span><span class="op">)</span>, </span>
 <span>    executeSettings <span class="op">=</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createExecuteSettings.html" class="external-link">createExecuteSettings</a></span><span class="op">(</span></span>
-<span>      runSplitData <span class="op">=</span> <span class="cn">T</span>, </span>
-<span>      runSampleData <span class="op">=</span> <span class="cn">F</span>, </span>
-<span>      runfeatureEngineering <span class="op">=</span> <span class="cn">F</span>, </span>
-<span>      runPreprocessData <span class="op">=</span> <span class="cn">T</span>, </span>
-<span>      runModelDevelopment <span class="op">=</span> <span class="cn">T</span>, </span>
-<span>      runCovariateSummary <span class="op">=</span> <span class="cn">F</span></span>
+<span>      runSplitData <span class="op">=</span> <span class="cn">TRUE</span>, </span>
+<span>      runSampleData <span class="op">=</span> <span class="cn">FALSE</span>, </span>
+<span>      runFeatureEngineering <span class="op">=</span> <span class="cn">FALSE</span>, </span>
+<span>      runPreprocessData <span class="op">=</span> <span class="cn">TRUE</span>, </span>
+<span>      runModelDevelopment <span class="op">=</span> <span class="cn">TRUE</span>, </span>
+<span>      runCovariateSummary <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span>    <span class="op">)</span>, </span>
 <span>    saveDirectory <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/getwd.html" class="external-link">getwd</a></span><span class="op">(</span><span class="op">)</span>, <span class="st">'ResNet'</span><span class="op">)</span> <span class="co"># change to save elsewhere</span></span>
 <span>  <span class="op">)</span></span></code></pre></div>
@@ -507,12 +507,12 @@ feedforward block</p>
 <span>    splitSettings <span class="op">=</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createDefaultSplitSetting.html" class="external-link">createDefaultSplitSetting</a></span><span class="op">(</span><span class="op">)</span>, </span>
 <span>    preprocessSettings <span class="op">=</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createPreprocessSettings.html" class="external-link">createPreprocessSettings</a></span><span class="op">(</span><span class="op">)</span>, </span>
 <span>    executeSettings <span class="op">=</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createExecuteSettings.html" class="external-link">createExecuteSettings</a></span><span class="op">(</span></span>
-<span>      runSplitData <span class="op">=</span> <span class="cn">T</span>, </span>
-<span>      runSampleData <span class="op">=</span> <span class="cn">F</span>, </span>
-<span>      runfeatureEngineering <span class="op">=</span> <span class="cn">F</span>, </span>
-<span>      runPreprocessData <span class="op">=</span> <span class="cn">T</span>, </span>
-<span>      runModelDevelopment <span class="op">=</span> <span class="cn">T</span>, </span>
-<span>      runCovariateSummary <span class="op">=</span> <span class="cn">F</span></span>
+<span>      runSplitData <span class="op">=</span> <span class="cn">TRUE</span>, </span>
+<span>      runSampleData <span class="op">=</span> <span class="cn">FALSE</span>, </span>
+<span>      runFeatureEngineering <span class="op">=</span> <span class="cn">FALSE</span>, </span>
+<span>      runPreprocessData <span class="op">=</span> <span class="cn">TRUE</span>, </span>
+<span>      runModelDevelopment <span class="op">=</span> <span class="cn">TRUE</span>, </span>
+<span>      runCovariateSummary <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span>    <span class="op">)</span>, </span>
 <span>    saveDirectory <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/getwd.html" class="external-link">getwd</a></span><span class="op">(</span><span class="op">)</span>, <span class="st">'Transformer'</span><span class="op">)</span> <span class="co"># change to save elsewhere</span></span>
 <span>  <span class="op">)</span></span></code></pre></div>

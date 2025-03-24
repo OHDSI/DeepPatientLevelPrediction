@@ -10,6 +10,7 @@
 <url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/DeepPatientLevelPrediction.html</loc></url>
 <url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/camelCaseToSnakeCase.html</loc></url>
 <url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/camelCaseToSnakeCaseNames.html</loc></url>
+<url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/checkFileExists.html</loc></url>
 <url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/checkHigher.html</loc></url>
 <url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/checkHigherEqual.html</loc></url>
 <url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/checkIsClass.html</loc></url>
@@ -17,6 +18,7 @@
 <url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/gridCvDeep.html</loc></url>
 <url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/index.html</loc></url>
 <url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/predictDeepEstimator.html</loc></url>
+<url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setCustomEmbeddingModel.html</loc></url>
 <url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setDefaultResNet.html</loc></url>
 <url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setDefaultTransformer.html</loc></url>
 <url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setEstimator.html</loc></url>
