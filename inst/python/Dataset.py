@@ -104,7 +104,7 @@ class Data(Dataset):
 
     def get_feature_info(self):
         return {
-            "vocabulary_size": self.data_ref.select("columnId").max().collect(),
+            "vocabulary_size": self.data_ref.select("columnId").max().collect().item(),
             "data_reference": self.data_ref.collect()
         }
 
@@ -262,7 +262,7 @@ class TemporalData(Dataset):
 
     def get_feature_info(self):
         return {
-            "vocabulary_size": self.data_ref.select("columnId").max().collect(),
+            "vocabulary_size": self.data_ref.select("columnId").max().collect().item(),
             "data_reference": self.data_ref.collect(),
             "time_reference": self.time_ref.collect(),
             "max_time_id": self.data["time_ids"].max().item() + 1

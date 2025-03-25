@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 
-from inst.python.Embeddings import NumericalEmbedding
+from Embeddings import NumericalEmbedding, Embedding, NumericalEmbedding2
 
 
 class ResNet(nn.Module):
@@ -18,7 +18,7 @@ class ResNet(nn.Module):
         residual_dropout=0,
         dim_out: int = 1,
         concat_num=True,
-        model_type="ResNet"
+        model_type="ResNet",
     ):
         super(ResNet, self).__init__()
         self.name = model_type
@@ -29,6 +29,10 @@ class ResNet(nn.Module):
         num_layers = int(num_layers)
         hidden_factor = int(hidden_factor)
         dim_out = int(dim_out)
+
+        self.embedding = ResNetEmbedding(
+            concat_num, embedding_dim=size_embedding, feature_info=feature_info
+        )
 
         self.embedding = nn.EmbeddingBag(
             num_embeddings=cat_features + 1, embedding_dim=size_embedding, padding_idx=0
@@ -131,3 +135,11 @@ class ResLayer(nn.Module):
         return z
 
 
+class ResNetEmbedding(Embedding):
+    def __init__(
+        self, feature_info: dict, concat_num: bool = False, embedding_dim: int = 128
+    ) -> None:
+        super().__init__(embedding_dim, feature_info)
+        self.concat_num = concat_num
+        if concat_num:
+            self.numerical_embedding = NumericalEmbedding2(num_embeddings, embedding_dim)

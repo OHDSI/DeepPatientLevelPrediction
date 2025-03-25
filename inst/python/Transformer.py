@@ -4,7 +4,7 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 
-from inst.python.Embeddings import Embedding, ClassToken, RotaryEmbedding
+from Embeddings import Embedding, ClassToken, RotaryEmbedding
 
 
 def reglu(x):
@@ -20,7 +20,7 @@ class ReGLU(nn.Module):
 class Transformer(nn.Module):
     def __init__(
         self,
-        feature_info,
+        feature_info: dict,
         num_blocks: int,
         dim_token: int,
         num_heads: int,
