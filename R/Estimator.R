@@ -43,6 +43,8 @@
 #' @param accumulationSteps how many steps to accumulate gradients before
 #' updating weights, can also be a function that is evaluated during runtime
 #' @param seed seed to initialize weights of model with
+#' @param trainValidationSplit if TRUE, perform a train-validation split for 
+#' model selection instead of cross validation
 #' @export
 setEstimator <- function(
     learningRate = "auto",
@@ -63,7 +65,8 @@ setEstimator <- function(
     compile = FALSE,
     metric = "auc",
     accumulationSteps = NULL,
-    seed = NULL) {
+    seed = NULL,
+    trainValidationSplit = FALSE) {
   checkIsClass(learningRate, c("numeric", "character"))
   if (inherits(learningRate, "character") && learningRate != "auto") {
     stop(paste0(
@@ -81,7 +84,7 @@ setEstimator <- function(
   checkIsClass(compile, "logical")
   checkIsClass(metric, c("character", "list"))
   checkIsClass(seed, c("numeric", "integer", "NULL"))
-
+  checkIsClass(trainValidationSplit, "logical")
   if (!is.null(accumulationSteps) && !is.function(accumulationSteps)) {
     checkHigher(accumulationSteps, 0)
     checkIsClass(accumulationSteps, c("numeric", "integer"))
@@ -111,6 +114,9 @@ setEstimator <- function(
     accumulationSteps = accumulationSteps,
     seed = seed[1]
   )
+  if (!is.null(trainValidationSplit)) {
+    estimatorSettings$trainValidationSplit <- trainValidationSplit
+  }
 
   optimizer <- rlang::enquo(optimizer)
   estimatorSettings$optimizer <- function() rlang::eval_tidy(optimizer)
@@ -452,7 +458,11 @@ gridCvDeep <- function(
 
   # get best CV prediction
   cvPrediction <- hyperparameterResults[[indexOfMax]]$prediction
-  cvPrediction$evaluationType <- "CV"
+  if (modelSettings$estimatorSettings$trainValidationSplit) {
+    cvPrediction$evaluationType <- "Validation"
+  } else {
+    cvPrediction$evaluationType <- "CV"
+  }
 
   ParallelLogger::logInfo("Training final model using optimal parameters")
   trainPrediction <- trainFinalModel(dataset, finalParam, modelSettings, labels)
@@ -641,6 +651,12 @@ doCrossValidationImpl <- function(dataset, labels, parameters, modelSettings) {
 
   fold <- labels$index
   ParallelLogger::logInfo(paste0("Max fold: ", max(fold)))
+  if (isTRUE(modelSettings$estimatorSettings$trainValidationSplit)) {
+    ParallelLogger::logInfo("Using train-validation split instead of cross validation:
+      training on folds != max(folds), and validating on fold == max(folds)")
+    fold <- ifelse(fold == max(fold), 1, 0)
+    labels$index <- fold
+  }
   learnRates <- list()
   prediction <- NULL
   path <- system.file("python", package = "DeepPatientLevelPrediction")
