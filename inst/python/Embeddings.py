@@ -4,9 +4,11 @@ import torch
 from torch import nn
 import polars as pl
 
+from inst.python.Dataset import FeatureInfo
+
 
 class Embedding(nn.Module):
-    def __init__(self, embedding_dim: int, feature_info: dict):
+    def __init__(self, embedding_dim: int, feature_info: FeatureInfo):
         super(Embedding, self).__init__()
         self.embedding_dim = int(embedding_dim)
 
@@ -82,45 +84,45 @@ class Embedding(nn.Module):
         return merge_embeddings
 
 
-class NumericalEmbedding(nn.Module):
-    def __init__(self, num_embeddings, embedding_dim, bias=True):
-        super(NumericalEmbedding, self).__init__()
-        # +1 for padding
-        self.weight = nn.Parameter(torch.empty(num_embeddings + 1, embedding_dim))
-        if bias:
-            self.bias = nn.Parameter(torch.empty(num_embeddings + 1, embedding_dim))
-        else:
-            self.bias = None
+# class NumericalEmbedding(nn.Module):
+#     def __init__(self, num_embeddings, embedding_dim, bias=True):
+#         super(NumericalEmbedding, self).__init__()
+#         # +1 for padding
+#         self.weight = nn.Parameter(torch.empty(num_embeddings + 1, embedding_dim))
+#         if bias:
+#             self.bias = nn.Parameter(torch.empty(num_embeddings + 1, embedding_dim))
+#         else:
+#             self.bias = None
+#
+#         for parameter in [self.weight, self.bias]:
+#             if parameter is not None:
+#                 nn.init.kaiming_uniform_(parameter, a=math.sqrt(5))
+#
+#         with torch.no_grad():
+#             self.weight[0].fill_(0)
+#             if self.bias is not None:
+#                 self.bias[0].fill_(0)
+#
+#     def forward(self, *inputs):
+#         values = inputs[1]
+#         ids = inputs[0]
+#         # ids are 1-indexed
+#         emb = self.weight[ids] * values.unsqueeze(-1)
+#         if self.bias is not None:
+#             emb = emb + self.bias[ids]
+#         return emb
+#
 
-        for parameter in [self.weight, self.bias]:
-            if parameter is not None:
-                nn.init.kaiming_uniform_(parameter, a=math.sqrt(5))
-
-        with torch.no_grad():
-            self.weight[0].fill_(0)
-            if self.bias is not None:
-                self.bias[0].fill_(0)
-
-    def forward(self, *inputs):
-        values = inputs[1]
-        ids = inputs[0]
-        # ids are 1-indexed
-        emb = self.weight[ids] * values.unsqueeze(-1)
-        if self.bias is not None:
-            emb = emb + self.bias[ids]
-        return emb
-
-
-class NumericalEmbedding2(nn.Module):
-    def __init__(self, num_embeddings, embedding_dim):
-        super(NumericalEmbedding2, self).__init__()
-        self.embedding = nn.Embedding(
-            num_embeddings + 1, embedding_dim - 1, padding_idx=0
-        )
-
-    def forward(self, ids, values):
-        x = self.embedding(ids)
-        return torch.cat((x, values[:, None, None].expand(-1, x.shape[1], -1)), dim=-1)
+# class NumericalEmbedding2(nn.Module):
+#     def __init__(self, num_embeddings, embedding_dim):
+#         super(NumericalEmbedding2, self).__init__()
+#         self.embedding = nn.Embedding(
+#             num_embeddings + 1, embedding_dim - 1, padding_idx=0
+#         )
+#
+#     def forward(self, ids, values):
+#         x = self.embedding(ids)
+#         return torch.cat((x, values[:, None, None].expand(-1, x.shape[1], -1)), dim=-1)
 
 
 class ClassTokenNested(nn.Module):
@@ -233,3 +235,68 @@ class RotaryEmbedding(nn.Module):
 
         # Apply the rotary transformation: x_rotated = x * cos + rotate_every_two(x) * sin.
         return (x * cos_emb) + (rotate_every_two(x) * sin_emb)
+
+
+class NumericalEmbedding(nn.Module):
+    def __init__(self, num_embeddings: int, embedding_dim: int, mode: str="scale", bias: bool=True):
+        """
+        Merged Numerical Embedding Layer that supports two modes:
+
+        - 'scale':
+          Uses an nn.Embedding to lookup a learned vector, which is then
+          scaled by the provided numerical value. Optionally, a separate
+          bias embedding is added.
+
+        - 'concatenate':
+          Uses an nn.Embedding (with output dimension embedding_dim - 1) to
+          look up a learned vector and then concatenates the provided numerical
+          value (expanded to match dimensions) so that the final output has
+          dimension embedding_dim.
+
+        Args:
+            num_embeddings (int): Number of embeddings (excluding padding).
+            embedding_dim (int): Final embedding dimension.
+            mode (str): Either 'scale' or 'concatenate'.
+            bias (bool): Whether to include a bias embedding (only applies to scale mode).
+        """
+        super(NumericalEmbedding, self).__init__()
+        if mode not in ["scale", "concatenate"]:
+            raise ValueError("mode must be either 'scale' or 'concatenate'")
+
+        self.mode = mode
+
+        if self.mode == "scale":
+            self.embedding = nn.Embedding(num_embeddings + 1,
+                                          embedding_dim,
+                                          padding_idx=0)
+            if bias:
+                self.bias_embedding = nn.Embedding(num_embeddings + 1,
+                                                   embedding_dim,
+                                                   padding_idx=0)
+            else:
+                self.bias_embedding = None
+        elif self.mode == 'concatenate':
+            self.embedding = nn.Embedding(num_embeddings + 1,
+                                          embedding_dim - 1,
+                                          padding_idx=0)
+
+    def forward(self, ids: torch.Tensor, values: torch.Tensor):
+        """
+        Args:
+            ids (LongTensor): Tensor of ids (with index 0 reserved for padding).
+            values (Tensor): Numerical values to be integrated into the embedding.
+
+        Returns:
+            Tensor: Output embeddings.
+        """
+        if self.mode == "scale":
+            x = self.embedding(ids)
+            out = x * values.unsqueeze(-1)
+            if self.bias_embedding is not None:
+                out = out + self.bias_embedding(ids)
+            return out
+        elif self.mode == "concatenate":
+            x = self.embedding(ids)
+            values_expanded = values.unsqueeze(-1)
+            return torch.cat([x, values_expanded.expand(-1, x.size(1), -1)],
+                             dim=-1)

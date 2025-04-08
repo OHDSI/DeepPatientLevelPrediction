@@ -103,10 +103,7 @@ class Data(Dataset):
 
 
     def get_feature_info(self):
-        return {
-            "vocabulary_size": self.data_ref.select("columnId").max().collect().item(),
-            "data_reference": self.data_ref.collect()
-        }
+        return FeatureInfo(data_reference=self.data_ref.collect())
 
     def __len__(self):
         return self.target.size()[0]
@@ -302,3 +299,38 @@ class DBReader:
         else:
             raise ValueError("Only .sqlite and .duckdb files are supported")
         return df.lazy() if lazy else df
+
+
+class FeatureInfo(object):
+    def __init__(self, data_reference: pl.DataFrame, time_reference: Optional[pl.DataFrame] = None):
+        self.data_reference = data_reference
+        self.time_reference = time_reference
+
+    def get_vocabulary_size(self) -> int:
+        return int(
+            self.data_reference
+            .filter(pl.col("isBinary") == "Y")
+            .select("columnId")
+            .max()
+            .item())
+
+    def get_numerical_feature_ids(self) -> torch.Tensor:
+        return (
+            self.data_reference
+            .filter(pl.col("isBinary") == "N")
+            .select("columnId")
+            .sort("columnId")
+            .to_torch()
+            .squeeze(1)
+        )
+
+    def get_max_time_id(self):
+        if self.time_reference is None:
+            return None
+        return int(
+            self.time_reference
+            .select("timeId")
+            .max()
+            .item() + 1
+        )
+

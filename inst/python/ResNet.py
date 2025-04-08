@@ -1,13 +1,14 @@
 import torch
 from torch import nn
 
-from Embeddings import NumericalEmbedding, Embedding, NumericalEmbedding2
+from inst.python.Dataset import FeatureInfo
+from inst.python.Embeddings import NumericalEmbedding
 
 
 class ResNet(nn.Module):
     def __init__(
         self,
-        feature_info: dict,
+        feature_info: FeatureInfo,
         size_embedding: int = 256,
         size_hidden: int = 256,
         num_layers: int = 2,
@@ -22,8 +23,6 @@ class ResNet(nn.Module):
     ):
         super(ResNet, self).__init__()
         self.name = model_type
-        cat_features = int(feature_info["vocabulary_size"])
-        num_features = int(feature_info.get("numerical_features", 0))
         size_embedding = int(size_embedding)
         size_hidden = int(size_hidden)
         num_layers = int(num_layers)
@@ -31,17 +30,19 @@ class ResNet(nn.Module):
         dim_out = int(dim_out)
 
         self.embedding = ResNetEmbedding(
-            concat_num, embedding_dim=size_embedding, feature_info=feature_info
+            feature_info=feature_info,
+            concat_num=concat_num,
+            embedding_dim=size_embedding
         )
 
-        self.embedding = nn.EmbeddingBag(
-            num_embeddings=cat_features + 1, embedding_dim=size_embedding, padding_idx=0
-        )
-        if num_features != 0 and not concat_num:
-            self.num_embedding = NumericalEmbedding(num_features, size_embedding)
-        else:
-            self.num_embedding = None
-            size_embedding = size_embedding + num_features
+        # self.embedding = nn.EmbeddingBag(
+        #     num_embeddings=cat_features + 1, embedding_dim=size_embedding, padding_idx=0
+        # )
+        # if num_features != 0 and not concat_num:
+        #     self.num_embedding = NumericalEmbedding(num_features, size_embedding)
+        # else:
+        #     self.num_embedding = None
+        #     size_embedding = size_embedding + num_features
 
         self.first_layer = nn.Linear(size_embedding, size_hidden)
 
@@ -68,8 +69,7 @@ class ResNet(nn.Module):
         self.last_act = activation()
 
     def forward(self, x):
-        x_cat = x["cat"]
-        x_cat = self.embedding(x_cat)
+        x_cat = self.embedding(x)
         if x_cat.dim() == 3:
             x_cat = x_cat.mean(dim=1)
         if (
@@ -135,11 +135,66 @@ class ResLayer(nn.Module):
         return z
 
 
-class ResNetEmbedding(Embedding):
+class ResNetEmbedding(nn.Module):
     def __init__(
-        self, feature_info: dict, concat_num: bool = False, embedding_dim: int = 128
+        self, feature_info: FeatureInfo, concat_num: bool = False, embedding_dim: int = 128
     ) -> None:
-        super().__init__(embedding_dim, feature_info)
+        super().__init__()
         self.concat_num = concat_num
-        if concat_num:
-            self.numerical_embedding = NumericalEmbedding2(num_embeddings, embedding_dim)
+        self.numerical_feature_ids = feature_info.get_numerical_feature_ids()
+        self.numerical_embeddings = self.numerical_feature_ids.shape[0]
+        mode = "concatenate" if concat_num else "average"
+        self.numerical_embedding = NumericalEmbedding(num_embeddings=self.numerical_embeddings,
+                                                      embedding_dim=embedding_dim,
+                                                      mode=mode)
+        self.vocabulary_size = feature_info.get_vocabulary_size()
+        categorical_embedding_size = self.vocabulary_size - self.numerical_embeddings
+        self.categorical_embedding = nn.EmbeddingBag(num_embeddings=categorical_embedding_size + 1,
+                                                     embedding_dim=embedding_dim,
+                                                     padding_idx=0,
+                                                     mode = "mean")
+
+        input_to_numeric = torch.zeros(self.vocabulary_size + 1, dtype=torch.long)
+        input_to_numeric[self.numerical_feature_ids] = torch.arange(
+            1, self.numerical_feature_ids.shape[0] + 1
+        )
+        self.register_buffer("input_to_numeric", input_to_numeric)
+
+        input_to_categorical = torch.zeros(self.vocabulary_size + 1, dtype=torch.long)
+        categorical_feature_ids = torch.where(input_to_numeric == 0)[0]
+        input_to_categorical[categorical_feature_ids[1:]] = torch.arange(
+            1, categorical_feature_ids.numel()
+        )
+        self.register_buffer("input_to_categorical", input_to_categorical)
+
+    def forward(self, x: dict) -> torch.Tensor:
+        """
+
+        Args:
+            x (dict): A dictionary containing the input data. The keys should be:
+                        - "feature_ids": A tensor feature_ids.
+                        - "feature_values": A tensor of numerical features (optional).
+        Returns:
+            torch.Tensor: The output embeddings.
+        """
+        numerical_mask = torch.isin(
+            x["feature_ids"],
+            self.numerical_feature_ids.to(x["feature_ids"].device)
+        )
+        numerical_features = torch.where(
+            numerical_mask, x["feature_ids"],
+            torch.tensor(0)
+        )
+        numerical_mapped_features = self.input_to_numeric[numerical_features]
+        numerical_values = torch.where(
+            numerical_mask, x["feature_values"], torch.tensor(0.0)
+        )
+        numerical_embeddings = self.numerical_embedding(
+            numerical_mapped_features, numerical_values
+        )
+        categorical_features = torch.where(
+            ~numerical_mask, x["feature_ids"], torch.tensor(0)
+        )
+        categorical_mapped_features = self.input_to_categorical[categorical_features]
+        categorical_embeddings = self.categorical_embedding(categorical_mapped_features)
+        pass

@@ -75,7 +75,7 @@ class CustomEmbeddingInitStrategy(InitStrategy):
         embedding_class = self.class_names_to_class[self.embedding_class]
         model.embedding = embedding_class(custom_embedding_weights=embeddings["embeddings"],
                                           embedding_dim=model.embedding.embedding_dim,
-                                          num_regular_embeddings=model.embedding.num_embeddings,
+                                          num_regular_embeddings=model.embedding.numerical_embeddings,
                                           custom_indices=custom_indices,
                                           freeze=self.freeze)
         return model
