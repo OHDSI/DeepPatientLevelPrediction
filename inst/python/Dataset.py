@@ -56,15 +56,16 @@ class Data(Dataset):
             all_observations
             .join(missing_means_zero, how="cross")
         )
+        missing_means_zero = missing_means_zero.collect()["columnId"].to_list()
         data_mmz = (
             data
-            .filter(pl.col("columnId").is_in(missing_means_zero.select("columnId").collect()))
+            .filter(pl.col("columnId").is_in(missing_means_zero))
             .join(all_combinations, on=["rowId", "columnId"], how="right")
             .with_columns(pl.col("covariateValue").fill_null(0.0))
             .select(["rowId", "columnId", "covariateValue"])
         )
         data_remaining = (
-            data.filter(pl.col("columnId").is_in(missing_means_zero.select("columnId").collect()).not_())
+            data.filter(pl.col("columnId").is_in(missing_means_zero).not_())
         )
         data = (
             pl.concat([data_mmz, data_remaining])
@@ -166,7 +167,7 @@ class TemporalData(Dataset):
             all_observations
             .join(missing_means_zero, how="cross")
         )
-
+        missing_means_zero = missing_means_zero.collect()["columnId"].to_list()
         data = (
             original_data
             .select(pl.col("rowId"), pl.col("columnId"), pl.col("timeId").cast(pl.Int64), pl.col("covariateValue"))
@@ -178,14 +179,14 @@ class TemporalData(Dataset):
 
         data_mmz = (
             data
-            .filter(pl.col("columnId").is_in(missing_means_zero.select("columnId").collect()))
+            .filter(pl.col("columnId").is_in(missing_means_zero))
             .join(all_combinations, on=["rowId", "columnId"], how="right")
             .with_columns(pl.col("covariateValue").fill_null(0.0))
             .select(["rowId", "columnId", "timeId", "covariateValue"])
         )
         data_remaining = (
             data.filter(pl.col("columnId")
-                        .is_in(missing_means_zero.select("columnId").collect())
+                        .is_in(missing_means_zero)
                         .not_())
         )
         data = (

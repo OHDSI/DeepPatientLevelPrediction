@@ -1,4 +1,5 @@
 import math
+from functools import partial
 
 import torch
 from torch import nn
@@ -238,7 +239,12 @@ class RotaryEmbedding(nn.Module):
 
 
 class NumericalEmbedding(nn.Module):
-    def __init__(self, num_embeddings: int, embedding_dim: int, mode: str="scale", bias: bool=True):
+    def __init__(self,
+                 num_embeddings: int,
+                 embedding_dim: int,
+                 mode: str="scale",
+                 bias: bool=True,
+                 aggregate: bool=False):
         """
         Merged Numerical Embedding Layer that supports two modes:
 
@@ -253,10 +259,12 @@ class NumericalEmbedding(nn.Module):
           value (expanded to match dimensions) so that the final output has
           dimension embedding_dim.
 
+
         Args:
             num_embeddings (int): Number of embeddings (excluding padding).
             embedding_dim (int): Final embedding dimension.
-            mode (str): Either 'scale' or 'concatenate'.
+            mode (str): Either 'scale', 'concatenate' or 'average'.
+            aggregate (bool): Whether to use an nn.EmbeddingBag with a sum for the lookup
             bias (bool): Whether to include a bias embedding (only applies to scale mode).
         """
         super(NumericalEmbedding, self).__init__()
@@ -264,21 +272,26 @@ class NumericalEmbedding(nn.Module):
             raise ValueError("mode must be either 'scale' or 'concatenate'")
 
         self.mode = mode
-
+        self.aggregate = aggregate
+        if self.aggregate:
+            embedding_layer = partial(nn.EmbeddingBag, mode="sum")
+        else:
+            embedding_layer = nn.Embedding
         if self.mode == "scale":
-            self.embedding = nn.Embedding(num_embeddings + 1,
-                                          embedding_dim,
-                                          padding_idx=0)
+            self.embedding = embedding_layer(num_embeddings + 1,
+                                             embedding_dim,
+                                             padding_idx=0)
             if bias:
-                self.bias_embedding = nn.Embedding(num_embeddings + 1,
-                                                   embedding_dim,
-                                                   padding_idx=0)
+                self.bias_embedding = embedding_layer(num_embeddings + 1,
+                                                      embedding_dim,
+                                                      padding_idx=0)
             else:
                 self.bias_embedding = None
-        elif self.mode == 'concatenate':
-            self.embedding = nn.Embedding(num_embeddings + 1,
+        elif self.mode == "concatenate":
+            self.embedding = embedding_layer(num_embeddings + 1,
                                           embedding_dim - 1,
                                           padding_idx=0)
+
 
     def forward(self, ids: torch.Tensor, values: torch.Tensor):
         """
@@ -295,8 +308,8 @@ class NumericalEmbedding(nn.Module):
             if self.bias_embedding is not None:
                 out = out + self.bias_embedding(ids)
             return out
-        elif self.mode == "concatenate":
+        else:
             x = self.embedding(ids)
-            values_expanded = values.unsqueeze(-1)
-            return torch.cat([x, values_expanded.expand(-1, x.size(1), -1)],
+            values_expanded = values.sum(dim=1).unsqueeze(-1)
+            return torch.cat([x, values_expanded],
                              dim=-1)

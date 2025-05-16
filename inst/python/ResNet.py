@@ -69,23 +69,7 @@ class ResNet(nn.Module):
         self.last_act = activation()
 
     def forward(self, x):
-        x_cat = self.embedding(x)
-        if x_cat.dim() == 3:
-            x_cat = x_cat.mean(dim=1)
-        if (
-            "num" in x.keys()
-            and x["num"] is not None
-            and self.num_embedding is not None
-        ):
-            x_num = x["num"]
-            # take the average af numerical and categorical embeddings
-            x = (x_cat + self.num_embedding(x_num).mean(dim=1)) / 2
-        elif "num" in x.keys() and x["num"] is not None and self.num_embedding is None:
-            x_num = x["num"]
-            # concatenate numerical to categorical embedding
-            x = torch.cat([x_cat, x_num], dim=1)
-        else:
-            x = x_cat
+        x = self.embedding(x)
         x = self.first_layer(x)
         for layer in self.layers:
             x = layer(x)
@@ -143,16 +127,17 @@ class ResNetEmbedding(nn.Module):
         self.concat_num = concat_num
         self.numerical_feature_ids = feature_info.get_numerical_feature_ids()
         self.numerical_embeddings = self.numerical_feature_ids.shape[0]
-        mode = "concatenate" if concat_num else "average"
+        mode = "concatenate" if concat_num else "scale"
         self.numerical_embedding = NumericalEmbedding(num_embeddings=self.numerical_embeddings,
                                                       embedding_dim=embedding_dim,
-                                                      mode=mode)
+                                                      mode=mode,
+                                                      aggregate=True)
         self.vocabulary_size = feature_info.get_vocabulary_size()
         categorical_embedding_size = self.vocabulary_size - self.numerical_embeddings
         self.categorical_embedding = nn.EmbeddingBag(num_embeddings=categorical_embedding_size + 1,
                                                      embedding_dim=embedding_dim,
                                                      padding_idx=0,
-                                                     mode = "mean")
+                                                     mode = "sum")
 
         input_to_numeric = torch.zeros(self.vocabulary_size + 1, dtype=torch.long)
         input_to_numeric[self.numerical_feature_ids] = torch.arange(
@@ -197,4 +182,5 @@ class ResNetEmbedding(nn.Module):
         )
         categorical_mapped_features = self.input_to_categorical[categorical_features]
         categorical_embeddings = self.categorical_embedding(categorical_mapped_features)
-        pass
+        merged_embeddings = (categorical_embeddings + numerical_embeddings) / numerical_mask.shape[1]
+        return merged_embeddings
