@@ -1,12 +1,13 @@
 from torch import nn
 
-from Embeddings import NumericalEmbedding
+from Dataset import FeatureInfo
+from Embeddings import Embedding
 
 
 class MultiLayerPerceptron(nn.Module):
     def __init__(
         self,
-        feature_info: dict,
+        feature_info: FeatureInfo,
         size_embedding: int,
         size_hidden: int,
         num_layers: int,
@@ -14,23 +15,23 @@ class MultiLayerPerceptron(nn.Module):
         normalization=nn.BatchNorm1d,
         dropout=0.0,
         dim_out: int = 1,
+        concat_num=True,
         model_type="MultiLayerPerceptron"
     ):
         super(MultiLayerPerceptron, self).__init__()
         self.name = model_type
-        cat_features = int(feature_info["categorical_features"])
-        num_features = int(feature_info.get("numerical_features", 0))
         size_embedding = int(size_embedding)
         size_hidden = int(size_hidden)
         num_layers = int(num_layers)
         dim_out = int(dim_out)
 
-        self.embedding = nn.EmbeddingBag(
-            cat_features + 1, size_embedding, padding_idx=0
-        )
 
-        if num_features != 0 and num_features is not None:
-            self.num_embedding = NumericalEmbedding(num_features, size_embedding)
+        self.embedding = Embedding(
+            feature_info=feature_info,
+            numeric_mode="concatenate" if concat_num else "scale",
+            embedding_dim=size_embedding,
+            aggregate="sum"
+        )
 
         self.first_layer = nn.Linear(size_embedding, size_hidden)
 
@@ -50,16 +51,8 @@ class MultiLayerPerceptron(nn.Module):
 
         self.last_act = activation()
 
-    def forward(self, input):
-        x_cat = input["cat"]
-        x_cat = self.embedding(x_cat)
-        if x_cat.dim() == 3:
-            x_cat = x_cat.mean(dim=1)
-        if "num" in input.keys() and self.num_embedding is not None:
-            x_num = input["num"]
-            x = (x_cat + self.num_embedding(x_num).mean(dim=1)) / 2
-        else:
-            x = x_cat
+    def forward(self, x):
+        x = self.embedding(x)
         x = self.first_layer(x)
         for layer in self.layers:
             x = layer(x)

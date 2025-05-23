@@ -2,10 +2,7 @@ resNet <- reticulate::import_from_path("ResNet", path)$ResNet
 
 test_that("LR scheduler that changes per batch works", {
   model <- resNet(
-    feature_info = list(
-      categorical_features = 10L,
-      numerical_features = 1L
-    ),
+    feature_info = dataset$get_feature_info(),
     size_embedding = 32L, size_hidden = 64L,
     num_layers = 1L, hidden_factor = 1L
   )

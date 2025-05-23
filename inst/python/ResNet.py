@@ -1,9 +1,8 @@
 import torch
 from torch import nn
 
-from inst.python.Dataset import FeatureInfo
-from inst.python.Embeddings import NumericalEmbedding
-
+from Dataset import FeatureInfo
+from Embeddings import Embedding
 
 class ResNet(nn.Module):
     def __init__(
@@ -18,7 +17,7 @@ class ResNet(nn.Module):
         hidden_dropout=0,
         residual_dropout=0,
         dim_out: int = 1,
-        concat_num=True,
+        concat_num=False,
         model_type="ResNet",
     ):
         super(ResNet, self).__init__()
@@ -29,20 +28,13 @@ class ResNet(nn.Module):
         hidden_factor = int(hidden_factor)
         dim_out = int(dim_out)
 
-        self.embedding = ResNetEmbedding(
-            feature_info=feature_info,
-            concat_num=concat_num,
-            embedding_dim=size_embedding
-        )
 
-        # self.embedding = nn.EmbeddingBag(
-        #     num_embeddings=cat_features + 1, embedding_dim=size_embedding, padding_idx=0
-        # )
-        # if num_features != 0 and not concat_num:
-        #     self.num_embedding = NumericalEmbedding(num_features, size_embedding)
-        # else:
-        #     self.num_embedding = None
-        #     size_embedding = size_embedding + num_features
+        self.embedding = Embedding(
+            feature_info=feature_info,
+            numeric_mode="concatenate" if concat_num else "scale",
+            embedding_dim=size_embedding,
+            aggregate="sum"
+        )
 
         self.first_layer = nn.Linear(size_embedding, size_hidden)
 
@@ -117,70 +109,3 @@ class ResLayer(nn.Module):
             z = self.residual_dropout(z)
         z = z + input
         return z
-
-
-class ResNetEmbedding(nn.Module):
-    def __init__(
-        self, feature_info: FeatureInfo, concat_num: bool = False, embedding_dim: int = 128
-    ) -> None:
-        super().__init__()
-        self.concat_num = concat_num
-        self.numerical_feature_ids = feature_info.get_numerical_feature_ids()
-        self.numerical_embeddings = self.numerical_feature_ids.shape[0]
-        mode = "concatenate" if concat_num else "scale"
-        self.numerical_embedding = NumericalEmbedding(num_embeddings=self.numerical_embeddings,
-                                                      embedding_dim=embedding_dim,
-                                                      mode=mode,
-                                                      aggregate=True)
-        self.vocabulary_size = feature_info.get_vocabulary_size()
-        categorical_embedding_size = self.vocabulary_size - self.numerical_embeddings
-        self.categorical_embedding = nn.EmbeddingBag(num_embeddings=categorical_embedding_size + 1,
-                                                     embedding_dim=embedding_dim,
-                                                     padding_idx=0,
-                                                     mode = "sum")
-
-        input_to_numeric = torch.zeros(self.vocabulary_size + 1, dtype=torch.long)
-        input_to_numeric[self.numerical_feature_ids] = torch.arange(
-            1, self.numerical_feature_ids.shape[0] + 1
-        )
-        self.register_buffer("input_to_numeric", input_to_numeric)
-
-        input_to_categorical = torch.zeros(self.vocabulary_size + 1, dtype=torch.long)
-        categorical_feature_ids = torch.where(input_to_numeric == 0)[0]
-        input_to_categorical[categorical_feature_ids[1:]] = torch.arange(
-            1, categorical_feature_ids.numel()
-        )
-        self.register_buffer("input_to_categorical", input_to_categorical)
-
-    def forward(self, x: dict) -> torch.Tensor:
-        """
-
-        Args:
-            x (dict): A dictionary containing the input data. The keys should be:
-                        - "feature_ids": A tensor feature_ids.
-                        - "feature_values": A tensor of numerical features (optional).
-        Returns:
-            torch.Tensor: The output embeddings.
-        """
-        numerical_mask = torch.isin(
-            x["feature_ids"],
-            self.numerical_feature_ids.to(x["feature_ids"].device)
-        )
-        numerical_features = torch.where(
-            numerical_mask, x["feature_ids"],
-            torch.tensor(0)
-        )
-        numerical_mapped_features = self.input_to_numeric[numerical_features]
-        numerical_values = torch.where(
-            numerical_mask, x["feature_values"], torch.tensor(0.0)
-        )
-        numerical_embeddings = self.numerical_embedding(
-            numerical_mapped_features, numerical_values
-        )
-        categorical_features = torch.where(
-            ~numerical_mask, x["feature_ids"], torch.tensor(0)
-        )
-        categorical_mapped_features = self.input_to_categorical[categorical_features]
-        categorical_embeddings = self.categorical_embedding(categorical_mapped_features)
-        merged_embeddings = (categorical_embeddings + numerical_embeddings) / numerical_mask.shape[1]
-        return merged_embeddings

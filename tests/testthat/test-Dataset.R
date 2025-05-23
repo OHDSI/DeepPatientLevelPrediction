@@ -1,21 +1,22 @@
 test_that("number of num and cat features sum correctly", {
+  featureInfo <- dataset$get_feature_info()
   testthat::expect_equal(
-      dataset$get_feature_info()[["categorical_features"]],
+    featureInfo$get_vocabulary_size(),
     dplyr::n_distinct(mappedData$covariates %>%
-                        dplyr::collect() %>%
-                        dplyr::pull(covariateId))
+      dplyr::collect() %>%
+      dplyr::pull(covariateId))
   )
 })
 
 
 test_that("length of dataset correct", {
-  expect_equal(length(dataset), dataset$cat$shape[0])
-  expect_equal(length(dataset), dataset$num$shape[0])
+  expect_equal(length(dataset), dataset$data[["feature_ids"]]$shape[[0]])
+  expect_equal(length(dataset), dataset$data[["feature_values"]]$shape[[0]])
   expect_equal(
     length(dataset),
     dplyr::n_distinct(mappedData$covariates %>%
-                        dplyr::collect() %>%
-                        dplyr::pull(.data$rowId))
+      dplyr::collect() %>%
+      dplyr::pull(.data$rowId))
   )
 })
 
@@ -33,9 +34,9 @@ test_that(".getbatch works", {
   expect_true(out[[2]]$item() %in% c(0, 1))
 
   # shape of batch is correct
-  expect_equal(length(out[[1]]), 2)
-  expect_equal(out[[1]]$cat$shape[0], 1)
-  expect_equal(out[[1]]$num$shape[0], 1)
+  expect_equal(length(out[[1]]), 3)
+  expect_equal(out[[1]]$feature_ids$shape[0], 1)
+  expect_equal(out[[1]]$feature_values$shape[0], 1)
 
   # shape of target
   expect_equal(out[[2]]$shape$numel(), 1)
@@ -46,9 +47,9 @@ test_that(".getbatch works", {
   expect_equal(length(out), 2)
   expect_true(all(out[[2]]$numpy() %in% c(0, 1)))
 
-  expect_equal(length(out[[1]]), 2)
-  expect_equal(out[[1]]$cat$shape[0], 16)
-  expect_equal(out[[1]]$num$shape[0], 16)
+  expect_equal(length(out[[1]]), 3)
+  expect_equal(out[[1]]$feature_ids$shape[0], 16)
+  expect_equal(out[[1]]$feature_values$shape[0], 16)
 
   expect_equal(out[[2]]$shape[0], 16)
 })
@@ -77,47 +78,49 @@ test_that("Column order is preserved when features are missing", {
     dplyr::filter(covariateId == numFeature) %>%
     dplyr::pull("columnId")
 
-  reducedDataset <- datasetClass$Data(
-    data =
-      reticulate::r_to_py(normalizePath(attributes(mappedReducedData)$dbname)),
-    labels = reticulate::r_to_py(trainData$Train$labels$outcomeCount),
-    numerical_features = dataset$numerical_features$to_list()
+  reducedDataset <- createDataset(
+    data = mappedReducedData,
+    labels = trainData$Train$labels,
   )
 
-  # should have same number of columns
-  expect_equal(dataset$num$shape[[1]], reducedDataset$num$shape[[1]])
-
-  # all zeros in column with removed feature, -1 because r to py
-  expect_true(reducedDataset$num[, numColumn - 1]$sum()$item() == 0)
+  # all zeros in columns with removed feature
+  expect_true(reducedDataset$data[["feature_values"]][reducedDataset$data[["feature_ids"]] == numColumn]$sum()$item() == 0)
 
   # all other columns are same
-  indexReduced <- !torch$isin(torch$arange(reducedDataset$num$shape[[1]]),
-                              numColumn - 1)
-  index <- !torch$isin(torch$arange(dataset$num$shape[[1]]),
-                       numColumn - 1)
+  indexReduced <- !torch$isin(reducedDataset$data[["feature_ids"]],
+                              torch$as_tensor(c(numColumn, catColumn)))
+  index <- !torch$isin(dataset$data[["feature_ids"]],
+                      torch$as_tensor(c(numColumn, catColumn)))
 
-  expect_equal(reducedDataset$num[, indexReduced]$mean()$item(),
-               dataset$num[, index]$mean()$item())
 
-  # cat data should have same counts of all columnIds
-  # expect the one that was removed
+  expect_equal(
+    reducedDataset$data[["feature_values"]][indexReduced]$sum()$item(),
+    dataset$data[["feature_values"]][index]$sum()$item()
+  )
+
   # not same counts for removed feature
-  expect_false(isTRUE(all.equal((reducedDataset$cat == catColumn)$sum()$item(),
-                                (dataset$cat == catColumn)$sum()$item())))
+  expect_false(isTRUE(all.equal(
+    (reducedDataset$data[["feature_ids"]] == catColumn)$sum()$item(),
+    (dataset$data[["feature_ids"]] == catColumn)$sum()$item()
+  )))
 
   # get counts
-  counts <- as.array(torch$unique(dataset$cat,
-                                  return_counts = TRUE)[[2]]$numpy())
+  counts <- as.array(torch$unique(dataset$data[["feature_ids"]],
+    return_counts = TRUE
+  )[[2]]$numpy())
   counts <- counts[-(catColumn + 1)] # +1 because py_to_r
   counts <- counts[-1]
 
-  reducedCounts <- as.array(torch$unique(reducedDataset$cat,
-                                         return_counts = TRUE)[[2]]$numpy())
+  reducedCounts <- as.array(torch$unique(reducedDataset$data[["feature_ids"]],
+    return_counts = TRUE
+  )[[2]]$numpy())
   reducedCounts <- reducedCounts[-(catColumn + 1)] # +1 because py_to_r
   reducedCounts <- reducedCounts[-1]
 
   expect_false(isTRUE(all.equal(counts, reducedCounts)))
-  expect_equal(max(dataset$categorical_features$to_list()),
-               max(reducedDataset$categorical_features$to_list()))
-
+  expect_equal(
+    dataset$get_feature_info()$get_vocabulary_size(),
+    reducedDataset$get_feature_info()$get_vocabulary_size()
+  )
 })
+

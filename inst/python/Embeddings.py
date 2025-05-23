@@ -3,67 +3,87 @@ from functools import partial
 
 import torch
 from torch import nn
-import polars as pl
 
-from inst.python.Dataset import FeatureInfo
+from Dataset import FeatureInfo
 
 
 class Embedding(nn.Module):
-    def __init__(self, embedding_dim: int, feature_info: FeatureInfo):
+    def __init__(
+        self,
+        embedding_dim: int,
+        feature_info: FeatureInfo,
+        numeric_mode: str = "scale",
+        aggregate: str = "none",
+    ):
         super(Embedding, self).__init__()
+        assert aggregate in ("none", "sum")
         self.embedding_dim = int(embedding_dim)
+        self.aggregate = aggregate
 
-        self.vocabulary_size = (
-            feature_info["data_reference"]
-            .filter(pl.col("isBinary") == "Y")
-            .select("columnId")
-            .max()
-            .item()
-        )
-        self.numerical_feature_ids = (
-            feature_info["data_reference"]
-            .filter(pl.col("isBinary") == "N")
-            .select("columnId")
-            .sort("columnId")
-            .to_torch()
-            .squeeze(1)
-        )
+        self.vocabulary_size = feature_info.get_vocabulary_size()
+        self.numerical_feature_ids = feature_info.get_numerical_feature_ids()
 
-        self.embedding = nn.Embedding(
-            self.vocabulary_size + 1 - self.numerical_feature_ids.shape[0],
-            embedding_dim,
-            padding_idx=0,
-        )
+        n_num = self.numerical_feature_ids.numel()
+        n_cat = self.vocabulary_size  - n_num
 
-        if self.numerical_feature_ids.shape[0] != 0:
+        if n_num > 0:
             self.numerical_embedding = NumericalEmbedding(
-                self.numerical_feature_ids.shape[0], embedding_dim
+                num_embeddings=n_num,
+                embedding_dim=embedding_dim,
+                mode=numeric_mode,
+                aggregate=(aggregate != "none"),
+            )
+        else:
+            self.numerical_embedding = None
+
+        if aggregate == "none":
+            self.embedding = nn.Embedding(
+                num_embeddings=n_cat + 1, 
+                embedding_dim=embedding_dim, 
+                padding_idx=0
+            )
+        else:
+            self.embedding = nn.EmbeddingBag(
+                num_embeddings=n_cat + 1,
+                embedding_dim=embedding_dim,
+                padding_idx=0,
+                mode=aggregate,
             )
 
         # create a router to router the input to the correct embedding such that
-        # input_to_numeric[input] will give the index of the numerical feature 
+        # input_to_numeric[input] will give the index of the numerical feature
         # in numerical_embedding
-        input_to_numeric = torch.zeros(self.vocabulary_size + 1, dtype=torch.long)
+        input_to_numeric = torch.zeros(n_cat + n_num + 1, dtype=torch.long)
         input_to_numeric[self.numerical_feature_ids] = torch.arange(
             1, self.numerical_feature_ids.shape[0] + 1
         )
         self.register_buffer("input_to_numeric", input_to_numeric)
 
-        input_to_categorical = torch.zeros(self.vocabulary_size + 1, dtype=torch.long)
+        input_to_categorical = torch.zeros(n_cat + n_num + 1, dtype=torch.long)
         categorical_feature_ids = torch.where(input_to_numeric == 0)[0]
         input_to_categorical[categorical_feature_ids[1:]] = torch.arange(
             1, categorical_feature_ids.numel()
         )
         self.register_buffer("input_to_categorical", input_to_categorical)
 
-    def forward(self, x):
+    def forward(self, x: dict[str, torch.Tensor]) -> torch.Tensor:
         numerical_mask = torch.isin(
-            x["feature_ids"],
-            self.numerical_feature_ids.to(x["feature_ids"].device)
+            x["feature_ids"], self.numerical_feature_ids.to(x["feature_ids"].device)
         )
+        categorical_features = torch.where(
+            ~numerical_mask, x["feature_ids"], torch.tensor(0)
+        )
+        categorical_mapped_features = self.input_to_categorical[categorical_features]
+        categorical_embeddings = self.embedding(categorical_mapped_features)
+
+        if self.numerical_embedding is None:
+            if self.aggregate == "none":
+                return categorical_embeddings
+            else:
+                return categorical_embeddings / numerical_mask.shape[1]
+
         numerical_features = torch.where(
-            numerical_mask, x["feature_ids"], 
-            torch.tensor(0)
+            numerical_mask, x["feature_ids"], torch.tensor(0)
         )
         numerical_mapped_features = self.input_to_numeric[numerical_features]
         numerical_values = torch.where(
@@ -72,17 +92,18 @@ class Embedding(nn.Module):
         numerical_embeddings = self.numerical_embedding(
             numerical_mapped_features, numerical_values
         )
-        categorical_features = torch.where(
-            ~numerical_mask, x["feature_ids"], torch.tensor(0)
-        )
-        categorical_mapped_features = self.input_to_categorical[categorical_features]
-        categorical_embeddings = self.embedding(categorical_mapped_features)
-        merge_embeddings = torch.where(
-            numerical_mask.unsqueeze(-1), 
-            numerical_embeddings, 
-            categorical_embeddings
-        )
-        return merge_embeddings
+
+        if self.aggregate == "none":
+            merged_embeddings = torch.where(
+                numerical_mask.unsqueeze(-1),
+                numerical_embeddings,
+                categorical_embeddings,
+            )
+        else:
+            merged_embeddings = (
+                categorical_embeddings + numerical_embeddings
+            ) / numerical_mask.shape[1]
+        return merged_embeddings
 
 
 # class NumericalEmbedding(nn.Module):
@@ -165,7 +186,7 @@ class ClassToken(nn.Module):
 def rotate_every_two(x: torch.Tensor) -> torch.Tensor:
     """
     Helper function that rotates every two elements in the final dimension.
-    Works on a tensor with shape (..., head_dim). It splits the last dimension 
+    Works on a tensor with shape (..., head_dim). It splits the last dimension
     into pairs, then rotates them by replacing (a, b) with (-b, a).
 
     Args:
@@ -220,7 +241,7 @@ class RotaryEmbedding(nn.Module):
                x (torch.Tensor): Tensor of shape (batch, nheads, seq_len, head_dim).
                time_ids (torch.Tensor): Discrete time IDs of shape (batch, seq_len).
         Returns:
-            torch.tensor: Tensor of the same shape as input x with rotary 
+            torch.tensor: Tensor of the same shape as input x with rotary
             embeddings applied.
         """
         max_pos = self.precomputed_sin.shape[0]
@@ -239,12 +260,14 @@ class RotaryEmbedding(nn.Module):
 
 
 class NumericalEmbedding(nn.Module):
-    def __init__(self,
-                 num_embeddings: int,
-                 embedding_dim: int,
-                 mode: str="scale",
-                 bias: bool=True,
-                 aggregate: bool=False):
+    def __init__(
+        self,
+        num_embeddings: int,
+        embedding_dim: int,
+        mode: str = "scale",
+        bias: bool = True,
+        aggregate: bool = False,
+    ):
         """
         Merged Numerical Embedding Layer that supports two modes:
 
@@ -273,25 +296,21 @@ class NumericalEmbedding(nn.Module):
 
         self.mode = mode
         self.aggregate = aggregate
-        if self.aggregate:
-            embedding_layer = partial(nn.EmbeddingBag, mode="sum")
-        else:
-            embedding_layer = nn.Embedding
+        embedding_layer = nn.Embedding
         if self.mode == "scale":
-            self.embedding = embedding_layer(num_embeddings + 1,
-                                             embedding_dim,
-                                             padding_idx=0)
+            self.embedding = embedding_layer(
+                num_embeddings + 1, embedding_dim, padding_idx=0
+            )
             if bias:
-                self.bias_embedding = embedding_layer(num_embeddings + 1,
-                                                      embedding_dim,
-                                                      padding_idx=0)
+                self.bias_embedding = embedding_layer(
+                    num_embeddings + 1, embedding_dim, padding_idx=0
+                )
             else:
                 self.bias_embedding = None
         elif self.mode == "concatenate":
-            self.embedding = embedding_layer(num_embeddings + 1,
-                                          embedding_dim - 1,
-                                          padding_idx=0)
-
+            self.embedding = embedding_layer(
+                num_embeddings + 1, embedding_dim - 1, padding_idx=0
+            )
 
     def forward(self, ids: torch.Tensor, values: torch.Tensor):
         """
@@ -307,9 +326,13 @@ class NumericalEmbedding(nn.Module):
             out = x * values.unsqueeze(-1)
             if self.bias_embedding is not None:
                 out = out + self.bias_embedding(ids)
+            if self.aggregate:
+                out = out.sum(dim=1)
             return out
         else:
             x = self.embedding(ids)
-            values_expanded = values.sum(dim=1).unsqueeze(-1)
-            return torch.cat([x, values_expanded],
-                             dim=-1)
+            if self.aggregate:
+                x = x.sum(dim=1)
+                values = values.sum(dim=1)
+            values_expanded = values.unsqueeze(-1)
+            return torch.cat([x, values_expanded], dim=-1)

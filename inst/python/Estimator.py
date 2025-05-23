@@ -280,7 +280,7 @@ class Estimator:
         return
 
     def split_batch(self, batch):
-        if self.accumulation_steps > 1 and len(batch[0]["cat"]) > self.sub_batch_size:
+        if self.accumulation_steps > 1 and len(batch[0]["feature_ids"]) > self.sub_batch_size:
             data, labels = batch
             split_data = {key: list(torch.split(value, self.sub_batch_size))
                           for key, value in data.items() if value is not None}

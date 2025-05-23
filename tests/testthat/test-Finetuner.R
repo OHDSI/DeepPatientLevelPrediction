@@ -33,12 +33,15 @@ test_that("Finetuner settings work", {
 test_that("Finetuner fitEstimator works", {
   fineTunerPath <- file.path(testLoc, "fineTuner")
   dir.create(fineTunerPath, showWarnings = FALSE)
-  fineTunerResults <- fitEstimator(trainData$Train,
+  # index should be 70% 1 and 30% 2
+  trainData$Test$folds <- data.frame(
+    rowId = trainData$Test$labels$rowId,
+    index = ifelse(runif(nrow(trainData$Test$labels)) < 0.7, 1, 2)
+  )
+  fineTunerResults <- fitEstimator(trainData$Test,
                                    modelSettings = fineTunerSettings,
                                    analysisId = 1,
                                    analysisPath = fineTunerPath)
-  expect_equal(which(fineTunerResults$covariateImportance$isNumeric), 
-               which(fitEstimatorResults$covariateImportance$isNumeric))
   expect_equal(nrow(fineTunerResults$covariateImportance),
                nrow(fitEstimatorResults$covariateImportance))
   expect_equal(fineTunerResults$covariateImportance$columnId,

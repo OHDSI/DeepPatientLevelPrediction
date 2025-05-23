@@ -1,11 +1,11 @@
 from typing import Optional, Type
 
 import torch
-from torch import nn
 import torch.nn.functional as F
+from torch import nn
 
-from Embeddings import Embedding, ClassToken, RotaryEmbedding
-
+from Embeddings import ClassToken, Embedding, RotaryEmbedding
+from Dataset import FeatureInfo
 
 def reglu(x):
     a, b = x.chunk(2, dim=-1)
@@ -20,7 +20,7 @@ class ReGLU(nn.Module):
 class Transformer(nn.Module):
     def __init__(
         self,
-        feature_info: dict,
+        feature_info: FeatureInfo,
         num_blocks: int,
         dim_token: int,
         num_heads: int,
@@ -43,7 +43,8 @@ class Transformer(nn.Module):
         dim_hidden = int(dim_hidden)
         dim_out = int(dim_out)
 
-        self.embedding = Embedding(embedding_dim=dim_token, feature_info=feature_info)
+        self.embedding = Embedding(embedding_dim=dim_token, 
+                                   feature_info=feature_info)
 
         self.class_token = ClassToken(dim_token)
 
@@ -60,7 +61,7 @@ class Transformer(nn.Module):
                 skip_attn_norm=(layer_idx == 0),
                 only_class_token=(layer_idx == num_blocks - 1),
                 use_rope=use_rope,
-                max_time_id=feature_info["max_time_id"] if use_rope else None,
+                max_time_id=feature_info.get_max_time_id() if use_rope else None,
             )
             self.layers.append(block)
 

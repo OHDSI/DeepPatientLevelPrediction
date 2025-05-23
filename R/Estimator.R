@@ -180,7 +180,7 @@ fitEstimator <- function(
     trainData$labels <- merge(trainData$labels, trainData$fold, by = "rowId")
   }
 
-  if (modelSettings$modelType == "Finetuner") {
+  if (attr(modelSettings$param, "settings")$modelType == "Finetuner") {
     # make sure to use same mapping from covariateIds to columns if finetuning
     path <- modelSettings$param[[1]]$modelPath
     oldCovImportance <- utils::read.csv(
@@ -190,13 +190,11 @@ fitEstimator <- function(
       )
     )
     mapping <- oldCovImportance %>% dplyr::select("columnId", "covariateId")
-    numericalIndex <- which(oldCovImportance %>% dplyr::pull("isNumeric"))
     mappedCovariateData <- PatientLevelPrediction::MapIds(
       covariateData = trainData$covariateData,
       cohort = trainData$labels,
       mapping = mapping
     )
-    mappedCovariateData$numericalIndex <- as.data.frame(numericalIndex)
   } else {
     mappedCovariateData <- PatientLevelPrediction::MapIds(
       covariateData = trainData$covariateData,
