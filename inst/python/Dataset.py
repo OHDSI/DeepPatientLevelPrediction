@@ -306,12 +306,11 @@ class TemporalData(Dataset):
         print(f"Processed data in {delta:.2f} seconds")
 
     def get_feature_info(self):
-        return {
-            "vocabulary_size": self.data_ref.select("columnId").max().collect().item(),
-            "data_reference": self.data_ref.collect(),
-            "time_reference": self.time_ref.collect(),
-            "max_time_id": self.data["time_ids"].max().item() + 1,
-        }
+        feature_info = FeatureInfo(data_reference=self.data_ref.collect(), 
+                                   time_reference=self.time_ref.collect())
+        # +1 because timeId starts from 0
+        feature_info.set_max_time_id(self.data["time_ids"].max().item() + 1)
+        return feature_info
 
     def __len__(self):
         return self.target.size()[0]
@@ -374,6 +373,7 @@ class FeatureInfo(object):
     ):
         self.data_reference = data_reference
         self.time_reference = time_reference
+        self.max_time_id = None
 
     def get_vocabulary_size(self) -> int:
         return int(
@@ -393,6 +393,9 @@ class FeatureInfo(object):
         )
 
     def get_max_time_id(self):
-        if self.time_reference is None:
-            return None
-        return int(self.time_reference.select("timeId").max().item() + 1)
+        return self.max_time_id
+
+    def set_max_time_id(self, max_time_id: int):
+        self.max_time_id = max_time_id
+
+
