@@ -188,7 +188,10 @@ class Data(Dataset):
             truncation = temporal_settings["truncation"]
         else:
             max_sequence_length = (
-                data_ref.select(pl.col("columnId").max()).collect().item()
+                data
+                .select(pl.col("feature_ids").list.len().max())
+                .collect()
+                .item()
             )
             truncation = "tail"
 

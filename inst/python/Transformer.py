@@ -3,6 +3,7 @@ from typing import Optional, Type
 import torch
 import torch.nn.functional as F
 from torch import nn
+from torch.nn.attention import SDPBackend, sdpa_kernel
 
 from Embeddings import ClassToken, Embedding, RotaryEmbedding
 from Dataset import FeatureInfo
@@ -82,10 +83,14 @@ class Transformer(nn.Module):
             time_ids = x["time_ids"]
         else:
             time_ids = None
+        mask = x["feature_ids"] == 0
+        mask = torch.cat(
+            (mask.new_full((mask.size(0), 1), False),  # (B, 1)
+             mask),  # (B, L)
+            dim=1
+        )
         x = self.embedding(x)
         x = self.class_token(x)
-        mask = (x != 0).any(dim=-1)
-        mask = mask.unsqueeze(1).expand(-1, mask.size(1), -1)
         for layer in self.layers:
             x = layer(x, mask, time_ids)
         x = self.head(x)
@@ -129,17 +134,14 @@ class TransformerBlock(nn.Module):
             (lambda x: x[:, :1, :]) if only_class_token else (lambda x: x)
         )
         self.mask_selector = (
-            (lambda m: m[:, :1, :]) if only_class_token else (lambda m: m)
+            (lambda m: m[:, :1]) if only_class_token else (lambda m: m)
         )
         self.time_ids_selector = (
             (lambda t: t[:, :1]) if only_class_token else (lambda t: t)
         )
 
         self.attn = MultiHeadAttention(
-            E_q=dim_token,
-            E_k=dim_token,
-            E_v=dim_token,
-            E_total=dim_token,
+            dim_token=dim_token,
             nheads=num_heads,
             dropout_p=att_dropout,
             use_rope=use_rope,
@@ -164,10 +166,9 @@ class TransformerBlock(nn.Module):
     ) -> torch.Tensor:
         x_norm = self.attn_norm(x)
         attn_out = self.attn(
-            query=self.query_selector(x_norm),
-            key=x_norm,
-            value=x_norm,
-            mask=self.mask_selector(mask),
+            x=x_norm,
+            query_selector=self.query_selector,
+            mask=mask,
             time_ids=self.time_ids_selector(time_ids) if time_ids is not None else None,
         )
         attn_out = self.attn_dropout(attn_out)
@@ -223,11 +224,7 @@ class MultiHeadAttention(nn.Module):
     Computes multi-head attention. Supports nested or padded tensors.
 
     Args:
-        E_q (int): Size of embedding dim for query
-        E_k (int): Size of embedding dim for key
-        E_v (int): Size of embedding dim for value
-        E_total (int): Total embedding dim of combined heads post input
-            projection. Each head has dim E_total // nheads
+        dim_token (int): Size of embedding dim for query, key and value
         nheads (int): Number of heads
         dropout_p (float, optional): Dropout probability. Default: 0.0
         use_rope (bool, optional): Whether to use RoPE (rotary positional
@@ -238,10 +235,7 @@ class MultiHeadAttention(nn.Module):
 
     def __init__(
         self,
-        E_q: int,
-        E_k: int,
-        E_v: int,
-        E_total: int,
+        dim_token: int,
         nheads: int,
         dropout_p: float = 0.0,
         use_rope: bool = False,
@@ -250,13 +244,10 @@ class MultiHeadAttention(nn.Module):
         super().__init__()
         self.nheads = nheads
         self.dropout_p = dropout_p
-        self.query_proj = nn.Linear(E_q, E_total)
-        self.key_proj = nn.Linear(E_k, E_total)
-        self.value_proj = nn.Linear(E_v, E_total)
-        E_out = E_q
-        self.out_proj = nn.Linear(E_total, E_out)
-        assert E_total % nheads == 0, "Embedding dim is not divisible by nheads"
-        self.E_head = E_total // nheads
+        self.in_proj = nn.Linear(dim_token, 3*dim_token)
+        self.out_proj = nn.Linear(dim_token, dim_token)
+        assert dim_token % nheads == 0, "Embedding dim is not divisible by nheads"
+        self.E_head = dim_token // nheads
 
         self.use_rope = use_rope
         if self.use_rope and max_time_id is not None:
@@ -268,9 +259,8 @@ class MultiHeadAttention(nn.Module):
 
     def forward(
         self,
-        query: torch.Tensor,
-        key: torch.Tensor,
-        value: torch.Tensor,
+        x: torch.Tensor,
+        query_selector: callable,
         mask: torch.Tensor,
         time_ids: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
@@ -282,24 +272,17 @@ class MultiHeadAttention(nn.Module):
             4. Apply output projection
 
         Args:
-            query (torch.Tensor): query of shape (N, L_t, E_q)
-            key (torch.Tensor): key of shape (N, L_s, E_k)
-            value (torch.Tensor): value of shape (N, L_s, E_v)
-            mask (torch.Tensor): mask of shape (N, L_t, E_q)
+            x (torch.Tensor): query of shape (N, L_t, dim_token)
+            query_selector (callable): function to select query from x
+            mask (torch.Tensor): mask of shape (N, L_t)
             time_ids (torch.Tensor, optional): time ids of shape (N, L_t) for RoPE
 
         Returns:
             attn_output (torch.Tensor): output of shape (N, L_t, E_q)
         """
-        # Step 1. Apply input projection
-        # TODO: demonstrate packed projection
-        query = self.query_proj(query)
-        key = self.key_proj(key)
-        value = self.value_proj(value)
+        query, key ,value = self.in_proj(x).chunk(3, dim=-1)
+        query = query_selector(query)
 
-        # Step 2. Split heads and prepare for SDPA
-        # reshape query, key, value to separate by head
-        # (N, L_t, E_total) -> (N, L_t, nheads, E_head) -> (N, nheads, L_t, E_head)
         query = query.unflatten(-1, [self.nheads, self.E_head]).transpose(1, 2)
         # (N, L_s, E_total) -> (N, L_s, nheads, E_head) -> (N, nheads, L_s, E_head)
         key = key.unflatten(-1, [self.nheads, self.E_head]).transpose(1, 2)
@@ -309,12 +292,11 @@ class MultiHeadAttention(nn.Module):
         if self.use_rope and time_ids is not None:
             query = self.rope(query, time_ids)
             key = self.rope(key, time_ids)
-        mask = mask.unsqueeze(1)
-
         # Step 3. Run SDPA
         # (N, nheads, L_t, E_head)
+        attn_mask = mask[:, None, None, :].contiguous()
         attn_output = F.scaled_dot_product_attention(
-            query, key, value, dropout_p=self.dropout_p, is_causal=False, attn_mask=mask
+                query, key, value, dropout_p=self.dropout_p, is_causal=False, attn_mask=attn_mask
         )
         # (N, nheads, L_t, E_head) -> (N, L_t, nheads, E_head) -> (N, L_t, E_total)
         attn_output = attn_output.transpose(1, 2).flatten(-2)
