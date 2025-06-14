@@ -43,7 +43,7 @@
 #' @param accumulationSteps how many steps to accumulate gradients before
 #' updating weights, can also be a function that is evaluated during runtime
 #' @param seed seed to initialize weights of model with
-#' @param trainValidationSplit if TRUE, perform a train-validation split for 
+#' @param trainValidationSplit if TRUE, perform a train-validation split for
 #' model selection instead of cross validation
 #' @export
 setEstimator <- function(
@@ -324,9 +324,9 @@ predictDeepEstimator <- function(plpModel, data, cohort) {
         dplyr::select("columnId", "covariateId")
     )
     data <- createDataset(mappedData,
-                          plpModel = plpModel,
-                          maxSequenceLength = attr(plpModel$modelDesign$modelSettings$param, "maxSequenceLength"),
-                          truncation = attr(plpModel$modelDesign$modelSettings$param, "truncation"))
+      plpModel = plpModel,
+      temporalSettings = attr(plpModel$modelDesign$modelSettings$param, "temporalSettings")
+    )
   } else if ("plpData" %in% class(data)) {
     mappedData <- PatientLevelPrediction::MapIds(
       data$covariateData,
@@ -335,7 +335,8 @@ predictDeepEstimator <- function(plpModel, data, cohort) {
         dplyr::select("columnId", "covariateId")
     )
     data <- createDataset(mappedData,
-                          plpModel = plpModel)
+      plpModel = plpModel
+    )
   }
 
   # get predictions
@@ -405,8 +406,7 @@ gridCvDeep <- function(
   dataset <- createDataset(
     data = mappedData,
     labels = labels,
-    maxSequenceLength = attr(paramSearch, "maxSequenceLength"),
-    truncation = attr(paramSearch, "truncation")
+    temporalSettings = attr(paramSearch, "temporalSettings")
   )
 
 

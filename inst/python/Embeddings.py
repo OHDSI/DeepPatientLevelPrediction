@@ -20,11 +20,14 @@ class Embedding(nn.Module):
         self.embedding_dim = int(embedding_dim)
         self.aggregate = aggregate
 
+        self.feature_info = feature_info
         self.vocabulary_size = feature_info.get_vocabulary_size()
         self.numerical_feature_ids = feature_info.get_numerical_feature_ids()
 
         n_num = self.numerical_feature_ids.numel()
+        self.n_num = n_num
         n_cat = self.vocabulary_size  - n_num
+        self.n_cat = n_cat
 
         if n_num > 0:
             self.numerical_embedding = NumericalEmbedding(

@@ -65,10 +65,12 @@ setDefaultTransformer <- function(estimatorSettings =
 #' @param dimHiddenRatio          dimension of the feedforward block as a ratio
 #' of dimToken (embedding size)
 #' @param temporal                Whether to use a transformer with temporal data
-#' @param useRope                 Whether to use ROPE (Relative Positional Encoding)
-#' @param maxSequenceLength       Maximum sequence length, sequences longer than
-#' this will be truncated and/or padded to this length
-#' @param truncation              Truncation method, only 'tail' is supported
+#' @param temporalSettings        settings for the temporal transformer. Which include
+#'   - `useRope`: Whether to use ROPE (Relative Positional Encoding)
+#'   - `maxSequenceLength`: Maximum sequence length, sequences longer than This
+#'     will be truncated and/or padded to this length(
+#'   - `truncation`: Truncation method, only 'tail' is supported
+#'   - `time_tokens`: Whether to use time tokens, default TRUE
 #' @param estimatorSettings       created with `setEstimator`
 #' @param hyperParamSearch        what kind of hyperparameter search to do,
 #' default 'random'
@@ -88,9 +90,12 @@ setTransformer <- function(numBlocks = 3,
                            dimHidden = 256,
                            dimHiddenRatio = NULL,
                            temporal = FALSE,
-                           useRope = FALSE,
-                           maxSequenceLength = 256,
-                           truncation = "tail",
+                           temporalSettings = list(
+                             useRope = FALSE,
+                             maxSequenceLength = 256,
+                             truncation = "tail",
+                             time_tokens = TRUE
+                           ),
                            estimatorSettings = setEstimator(
                              weightDecay = 1e-6,
                              batchSize = 1024,
@@ -155,16 +160,19 @@ setTransformer <- function(numBlocks = 3,
     dimHidden <- dimHiddenRatio
   }
 
-  checkIsClass(useRope, "logical")
-  checkIsClass(maxSequenceLength, c("integer", "numeric"))
-  checkHigherEqual(maxSequenceLength, 1)
-  if (inherits(maxSequenceLength, "numeric")) {
-    maxSequenceLength <- as.integer(round(maxSequenceLength))
+  checkIsClass(temporalSettings$useRope, "logical")
+  checkIsClass(temporalSettings$maxSequenceLength, 
+    c("integer", "numeric"))
+  checkHigherEqual(temporalSettings$maxSequenceLength, 1)
+  if (inherits(temporalSettings$maxSequenceLength, "numeric")) {
+    temporalSettings$maxSequenceLength <- 
+      as.integer(round(temporalSettings$maxSequenceLength))
   }
-  checkIsClass(truncation, "character")
-  if (truncation != "tail") {
+  checkIsClass(temporalSettings$truncation, "character")
+  if (temporalSettings$truncation != "tail") {
     stop(paste(
-      "Only truncation method 'tail' is supported. truncation =", truncation
+      "Only truncation method 'tail' is supported. truncation =", 
+      temporalSettings$truncation
     ))
   }
 
@@ -178,7 +186,7 @@ setTransformer <- function(numBlocks = 3,
     ffnDropout = ffnDropout
   )
   if (temporal) {
-    paramGrid[["useRope"]] <- useRope
+    paramGrid[["useRope"]] <- temporalSettings$useRope
   }
 
   paramGrid <- c(paramGrid, estimatorSettings$paramsToTune)
@@ -222,8 +230,7 @@ setTransformer <- function(numBlocks = 3,
   )
   if (temporal) {
     attr(results$param, "temporalModel") <- TRUE
-    attr(results$param, "truncation") <- truncation
-    attr(results$param, "maxSequenceLength") <- maxSequenceLength
+    attr(results$param, "temporalSettings") <- temporalSettings
     results$modelParamNames <- c(results$modelParamNames, "useRope")
   }
   attr(results$param, "settings")$modelType <- results$modelType
