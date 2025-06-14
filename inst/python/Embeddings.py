@@ -12,7 +12,7 @@ class Embedding(nn.Module):
         self,
         embedding_dim: int,
         feature_info: FeatureInfo,
-        numeric_mode: str = "concatenate",
+        numeric_mode: str = "scale",
         aggregate: str = "none",
     ):
         super(Embedding, self).__init__()

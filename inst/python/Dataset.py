@@ -202,7 +202,7 @@ class Data(Dataset):
             use_time=self.use_time,
         )
 
-        data = data.collect(engine="streaming")
+        data = data.sort(by="rowId").collect(engine="streaming")
 
         self.data = {
             "row_ids": data["rowId"].to_torch(),
