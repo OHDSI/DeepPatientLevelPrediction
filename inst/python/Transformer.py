@@ -83,9 +83,9 @@ class Transformer(nn.Module):
             time_ids = x["time_ids"]
         else:
             time_ids = None
-        mask = x["feature_ids"] == 0
+        mask = x["feature_ids"] != 0
         mask = torch.cat(
-            (mask.new_full((mask.size(0), 1), False),  # (B, 1)
+            (mask.new_full((mask.size(0), 1), True),  # (B, 1)
              mask),  # (B, L)
             dim=1
         )
