@@ -85,9 +85,7 @@ mappedData <- PatientLevelPrediction::MapIds(
 dataset <- createDataset(
   data = mappedData,
   labels = trainData$Train$labels,
-  plpModel = NULL,
-  maxSequenceLength = NULL,
-  truncation = NULL
+  plpModel = NULL
 )
 smallDataset <- torch$utils$data$Subset(
   dataset,

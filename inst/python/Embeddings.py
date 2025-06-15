@@ -333,9 +333,16 @@ class NumericalEmbedding(nn.Module):
         if self.aggregate:
             x = x.sum(dim=1)
             values = values.sum(dim=1)
-        B, *rest, Dm1 = x.shape
-        out_shape = (*rest, Dm1 + 1) if self.aggregate else (B, *rest, Dm1 + 1)
-        out = x.new_empty(out_shape)
-        out[..., :Dm1] = x
-        out[..., Dm1] = values
-        return out
+            B, Dm1 = x.shape
+            out = x.new_empty(B, Dm1 + 1)  # (B, D)
+
+            out[:, :Dm1] = x
+            out[:, Dm1] = values  # broadcast along B
+            return out
+        else:
+            values = values.unsqueeze(-1)
+            B, L, Dm1 = x.shape
+            out = x.new_empty(B, L, Dm1 + 1)  # (B, L, D)
+            out[..., :Dm1] = x
+            out[..., Dm1] = values.squeeze(-1)
+            return out

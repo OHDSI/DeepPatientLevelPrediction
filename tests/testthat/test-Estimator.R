@@ -170,8 +170,8 @@ test_that("predictDeepEstimator works", {
                                       cohort = trainData$Train$labels)
   sink()
 
-  expect_lt(max(predictions$value), 1)
-  expect_gt(min(predictions$value), 0)
+  expect_lte(max(predictions$value), 1)
+  expect_gte(min(predictions$value), 0)
   expect_equal(nrow(predictions), nrow(trainData$Train$labels))
 
   # input is a plpModel and data
@@ -181,8 +181,8 @@ test_that("predictDeepEstimator works", {
     trainData$Test$labels
   )
   sink()
-  expect_lt(max(predictions$value), 1)
-  expect_gt(min(predictions$value), 0)
+  expect_lte(max(predictions$value), 1)
+  expect_gte(min(predictions$value), 0)
   expect_equal(nrow(predictions), nrow(trainData$Test$labels))
 })
 

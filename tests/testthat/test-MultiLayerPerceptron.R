@@ -100,7 +100,7 @@ test_that("MLP nn-module works ", {
   pars <- sum(reticulate::iterate(model$parameters(), function(x) x$numel()))
 
   # expected number of parameters
-  expect_equal(pars, 976)
+  expect_equal(pars, 994.0)
 
   input <- list()
   input$feature_ids <- torch$randint(0L, 5L, c(10L, 5L), dtype = torch$long)

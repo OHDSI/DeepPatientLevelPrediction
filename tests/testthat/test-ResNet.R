@@ -120,7 +120,7 @@ test_that("ResNet nn-module works ", {
 
   input <- list()
   input[["feature_ids"]] <- torch$randint(1L, 5L, c(10L, 5L), dtype = torch$long)
-  input[["feature_values"]] <- torch$randn(10L, 1L, dtype = torch$float32)
+  input[["feature_values"]] <- torch$randn(10L, 5L, dtype = torch$float32)
 
 
   output <- model(input)

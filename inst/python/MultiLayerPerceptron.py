@@ -15,7 +15,7 @@ class MultiLayerPerceptron(nn.Module):
         normalization=nn.BatchNorm1d,
         dropout=0.0,
         dim_out: int = 1,
-        concat_num=True,
+        concat_num=False,
         model_type="MultiLayerPerceptron"
     ):
         super(MultiLayerPerceptron, self).__init__()

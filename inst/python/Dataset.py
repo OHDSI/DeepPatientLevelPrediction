@@ -253,7 +253,6 @@ class Data(Dataset):
 
     def __getitem__(self, item):
         batch = {
-            "row_ids": self.data["row_ids"][[item]],
             "feature_ids": self.data["feature_ids"][[item]],
             "time_ids": self.data["time_ids"][[item]] if self.use_time else None,
             "feature_values": self.data["feature_values"][[item]],
@@ -305,7 +304,7 @@ class FeatureInfo(object):
         self.max_time_id = None
 
     def get_vocabulary_size(self) -> int:
-        return int(self.data_reference.select("columnId").count().item())
+        return int(self.data_reference.select("columnId").max().item())
 
     def get_numerical_feature_ids(self) -> torch.Tensor:
         return (
