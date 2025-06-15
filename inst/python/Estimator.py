@@ -3,6 +3,7 @@ import pathlib
 
 import torch
 from torch.utils.data import DataLoader, BatchSampler, RandomSampler, SequentialSampler
+from torch.profiler import profile, ProfilerActivity
 from tqdm import tqdm
 
 from gpu_memory_cleanup import memory_cleanup
@@ -113,6 +114,7 @@ class Estimator:
                 batch_size=self.batch_size,
                 drop_last=True,
             ),
+            pin_memory=True,
         )
         test_dataloader = DataLoader(
             dataset=test_dataset,
@@ -122,6 +124,7 @@ class Estimator:
                 batch_size=self.batch_size,
                 drop_last=False,
             ),
+            pin_memory=True,
         )
 
         trained_epochs = dict()
@@ -399,7 +402,7 @@ class EarlyStopping:
 
 def batch_to_device(batch, device="cpu"):
     if torch.is_tensor(batch):
-        batch = batch.to(device=device)
+        batch = batch.to(device=device, non_blocking=True)
     else:
         for ix, b in enumerate(batch):
             if isinstance(b, str):
@@ -410,7 +413,7 @@ def batch_to_device(batch, device="cpu"):
             if b is None:
                 continue
             if torch.is_tensor(b):
-                b_out = b.to(device=device)
+                b_out = b.to(device=device, non_blocking=True)
             else:
                 b_out = batch_to_device(b, device)
             if b_out is not None:

@@ -70,12 +70,9 @@ class Embedding(nn.Module):
         self.register_buffer("input_to_categorical", input_to_categorical)
 
     def forward(self, x: dict[str, torch.Tensor]) -> torch.Tensor:
-        numerical_mask = torch.isin(
-            x["feature_ids"], self.numerical_feature_ids.to(x["feature_ids"].device)
-        )
-        categorical_features = torch.where(
-            ~numerical_mask, x["feature_ids"], torch.tensor(0)
-        )
+        numerical_mask = self.input_to_numeric[x["feature_ids"]] != 0
+        categorical_features = x["feature_ids"].clone()
+        categorical_features[numerical_mask] = 0
         categorical_mapped_features = self.input_to_categorical[categorical_features]
         categorical_embeddings = self.embedding(categorical_mapped_features)
 
@@ -85,13 +82,13 @@ class Embedding(nn.Module):
             else:
                 return categorical_embeddings / numerical_mask.shape[1]
 
-        numerical_features = torch.where(
-            numerical_mask, x["feature_ids"], torch.tensor(0)
-        )
+        numerical_features = x["feature_ids"].clone()
+        numerical_features[~numerical_mask] = 0
+
         numerical_mapped_features = self.input_to_numeric[numerical_features]
-        numerical_values = torch.where(
-            numerical_mask, x["feature_values"], torch.tensor(0.0)
-        )
+
+        numerical_values = x["feature_values"].clone()
+        numerical_values[~numerical_mask] = 0.0
         numerical_embeddings = self.numerical_embedding(
             numerical_mapped_features, numerical_values
         )
@@ -175,15 +172,15 @@ class ClassTokenNested(nn.Module):
 class ClassToken(nn.Module):
     def __init__(self, dim_token):
         super(ClassToken, self).__init__()
-        self.weight = nn.Parameter(torch.empty(dim_token, 1))
+        self.weight = nn.Parameter(torch.empty(1, 1, dim_token))
         nn.init.kaiming_uniform_(self.weight, a=math.sqrt(5))
 
-    def expand(self, dims):
-        new_dims = [1] * (len(dims) - 1)
-        return self.weight.view(new_dims + [-1]).expand(dims + [-1])
-
     def forward(self, x):
-        return torch.cat([self.expand([x.shape[0], 1]), x], dim=1)
+        B, L, D = x.shape
+        out = x.new_empty(B, L + 1, D)
+        out[:, 0] = self.weight
+        out[:, 1:] = x
+        return out
 
 
 def rotate_every_two(x: torch.Tensor) -> torch.Tensor:
@@ -299,21 +296,19 @@ class NumericalEmbedding(nn.Module):
 
         self.mode = mode
         self.aggregate = aggregate
-        embedding_layer = nn.Embedding
-        if self.mode == "scale":
-            self.embedding = embedding_layer(
+
+        self.embedding = nn.Embedding(
+            num_embeddings + 1,
+            embedding_dim if mode == "scale" else embedding_dim - 1,
+            padding_idx=0,
+        )
+
+        if mode == "scale" and bias:
+            self.bias_embedding = nn.Embedding(
                 num_embeddings + 1, embedding_dim, padding_idx=0
             )
-            if bias:
-                self.bias_embedding = embedding_layer(
-                    num_embeddings + 1, embedding_dim, padding_idx=0
-                )
-            else:
-                self.bias_embedding = None
-        elif self.mode == "concatenate":
-            self.embedding = embedding_layer(
-                num_embeddings + 1, embedding_dim - 1, padding_idx=0
-            )
+        else:
+            self.bias_embedding = None
 
     def forward(self, ids: torch.Tensor, values: torch.Tensor):
         """
@@ -325,17 +320,22 @@ class NumericalEmbedding(nn.Module):
             Tensor: Output embeddings.
         """
         if self.mode == "scale":
-            x = self.embedding(ids)
-            out = x * values.unsqueeze(-1)
+            out = self.embedding(ids)
+            out.mul_(values.unsqueeze(-1))
+
             if self.bias_embedding is not None:
-                out = out + self.bias_embedding(ids)
+                out.add_(self.bias_embedding(ids))
             if self.aggregate:
                 out = out.sum(dim=1)
             return out
-        else:
-            x = self.embedding(ids)
-            if self.aggregate:
-                x = x.sum(dim=1)
-                values = values.sum(dim=1)
-            values_expanded = values.unsqueeze(-1)
-            return torch.cat([x, values_expanded], dim=-1)
+
+        x = self.embedding(ids)
+        if self.aggregate:
+            x = x.sum(dim=1)
+            values = values.sum(dim=1)
+        B, *rest, Dm1 = x.shape
+        out_shape = (*rest, Dm1 + 1) if self.aggregate else (B, *rest, Dm1 + 1)
+        out = x.new_empty(out_shape)
+        out[..., :Dm1] = x
+        out[..., Dm1] = values
+        return out

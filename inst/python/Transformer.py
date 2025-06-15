@@ -3,7 +3,6 @@ from typing import Optional, Type
 import torch
 import torch.nn.functional as F
 from torch import nn
-from torch.nn.attention import SDPBackend, sdpa_kernel
 
 from Embeddings import ClassToken, Embedding, RotaryEmbedding
 from Dataset import FeatureInfo
