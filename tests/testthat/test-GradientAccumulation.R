@@ -45,10 +45,8 @@ generateData <- function(observations, features, totalFeatures = 6,
     covariates = covariates,
     covariateRef = covariateRef,
     analysisRef = analysisRef)
-  Andromeda::flushAndromeda(data)
-  dataPath <- attr(data, "dbname")
-  Data <- reticulate::import_from_path("Dataset", path = path)$Data
-  dataset <- Data(dataPath, labels)
+
+  dataset <- createDataset(data, labels)
   return(dataset)
 }
 
