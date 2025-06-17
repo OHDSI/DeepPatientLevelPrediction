@@ -19,18 +19,20 @@ createDataset <- function(data, labels,
                           plpModel = NULL,
                           temporalSettings = NULL) {
   path <- system.file("python", package = "DeepPatientLevelPrediction")
+
+  newPath <- tempfile()
+  Andromeda::saveAndromeda(data, newPath, maintainConnection = TRUE)
+
   attributes(data)$path <- attributes(data)$path %||% attributes(data)$dbname
 
   args <- list(
-    r_to_py(normalizePath(attributes(data)$path))
+    r_to_py(normalizePath(newPath))
   )
 
   dataset <- reticulate::import_from_path("Dataset", path = path)$Data
   if ("timeId" %in% names(data$covariates)) {
     args$temporal_settings <- r_to_py(camelCaseToSnakeCaseNames(temporalSettings))
   }
-
-  Andromeda::flushAndromeda(data)
   # training
   if (is.null(plpModel)) {
     args$labels <- r_to_py(labels$outcomeCount)

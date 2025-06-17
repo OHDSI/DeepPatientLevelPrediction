@@ -264,16 +264,26 @@ class DBReader:
     def __init__(self, db_path: str):
         self.db_path = db_path
         self.suffix = pathlib.Path(db_path).suffix
-        if self.suffix == ".duckdb":
-            # copy the duckdb file and it's wal to a new file
-            new_filename = (
-                f"{pathlib.Path(db_path).stem}_{int(time.time())}{self.suffix}"
+        if self.suffix == "":
+            # unzip to a new location
+            new_db_path = (
+                pathlib.Path(db_path).parent.joinpath(f"db_{int(time.time())}")
             )
-            new_path = pathlib.Path(db_path).parent / new_filename
-            shutil.copy2(db_path, new_path)
-            self.db_path = new_path
+            shutil.unpack_archive(db_path, extract_dir=new_db_path,
+                                  format = "zip")
+            self.db_path = new_db_path.glob("*.duckdb").__next__()
+            self.suffix = pathlib.Path(self.db_path).suffix
         else:
-            self.db_path = db_path
+            if self.suffix == ".duckdb":
+                # copy the duckdb file and it's wal to a new file
+                new_filename = (
+                    f"{pathlib.Path(db_path).stem}_{int(time.time())}{self.suffix}"
+                )
+                new_path = pathlib.Path(db_path).parent / new_filename
+                shutil.copy2(db_path, new_path)
+                self.db_path = new_path
+            else:
+                self.db_path = db_path
 
         self.data_quoted = quote(db_path)
 
