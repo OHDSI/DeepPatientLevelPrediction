@@ -40,11 +40,12 @@ generateData <- function(observations, features, totalFeatures = 6,
     ))
   }
 
-  labels <- as.numeric(sample(0:1, observations, replace = TRUE))
+  labels <- list(outcomeCount = as.numeric(sample(0:1, observations, replace = TRUE)))
   data <- Andromeda::andromeda(
     covariates = covariates,
     covariateRef = covariateRef,
-    analysisRef = analysisRef)
+    analysisRef = analysisRef
+  )
 
   dataset <- createDataset(data, labels)
   return(dataset)
