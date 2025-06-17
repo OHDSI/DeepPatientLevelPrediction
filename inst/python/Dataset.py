@@ -527,7 +527,7 @@ def insert_time_tokens(
         pl.when(delta < 28)
         .then(delta // 7)  # W0-W3  → 0-3
         .when(delta < 365)
-        .then(4 + ((delta - 28) // 30 + 1))  # M1-M11 → 5-15
+        .then(4 + ((delta - 28) // 30))  # M1-M11 → 5-15
         .otherwise(pl.lit(15))  # LT     → 15
     ).cast(pl.Int32)
 
@@ -629,5 +629,5 @@ def get_offset(data_ref: pl.LazyFrame) -> int:
     """
     Get the offset for the time tokens based on the maximum columnId in the data reference.
     """
-    return data_ref.select(pl.col("columnId")).max().collect().item()
+    return data_ref.select(pl.col("columnId")).max().collect().item() + 1
 
