@@ -48,7 +48,6 @@ Config/reticulate:
     packages = list(
       list(package = "torch"),
       list(package = "polars"),
-      list(package = "pandas"),
       list(package = "duckdb"),
       list(package = "pyarrow"),
       list(package = "tqdm"),

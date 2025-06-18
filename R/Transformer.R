@@ -68,7 +68,7 @@ setDefaultTransformer <- function(estimatorSettings =
 #' @param temporalSettings        settings for the temporal transformer. Which include
 #'   - `useRope`: Whether to use ROPE (Relative Positional Encoding)
 #'   - `maxSequenceLength`: Maximum sequence length, sequences longer than This
-#'     will be truncated and/or padded to this length(
+#'     will be truncated and/or padded to this length either a number or 'max' for the Maximum
 #'   - `truncation`: Truncation method, only 'tail' is supported
 #'   - `time_tokens`: Whether to use time tokens, default TRUE
 #' @param estimatorSettings       created with `setEstimator`
@@ -162,8 +162,15 @@ setTransformer <- function(numBlocks = 3,
 
   checkIsClass(temporalSettings$useRope, "logical")
   checkIsClass(temporalSettings$maxSequenceLength, 
-    c("integer", "numeric"))
-  checkHigherEqual(temporalSettings$maxSequenceLength, 1)
+    c("integer", "numeric", "character"))
+  if (!inherits(temporalSettings$maxSequenceLength, "character")) {
+    checkHigherEqual(temporalSettings$maxSequenceLength, 1)
+  } else if (temporalSettings$maxSequenceLength != "max") {
+    stop(paste(
+      "maxSequenceLength must be either 'max' or a positive integer. maxSequenceLength =",
+      temporalSettings$maxSequenceLength
+    ))
+  }
   if (inherits(temporalSettings$maxSequenceLength, "numeric")) {
     temporalSettings$maxSequenceLength <- 
       as.integer(round(temporalSettings$maxSequenceLength))

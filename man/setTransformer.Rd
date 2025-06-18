@@ -47,7 +47,7 @@ of dimToken (embedding size)}
 \item{temporalSettings}{settings for the temporal transformer. Which include
 - `useRope`: Whether to use ROPE (Relative Positional Encoding)
 - `maxSequenceLength`: Maximum sequence length, sequences longer than This
-  will be truncated and/or padded to this length(
+  will be truncated and/or padded to this length either a number or 'max' for the Maximum
 - `truncation`: Truncation method, only 'tail' is supported
 - `time_tokens`: Whether to use time tokens, default TRUE}
 

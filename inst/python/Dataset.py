@@ -6,7 +6,6 @@ import pathlib
 from urllib.parse import quote
 
 import polars as pl
-import pandas as pd  # only for reticulate conversion of r dataframe
 import duckdb
 import torch
 from polars import LazyFrame
@@ -148,7 +147,7 @@ class Data(Dataset):
         self,
         data_path: str,
         labels: Optional[list] = None,
-        data_reference: Optional[pd.DataFrame] = None,
+        data_reference: Optional[pl.DataFrame | pl.LazyFrame] = None,
         temporal_settings: Optional[dict] = None,
     ):
         """
@@ -185,6 +184,14 @@ class Data(Dataset):
 
         if self.use_time and temporal_settings is not None:
             max_sequence_length = temporal_settings["max_sequence_length"]
+            if max_sequence_length == "max":
+                max_sequence_length = (
+                    data
+                    .select(pl.col("feature_ids").list.len().max())
+                    .collect()
+                    .item()
+                )
+                print(f"Using max sequence length: {max_sequence_length}")
             truncation = temporal_settings["truncation"]
         else:
             max_sequence_length = (
@@ -333,7 +340,7 @@ class FeatureInfo(object):
 
 
 def read_data(
-    path: str, lazy: bool = True, data_reference: Optional[pd.DataFrame] = None
+    path: str, lazy: bool = True, data_reference: Optional[pl.DataFrame | pl.LazyFrame] = None
 ) -> dict[str, pl.DataFrame | pl.LazyFrame]:
     """
     Reads the data from the given path and returns a dict of
