@@ -210,7 +210,7 @@ class FeatureInfo(object):
 
 
 def read_data(
-    path: str, lazy: bool = True, data_reference: Optional[pl.DataFrame | pl.LazyFrame] = None
+    path: str, lazy: bool = True, data_reference: Optional[pl.DataFrame] = None
 ) -> dict[str, pl.DataFrame | pl.LazyFrame]:
     """
     Reads the data from the given path and returns a dict of
@@ -221,7 +221,7 @@ def read_data(
     if data_reference is None:
         data_ref = reader.read_table("covariateRef", lazy=lazy)
     else:
-        data_ref = pl.from_pandas(data_reference).lazy()
+        data_ref = data_reference.lazy()
     data_ref = data_ref.join(analysis_ref, on="analysisId").select(
         pl.all().exclude("collisions")
     )

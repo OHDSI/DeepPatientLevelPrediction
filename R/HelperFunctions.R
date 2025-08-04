@@ -132,3 +132,22 @@ checkInStringVector <- function(parameter, values) {
 
 # is included from R4.4.0
 if (!exists("%||%", "package:base")) `%||%` <- function(x, y) if (is.null(x)) y else x
+
+r_to_py.data.frame <- function(x, convert = FALSE) {
+  if (!requireNamespace("reticulate", quietly = TRUE)) {
+    stop("package \"reticulate\" is required")
+  }
+
+  if (reticulate::py_module_available("polars")) {
+    pl <- reticulate::import("polars", convert = FALSE)
+
+    columns <- lapply(x, reticulate::r_to_py, convert = convert)
+    names(columns) <- names(x)
+
+    pdf <- pl$DataFrame(columns)
+
+    return(pdf)
+  } else {
+    stop("package \"polars\" is required")
+  }
+}
