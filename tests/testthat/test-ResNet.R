@@ -100,7 +100,6 @@ test_that("ResNet nn-module works ", {
   analysisRef <- mappedData$analysisRef %>% dplyr::collect()
   dataRef <- dataRef %>% dplyr::left_join(analysisRef, by = "analysisId")
   dataRef <- r_to_py(dataRef)
-  dataRef <- pl$from_pandas(dataRef)
   model <- resNet(
     feature_info = featureInfo(data_reference = dataRef),
     size_embedding = 5,
@@ -133,7 +132,6 @@ test_that("ResNet nn-module works ", {
     dplyr::collect()
   dataRef <- dataRef %>% dplyr::left_join(analysisRef, by = "analysisId")
   dataRef <- r_to_py(dataRef)
-  dataRef <- pl$from_pandas(dataRef)
   featureInfo <- featureInfo(data_reference = dataRef)
 
 

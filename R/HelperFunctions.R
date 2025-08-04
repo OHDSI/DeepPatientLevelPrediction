@@ -133,6 +133,8 @@ checkInStringVector <- function(parameter, values) {
 # is included from R4.4.0
 if (!exists("%||%", "package:base")) `%||%` <- function(x, y) if (is.null(x)) y else x
 
+#' Use polars instead of pandas for default conversion
+#' @exportS3Method reticulate::r_to_py data.frame
 r_to_py.data.frame <- function(x, convert = FALSE) {
   if (!requireNamespace("reticulate", quietly = TRUE)) {
     stop("package \"reticulate\" is required")

@@ -222,9 +222,11 @@ def read_data(
         data_ref = reader.read_table("covariateRef", lazy=lazy)
     else:
         data_ref = data_reference.lazy()
-    data_ref = data_ref.join(analysis_ref, on="analysisId").select(
+    data_ref = (data_ref.
+        with_columns(pl.col("columnId").cast(pl.Int32)).
+        join(analysis_ref, on="analysisId").select(
         pl.all().exclude("collisions")
-    )
+    ))
     data = reader.read_table("covariates", lazy=lazy)
     # check if there is a timeId column in data
     time = "timeId" in data.collect_schema().names()
