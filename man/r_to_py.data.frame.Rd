@@ -2,10 +2,18 @@
 % Please edit documentation in R/HelperFunctions.R
 \name{r_to_py.data.frame}
 \alias{r_to_py.data.frame}
-\title{Use polars instead of pandas for default conversion}
+\title{Use polars instead of pandas for default conversion from R to Python}
 \usage{
 \method{r_to_py}{data.frame}(x, convert = FALSE)
 }
+\arguments{
+\item{x}{A data.frame object in R}
+
+\item{convert}{Logical, whether to convert the data types to Python types}
+}
+\value{
+A polars DataFrame object in Python
+}
 \description{
-Use polars instead of pandas for default conversion
+Use polars instead of pandas for default conversion from R to Python
 }

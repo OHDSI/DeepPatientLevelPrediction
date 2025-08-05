@@ -133,8 +133,11 @@ checkInStringVector <- function(parameter, values) {
 # is included from R4.4.0
 if (!exists("%||%", "package:base")) `%||%` <- function(x, y) if (is.null(x)) y else x
 
-#' Use polars instead of pandas for default conversion
+#' Use polars instead of pandas for default conversion from R to Python
 #' @exportS3Method reticulate::r_to_py data.frame
+#' @param x A data.frame object in R
+#' @param convert Logical, whether to convert the data types to Python types
+#' @return A polars DataFrame object in Python
 r_to_py.data.frame <- function(x, convert = FALSE) {
   if (!requireNamespace("reticulate", quietly = TRUE)) {
     stop("package \"reticulate\" is required")
@@ -154,7 +157,10 @@ r_to_py.data.frame <- function(x, convert = FALSE) {
   }
 }
 
+#' Use polars instead of pandas for default conversion from python to R
 #' @exportS3Method reticulate::py_to_r polars.dataframe.frame.DataFrame
+#' @param x A polars DataFrame object
+#' @return The same data.frame in R
 py_to_r.polars.dataframe.frame.DataFrame <- function(x) {
   lst <- py_to_r(x$to_dict(as_series = FALSE))
   dtypes <- py_to_r(x$dtypes)
@@ -163,7 +169,7 @@ py_to_r.polars.dataframe.frame.DataFrame <- function(x) {
   return(df)
 }
 
-#' Convert a list with NULL values to correct NA values
+# Convert a list with NULL values to correct NA values
 noneToNA <- function(x, dtypes) {
   Map(function(col, dtype) {
     if (is.atomic(col)) {
