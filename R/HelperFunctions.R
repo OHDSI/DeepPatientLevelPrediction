@@ -153,3 +153,37 @@ r_to_py.data.frame <- function(x, convert = FALSE) {
     stop("package \"polars\" is required")
   }
 }
+
+#' @exportS3Method reticulate::py_to_r polars.dataframe.frame.DataFrame
+py_to_r.polars.dataframe.frame.DataFrame <- function(x) {
+  lst <- py_to_r(x$to_dict(as_series = FALSE))
+  dtypes <- py_to_r(x$dtypes)
+  lst <- noneToNA(lst, dtypes)
+  df <- data.frame(lst)
+  return(df)
+}
+
+#' Convert a list with NULL values to correct NA values
+noneToNA <- function(x, dtypes) {
+  Map(function(col, dtype) {
+    if (is.atomic(col)) {
+      return(col)
+    }
+    dtype <- as.character(dtype)
+
+    proto <- if (dtype %in% c("Float32", "Float64", "f32", "f64")) {
+      NA_real_
+    } else if (dtype %in% c("Int32", "Int64", "i32", "i64")) {
+      NA_integer_
+    } else if (dtype %in% c("Boolean", "bool")) {
+      NA
+    } else {
+      NA_character_
+    }
+    vapply(col, function(v) {
+      if (is.null(v)) proto else v
+    }, proto)
+  },
+  col = x,
+  dtype = dtypes)
+}
