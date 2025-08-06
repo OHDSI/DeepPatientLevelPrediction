@@ -15,7 +15,7 @@ setTransformer(
   dimHiddenRatio = NULL,
   temporal = FALSE,
   temporalSettings = list(useRope = FALSE, maxSequenceLength = 256, truncation = "tail",
-    time_tokens = TRUE),
+    timeTokens = TRUE),
   estimatorSettings = setEstimator(weightDecay = 1e-06, batchSize = 1024, epochs = 10,
     seed = NULL),
   hyperParamSearch = "random",
@@ -49,7 +49,7 @@ of dimToken (embedding size)}
 - `maxSequenceLength`: Maximum sequence length, sequences longer than This
   will be truncated and/or padded to this length either a number or 'max' for the Maximum
 - `truncation`: Truncation method, only 'tail' is supported
-- `time_tokens`: Whether to use time tokens, default TRUE}
+- `timeTokens`: Whether to use time tokens, default TRUE}
 
 \item{estimatorSettings}{created with `setEstimator`}
 

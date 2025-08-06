@@ -30,6 +30,36 @@ test_that("Transformer settings work", {
     numBlocks = 1, dimToken = c(4, 6),
     numHeads = c(2, 4)
   ))
+  expect_error(setTransformer(temporal = TRUE,
+                              temporalSettings = list(
+                               useRope = TRUE,
+                               maxSequenceLength = "notMaxSequenceLength",
+                               truncation = "tail",
+                               time_tokens = TRUE
+                             )))
+  expect_error(setTransformer(temporal = TRUE,
+                              temporalSettings = list(
+                               useRope = TRUE,
+                               maxSequenceLength = 256,
+                               truncation = "max",
+                               time_tokens = TRUE
+                             )))
+
+  transformerSettings <- setTransformer(
+    temporal = TRUE,
+    temporalSettings = list(
+      useRope = TRUE,
+      maxSequenceLength = "max",
+      truncation = "tail",
+      time_tokens = TRUE
+  ))
+  expect_true(attr(transformerSettings$param, "temporalModel"))
+  expect_equal(transformerSettings$param[[1]]$useRope, TRUE)
+  temporalSettings <- attr(transformerSettings$param, "temporalSettings")
+  expect_equal(temporalSettings$maxSequenceLength, "max")
+  expect_equal(temporalSettings$truncation, "tail")
+  expect_equal(temporalSettings$time_tokens, TRUE)
+  expect_equal(temporalSettings$useRope, TRUE)
 })
 
 test_that("fitEstimator with Transformer works", {
@@ -124,7 +154,7 @@ test_that("dimHidden ratio works as expected", {
   testthat::expect_true(all(dimHidden == dimHiddenRatio * tokens))
   testthat::expect_error(setTransformer(
     dimHidden = NULL,
-    dimHiddenRatio = NULL
+dimHiddenRatio = NULL
   ))
   testthat::expect_error(setTransformer(
     dimHidden = 256,
@@ -167,4 +197,61 @@ test_that("numerical embedding works as expected", {
   expect_equal(out$shape[[0]], patients)
   expect_equal(out$shape[[1]], features)
   expect_equal(out$shape[[2]], embeddings)
+})
+
+test_that("temporal transformer works", {
+  temporalCovSettings <- FeatureExtraction::createTemporalSequenceCovariateSettings(
+    useDemographicsAge = TRUE,
+    useDemographicsGender = TRUE,
+    useConditionOccurrence = TRUE,
+    sequenceEndDay = -65,
+    sequenceStartDay = -1
+  )
+  plpData <- PatientLevelPrediction::getPlpData(
+    databaseDetails = databaseDetails,
+    restrictPlpDataSettings = restrictPlpDataSettings,
+    covariateSettings = temporalCovSettings
+  )
+  trainData <- PatientLevelPrediction::splitData(
+    plpData = plpData,
+    population = population,
+    splitSettings = PatientLevelPrediction::createDefaultSplitSetting(splitSeed = 42)
+  )
+
+  settings <- setTransformer(
+    numBlocks = 1,
+    dimToken = 8,
+    dimOut = 1,
+    numHeads = 2,
+    attDropout = 0.0,
+    ffnDropout = 0.2,
+    dimHidden = 32,
+    temporal = TRUE,
+    temporalSettings = list(
+      useRope = TRUE,
+      maxSequenceLength = 16,
+      truncation = "tail",
+      timeTokens = FALSE
+    ),
+    estimatorSettings = setEstimator(
+      learningRate = 3e-4,
+      batchSize = 64,
+      epochs = 1
+    ),
+    randomSample = 1
+  )
+  results <-
+    fitEstimator(trainData$Train,
+      settings,
+      analysisId = "temporalTransformer",
+      analysisPath = testLoc
+    )
+
+  expect_equal(class(results), "plpModel")
+  expect_equal(attr(results, "modelType"), "binary")
+  expect_equal(attr(results, "saveType"), "file")
+
+  # check prediction between 0 and 1
+  expect_gt(min(results$prediction$value), 0)
+  expect_lt(max(results$prediction$value), 1)
 })
