@@ -87,9 +87,6 @@ jobs:
         run: | 
           uv pip install polars tqdm connectorx pyarrow duckdb pynvml numpy
           uv pip install torch --index https://download.pytorch.org/whl/cpu/
-      
-      - name: Setup upterm session
-        uses: owenthereal/action-upterm@v1
 
       - uses: r-lib/actions/check-r-package@v2
         with:
