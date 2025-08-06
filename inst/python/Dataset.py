@@ -4,6 +4,7 @@ from typing import Optional, Union, Sequence
 
 import pathlib
 from urllib.parse import quote
+import uuid
 
 import polars as pl
 import duckdb
@@ -144,7 +145,7 @@ class DBReader:
         if self.suffix == "":
             # unzip to a new location
             new_db_path = (
-                pathlib.Path(db_path).parent.joinpath(f"db_{int(time.time())}")
+                pathlib.Path(db_path).parent.joinpath(f"db_{uuid.uuid4().hex}")
             )
             shutil.unpack_archive(db_path, extract_dir=new_db_path,
                                   format = "zip")
