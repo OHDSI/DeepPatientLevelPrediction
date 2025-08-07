@@ -18,6 +18,8 @@
 <url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/gridCvDeep.html</loc></url>
 <url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/index.html</loc></url>
 <url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/predictDeepEstimator.html</loc></url>
+<url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/py_to_r.polars.dataframe.frame.DataFrame.html</loc></url>
+<url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/r_to_py.data.frame.html</loc></url>
 <url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setCustomEmbeddingModel.html</loc></url>
 <url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setDefaultResNet.html</loc></url>
 <url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setDefaultTransformer.html</loc></url>

@@ -66,7 +66,7 @@
 Egill Fridgeirsson, Chungsoo Kim, Henrik John, Seng Chan You, Xiaoyong
 Pan</h4>
             
-            <h4 data-toc-skip class="date">2025-03-24</h4>
+            <h4 data-toc-skip class="date">2025-08-07</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/OHDSI/DeepPatientLevelPrediction/blob/develop/vignettes/BuildingDeepModels.Rmd" class="external-link"><code>vignettes/BuildingDeepModels.Rmd</code></a></small>
       <div class="d-none name"><code>BuildingDeepModels.Rmd</code></div>
@@ -467,9 +467,8 @@ is 1.</p>
 <p><code>numHeads</code> : Number of attention heads for the
 self-attention, <code>dimToken</code> needs to be divisible by
 <code>numHeads</code>.</p>
-<p><code>attDropout</code>, <code>ffnDropout</code> and
-<code>resDropout</code> : How much dropout to apply on attentions,
-feedforward block or in residual connections</p>
+<p><code>attDropout</code>, <code>ffnDropout</code> : How much dropout
+to apply on attentions or feedforward block</p>
 <p><code>dimHidden</code> : How many neurons in linear layers inside the
 feedforward block</p>
 </div>
@@ -484,7 +483,6 @@ feedforward block</p>
 <span>                                numHeads <span class="op">=</span> <span class="fl">4L</span>,</span>
 <span>                                attDropout <span class="op">=</span> <span class="fl">0.25</span>,</span>
 <span>                                ffnDropout <span class="op">=</span> <span class="fl">0.25</span>,</span>
-<span>                                resDropout <span class="op">=</span> <span class="fl">0</span>,</span>
 <span>                                dimHidden <span class="op">=</span> <span class="fl">128L</span>,</span>
 <span>                                estimatorSettings <span class="op">=</span> <span class="fu"><a href="../reference/setEstimator.html">setEstimator</a></span><span class="op">(</span></span>
 <span>                                  learningRate <span class="op">=</span> <span class="fl">3e-4</span>,</span>
@@ -564,7 +562,7 @@ models using observational healthcare data. J Am Med Inform Assoc.
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.1.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.3.</p>
 </div>
 
     </footer>
