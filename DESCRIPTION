@@ -21,7 +21,7 @@ Depends:
 Imports:
     dplyr,
     ParallelLogger (>= 2.0.0),
-    PatientLevelPrediction (>= 6.3.2),
+    PatientLevelPrediction (> 6.4.1),
     rlang,
     withr,
     reticulate (>= 1.31)
@@ -34,10 +34,11 @@ Suggests:
     FeatureExtraction (>= 3.0.0),
     ResultModelManager (>= 0.2.0),
     DatabaseConnector (>= 6.0.0),
-    Andromeda
+    Andromeda (> 1.0.0)
 Remotes:
-    ohdsi/PatientLevelPrediction,
-    ohdsi/ResultModelManager
+    OHDSI/ResultModelManager,
+    OHDSI/Andromeda@develop,
+    OHDSI/PatientLevelPrediction@develop
 RoxygenNote: 7.3.2
 Encoding: UTF-8
 Config/testthat/edition: 3

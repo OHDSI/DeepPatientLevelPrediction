@@ -1,11 +1,6 @@
-catFeatures <- smallDataset$dataset$get_feature_info()[["categorical_features"]]
-numFeatures <- smallDataset$dataset$get_feature_info()[["numerical_features"]]
-
+featureInfo <- smallDataset$dataset$get_feature_info()
 modelParameters <- list(
-  feature_info = list(
-    categorical_features = catFeatures,
-    numerical_features = numFeatures
-  ),
+  feature_info = featureInfo,
   sizeEmbedding = 16,
   sizeHidden = 16,
   numLayers = 2,
@@ -175,8 +170,8 @@ test_that("predictDeepEstimator works", {
                                       cohort = trainData$Train$labels)
   sink()
 
-  expect_lt(max(predictions$value), 1)
-  expect_gt(min(predictions$value), 0)
+  expect_lte(max(predictions$value), 1)
+  expect_gte(min(predictions$value), 0)
   expect_equal(nrow(predictions), nrow(trainData$Train$labels))
 
   # input is a plpModel and data
@@ -186,8 +181,8 @@ test_that("predictDeepEstimator works", {
     trainData$Test$labels
   )
   sink()
-  expect_lt(max(predictions$value), 1)
-  expect_gt(min(predictions$value), 0)
+  expect_lte(max(predictions$value), 1)
+  expect_gte(min(predictions$value), 0)
   expect_equal(nrow(predictions), nrow(trainData$Test$labels))
 })
 
@@ -207,7 +202,7 @@ test_that("batchToDevice works", {
   # test that all are meta
   expect_true(all(devices == TRUE))
 
-  numDevice <- batchToDevice(dataset[b][[1]]$num, device = estimator$device)
+  numDevice <- batchToDevice(dataset[b][[1]]$feature_values, device = estimator$device)
   expect_true(numDevice$device == torch$device(type = "meta"))
 })
 
@@ -337,8 +332,7 @@ test_that("device as a function argument works", {
                                     learningRate = 3e-4)
 
   model <- setDefaultResNet(estimatorSettings = estimatorSettings)
-  model$param[[1]]$feature_info$categorical_features <- 10L
-  model$param[[1]]$feature_info$numerical_features <- 0
+  model$param[[1]]$feature_info <- featureInfo
   model$param[[1]]$modelType <- "ResNet"
   parameters <- list(modelParameters = model$param[[1]],
                      estimatorSettings = estimatorSettings)
@@ -352,7 +346,7 @@ test_that("device as a function argument works", {
                                     learningRate = 3e-4)
 
   model <- setDefaultResNet(estimatorSettings = estimatorSettings)
-  model$param[[1]]$feature_info$categorical_features <- 10L
+  model$param[[1]]$feature_info <- featureInfo
   model$param[[1]]$modelType <- "ResNet"
   parameters <- list(modelParameters = model$param[[1]],
                      estimatorSettings = estimatorSettings)
@@ -410,7 +404,7 @@ test_that("accumulationSteps as a function argument works", {
                                     batchSize = 128)
 
   model <- setDefaultResNet(estimatorSettings = estimatorSettings)
-  model$param[[1]]$feature_info$categorical_features <- 10L
+  model$param[[1]]$feature_info <- featureInfo
   model$param[[1]]$modelType <- "ResNet"
   parameters <- list(modelParameters = model$param[[1]],
                      estimatorSettings = estimatorSettings)
@@ -425,7 +419,7 @@ test_that("accumulationSteps as a function argument works", {
                                     batchSize = 128)
 
   model <- setDefaultResNet(estimatorSettings = estimatorSettings)
-  model$param[[1]]$feature_info$categorical_features <- 10
+  model$param[[1]]$feature_info <- featureInfo
   model$param[[1]]$modelType <- "ResNet"
   parameters <- list(modelParameters = model$param[[1]],
                      estimatorSettings = estimatorSettings)

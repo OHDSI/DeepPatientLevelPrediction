@@ -7,9 +7,9 @@
 setCustomEmbeddingModel(
   embeddingFilePath,
   modelSettings = setTransformer(numBlocks = 3, dimToken = 16, dimOut = 1, numHeads = 4,
-    attDropout = 0.2, ffnDropout = 0.1, resDropout = 0, dimHidden = 32, estimatorSettings
-    = setEstimator(learningRate = "auto", weightDecay = 1e-04, batchSize = 256, epochs =
-    2, seed = NULL, device = "cpu"), hyperParamSearch = "random", randomSample = 1),
+    attDropout = 0.2, ffnDropout = 0.1, dimHidden = 32, estimatorSettings =
+    setEstimator(learningRate = "auto", weightDecay = 1e-04, batchSize = 256, epochs = 2,
+    seed = NULL, device = "cpu"), hyperParamSearch = "random", randomSample = 1),
   embeddingsClass = "CustomEmbeddings"
 )
 }

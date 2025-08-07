@@ -40,7 +40,6 @@ setCustomEmbeddingModel <- function(
       numHeads = 4,
       attDropout = 0.2,
       ffnDropout = 0.1,
-      resDropout = 0.0,
       dimHidden = 32,
       estimatorSettings = setEstimator(learningRate = "auto",
                                        weightDecay = 1e-4,

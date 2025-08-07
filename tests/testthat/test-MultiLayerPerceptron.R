@@ -88,8 +88,7 @@ test_that("MLP with runPlp working checks", {
 test_that("MLP nn-module works ", {
   mlp <- reticulate::import_from_path("MultiLayerPerceptron", path = path)$MultiLayerPerceptron
   model <- mlp(
-    feature_info = list("categorical_features" = 5L,
-                        "numerical_features" = 1L),
+    feature_info = dataset$get_feature_info(),
     size_embedding = 5,
     size_hidden = 16,
     num_layers = 1,
@@ -101,11 +100,11 @@ test_that("MLP nn-module works ", {
   pars <- sum(reticulate::iterate(model$parameters(), function(x) x$numel()))
 
   # expected number of parameters
-  expect_equal(pars, 489)
+  expect_equal(pars, 994.0)
 
   input <- list()
-  input$cat <- torch$randint(0L, 5L, c(10L, 5L), dtype = torch$long)
-  input$num <- torch$randn(10L, 1L, dtype = torch$float32)
+  input$feature_ids <- torch$randint(0L, 5L, c(10L, 5L), dtype = torch$long)
+  input$feature_values <- torch$randint(0L, 5L, c(10L, 5L), dtype = torch$long)
 
 
   output <- model(input)
@@ -113,9 +112,8 @@ test_that("MLP nn-module works ", {
   # output is correct shape
   expect_equal(output$shape[0], 10L)
 
-  input$num <- NULL
   model <- mlp(
-    feature_info = list(categorical_features = 5L),
+    feature_info = dataset$get_feature_info(),
     size_embedding = 5L,
     size_hidden = 16L,
     num_layers = 1L,
@@ -157,7 +155,7 @@ test_that("Can upload results to database", {
 
   sink(nullfile())
   sqliteFile <-
-    insertResultsToSqlite(resultLocation = file.path(testLoc, "MLP"),
+    PatientLevelPrediction::insertResultsToSqlite(resultLocation = file.path(testLoc, "MLP"),
                           cohortDefinitions = cohortDefinitions)
   sink()
 

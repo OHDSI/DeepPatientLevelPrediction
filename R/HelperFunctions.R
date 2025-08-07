@@ -119,10 +119,87 @@ checkFileExists <- function(file) {
 checkInStringVector <- function(parameter, values) {
   name <- deparse(substitute(parameter))
   if (!parameter %in% values) {
-    ParallelLogger::logError(paste0(name, " should be ",
-                                    paste0(as.character(values),
-                                           collapse = "or ")))      
+    ParallelLogger::logError(paste0(
+      name, " should be ",
+      paste0(as.character(values),
+        collapse = "or "
+      )
+    ))
     stop(paste0(name, " has incorrect value"))
   }
   return(TRUE)
+}
+
+# is included from R4.4.0
+if (!exists("%||%", "package:base")) `%||%` <- function(x, y) if (is.null(x)) y else x
+
+#' Use polars instead of pandas for default conversion from R to Python
+#' @exportS3Method reticulate::r_to_py data.frame
+#' @param x A data.frame object in R
+#' @param convert Logical, whether to convert the data types to Python types
+#' @return A polars DataFrame object in Python
+r_to_py.data.frame <- function(x, convert = FALSE) {
+  if (!requireNamespace("reticulate", quietly = TRUE)) {
+    stop("package \"reticulate\" is required")
+  }
+
+  if (reticulate::py_module_available("polars")) {
+    pl <- reticulate::import("polars", convert = FALSE)
+    toPyCol <- function(col) {
+
+        if (is.factor(col))
+          col <- as.character(col)
+
+        if (is.atomic(col)) {
+          col <- lapply(col, function(v) if (is.na(v)) NULL else v)
+        }
+
+        reticulate::r_to_py(col, convert = FALSE)
+      }
+    columns <- lapply(x, toPyCol)
+    names(columns) <- names(x)
+
+    pdf <- pl$DataFrame(columns)
+
+    return(pdf)
+  } else {
+    stop("package \"polars\" is required")
+  }
+}
+
+#' Use polars instead of pandas for default conversion from python to R
+#' @exportS3Method reticulate::py_to_r polars.dataframe.frame.DataFrame
+#' @param x A polars DataFrame object
+#' @return The same data.frame in R
+py_to_r.polars.dataframe.frame.DataFrame <- function(x) {
+  lst <- py_to_r(x$to_dict(as_series = FALSE))
+  dtypes <- py_to_r(x$dtypes)
+  lst <- noneToNA(lst, dtypes)
+  df <- data.frame(lst)
+  return(df)
+}
+
+# Convert a list with NULL values to correct NA values
+noneToNA <- function(x, dtypes) {
+  Map(function(col, dtype) {
+    if (is.atomic(col)) {
+      return(col)
+    }
+    dtype <- as.character(dtype)
+
+    proto <- if (dtype %in% c("Float32", "Float64", "f32", "f64")) {
+      NA_real_
+    } else if (dtype %in% c("Int32", "Int64", "i32", "i64")) {
+      NA_integer_
+    } else if (dtype %in% c("Boolean", "bool")) {
+      NA
+    } else {
+      NA_character_
+    }
+    vapply(col, function(v) {
+      if (is.null(v)) proto else v
+    }, proto)
+  },
+  col = x,
+  dtype = dtypes)
 }

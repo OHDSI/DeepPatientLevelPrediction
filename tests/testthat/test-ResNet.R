@@ -93,10 +93,15 @@ test_that("ResNet with runPlp working checks", {
 
 
 test_that("ResNet nn-module works ", {
+  pl <- reticulate::import("polars")
   resNet <- reticulate::import_from_path("ResNet", path = path)$ResNet
+  featureInfo <- reticulate::import_from_path("Dataset", path = path)$FeatureInfo
+  dataRef <- mappedData$covariateRef %>% dplyr::filter(.data$columnId <= 5) %>% dplyr::collect()
+  analysisRef <- mappedData$analysisRef %>% dplyr::collect()
+  dataRef <- dataRef %>% dplyr::left_join(analysisRef, by = "analysisId")
+  dataRef <- r_to_py(dataRef)
   model <- resNet(
-    feature_info = list("categorical_features" = 5L,
-                    "numerical_features" = 1L),
+    feature_info = featureInfo(data_reference = dataRef),
     size_embedding = 5,
     size_hidden = 16,
     num_layers = 1,
@@ -110,22 +115,28 @@ test_that("ResNet nn-module works ", {
   pars <- sum(reticulate::iterate(model$parameters(), function(x) x$numel()))
 
   # expected number of parameters
-  expect_equal(pars, 1295)
+  expect_equal(pars, 1299)
 
   input <- list()
-  input$cat <- torch$randint(0L, 5L, c(10L, 5L), dtype = torch$long)
-  input$num <- torch$randn(10L, 1L, dtype = torch$float32)
+  input[["feature_ids"]] <- torch$randint(1L, 5L, c(10L, 5L), dtype = torch$long)
+  input[["feature_values"]] <- torch$randn(10L, 5L, dtype = torch$float32)
 
 
   output <- model(input)
 
   # output is correct shape
   expect_equal(output$shape[0], 10L)
+  
+  dataRef <- mappedData$covariateRef %>% dplyr::filter(.data$columnId <= 7,
+  .data$columnId > 2) %>% 
+    dplyr::collect()
+  dataRef <- dataRef %>% dplyr::left_join(analysisRef, by = "analysisId")
+  dataRef <- r_to_py(dataRef)
+  featureInfo <- featureInfo(data_reference = dataRef)
 
-  input$num <- NULL
+
   model <- resNet(
-    feature_info = list("categorical_features" = 5L,
-                    "numerical_features" = 0),
+    feature_info = featureInfo,
     size_embedding = 5,
     size_hidden = 16,
     num_layers = 1,
@@ -179,7 +190,7 @@ test_that("Can upload results to database", {
 
   sink(nullfile())
   sqliteFile <-
-    insertResultsToSqlite(resultLocation = file.path(testLoc, "ResNet"),
+    PatientLevelPrediction::insertResultsToSqlite(resultLocation = file.path(testLoc, "ResNet"),
                           cohortDefinitions = cohortDefinitions)
   sink()
 

@@ -57,7 +57,7 @@ updating weights, can also be a function that is evaluated during runtime}
 
 \item{seed}{seed to initialize weights of model with}
 
-\item{trainValidationSplit}{if TRUE, perform a train-validation split for 
+\item{trainValidationSplit}{if TRUE, perform a train-validation split for
 model selection instead of cross validation}
 }
 \description{

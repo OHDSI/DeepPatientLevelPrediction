@@ -1,10 +1,14 @@
-
 DeepPatientLevelPrediction 2.1.0.999
 ======================
-  - Add an option to use torch compile
-  - More efficient conversions from polars to torch in dataset processing
-  - Automatically detect broken links in docs using github actions
-  - Model initialization made more flexible with classes
+  - [Internal] Refactor transformer/dataset/embedding classes to use same code wether temporal or not (PR #147)
+  - [Feature] Use train/validation split for model selection instead of cross validation (PR #145)
+  - [Feature] Temporal transformer added which supports RopE and time tokens (PR #147)
+  - [Feature] Temporal data processing added (PR #147)
+  - [CI] Use uv for python in github actions (PR #136)
+  - [Feature] Add an option to use torch compile (PR #133)
+  - [Feature] More efficient conversions from polars to torch in dataset processing (PR #133)
+  - [CI] Automatically detect broken links in docs using github actions
+  - [Feature] Model initialization made more flexible with classes
 
 DeepPatientLevelPrediction 2.1.0
 ======================
