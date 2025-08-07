@@ -145,8 +145,18 @@ r_to_py.data.frame <- function(x, convert = FALSE) {
 
   if (reticulate::py_module_available("polars")) {
     pl <- reticulate::import("polars", convert = FALSE)
+    toPyCol <- function(col) {
 
-    columns <- lapply(x, reticulate::r_to_py, convert = convert)
+        if (is.factor(col))
+          col <- as.character(col)
+
+        if (is.atomic(col)) {
+          col <- lapply(col, function(v) if (is.na(v)) NULL else v)
+        }
+
+        reticulate::r_to_py(col, convert = FALSE)
+      }
+    columns <- lapply(x, toPyCol)
     names(columns) <- names(x)
 
     pdf <- pl$DataFrame(columns)
