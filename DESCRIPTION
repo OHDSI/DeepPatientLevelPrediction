@@ -35,23 +35,7 @@ Suggests:
     ResultModelManager (>= 0.2.0),
     DatabaseConnector (>= 6.0.0),
     Andromeda (> 1.0.0)
-Remotes:
-    OHDSI/ResultModelManager,
-    OHDSI/Andromeda@develop,
-    OHDSI/PatientLevelPrediction@develop
 RoxygenNote: 7.3.2
 Encoding: UTF-8
 Config/testthat/edition: 3
 Config/testthat/parallel: FALSE
-Config/reticulate:
-  list(
-    packages = list(
-      list(package = "torch"),
-      list(package = "polars"),
-      list(package = "duckdb"),
-      list(package = "pyarrow"),
-      list(package = "tqdm"),
-      list(package = "connectorx"),
-      list(package = "pynvml")
-      )
-  )

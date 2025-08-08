@@ -42,7 +42,7 @@
 torch <- NULL
 
 .onLoad <- function(libname, pkgname) {
-  # use superassignment to update global reference
-  reticulate::configure_environment(pkgname)
+  reticulate::py_require(c("polars", "connectorx", "duckdb", "pyarrow", "torch", "tqdm", 
+                           "pynvml"))
   torch <<- reticulate::import("torch", delay_load = TRUE)
 }
