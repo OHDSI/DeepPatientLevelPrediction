@@ -135,9 +135,8 @@ class TransformerBlock(nn.Module):
         self.mask_selector = (
             (lambda m: m[:, :1]) if only_class_token else (lambda m: m)
         )
-        self.time_ids_selector = (
-            (lambda t: t[:, :1]) if only_class_token else (lambda t: t)
-        )
+
+        self.only_class_token = only_class_token
 
         self.attn = MultiHeadAttention(
             dim_token=dim_token,
@@ -168,7 +167,7 @@ class TransformerBlock(nn.Module):
             x=x_norm,
             query_selector=self.query_selector,
             mask=mask,
-            time_ids=self.time_ids_selector(time_ids) if time_ids is not None else None,
+            time_ids=time_ids if time_ids is not None else None,
         )
         attn_out = self.attn_dropout(attn_out)
         x = self.residual_selector(x) + attn_out
@@ -281,6 +280,8 @@ class MultiHeadAttention(nn.Module):
         """
         query, key ,value = self.in_proj(x).chunk(3, dim=-1)
         query = query_selector(query)
+        Lq = query.size(1)
+        Lk = key.size(1)
 
         query = query.unflatten(-1, [self.nheads, self.E_head]).transpose(1, 2)
         # (N, L_s, E_total) -> (N, L_s, nheads, E_head) -> (N, nheads, L_s, E_head)
@@ -289,8 +290,8 @@ class MultiHeadAttention(nn.Module):
         value = value.unflatten(-1, [self.nheads, self.E_head]).transpose(1, 2)
 
         if self.use_rope and time_ids is not None:
-            query = self.rope(query, time_ids)
-            key = self.rope(key, time_ids)
+            query = self.rope(query, time_ids[:, :Lq])
+            key = self.rope(key, time_ids[:, :Lk])
         # Step 3. Run SDPA
         # (N, nheads, L_t, E_head)
         attn_mask = mask[:, None, None, :].contiguous()
