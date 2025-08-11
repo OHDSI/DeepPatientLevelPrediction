@@ -37,7 +37,7 @@ This vignette describes how you need to install the Observational Health Data Sc
 
 Under Windows the OHDSI Deep Patient Level Prediction (DeepPLP) package requires installing:
 
--   R (<https://cran.cnr.berkeley.edu/> ) - (R \>= 4.0.0, but latest is recommended)
+-   R (<https://cran.r-project.org/> ) - (R \>= 4.0.0, but latest is recommended)
 -   Python - The package is tested with python 3.10, but \>= 3.8 should work
 -   Rstudio (<https://www.rstudio.com/> )
 -   Java (<http://www.java.com> )
@@ -47,7 +47,7 @@ Under Windows the OHDSI Deep Patient Level Prediction (DeepPLP) package requires
 
 Under Mac and Linux the OHDSI DeepPLP package requires installing:
 
--   R (<https://cran.cnr.berkeley.edu/> ) - (R \>= 4.0.0, but latest is recommended)
+-   R (<https://cran.r-project.org/> ) - (R \>= 4.0.0, but latest is recommended)
 -   Python - The package is tested with python 3.10, but \>= 3.8 should work
 -   Rstudio (<https://www.rstudio.com/> )
 -   Java (<http://www.java.com> )
