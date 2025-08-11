@@ -15,6 +15,13 @@ covSet <- FeatureExtraction::createCovariateSettings(
   endDays = -1
 )
 
+tempCovSet <- FeatureExtraction::createTemporalSequenceCovariateSettings(
+  useDemographicsGender = TRUE,
+  useDemographicsAge = TRUE,
+  useConditionOccurrence = TRUE,
+  sequenceStartDay = -365,
+  sequenceEndDay = -1
+)
 
 databaseDetails <- PatientLevelPrediction::createDatabaseDetails(
   connectionDetails = connectionDetails,
@@ -38,6 +45,12 @@ plpData <- PatientLevelPrediction::getPlpData(
   databaseDetails = databaseDetails,
   restrictPlpDataSettings = restrictPlpDataSettings,
   covariateSettings = covSet
+)
+
+plpDataTemporal <- PatientLevelPrediction::getPlpData(
+  databaseDetails = databaseDetails,
+  restrictPlpDataSettings = restrictPlpDataSettings,
+  covariateSettings = tempCovSet
 )
 
 # add age squared so I have more than one numerical feature
@@ -77,9 +90,20 @@ trainData <- PatientLevelPrediction::splitData(
   splitSettings = PatientLevelPrediction::createDefaultSplitSetting(splitSeed = 42)
 )
 
+trainDataTemporal <- PatientLevelPrediction::splitData(
+  plpDataTemporal,
+  population = population,
+  splitSettings = PatientLevelPrediction::createDefaultSplitSetting(splitSeed = 42)
+)
+
 mappedData <- PatientLevelPrediction::MapIds(
   covariateData = trainData$Train$covariateData,
   cohort = trainData$Train$labels
+)
+
+mappedDataTemporal <- PatientLevelPrediction::MapIds(
+  covariateData = trainDataTemporal$Train$covariateData,
+  cohort = trainDataTemporal$Train$labels
 )
 
 dataset <- createDataset(

@@ -87,10 +87,14 @@ test_that("Column order is preserved when features are missing", {
   expect_true(reducedDataset$data[["feature_values"]][reducedDataset$data[["feature_ids"]] == numColumn]$sum()$item() == 0)
 
   # all other columns are same
-  indexReduced <- !torch$isin(reducedDataset$data[["feature_ids"]],
-                              torch$as_tensor(c(numColumn, catColumn)))
-  index <- !torch$isin(dataset$data[["feature_ids"]],
-                      torch$as_tensor(c(numColumn, catColumn)))
+  indexReduced <- !torch$isin(
+    reducedDataset$data[["feature_ids"]],
+    torch$as_tensor(c(numColumn, catColumn))
+  )
+  index <- !torch$isin(
+    dataset$data[["feature_ids"]],
+    torch$as_tensor(c(numColumn, catColumn))
+  )
 
 
   expect_equal(
@@ -124,3 +128,69 @@ test_that("Column order is preserved when features are missing", {
   )
 })
 
+test_that("feature_ids and feature_values remain in sync in dataset with timeIds", {
+  analysisRef <- data.frame(
+    analysisId = 1,
+    analysisName = "dummy",
+    domainId = "Condition",
+    startDay = -365,
+    endDay = -1,
+    isBinary = "N",
+    missingMeansZero = "N"
+  )
+  covariateRef <- data.frame(
+    covariateId = c(1, 2, 3, 4, 5, 6),
+    columnId = c(1L, 2L, 3L, 4L, 5L, 6L),
+    covariateName = paste0("Cov_", 1:6),
+    analysisId = c(1, 1, 1, 1, 1, 1)
+  )
+  covariates <- data.frame(
+    rowId = c(1L, 1L, 1L, 2L, 2L, 2L),
+    covariateId = c(5, 2, 4, 6, 3, 1),
+    covariateValue = c(0.5, 0.2, 0.4, 1.0, 2.0, 3.0),
+    timeId = c(10, 10, 12, 7, 7, 8),
+    columnId = c(5L, 2L, 4L, 6L, 3L, 1L)
+  )
+  timeRef <- data.frame(
+    timePart = "month",
+    timeInterval = 1,
+    sequenceStartDay = -365,
+    sequenceEndDay = -1
+  )
+  covData <- Andromeda::andromeda(
+    analysisRef = analysisRef,
+    covariateRef = covariateRef,
+    covariates = covariates,
+    timeRef = timeRef
+  )
+  dataset <- createDataset(
+    data = covData,
+    labels = data.frame(rowId = c(1L, 2L), outcomeCount = c(1L, 0L)),
+    temporalSettings = list(
+      useRope = FALSE,
+      maxSequenceLength = 12L,
+      truncation = "tail",
+      timeTokens = FALSE
+    )
+  )
+
+  featureIds <- dataset$data[["feature_ids"]]
+  featureValues <- dataset$data[["feature_values"]]
+  rowIds <- dataset$data[["row_ids"]]
+  for (i in seq_along(rowIds)) {
+    id <- rowIds[i - 1]$item()
+    datasetFeatures <- data.frame(
+      ids = featureIds[i - 1][0:3]$tolist(),
+      values = featureValues[i - 1][0:3]$tolist()
+    )
+    datasetFeatures <- datasetFeatures %>% dplyr::arrange(.data$ids)
+
+    expectedFeatures <- covariates %>% 
+      dplyr::filter(.data$rowId == id + 1) %>% # +1 because py_to_r
+      dplyr::arrange(.data$columnId) %>%
+      dplyr::select("columnId", "covariateValue")
+
+    expect_equal(datasetFeatures$ids, expectedFeatures$columnId)
+    expect_equal(datasetFeatures$values, expectedFeatures$covariateValue)
+  }
+})
