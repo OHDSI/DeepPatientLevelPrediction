@@ -112,7 +112,7 @@ class Estimator:
             sampler=BatchSampler(
                 sampler=RandomSampler(dataset),
                 batch_size=self.batch_size,
-                drop_last=True,
+                drop_last=True if len(dataset) > self.batch_size else False,
             ),
             pin_memory=True,
         )
