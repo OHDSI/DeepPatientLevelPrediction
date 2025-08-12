@@ -7,6 +7,7 @@ from torch import nn
 from Embeddings import ClassToken, Embedding, RotaryEmbedding
 from Dataset import FeatureInfo
 
+
 def reglu(x):
     a, b = x.chunk(2, dim=-1)
     return a * F.relu(b)
@@ -43,8 +44,7 @@ class Transformer(nn.Module):
         dim_hidden = int(dim_hidden)
         dim_out = int(dim_out)
 
-        self.embedding = Embedding(embedding_dim=dim_token, 
-                                   feature_info=feature_info)
+        self.embedding = Embedding(embedding_dim=dim_token, feature_info=feature_info)
 
         self.class_token = ClassToken(dim_token)
 
@@ -84,9 +84,11 @@ class Transformer(nn.Module):
             time_ids = None
         mask = x["feature_ids"] != 0
         mask = torch.cat(
-            (mask.new_full((mask.size(0), 1), True),  # (B, 1)
-             mask),  # (B, L)
-            dim=1
+            (
+                mask.new_full((mask.size(0), 1), True),  # (B, 1)
+                mask,
+            ),  # (B, L)
+            dim=1,
         )
         x = self.embedding(x)
         x = self.class_token(x)
@@ -132,9 +134,7 @@ class TransformerBlock(nn.Module):
         self.residual_selector = (
             (lambda x: x[:, :1, :]) if only_class_token else (lambda x: x)
         )
-        self.mask_selector = (
-            (lambda m: m[:, :1]) if only_class_token else (lambda m: m)
-        )
+        self.mask_selector = (lambda m: m[:, :1]) if only_class_token else (lambda m: m)
 
         self.only_class_token = only_class_token
 
@@ -184,10 +184,10 @@ class FeedForwardBlock(nn.Module):
         self,
         dim_token: int,
         dim_hidden: int,
-        bias_first: bool=True,
-        bias_second: bool=True,
-        dropout: float=0.0,
-        activation: Type[nn.Module]=ReGLU,
+        bias_first: bool = True,
+        bias_second: bool = True,
+        dropout: float = 0.0,
+        activation: Type[nn.Module] = ReGLU,
     ):
         super(FeedForwardBlock, self).__init__()
         self.linear0 = nn.Linear(dim_token, int(dim_hidden * 2), bias=bias_first)
@@ -242,7 +242,7 @@ class MultiHeadAttention(nn.Module):
         super().__init__()
         self.nheads = nheads
         self.dropout_p = dropout_p
-        self.in_proj = nn.Linear(dim_token, 3*dim_token)
+        self.in_proj = nn.Linear(dim_token, 3 * dim_token)
         self.out_proj = nn.Linear(dim_token, dim_token)
         assert dim_token % nheads == 0, "Embedding dim is not divisible by nheads"
         self.E_head = dim_token // nheads
@@ -278,7 +278,7 @@ class MultiHeadAttention(nn.Module):
         Returns:
             attn_output (torch.Tensor): output of shape (N, L_t, E_q)
         """
-        query, key ,value = self.in_proj(x).chunk(3, dim=-1)
+        query, key, value = self.in_proj(x).chunk(3, dim=-1)
         query = query_selector(query)
         Lq = query.size(1)
         Lk = key.size(1)
@@ -296,7 +296,12 @@ class MultiHeadAttention(nn.Module):
         # (N, nheads, L_t, E_head)
         attn_mask = mask[:, None, None, :].contiguous()
         attn_output = F.scaled_dot_product_attention(
-                query, key, value, dropout_p=self.dropout_p, is_causal=False, attn_mask=attn_mask
+            query,
+            key,
+            value,
+            dropout_p=self.dropout_p if self.training else 0.0,
+            is_causal=False,
+            attn_mask=attn_mask,
         )
         # (N, nheads, L_t, E_head) -> (N, L_t, nheads, E_head) -> (N, L_t, E_total)
         attn_output = attn_output.transpose(1, 2).flatten(-2)
