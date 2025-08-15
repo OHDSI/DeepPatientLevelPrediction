@@ -3,7 +3,6 @@ import pathlib
 
 import torch
 from torch.utils.data import DataLoader, BatchSampler, RandomSampler, SequentialSampler
-from torch.profiler import profile, ProfilerActivity
 from tqdm import tqdm
 
 from gpu_memory_cleanup import memory_cleanup

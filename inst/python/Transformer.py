@@ -1,4 +1,4 @@
-from typing import Optional, Type
+from typing import Optional, Type, Callable
 
 import torch
 import torch.nn.functional as F
@@ -6,6 +6,7 @@ from torch import nn
 
 from Embeddings import ClassToken, Embedding, RotaryEmbedding
 from Dataset import FeatureInfo
+from PositionalEncodings import PositionalEncoding
 
 
 def reglu(x):
@@ -33,8 +34,9 @@ class Transformer(nn.Module):
         activation: Type[nn.Module] = ReGLU,
         norm_layer: Type[nn.Module] = nn.LayerNorm,
         head_norm: Type[nn.Module] = nn.LayerNorm,
-        use_rope: bool = False,
+        positional_encoding_module: Optional[PositionalEncoding] = None,
         model_type="Transformer",
+        **kwargs,
     ):
         super(Transformer, self).__init__()
         self.name = model_type
@@ -45,6 +47,7 @@ class Transformer(nn.Module):
         dim_out = int(dim_out)
 
         self.embedding = Embedding(embedding_dim=dim_token, feature_info=feature_info)
+        self.pe_module = positional_encoding_module
 
         self.class_token = ClassToken(dim_token)
 
@@ -60,8 +63,7 @@ class Transformer(nn.Module):
                 activation=activation,
                 skip_attn_norm=(layer_idx == 0),
                 only_class_token=(layer_idx == num_blocks - 1),
-                use_rope=use_rope,
-                max_time_id=feature_info.get_max_time_id() if use_rope else None,
+                pe_module=self.pe_module,
             )
             self.layers.append(block)
 
@@ -91,6 +93,10 @@ class Transformer(nn.Module):
             dim=1,
         )
         x = self.embedding(x)
+        if self.pe_module is not None:
+            x = self.pe_module.apply_additive_pe(
+                x, time_ids=time_ids, lengths=x["sequence_lengths"]
+            )
         x = self.class_token(x)
         for layer in self.layers:
             x = layer(x, mask, time_ids)
@@ -119,8 +125,7 @@ class TransformerBlock(nn.Module):
         activation: Type[nn.Module] = ReGLU,
         skip_attn_norm: bool = False,
         only_class_token: bool = False,
-        use_rope: bool = False,
-        max_time_id: Optional[int] = 512,
+        pe_module: Optional[PositionalEncoding] = None,
     ):
         super(TransformerBlock, self).__init__()
         if skip_attn_norm:
@@ -142,8 +147,7 @@ class TransformerBlock(nn.Module):
             dim_token=dim_token,
             nheads=num_heads,
             dropout_p=att_dropout,
-            use_rope=use_rope,
-            max_time_id=max_time_id,
+            pe_module=pe_module,
         )
         self.attn_dropout = nn.Dropout(att_dropout)
 
@@ -236,8 +240,7 @@ class MultiHeadAttention(nn.Module):
         dim_token: int,
         nheads: int,
         dropout_p: float = 0.0,
-        use_rope: bool = False,
-        max_time_id: Optional[int] = 512,
+        pe_module: Optional[PositionalEncoding] = None,
     ):
         super().__init__()
         self.nheads = nheads
@@ -246,19 +249,12 @@ class MultiHeadAttention(nn.Module):
         self.out_proj = nn.Linear(dim_token, dim_token)
         assert dim_token % nheads == 0, "Embedding dim is not divisible by nheads"
         self.E_head = dim_token // nheads
-
-        self.use_rope = use_rope
-        if self.use_rope and max_time_id is not None:
-            self.rope = RotaryEmbedding(
-                head_dim=self.E_head, base=10000, max_time_id=max_time_id
-            )
-        else:
-            self.rope = nn.Identity()
+        self.pe_module = pe_module
 
     def forward(
         self,
         x: torch.Tensor,
-        query_selector: callable,
+        query_selector: Callable,
         mask: torch.Tensor,
         time_ids: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
@@ -280,8 +276,6 @@ class MultiHeadAttention(nn.Module):
         """
         query, key, value = self.in_proj(x).chunk(3, dim=-1)
         query = query_selector(query)
-        Lq = query.size(1)
-        Lk = key.size(1)
 
         query = query.unflatten(-1, [self.nheads, self.E_head]).transpose(1, 2)
         # (N, L_s, E_total) -> (N, L_s, nheads, E_head) -> (N, nheads, L_s, E_head)
@@ -289,9 +283,10 @@ class MultiHeadAttention(nn.Module):
         # (N, L_s, E_total) -> (N, L_s, nheads, E_head) -> (N, nheads, L_s, E_head)
         value = value.unflatten(-1, [self.nheads, self.E_head]).transpose(1, 2)
 
-        if self.use_rope and time_ids is not None:
-            query = self.rope(query, time_ids[:, :Lq])
-            key = self.rope(key, time_ids[:, :Lk])
+        if self.pe_module is not None and time_ids is not None:
+            query, key = self.pe_module.apply_attention_pe(
+                query, key, time_ids=time_ids
+            )
         # Step 3. Run SDPA
         # (N, nheads, L_t, E_head)
         attn_mask = mask[:, None, None, :].contiguous()

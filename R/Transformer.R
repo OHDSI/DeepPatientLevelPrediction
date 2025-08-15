@@ -66,7 +66,6 @@ setDefaultTransformer <- function(estimatorSettings =
 #' of dimToken (embedding size)
 #' @param temporal                Whether to use a transformer with temporal data
 #' @param temporalSettings        settings for the temporal transformer. Which include
-#'   - `useRope`: Whether to use ROPE (Relative Positional Encoding)
 #'   - `maxSequenceLength`: Maximum sequence length, sequences longer than This
 #'     will be truncated and/or padded to this length either a number or 'max' for the Maximum
 #'   - `truncation`: Truncation method, only 'tail' is supported
@@ -91,7 +90,10 @@ setTransformer <- function(numBlocks = 3,
                            dimHiddenRatio = NULL,
                            temporal = FALSE,
                            temporalSettings = list(
-                             useRope = FALSE,
+                             positionalEncoding = list(
+                               name = "SinusoidalPE",
+                               dropout = 0.1
+                             ),
                              maxSequenceLength = 256,
                              truncation = "tail",
                              timeTokens = TRUE
@@ -160,9 +162,10 @@ setTransformer <- function(numBlocks = 3,
     dimHidden <- dimHiddenRatio
   }
 
-  checkIsClass(temporalSettings$useRope, "logical")
-  checkIsClass(temporalSettings$maxSequenceLength, 
-    c("integer", "numeric", "character"))
+  checkIsClass(
+    temporalSettings$maxSequenceLength,
+    c("integer", "numeric", "character")
+  )
   if (!inherits(temporalSettings$maxSequenceLength, "character")) {
     checkHigherEqual(temporalSettings$maxSequenceLength, 1)
   } else if (temporalSettings$maxSequenceLength != "max") {
@@ -172,15 +175,19 @@ setTransformer <- function(numBlocks = 3,
     ))
   }
   if (inherits(temporalSettings$maxSequenceLength, "numeric")) {
-    temporalSettings$maxSequenceLength <- 
+    temporalSettings$maxSequenceLength <-
       as.integer(round(temporalSettings$maxSequenceLength))
   }
   checkIsClass(temporalSettings$truncation, "character")
   if (temporalSettings$truncation != "tail") {
     stop(paste(
-      "Only truncation method 'tail' is supported. truncation =", 
+      "Only truncation method 'tail' is supported. truncation =",
       temporalSettings$truncation
     ))
+  }
+  checkIsClass(temporalSettings$positionalEncoding, c("character", "list"))
+  if (inherits(temporalSettings$positionalEncoding, "character")) {
+    temporalSettings$positionalEncoding <- list(name = temporalSettings$positionalEncoding)
   }
 
   paramGrid <- list(
@@ -193,7 +200,8 @@ setTransformer <- function(numBlocks = 3,
     ffnDropout = ffnDropout
   )
   if (temporal) {
-    paramGrid[["useRope"]] <- temporalSettings$useRope
+    paramGrid[["positionalEncoding"]] <- 
+      expandComponentGrid(temporalSettings$positionalEncoding)
   }
 
   paramGrid <- c(paramGrid, estimatorSettings$paramsToTune)
@@ -238,7 +246,7 @@ setTransformer <- function(numBlocks = 3,
   if (temporal) {
     attr(results$param, "temporalModel") <- TRUE
     attr(results$param, "temporalSettings") <- temporalSettings
-    results$modelParamNames <- c(results$modelParamNames, "useRope")
+    results$modelParamNames <- c(results$modelParamNames, "positionalEncoding")
   }
   attr(results$param, "settings")$modelType <- results$modelType
   class(results) <- "modelSettings"
