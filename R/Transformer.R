@@ -185,7 +185,7 @@ setTransformer <- function(numBlocks = 3,
       temporalSettings$truncation
     ))
   }
-  checkIsClass(temporalSettings$positionalEncoding, c("character", "list"))
+  checkIsClass(temporalSettings$positionalEncoding, c("character", "list", "NULL"))
   if (inherits(temporalSettings$positionalEncoding, "character")) {
     temporalSettings$positionalEncoding <- list(name = temporalSettings$positionalEncoding)
   }
@@ -200,8 +200,10 @@ setTransformer <- function(numBlocks = 3,
     ffnDropout = ffnDropout
   )
   if (temporal) {
-    paramGrid[["positionalEncoding"]] <- 
-      expandComponentGrid(temporalSettings$positionalEncoding)
+    if (!is.null(temporalSettings$positionalEncoding)) {
+      paramGrid[["positionalEncoding"]] <- 
+        expandComponentGrid(temporalSettings$positionalEncoding)
+    }
   }
 
   paramGrid <- c(paramGrid, estimatorSettings$paramsToTune)
@@ -246,7 +248,9 @@ setTransformer <- function(numBlocks = 3,
   if (temporal) {
     attr(results$param, "temporalModel") <- TRUE
     attr(results$param, "temporalSettings") <- temporalSettings
-    results$modelParamNames <- c(results$modelParamNames, "positionalEncoding")
+    if (!is.null(temporalSettings$positionalEncoding)) {
+      results$modelParamNames <- c(results$modelParamNames, "positionalEncoding")
+    }
   }
   attr(results$param, "settings")$modelType <- results$modelType
   class(results) <- "modelSettings"

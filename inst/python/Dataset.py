@@ -127,11 +127,12 @@ class Data(Dataset):
 
     def __getitem__(self, item):
         batch = {
-            "feature_ids": self.data["feature_ids"][item],
-            "time_ids": self.data["time_ids"][item] if self.use_time else None,
-            "feature_values": self.data["feature_values"][item],
-            "sequence_lengths": self.data["sequence_lengths"][item]
+            "feature_ids": self.data["feature_ids"][torch.as_tensor(item, dtype=torch.long).reshape(-1)],
+            "time_ids": self.data["time_ids"][torch.as_tensor(item, dtype=torch.long).reshape(-1)] if self.use_time else None,
+            "feature_values": self.data["feature_values"][torch.as_tensor(item, dtype=torch.long).reshape(-1)],
         }
+        if self.use_time:
+            batch["sequence_lengths"] = self.data["sequence_lengths"][torch.as_tensor(item, dtype=torch.long).reshape(-1)]
         return [batch, self.target[item].squeeze()]
 
 

@@ -42,7 +42,8 @@ test_that(".getbatch works", {
   expect_equal(out[[2]]$shape$numel(), 1)
 
   # get a whole batch
-  out <- dataset[10:(10 + batchSize)]
+  seq <- 10:(10 + batchSize - 1)
+  out <- dataset[seq]
 
   expect_equal(length(out), 2)
   expect_true(all(out[[2]]$numpy() %in% c(0, 1)))

@@ -32,14 +32,12 @@ test_that("Transformer settings work", {
   ))
   expect_error(setTransformer(temporal = TRUE,
                               temporalSettings = list(
-                               useRope = TRUE,
                                maxSequenceLength = "notMaxSequenceLength",
                                truncation = "tail",
                                time_tokens = TRUE
                              )))
   expect_error(setTransformer(temporal = TRUE,
                               temporalSettings = list(
-                               useRope = TRUE,
                                maxSequenceLength = 256,
                                truncation = "max",
                                time_tokens = TRUE
@@ -48,18 +46,15 @@ test_that("Transformer settings work", {
   transformerSettings <- setTransformer(
     temporal = TRUE,
     temporalSettings = list(
-      useRope = TRUE,
       maxSequenceLength = "max",
       truncation = "tail",
       time_tokens = TRUE
   ))
   expect_true(attr(transformerSettings$param, "temporalModel"))
-  expect_equal(transformerSettings$param[[1]]$useRope, TRUE)
   temporalSettings <- attr(transformerSettings$param, "temporalSettings")
   expect_equal(temporalSettings$maxSequenceLength, "max")
   expect_equal(temporalSettings$truncation, "tail")
   expect_equal(temporalSettings$time_tokens, TRUE)
-  expect_equal(temporalSettings$useRope, TRUE)
 })
 
 test_that("fitEstimator with Transformer works", {
@@ -228,7 +223,6 @@ test_that("temporal transformer works", {
     dimHidden = 32,
     temporal = TRUE,
     temporalSettings = list(
-      useRope = TRUE,
       maxSequenceLength = 16,
       truncation = "tail",
       timeTokens = FALSE
