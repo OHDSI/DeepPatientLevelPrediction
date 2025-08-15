@@ -40,9 +40,9 @@ class Data(Dataset):
         )
 
         if (
-                self.use_time
-                and temporal_settings is not None
-                and temporal_settings["time_tokens"]
+            self.use_time
+            and temporal_settings is not None
+            and temporal_settings["time_tokens"]
         ):
             data, data_ref = insert_time_tokens(
                 data, data_ref=data_dict["data_ref"], strategy="coarse"
@@ -52,27 +52,21 @@ class Data(Dataset):
 
         data = aggregate_sequences(data, with_time=self.use_time)
 
-
         if self.use_time and temporal_settings is not None:
             max_sequence_length = temporal_settings["max_sequence_length"]
             if max_sequence_length == "max":
                 max_sequence_length = (
-                    data
-                    .select(pl.col("feature_ids").list.len().max())
-                    .collect()
-                    .item()
+                    data.select(pl.col("feature_ids").list.len().max()).collect().item()
                 )
                 print(f"Using max sequence length: {max_sequence_length}")
             truncation = temporal_settings["truncation"]
         else:
             max_sequence_length = (
-                data
-                .select(pl.col("feature_ids").list.len().max())
-                .collect()
-                .item()
+                data.select(pl.col("feature_ids").list.len().max()).collect().item()
             )
             truncation = "tail"
 
+        data = data.with_columns(pl.col("feature_ids").list.len().alias("sequence_lengths"))
         data = pad_prefix_all(
             data,
             max_sequence_length=max_sequence_length,
@@ -105,6 +99,8 @@ class Data(Dataset):
                 .to_numpy(writable=True),
                 dtype=torch.long,
             )
+            self.data["sequence_lengths"] = data["sequence_lengths"].to_torch()
+
         self.data_ref = data_ref
         self.time_ref = data_dict["time_ref"] if self.use_time else None
 
@@ -131,9 +127,10 @@ class Data(Dataset):
 
     def __getitem__(self, item):
         batch = {
-            "feature_ids": self.data["feature_ids"][[item]],
-            "time_ids": self.data["time_ids"][[item]] if self.use_time else None,
-            "feature_values": self.data["feature_values"][[item]],
+            "feature_ids": self.data["feature_ids"][item],
+            "time_ids": self.data["time_ids"][item] if self.use_time else None,
+            "feature_values": self.data["feature_values"][item],
+            "sequence_lengths": self.data["sequence_lengths"][item]
         }
         return [batch, self.target[item].squeeze()]
 
@@ -144,11 +141,10 @@ class DBReader:
         self.suffix = pathlib.Path(db_path).suffix
         if self.suffix == "":
             # unzip to a new location
-            new_db_path = (
-                pathlib.Path(db_path).parent.joinpath(f"db_{uuid.uuid4().hex}")
+            new_db_path = pathlib.Path(db_path).parent.joinpath(
+                f"db_{uuid.uuid4().hex}"
             )
-            shutil.unpack_archive(db_path, extract_dir=new_db_path,
-                                  format = "zip")
+            shutil.unpack_archive(db_path, extract_dir=new_db_path, format="zip")
             self.db_path = new_db_path.glob("*.duckdb").__next__()
             self.suffix = pathlib.Path(self.db_path).suffix
         else:
@@ -174,7 +170,7 @@ class DBReader:
             df = pl.read_database_uri(query, uri=f"sqlite://{self.data_quoted}")
         elif self.suffix == ".duckdb":
             conn = duckdb.connect(str(self.db_path))
-            df = conn.sql(query).pl()
+            df = conn.sql(query).pl().with_columns(pl.col(pl.Decimal).cast(pl.Float64))
             conn.close()
         else:
             raise ValueError("Only .sqlite and .duckdb files are supported")
@@ -223,11 +219,11 @@ def read_data(
         data_ref = reader.read_table("covariateRef", lazy=lazy)
     else:
         data_ref = data_reference.lazy()
-    data_ref = (data_ref.
-        with_columns(pl.col("columnId").cast(pl.Int32)).
-        join(analysis_ref, on="analysisId").select(
-        pl.all().exclude("collisions")
-    ))
+    data_ref = (
+        data_ref.with_columns(pl.col("columnId").cast(pl.Int32))
+        .join(analysis_ref, on="analysisId")
+        .select(pl.all().exclude("collisions"))
+    )
     data = reader.read_table("covariates", lazy=lazy)
     # check if there is a timeId column in data
     time = "timeId" in data.collect_schema().names()
@@ -284,7 +280,9 @@ def aggregate_sequences(
     """
     aggs = [
         (
-            pl.col("columnId").sort_by(["timeId", "columnId"]) if with_time else pl.col("columnId")
+            pl.col("columnId").sort_by(["timeId", "columnId"])
+            if with_time
+            else pl.col("columnId")
         ).alias("feature_ids"),
         (
             pl.col("covariateValue").sort_by("timeId")
@@ -293,9 +291,7 @@ def aggregate_sequences(
         ).alias("feature_values"),
     ]
     if with_time:
-        data = data.with_columns(pl.col("timeId")
-                                 .fill_null(0)
-                                 .cast(pl.Int32))
+        data = data.with_columns(pl.col("timeId").fill_null(0).cast(pl.Int32))
         aggs.append(pl.col("timeId").sort_by("timeId").alias("time_ids"))
     grouped = data.group_by("rowId").agg(*aggs)
     all_rows = (
@@ -386,20 +382,16 @@ def insert_time_tokens(
         )
 
     offset = get_offset(data_ref)
-    data = (
-        data
-        .sort(["rowId", "timeId"])
-        .with_columns(
-           [
-                pl.cum_count("rowId").cast(pl.Float64).alias("_pos"),  # 0,1,2…
-                (
-                        pl.col("timeId")  # δt (days)
-                        - pl.col("timeId").shift(1).over("rowId")
-                )
-                .fill_null(0)
-                .alias("_delta"),
-            ]
-        )
+    data = data.sort(["rowId", "timeId"]).with_columns(
+        [
+            pl.cum_count("rowId").cast(pl.Float64).alias("_pos"),  # 0,1,2…
+            (
+                pl.col("timeId")  # δt (days)
+                - pl.col("timeId").shift(1).over("rowId")
+            )
+            .fill_null(0)
+            .alias("_delta"),
+        ]
     )
     delta = pl.col("_delta")
 
@@ -510,4 +502,3 @@ def get_offset(data_ref: pl.LazyFrame) -> int:
     Get the offset for the time tokens based on the maximum columnId in the data reference.
     """
     return data_ref.select(pl.col("columnId")).max().collect().item() + 1
-
