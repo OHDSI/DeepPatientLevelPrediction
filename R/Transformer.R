@@ -109,6 +109,21 @@ setTransformer <- function(numBlocks = 3,
                            hyperParamSearch = "random",
                            randomSample = 1,
                            randomSampleSeed = NULL) {
+  defaultTemporalSettings <- list(
+    positionalEncoding = list(
+      name = "SinusoidalPE",
+      dropout = 0.1
+    ),
+    maxSequenceLength = 256,
+    truncation = "tail",
+    timeTokens = FALSE
+  )
+  temporalSettings <- keepDefaults(
+    defaultTemporalSettings,
+    temporalSettings
+  )
+
+
   checkIsClass(numBlocks, c("integer", "numeric"))
   checkHigherEqual(numBlocks, 1)
 

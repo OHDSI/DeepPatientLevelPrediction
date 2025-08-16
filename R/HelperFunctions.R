@@ -233,3 +233,13 @@ expandComponentGrid <- function(componentSetting) {
   finalComponentGrid <- do.call(c, expandedConfigs)
   return(finalComponentGrid)
 }
+
+keepDefaults <- function(defaultSettings, userSettings) {
+  if (!is.null(userSettings) && !is.list(userSettings)) {
+    stop("Settings argument must be a list.")
+  }
+  userSettingsNames <- names(userSettings)
+  defaultSettings[userSettingsNames] <- userSettings
+
+  return(defaultSettings)
+}
