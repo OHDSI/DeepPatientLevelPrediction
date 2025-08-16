@@ -66,6 +66,8 @@ setDefaultTransformer <- function(estimatorSettings =
 #' of dimToken (embedding size)
 #' @param temporal                Whether to use a transformer with temporal data
 #' @param temporalSettings        settings for the temporal transformer. Which include
+#'   - `positionalEncoding`: Positional encoding to use, either a character
+#'     or a list with name and settings, default 'SinusoidalPE' with dropout 0.1
 #'   - `maxSequenceLength`: Maximum sequence length, sequences longer than This
 #'     will be truncated and/or padded to this length either a number or 'max' for the Maximum
 #'   - `truncation`: Truncation method, only 'tail' is supported
