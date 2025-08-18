@@ -1,5 +1,4 @@
 import math
-from functools import partial
 
 import torch
 from torch import nn
@@ -104,69 +103,6 @@ class Embedding(nn.Module):
                 categorical_embeddings + numerical_embeddings
             ) / numerical_mask.shape[1]
         return merged_embeddings
-
-
-# class NumericalEmbedding(nn.Module):
-#     def __init__(self, num_embeddings, embedding_dim, bias=True):
-#         super(NumericalEmbedding, self).__init__()
-#         # +1 for padding
-#         self.weight = nn.Parameter(torch.empty(num_embeddings + 1, embedding_dim))
-#         if bias:
-#             self.bias = nn.Parameter(torch.empty(num_embeddings + 1, embedding_dim))
-#         else:
-#             self.bias = None
-#
-#         for parameter in [self.weight, self.bias]:
-#             if parameter is not None:
-#                 nn.init.kaiming_uniform_(parameter, a=math.sqrt(5))
-#
-#         with torch.no_grad():
-#             self.weight[0].fill_(0)
-#             if self.bias is not None:
-#                 self.bias[0].fill_(0)
-#
-#     def forward(self, *inputs):
-#         values = inputs[1]
-#         ids = inputs[0]
-#         # ids are 1-indexed
-#         emb = self.weight[ids] * values.unsqueeze(-1)
-#         if self.bias is not None:
-#             emb = emb + self.bias[ids]
-#         return emb
-#
-
-# class NumericalEmbedding2(nn.Module):
-#     def __init__(self, num_embeddings, embedding_dim):
-#         super(NumericalEmbedding2, self).__init__()
-#         self.embedding = nn.Embedding(
-#             num_embeddings + 1, embedding_dim - 1, padding_idx=0
-#         )
-#
-#     def forward(self, ids, values):
-#         x = self.embedding(ids)
-#         return torch.cat((x, values[:, None, None].expand(-1, x.shape[1], -1)), dim=-1)
-
-
-class ClassTokenNested(nn.Module):
-    """
-    Prepend a class token to the input tensor
-    """
-
-    def __init__(self, dim_token):
-        super(ClassTokenNested, self).__init__()
-        self.weight = nn.Parameter(torch.empty(1, dim_token))
-        nn.init.kaiming_uniform_(self.weight, a=math.sqrt(5))
-
-    @torch._dynamo.disable
-    def add_token(self, x):
-        return torch.nested.as_nested_tensor(
-            [torch.cat([self.weight, seq]) for seq in x.unbind(0)],
-            device=x.device,
-            layout=x.layout,
-        )
-
-    def forward(self, x):
-        return self.add_token(x)
 
 
 class ClassToken(nn.Module):

@@ -34,7 +34,7 @@ class Transformer(nn.Module):
         activation: Type[nn.Module] = ReGLU,
         norm_layer: Type[nn.Module] = nn.LayerNorm,
         head_norm: Type[nn.Module] = nn.LayerNorm,
-        positional_encoding_module: Optional[PositionalEncoding] = None,
+        pe_module: Optional[PositionalEncoding] = None,
         model_type="Transformer",
         **kwargs,
     ):
@@ -47,7 +47,7 @@ class Transformer(nn.Module):
         dim_out = int(dim_out)
 
         self.embedding = Embedding(embedding_dim=dim_token, feature_info=feature_info)
-        self.pe_module = positional_encoding_module
+        self.pe_module = pe_module
 
         self.class_token = ClassToken(dim_token)
 
@@ -79,12 +79,12 @@ class Transformer(nn.Module):
         self.head_normalization = head_norm
         self.dim_out = dim_out
 
-    def forward(self, x):
-        if "time_ids" in x.keys() and x["time_ids"] is not None:
-            time_ids = x["time_ids"]
+    def forward(self, input):
+        if "time_ids" in input.keys() and input["time_ids"] is not None:
+            time_ids = input["time_ids"]
         else:
             time_ids = None
-        mask = x["feature_ids"] != 0
+        mask = input["feature_ids"] != 0
         mask = torch.cat(
             (
                 mask.new_full((mask.size(0), 1), True),  # (B, 1)
@@ -92,12 +92,12 @@ class Transformer(nn.Module):
             ),  # (B, L)
             dim=1,
         )
-        x = self.embedding(x)
+        x = self.embedding(input)
+        x = self.class_token(x)
         if self.pe_module is not None:
             x = self.pe_module.apply_additive_pe(
-                x, time_ids=time_ids, lengths=x["sequence_lengths"]
+                x, time_ids=time_ids, lengths=input["sequence_lengths"]
             )
-        x = self.class_token(x)
         for layer in self.layers:
             x = layer(x, mask, time_ids)
         x = self.head(x)
@@ -276,6 +276,8 @@ class MultiHeadAttention(nn.Module):
         """
         query, key, value = self.in_proj(x).chunk(3, dim=-1)
         query = query_selector(query)
+        Lk = key.size(1)
+        Lq = query.size(1)
 
         query = query.unflatten(-1, [self.nheads, self.E_head]).transpose(1, 2)
         # (N, L_s, E_total) -> (N, L_s, nheads, E_head) -> (N, nheads, L_s, E_head)
@@ -283,21 +285,60 @@ class MultiHeadAttention(nn.Module):
         # (N, L_s, E_total) -> (N, L_s, nheads, E_head) -> (N, nheads, L_s, E_head)
         value = value.unflatten(-1, [self.nheads, self.E_head]).transpose(1, 2)
 
+        pos_scores, bias = None, None
+        use_manual_path = False
         if self.pe_module is not None and time_ids is not None:
             query, key = self.pe_module.apply_attention_pe(
                 query, key, time_ids=time_ids
             )
-        # Step 3. Run SDPA
-        # (N, nheads, L_t, E_head)
+            if hasattr(self.pe_module, "get_post_softmax_bias"):
+                # TODO rethink this ugly hack
+                use_manual_path = True
+            pos_scores = self.pe_module.get_positional_scores(
+                query, k_len=Lk, time_ids=time_ids
+            )
+            bias = self.pe_module.get_attention_bias(
+                q_len=Lq, k_len=Lk, time_ids=time_ids
+            )
+            if pos_scores is not None and bias is not None:
+                use_manual_path = True
+
         attn_mask = mask[:, None, None, :].contiguous()
-        attn_output = F.scaled_dot_product_attention(
-            query,
-            key,
-            value,
-            dropout_p=self.dropout_p if self.training else 0.0,
-            is_causal=False,
-            attn_mask=attn_mask,
-        )
+
+        if use_manual_path:
+            # TODO : explore more efficient way to handle bias
+            # --- Manual Attention Path (for RPE, eRPE) ---
+            scale = self.E_head**-0.5
+            attn_scores = (query @ key.transpose(-2, -1)) * scale
+
+            if pos_scores is not None:
+                # Add positional scores if available
+                attn_scores += pos_scores * scale
+            if bias is not None:
+                attn_scores += bias
+            attn_scores = attn_scores.masked_fill(~attn_mask, -torch.inf)
+
+            attn_weights = torch.softmax(attn_scores, dim=-1)
+            if self.pe_module:
+                post_softmax_bias = self.pe_module.get_post_softmax_bias(
+                    Lq, Lk, time_ids=time_ids
+                )
+                if post_softmax_bias is not None:
+                    attn_weights = attn_weights + post_softmax_bias
+            attn_weights = F.dropout(
+                attn_weights, p=self.dropout_p, training=self.training
+            )
+
+            attn_output = attn_weights @ value
+        else:
+            attn_output = F.scaled_dot_product_attention(
+                query,
+                key,
+                value,
+                dropout_p=self.dropout_p if self.training else 0.0,
+                is_causal=False,
+                attn_mask=attn_mask,
+            )
         # (N, nheads, L_t, E_head) -> (N, L_t, nheads, E_head) -> (N, L_t, E_total)
         attn_output = attn_output.transpose(1, 2).flatten(-2)
 

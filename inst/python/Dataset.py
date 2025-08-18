@@ -66,7 +66,7 @@ class Data(Dataset):
             )
             truncation = "tail"
 
-        data = data.with_columns(pl.col("feature_ids").list.len().alias("sequence_lengths"))
+        data = data.with_columns(pl.col("feature_ids").list.len().clip(upper_bound=max_sequence_length).alias("sequence_lengths"))
         data = pad_prefix_all(
             data,
             max_sequence_length=max_sequence_length,
