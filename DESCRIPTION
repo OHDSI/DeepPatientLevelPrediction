@@ -17,41 +17,25 @@ URL: https://github.com/OHDSI/DeepPatientLevelPrediction
 BugReports: https://github.com/OHDSI/DeepPatientLevelPrediction/issues
 VignetteBuilder: knitr
 Depends:
-    R (>= 4.0.0)
+    R (>= 4.1.0)
 Imports:
     dplyr,
     ParallelLogger (>= 2.0.0),
-    PatientLevelPrediction (> 6.4.1),
+    PatientLevelPrediction (>= 6.5.0),
     rlang,
     withr,
-    reticulate (>= 1.31)
+    reticulate (>= 1.41)
 Suggests:
     Eunomia,
     knitr,
     rmarkdown,
     testthat,
     PRROC,
-    FeatureExtraction (>= 3.0.0),
+    FeatureExtraction (>= 3.7.0),
     ResultModelManager (>= 0.2.0),
-    DatabaseConnector (>= 6.0.0),
+    DatabaseConnector (>= 6.3.0),
     Andromeda (> 1.0.0)
-Remotes:
-    OHDSI/ResultModelManager,
-    OHDSI/Andromeda@develop,
-    OHDSI/PatientLevelPrediction@develop
 RoxygenNote: 7.3.2
 Encoding: UTF-8
 Config/testthat/edition: 3
 Config/testthat/parallel: FALSE
-Config/reticulate:
-  list(
-    packages = list(
-      list(package = "torch"),
-      list(package = "polars"),
-      list(package = "duckdb"),
-      list(package = "pyarrow"),
-      list(package = "tqdm"),
-      list(package = "connectorx"),
-      list(package = "pynvml")
-      )
-  )
