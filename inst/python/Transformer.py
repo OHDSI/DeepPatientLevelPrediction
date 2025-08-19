@@ -287,13 +287,11 @@ class MultiHeadAttention(nn.Module):
 
         pos_scores, bias = None, None
         use_manual_path = False
+        use_erpe = False
         if self.pe_module is not None and time_ids is not None:
             query, key = self.pe_module.apply_attention_pe(
                 query, key, time_ids=time_ids
             )
-            if hasattr(self.pe_module, "get_post_softmax_bias"):
-                # TODO rethink this ugly hack
-                use_manual_path = True
             pos_scores = self.pe_module.get_positional_scores(
                 query, k_len=Lk, time_ids=time_ids
             )
@@ -302,6 +300,7 @@ class MultiHeadAttention(nn.Module):
             )
             if pos_scores is not None and bias is not None:
                 use_manual_path = True
+            use_erpe = hasattr(self.pe_module, "get_post_softmax_bias")
 
         attn_mask = mask[:, None, None, :].contiguous()
 
@@ -325,6 +324,7 @@ class MultiHeadAttention(nn.Module):
                 )
                 if post_softmax_bias is not None:
                     attn_weights = attn_weights + post_softmax_bias
+                    attn_weights = attn_weights.masked_fill(~attn_mask, 0.0)
             attn_weights = F.dropout(
                 attn_weights, p=self.dropout_p, training=self.training
             )
@@ -335,10 +335,21 @@ class MultiHeadAttention(nn.Module):
                 query,
                 key,
                 value,
-                dropout_p=self.dropout_p if self.training else 0.0,
+                dropout_p=0.0 if use_erpe else (self.dropout_p if self.training else 0.0),
                 is_causal=False,
                 attn_mask=attn_mask,
             )
+        if use_erpe and self.pe_module is not None:
+            # eRPE uses post-softmax bias, so we need to apply it after the attention
+            post_bias = self.pe_module.get_post_softmax_bias(
+                Lq, Lk, time_ids=time_ids
+            )
+            post_bias = post_bias.masked_fill(~attn_mask, 0.0) if post_bias is not None else None
+            if post_bias is not None:
+                delta = torch.einsum("bhql,bhle->bhqe", post_bias, value)
+                attn_output = attn_output + delta
+                if self.training and self.dropout_p > 0.0:
+                    attn_output = F.dropout(attn_output, p=self.dropout_p)
         # (N, nheads, L_t, E_head) -> (N, L_t, nheads, E_head) -> (N, L_t, E_total)
         attn_output = attn_output.transpose(1, 2).flatten(-2)
 

@@ -328,13 +328,12 @@ class EfficientRPE(PositionalEncoding):
         self, 
         dim_token: int | float, 
         num_heads: int = 8, 
-        max_relative_position: int = 128
+        max_time_id: int = 512
     ):
-        super().__init__(dim_token)
+        super().__init__(dim_token, max_time_id)
         self.num_heads = int(num_heads)
-        self.max_relative_position = max_relative_position
-        
-        vocab_size = 2 * self.max_relative_Position - 1
+
+        vocab_size = 2 * self.max_time_id + 1
 
         self.relative_bias_table = nn.Embedding(
             vocab_size, self.num_heads
@@ -353,19 +352,22 @@ class EfficientRPE(PositionalEncoding):
         """
         if time_ids is None:
             raise ValueError("time_ids must be provided for time-aware EfficientRPE")
-        time_ids_slice = time_ids[:, :k_len]
-        time_ids_q = time_ids_slice[:, :q_len].unsqueeze(2)  # Shape: (B, L_q, 1)
-        time_ids_k = time_ids_slice.unsqueeze(1)  # Shape: (B, 1, L_k)
-        relative_pos = time_ids_k - time_ids_q  # Shape: (B, L_q, L_k)
 
-        clipped_pos = torch.clamp(
-            relative_pos, -self.max_relative_position, self.max_relative_position
-        )
+        q_t = time_ids[:, :q_len]
+        k_t = time_ids[:, :k_len]
 
-        indices = clipped_pos + self.max_relative_position
-        post_softmax_bias = self.relative_bias_table(indices)
-        post_softmax_bias = post_softmax_bias.permute(0, 3, 1, 2)
-        return post_softmax_bias
+        if q_len == 1:
+            rel = q_t - k_t
+            rel = torch.clamp(rel, -self.max_time_id, self.max_time_id)
+            idx = (rel + self.max_time_id).long()
+            bias = self.relative_bias_table(idx).permute(0, 2, 1).unsqueeze(2) 
+            return bias
+
+        rel = q_t.unsqueeze(2) - k_t.unsqueeze(1)
+        rel = torch.clamp(rel, -self.max_time_id, self.max_time_id)
+        idx = (rel + self.max_time_id).long()
+        bias = self.relative_bias_table(idx).permute(0, 3, 1, 2)
+        return bias
 
 
 def create_positional_encoding_module(model_parameters: dict) -> PositionalEncoding:
