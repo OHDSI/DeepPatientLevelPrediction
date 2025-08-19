@@ -1,5 +1,6 @@
 DeepPatientLevelPrediction 2.1.0.999
 ======================
+  - [Feature] Use `py_require` from reticulate to manage python dependencies and update min requirements (PR #150)
   - [Internal] Refactor transformer/dataset/embedding classes to use same code wether temporal or not (PR #147)
   - [Feature] Use train/validation split for model selection instead of cross validation (PR #145)
   - [Feature] Temporal transformer added which supports RopE and time tokens (PR #147)

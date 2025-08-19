@@ -170,14 +170,12 @@ class DBReader:
     ) -> pl.DataFrame | pl.LazyFrame:
         query = f"SELECT * FROM {table}"
 
-        if self.suffix == ".sqlite":
-            df = pl.read_database_uri(query, uri=f"sqlite://{self.data_quoted}")
-        elif self.suffix == ".duckdb":
+        if self.suffix == ".duckdb":
             conn = duckdb.connect(str(self.db_path))
             df = conn.sql(query).pl()
             conn.close()
         else:
-            raise ValueError("Only .sqlite and .duckdb files are supported")
+            raise ValueError("Only .duckdb files are supported from Andromeda >= 1.0")
         return df.lazy() if lazy else df
 
 
