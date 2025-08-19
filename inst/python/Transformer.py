@@ -4,7 +4,8 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from Embeddings import ClassToken, Embedding, RotaryEmbedding
+from Embeddings import ClassToken, Embedding
+from PositionalEncodings import EfficientRPE
 from Dataset import FeatureInfo
 from PositionalEncodings import PositionalEncoding
 
@@ -298,9 +299,9 @@ class MultiHeadAttention(nn.Module):
             bias = self.pe_module.get_attention_bias(
                 q_len=Lq, k_len=Lk, time_ids=time_ids
             )
-            if pos_scores is not None and bias is not None:
+            if pos_scores is not None or bias is not None:
                 use_manual_path = True
-            use_erpe = hasattr(self.pe_module, "get_post_softmax_bias")
+            use_erpe = isinstance(self.pe_module, EfficientRPE)
 
         attn_mask = mask[:, None, None, :].contiguous()
 
@@ -318,13 +319,6 @@ class MultiHeadAttention(nn.Module):
             attn_scores = attn_scores.masked_fill(~attn_mask, -torch.inf)
 
             attn_weights = torch.softmax(attn_scores, dim=-1)
-            if self.pe_module:
-                post_softmax_bias = self.pe_module.get_post_softmax_bias(
-                    Lq, Lk, time_ids=time_ids
-                )
-                if post_softmax_bias is not None:
-                    attn_weights = attn_weights + post_softmax_bias
-                    attn_weights = attn_weights.masked_fill(~attn_mask, 0.0)
             attn_weights = F.dropout(
                 attn_weights, p=self.dropout_p, training=self.training
             )

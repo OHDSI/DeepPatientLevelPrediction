@@ -234,8 +234,9 @@ class RotaryPE(PositionalEncoding):
     their absolute time_ids. This is an attention-based PE.
     """
 
-    def __init__(self, dim_token: int | float, base: int = 10000, num_heads: int = 8):
-        super().__init__(dim_token)
+    def __init__(self, dim_token: int | float, base: int = 10000, num_heads: int = 8,
+                 max_time_id: int = 512):
+        super().__init__(dim_token, max_time_id)
         self.base = base
         self.num_heads = num_heads
         self.head_dim = self.dim_token // self.num_heads
@@ -325,19 +326,14 @@ class EfficientRPE(PositionalEncoding):
     """
 
     def __init__(
-        self, 
-        dim_token: int | float, 
-        num_heads: int = 8, 
-        max_time_id: int = 512
+        self, dim_token: int | float, num_heads: int = 8, max_time_id: int = 512
     ):
         super().__init__(dim_token, max_time_id)
         self.num_heads = int(num_heads)
 
         vocab_size = 2 * self.max_time_id + 1
 
-        self.relative_bias_table = nn.Embedding(
-            vocab_size, self.num_heads
-        )
+        self.relative_bias_table = nn.Embedding(vocab_size, self.num_heads)
         torch.nn.init.zeros_(self.relative_bias_table.weight)
 
     def get_post_softmax_bias(
@@ -360,7 +356,7 @@ class EfficientRPE(PositionalEncoding):
             rel = q_t - k_t
             rel = torch.clamp(rel, -self.max_time_id, self.max_time_id)
             idx = (rel + self.max_time_id).long()
-            bias = self.relative_bias_table(idx).permute(0, 2, 1).unsqueeze(2) 
+            bias = self.relative_bias_table(idx).permute(0, 2, 1).unsqueeze(2)
             return bias
 
         rel = q_t.unsqueeze(2) - k_t.unsqueeze(1)
@@ -368,6 +364,231 @@ class EfficientRPE(PositionalEncoding):
         idx = (rel + self.max_time_id).long()
         bias = self.relative_bias_table(idx).permute(0, 3, 1, 2)
         return bias
+
+
+class TemporalPE(PositionalEncoding):
+    """This method combines two components:
+    1. A standard time-aware sinusoidal encoding added to the input embeddings
+       (`apply_additive_pe`).
+    2. A dynamic, content-aware "semantic" component that calculates a similarity
+       score (RBF kernel) between token embeddings and adds it as a pre-softmax
+       attention bias (`get_attention_bias`).
+    """
+
+    def __init__(
+        self,
+        dim_token: int | float,
+        max_time_id: int = 512,
+        num_heads: int = 8,
+        base: int = 10000,
+        sigma: float = 1.0,
+        learnable_sigma: bool = False,
+    ):
+        super().__init__(dim_token, max_time_id)
+
+        self.sinusoidal_pe = SinusoidalPE(dim_token, max_time_id, base)
+
+        if learnable_sigma:
+            self.log_sigma = nn.Parameter(torch.tensor(sigma).log())
+        else:
+            self.register_buffer("log_sigma", torch.tensor(sigma))
+
+        self._original_embeddings = None
+
+    def apply_additive_pe(self, x: torch.Tensor, **kwargs) -> torch.Tensor:
+        """
+        Applies the geometric (sinusoidal) component and caches the original
+        embeddings for the semantic component.
+        """
+        self._original_embeddings = x.detach()
+        return self.sinusoidal_pe.apply_additive_pe(x, **kwargs)
+
+    def get_attention_bias(
+        self,
+        q_len: int,
+        k_len: int,
+        time_ids: Optional[torch.Tensor] = None,
+        **kwargs: dict,
+    ) -> torch.Tensor | None:
+        """
+        Calculates the semantic (RBF kernel) component as a pre-softmax bias.
+        """
+        if self._original_embeddings is None:
+            return None
+
+        x = self._original_embeddings
+        x_q = x[:, :q_len, :]
+        x_k = x[:, :k_len, :]
+
+        x_q_norm_sq = torch.sum(x_q**2, dim=-1, keepdim=True)  # Shape: (B, L_q, 1)
+        x_k_norm_sq = torch.sum(x_k**2, dim=-1, keepdim=True)  # Shape: (B, L_k, 1)
+
+        dot_product = torch.bmm(x_q, x_k.transpose(1, 2))
+
+        dist_sq = x_q_norm_sq - 2 * dot_product + x_k_norm_sq.transpose(1, 2)
+        dist_sq = torch.clamp(dist_sq, min=0.0)
+
+        sigma_val = (
+            torch.exp(self.log_sigma) if hasattr(self, "log_sigma") else self.sigma
+        )
+
+        similarity_matrix = torch.exp(
+            -dist_sq / (2 * sigma_val**2)
+        )  # Shape: (B, L_q, L_k)
+        return similarity_matrix.unsqueeze(1)
+
+
+class StochasticConvPE(PositionalEncoding):
+    """
+    Implementation of  'convSPE' from Liutkus et al. (2021).
+
+    This method generates a relative positional encoding by applying learnable
+    convolutions to a tensor of random Gaussian noise. The resulting positional
+    encodings are then added to the content-based queries and keys.
+    """
+
+    def __init__(
+        self,
+        dim_token: int | float,
+        num_heads: int,
+        kernel_size: int = 15,
+    ):
+        super().__init__(dim_token)
+        self.num_heads = int(num_heads)
+        self.head_dim = self.dim_token // self.num_heads
+        self.kernel_size = kernel_size
+        padding = (self.kernel_size - 1) // 2
+
+        self.query_conv = nn.Conv1d(
+            in_channels=self.dim_token,
+            out_channels=self.dim_token,
+            kernel_size=kernel_size,
+            padding=padding,
+            groups=self.num_heads,
+        )
+
+        self.key_conv = nn.Conv1d(
+            in_channels=self.dim_token,
+            out_channels=self.dim_token,
+            kernel_size=kernel_size,
+            padding=padding,
+            groups=self.num_heads,
+        )
+        noise = torch.randn(1, self.max_time_id, self.dim_token)
+        self.register_buffer("noise_buffer", noise)
+
+    def apply_attention_pe(
+        self, q: torch.Tensor, k: torch.Tensor, 
+        time_ids: Optional[torch.Tensor] = None, **kwargs
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        Generates stochastic PEs and adds them to the content-based Q and K.
+        """
+        batch_size, num_heads, q_len, head_dim = q.shape
+        k_len = k.shape[2]
+
+        noise_for_q = self.noise_buffer[:, :q_len, :].expand(batch_size, -1, -1)
+        noise_for_k = self.noise_buffer[:, :k_len, :].expand(batch_size, -1, -1)
+
+        q_pos_conv = self.query_conv(noise_for_q.permute(0, 2, 1)).permute(0, 2, 1)  # -> (B, L, D)
+        k_pos_conv = self.key_conv(noise_for_k.permute(0, 2, 1)).permute(0, 2, 1)  # -> (B, L, D)
+
+        q_pos = q_pos_conv.view(batch_size, q_len, num_heads, head_dim).permute(
+            0, 2, 1, 3
+        )
+
+        k_pos = k_pos_conv.view(batch_size, k_len, num_heads, head_dim).permute(
+            0, 2, 1, 3
+        )
+
+        q_final = q + q_pos
+        k_final = k + k_pos
+        return q_final, k_final
+
+
+class HybridRoPEConvPE(PositionalEncoding):
+    """
+    A hybrid positional encoding method that combines two powerful concepts:
+    1. Rotary Positional Embedding (RoPE) to encode the absolute, irregular
+       timestamp of each token via rotation.
+    2. Stochastic Convolutional PE (convSPE) to encode relative, shape-based
+       patterns by adding a filtered noise vector.
+       
+    This allows the model to be simultaneously aware of "when" an event happened
+    and "what shape" the local sequence of events has.
+    """
+    def __init__(
+        self,
+        dim_token: int | float,
+        num_heads: int,
+        max_time_id: int,
+        kernel_size: int = 15,
+        base: int = 10000,
+    ):
+        super().__init__(dim_token, max_time_id)
+        self.num_heads = int(num_heads)
+        self.head_dim = self.dim_token // self.num_heads
+        
+        self.kernel_size = kernel_size
+        padding = (self.kernel_size - 1) // 2
+        
+        self.query_conv = nn.Conv1d(
+            in_channels=self.dim_token,
+            out_channels=self.dim_token,
+            kernel_size=kernel_size,
+            padding=padding,
+            groups=self.num_heads
+        )
+        self.key_conv = nn.Conv1d(
+            in_channels=self.dim_token,
+            out_channels=self.dim_token,
+            kernel_size=kernel_size,
+            padding=padding,
+            groups=self.num_heads
+        )
+
+        self.rope_module = RotaryPE(
+            dim_token=dim_token,
+            base=base,
+            num_heads=num_heads
+        )
+        
+        noise = torch.randn(1, self.max_time_id, self.dim_token)
+        self.register_buffer("noise_buffer", noise)
+
+    def apply_attention_pe(
+        self, q: torch.Tensor, k: torch.Tensor, time_ids: Optional[torch.Tensor] = None, **kwargs
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        Applies the sequential transformation: first RoPE, then StochasticConvPE.
+        """
+        if time_ids is None:
+            raise ValueError("time_ids are required for the HybridRoPEConvPE method.")
+
+        q_rotated, k_rotated = self.rope_module.apply_attention_pe(q, k, time_ids=time_ids)
+
+        batch_size, num_heads, q_len, head_dim = q.shape
+        k_len = k.shape[2]
+
+        noise_for_q = self.noise_buffer[:, :q_len, :].expand(batch_size, -1, -1)
+        noise_for_k = self.noise_buffer[:, :k_len, :].expand(batch_size, -1, -1)
+
+        q_pos_conv = self.query_conv(noise_for_q.permute(0, 2, 1)).permute(0, 2, 1)  # -> (B, L, D)
+        k_pos_conv = self.key_conv(noise_for_k.permute(0, 2, 1)).permute(0, 2, 1)  # -> (B, L, D)
+
+        q_pos = q_pos_conv.view(batch_size, q_len, num_heads, head_dim).permute(
+            0, 2, 1, 3
+        )
+
+        k_pos = k_pos_conv.view(batch_size, k_len, num_heads, head_dim).permute(
+            0, 2, 1, 3
+        )
+
+        
+        q_final = q_rotated + q_pos
+        k_final = k_rotated + k_pos
+        
+        return q_final, k_final
 
 
 def create_positional_encoding_module(model_parameters: dict) -> PositionalEncoding:
@@ -389,6 +610,9 @@ def create_positional_encoding_module(model_parameters: dict) -> PositionalEncod
         "RotaryPE": RotaryPE,
         "RelativePE": RelativePE,
         "EfficientRPE": EfficientRPE,
+        "TemporalPE": TemporalPE,
+        "StochasticConvPE": StochasticConvPE,
+        "HybridRoPEConvPE": HybridRoPEConvPE,
     }
     pe_config = model_parameters["positional_encoding"]
 
@@ -410,6 +634,9 @@ def create_positional_encoding_module(model_parameters: dict) -> PositionalEncod
         "max_time_id": model_parameters["feature_info"].get_max_time_id(),
         "num_heads": model_parameters["num_heads"],
     }
+
+    if pe_class is TemporalPE:
+        constructor_args["model_parameters"] = model_parameters
 
     constructor_args.update(pe_config)
 
