@@ -1,7 +1,9 @@
-from typing import Optional
+from typing import Optional, Callable
+import math
 
 import torch
 from torch import nn
+import torch.nn.functional as F
 
 from Embeddings import RotaryEmbedding
 
@@ -93,6 +95,15 @@ class PositionalEncoding(nn.Module):
         This is a highly specialized method for specific PE types.
         """
         return None
+
+    def get_attention_module_class(self) -> type:
+        """
+        Returns the attention module class that uses this positional encoding.
+        This is used for TUPE and similar methods that require a custom attention module.
+        Standard positional encoding modules will return the default MultiHeadAttention class.
+        """
+        from Transformer import MultiHeadAttention
+        return MultiHeadAttention
 
 
 class SinusoidalPE(PositionalEncoding):
@@ -234,8 +245,13 @@ class RotaryPE(PositionalEncoding):
     their absolute time_ids. This is an attention-based PE.
     """
 
-    def __init__(self, dim_token: int | float, base: int = 10000, num_heads: int = 8,
-                 max_time_id: int = 512):
+    def __init__(
+        self,
+        dim_token: int | float,
+        base: int = 10000,
+        num_heads: int = 8,
+        max_time_id: int = 512,
+    ):
         super().__init__(dim_token, max_time_id)
         self.base = base
         self.num_heads = num_heads
@@ -478,8 +494,11 @@ class StochasticConvPE(PositionalEncoding):
         self.register_buffer("noise_buffer", noise)
 
     def apply_attention_pe(
-        self, q: torch.Tensor, k: torch.Tensor, 
-        time_ids: Optional[torch.Tensor] = None, **kwargs
+        self,
+        q: torch.Tensor,
+        k: torch.Tensor,
+        time_ids: Optional[torch.Tensor] = None,
+        **kwargs,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Generates stochastic PEs and adds them to the content-based Q and K.
@@ -490,8 +509,12 @@ class StochasticConvPE(PositionalEncoding):
         noise_for_q = self.noise_buffer[:, :q_len, :].expand(batch_size, -1, -1)
         noise_for_k = self.noise_buffer[:, :k_len, :].expand(batch_size, -1, -1)
 
-        q_pos_conv = self.query_conv(noise_for_q.permute(0, 2, 1)).permute(0, 2, 1)  # -> (B, L, D)
-        k_pos_conv = self.key_conv(noise_for_k.permute(0, 2, 1)).permute(0, 2, 1)  # -> (B, L, D)
+        q_pos_conv = self.query_conv(noise_for_q.permute(0, 2, 1)).permute(
+            0, 2, 1
+        )  # -> (B, L, D)
+        k_pos_conv = self.key_conv(noise_for_k.permute(0, 2, 1)).permute(
+            0, 2, 1
+        )  # -> (B, L, D)
 
         q_pos = q_pos_conv.view(batch_size, q_len, num_heads, head_dim).permute(
             0, 2, 1, 3
@@ -513,10 +536,11 @@ class HybridRoPEConvPE(PositionalEncoding):
        timestamp of each token via rotation.
     2. Stochastic Convolutional PE (convSPE) to encode relative, shape-based
        patterns by adding a filtered noise vector.
-       
+
     This allows the model to be simultaneously aware of "when" an event happened
     and "what shape" the local sequence of events has.
     """
+
     def __init__(
         self,
         dim_token: int | float,
@@ -528,36 +552,36 @@ class HybridRoPEConvPE(PositionalEncoding):
         super().__init__(dim_token, max_time_id)
         self.num_heads = int(num_heads)
         self.head_dim = self.dim_token // self.num_heads
-        
+
         self.kernel_size = kernel_size
         padding = (self.kernel_size - 1) // 2
-        
+
         self.query_conv = nn.Conv1d(
             in_channels=self.dim_token,
             out_channels=self.dim_token,
             kernel_size=kernel_size,
             padding=padding,
-            groups=self.num_heads
+            groups=self.num_heads,
         )
         self.key_conv = nn.Conv1d(
             in_channels=self.dim_token,
             out_channels=self.dim_token,
             kernel_size=kernel_size,
             padding=padding,
-            groups=self.num_heads
+            groups=self.num_heads,
         )
 
-        self.rope_module = RotaryPE(
-            dim_token=dim_token,
-            base=base,
-            num_heads=num_heads
-        )
-        
+        self.rope_module = RotaryPE(dim_token=dim_token, base=base, num_heads=num_heads)
+
         noise = torch.randn(1, self.max_time_id, self.dim_token)
         self.register_buffer("noise_buffer", noise)
 
     def apply_attention_pe(
-        self, q: torch.Tensor, k: torch.Tensor, time_ids: Optional[torch.Tensor] = None, **kwargs
+        self,
+        q: torch.Tensor,
+        k: torch.Tensor,
+        time_ids: Optional[torch.Tensor] = None,
+        **kwargs,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Applies the sequential transformation: first RoPE, then StochasticConvPE.
@@ -565,7 +589,9 @@ class HybridRoPEConvPE(PositionalEncoding):
         if time_ids is None:
             raise ValueError("time_ids are required for the HybridRoPEConvPE method.")
 
-        q_rotated, k_rotated = self.rope_module.apply_attention_pe(q, k, time_ids=time_ids)
+        q_rotated, k_rotated = self.rope_module.apply_attention_pe(
+            q, k, time_ids=time_ids
+        )
 
         batch_size, num_heads, q_len, head_dim = q.shape
         k_len = k.shape[2]
@@ -573,8 +599,12 @@ class HybridRoPEConvPE(PositionalEncoding):
         noise_for_q = self.noise_buffer[:, :q_len, :].expand(batch_size, -1, -1)
         noise_for_k = self.noise_buffer[:, :k_len, :].expand(batch_size, -1, -1)
 
-        q_pos_conv = self.query_conv(noise_for_q.permute(0, 2, 1)).permute(0, 2, 1)  # -> (B, L, D)
-        k_pos_conv = self.key_conv(noise_for_k.permute(0, 2, 1)).permute(0, 2, 1)  # -> (B, L, D)
+        q_pos_conv = self.query_conv(noise_for_q.permute(0, 2, 1)).permute(
+            0, 2, 1
+        )  # -> (B, L, D)
+        k_pos_conv = self.key_conv(noise_for_k.permute(0, 2, 1)).permute(
+            0, 2, 1
+        )  # -> (B, L, D)
 
         q_pos = q_pos_conv.view(batch_size, q_len, num_heads, head_dim).permute(
             0, 2, 1, 3
@@ -584,11 +614,143 @@ class HybridRoPEConvPE(PositionalEncoding):
             0, 2, 1, 3
         )
 
-        
         q_final = q_rotated + q_pos
         k_final = k_rotated + k_pos
-        
+
         return q_final, k_final
+
+
+class TUPE(PositionalEncoding):
+    """
+    A 'signal' class for the Transformer with Untied Positional Encoding (TUPE).
+
+    This class holds the learnable projection layers for the positional queries
+    and keys. It uses a standard time-aware absolute PE as its base.
+    """
+
+    def __init__(
+        self,
+        dim_token: int | float,
+        max_time_id: int,
+        base_pe_config: dict = {"name": "SinusoidalPE", "dropout": 0.1},
+        model_parameters: Optional[dict] = None,
+    ):
+        super().__init__(dim_token, max_time_id)
+
+        if model_parameters is None:
+            raise ValueError(
+                "TUPE requires the full `model_parameters` for initialization."
+            )
+
+        # 1. Create the base absolute positional encoding module (time-aware)
+        factory_params = model_parameters.copy()
+        factory_params["positional_encoding"] = base_pe_config
+        self.base_pos_encoder = create_positional_encoding_module(factory_params)
+
+        # 2. Create the untied projection layers for the positional Q/K
+        # This is the `pos_kq` linear layer from the review's code.
+        self.pos_kq_proj = nn.Linear(self.dim_token, 2 * self.dim_token, bias=False)
+
+    def get_positional_queries_keys(
+        self, time_ids: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        Generates the untied positional queries and keys for the attention module.
+        """
+        # Get the time-aware absolute positional embeddings. Shape: (B, L, D)
+        # We need a dummy tensor of the right shape and device to pass to apply_additive_pe.
+        dummy_x = torch.zeros(
+            time_ids.shape[0], time_ids.shape[1], self.dim_token, device=time_ids.device
+        )
+        pos_embed = self.base_pos_encoder.apply_additive_pe(dummy_x, time_ids=time_ids)
+
+        # Project them to get positional queries and keys
+        pos_key, pos_query = self.pos_kq_proj(pos_embed).chunk(2, dim=-1)
+
+        return pos_query, pos_key
+
+    def get_attention_module_class(self) -> type:
+        # Import here to avoid circular dependency
+        return TUPEMultiHeadAttention
+
+
+class TUPEMultiHeadAttention(nn.Module):
+    """
+    Implements the Untied Positional Encoding (TUPE) attention mechanism.
+
+    The attention score is a sum of a content-content term and a
+    position-position term, calculated with separate projection matrices.
+    """
+
+    def __init__(
+        self, dim_token: int, nheads: int, dropout_p: float, pe_module: "TUPE"
+    ):
+        super().__init__()
+        self.nheads = nheads
+        self.E_head = dim_token // nheads
+        self.pe_module = pe_module
+        self.dropout_p = dropout_p
+
+        self.content_qkv_proj = nn.Linear(dim_token, 3 * dim_token, bias=False)
+        self.out_proj = nn.Linear(dim_token, dim_token)
+        self.scale = math.sqrt(self.E_head)
+
+    def forward(
+        self,
+        x: torch.Tensor,
+        query_selector: Callable,
+        mask: torch.Tensor,
+        time_ids: Optional[torch.Tensor],
+    ):
+        if time_ids is None:
+            raise ValueError("TUPEMultiHeadAttention requires time_ids.")
+
+        x_query = query_selector(x)
+        Lq, Lk = x_query.size(1), x.size(1)
+
+        # 1. --- Content Path ---
+        content_query, content_key, content_value = self.content_qkv_proj(x).chunk(
+            3, dim=-1
+        )
+        content_query = query_selector(content_query)
+
+        content_query = content_query.view(
+            x_query.size(0), Lq, self.nheads, self.E_head
+        ).transpose(1, 2)
+        content_key = content_key.view(
+            x.size(0), Lk, self.nheads, self.E_head
+        ).transpose(1, 2)
+        content_value = content_value.view(
+            x.size(0), Lk, self.nheads, self.E_head
+        ).transpose(1, 2)
+
+        # 2. --- Position Path ---
+        pos_query, pos_key = self.pe_module.get_positional_queries_keys(time_ids)
+        pos_query = query_selector(pos_query)
+
+        pos_query = pos_query.view(
+            x_query.size(0), Lq, self.nheads, self.E_head
+        ).transpose(1, 2)
+        pos_key = pos_key.view(x.size(0), Lk, self.nheads, self.E_head).transpose(1, 2)
+
+        # 3. --- Combine Scores ---
+        # Term 1: Content-Content Score
+        content_score = torch.einsum("bhqd,bhkd->bhqk", content_query, content_key)
+
+        # Term 2: Position-Position Score
+        pos_score = torch.einsum("bhqd,bhkd->bhqk", pos_query, pos_key)
+
+        attn_scores = (content_score + pos_score) / self.scale
+
+        # 4. --- Standard Attention Finale ---
+        attn_mask = mask[:, None, None, :Lk].contiguous()
+        attn_scores = attn_scores.masked_fill(~attn_mask, -torch.inf)
+        attn_weights = torch.softmax(attn_scores, dim=-1)
+        attn_weights = F.dropout(attn_weights, p=self.dropout_p, training=self.training)
+
+        attn_output = attn_weights @ content_value
+        attn_output = attn_output.transpose(1, 2).flatten(-2)
+        return self.out_proj(attn_output)
 
 
 def create_positional_encoding_module(model_parameters: dict) -> PositionalEncoding:
@@ -613,6 +775,7 @@ def create_positional_encoding_module(model_parameters: dict) -> PositionalEncod
         "TemporalPE": TemporalPE,
         "StochasticConvPE": StochasticConvPE,
         "HybridRoPEConvPE": HybridRoPEConvPE,
+        "TUPE": TUPE,
     }
     pe_config = model_parameters["positional_encoding"]
 
@@ -634,8 +797,9 @@ def create_positional_encoding_module(model_parameters: dict) -> PositionalEncod
         "max_time_id": model_parameters["feature_info"].get_max_time_id(),
         "num_heads": model_parameters["num_heads"],
     }
+    SPECIAL_CONTENT_CLASES = (TemporalPE, TUPE)
 
-    if pe_class is TemporalPE:
+    if issubclass(pe_class, SPECIAL_CONTENT_CLASES):
         constructor_args["model_parameters"] = model_parameters
 
     constructor_args.update(pe_config)

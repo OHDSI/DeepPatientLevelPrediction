@@ -122,11 +122,11 @@ class TransformerBlock(nn.Module):
         att_dropout: float,
         ffn_dropout: float,
         dim_hidden: int,
+        pe_module: PositionalEncoding,
         norm_layer: Type[nn.Module] = nn.LayerNorm,
         activation: Type[nn.Module] = ReGLU,
         skip_attn_norm: bool = False,
         only_class_token: bool = False,
-        pe_module: Optional[PositionalEncoding] = None,
     ):
         super(TransformerBlock, self).__init__()
         if skip_attn_norm:
@@ -143,8 +143,9 @@ class TransformerBlock(nn.Module):
         self.mask_selector = (lambda m: m[:, :1]) if only_class_token else (lambda m: m)
 
         self.only_class_token = only_class_token
+        AttentionModuleClass = pe_module.get_attention_module_class()
 
-        self.attn = MultiHeadAttention(
+        self.attn = AttentionModuleClass(
             dim_token=dim_token,
             nheads=num_heads,
             dropout_p=att_dropout,
