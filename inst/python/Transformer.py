@@ -80,13 +80,10 @@ class Transformer(nn.Module):
         self.head_normalization = head_norm
         self.dim_out = dim_out
 
-    def forward(self, input):
-        if "time_ids" in input.keys() and input["time_ids"] is not None:
-            time_ids = input["time_ids"]
-            sequence_lengths = input["sequence_lengths"]
-        else:
-            time_ids, sequence_lengths = None, None
-        mask = input["feature_ids"] != 0
+    def forward(self, input_data):
+        time_ids = input_data.get("time_ids")
+        sequence_lengths = input_data.get("sequence_lengths")
+        mask = input_data["feature_ids"] != 0
         mask = torch.cat(
             (
                 mask.new_full((mask.size(0), 1), True),  # (B, 1)
@@ -94,7 +91,7 @@ class Transformer(nn.Module):
             ),  # (B, L)
             dim=1,
         )
-        x = self.embedding(input)
+        x = self.embedding(input_data)
         x = self.class_token(x)
         x = self.pe_module.apply_additive_pe(
             x, time_ids=time_ids, lengths=sequence_lengths
@@ -282,38 +279,28 @@ class MultiHeadAttention(nn.Module):
         Lq = query.size(1)
 
         query = query.unflatten(-1, [self.nheads, self.E_head]).transpose(1, 2)
-        # (N, L_s, E_total) -> (N, L_s, nheads, E_head) -> (N, nheads, L_s, E_head)
         key = key.unflatten(-1, [self.nheads, self.E_head]).transpose(1, 2)
-        # (N, L_s, E_total) -> (N, L_s, nheads, E_head) -> (N, nheads, L_s, E_head)
         value = value.unflatten(-1, [self.nheads, self.E_head]).transpose(1, 2)
 
         pos_scores, bias = None, None
-        use_manual_path = False
-        use_erpe = False
-        if time_ids is not None:
-            query, key = self.pe_module.apply_attention_pe(
-                query, key, time_ids=time_ids
-            )
-            pos_scores = self.pe_module.get_positional_scores(
-                query, k_len=Lk, time_ids=time_ids
-            )
-            bias = self.pe_module.get_attention_bias(
-                q_len=Lq, k_len=Lk, time_ids=time_ids
-            )
-            if pos_scores is not None or bias is not None:
-                use_manual_path = True
-            use_erpe = isinstance(self.pe_module, EfficientRPE)
+        query, key = self.pe_module.apply_attention_pe(
+            query, key, time_ids=time_ids
+        )
+        pos_scores = self.pe_module.get_positional_scores(
+            query, k_len=Lk, time_ids=time_ids
+        )
+        bias = self.pe_module.get_attention_bias(
+            q_len=Lq, k_len=Lk, time_ids=time_ids
+        )
 
+        use_manual_path = pos_scores is not None or bias is not None
         attn_mask = mask[:, None, None, :].contiguous()
 
         if use_manual_path:
-            # TODO : explore more efficient way to handle bias
-            # --- Manual Attention Path (for RPE, eRPE) ---
             scale = self.E_head**-0.5
             attn_scores = (query @ key.transpose(-2, -1)) * scale
 
             if pos_scores is not None:
-                # Add positional scores if available
                 attn_scores += pos_scores * scale
             if bias is not None:
                 attn_scores += bias
@@ -330,30 +317,10 @@ class MultiHeadAttention(nn.Module):
                 query,
                 key,
                 value,
-                dropout_p=0.0
-                if use_erpe
-                else (self.dropout_p if self.training else 0.0),
+                dropout_p= self.dropout_p if self.training else 0.0,
                 is_causal=False,
                 attn_mask=attn_mask,
             )
-        if use_erpe:
-            # eRPE uses post-softmax bias, so we need to apply it after the attention
-            post_bias = self.pe_module.get_post_softmax_bias(Lq, Lk, time_ids=time_ids)
-            post_bias = (
-                post_bias.masked_fill(~attn_mask, 0.0)
-                if post_bias is not None
-                else None
-            )
-            if post_bias is not None:
-                delta = torch.einsum("bhql,bhle->bhqe", post_bias, value)
-                attn_output = attn_output + delta
-                if self.training and self.dropout_p > 0.0:
-                    attn_output = F.dropout(attn_output, p=self.dropout_p)
-        # (N, nheads, L_t, E_head) -> (N, L_t, nheads, E_head) -> (N, L_t, E_total)
         attn_output = attn_output.transpose(1, 2).flatten(-2)
-
-        # Step 4. Apply output projection
-        # (N, L_t, E_total) -> (N, L_t, E_out)
         attn_output = self.out_proj(attn_output)
-
         return attn_output

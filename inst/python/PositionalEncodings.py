@@ -103,6 +103,7 @@ class PositionalEncoding(nn.Module):
         Standard positional encoding modules will return the default MultiHeadAttention class.
         """
         from Transformer import MultiHeadAttention
+
         return MultiHeadAttention
 
 
@@ -114,6 +115,7 @@ class NoPositionalEncoding(PositionalEncoding):
 
     def __init__(self, dim_token: int | float = 0):
         super().__init__(dim_token)
+
 
 class SinusoidalPE(PositionalEncoding):
     """Sinusoidal positional encoding
@@ -390,6 +392,66 @@ class EfficientRPE(PositionalEncoding):
         bias = self.relative_bias_table(idx).permute(0, 3, 1, 2)
         return bias
 
+    def get_attention_module_class(self) -> type:
+        return eRPEAttention
+
+
+class eRPEAttention(nn.Module):
+    """A specialized attention module for EfficientRPE.
+
+    This module performs a standard attention calculation and then applies the
+    eRPE's learnable, static bias to the attention *output*, which is a linear
+    and efficient equivalent to modifying the weights post-softmax."""
+
+    def __init__(
+        self,
+        dim_token: int,
+        nheads: int,
+        dropout_p: float,
+        pe_module: PositionalEncoding,
+    ):
+        super().__init__()
+        self.nheads = nheads
+        self.dropout_p = dropout_p
+        self.in_proj = nn.Linear(dim_token, dim_token * 3)
+        self.out_proj = nn.Linear(dim_token, dim_token)
+        self.E_head = dim_token // nheads
+        self.pe_module = pe_module
+
+    def forward(
+        self,
+        x: torch.Tensor,
+        query_selector: Callable,
+        mask: torch.Tensor,
+        time_ids: Optional[torch.Tensor] = None,
+    ):
+        query, key, value = self.in_proj(x).chunk(3, dim=-1)
+        query = query_selector(query)
+        Lk, Lq = key.size(1), query.size(1)
+
+        query = query.unflatten(-1, [self.nheads, self.E_head]).transpose(1, 2)
+        key = key.unflatten(-1, [self.nheads, self.E_head]).transpose(1, 2)
+        value = value.unflatten(-1, [self.nheads, self.E_head]).transpose(1, 2)
+
+        attn_mask = mask[:, None, None, :Lk].contiguous()
+        attn_output = F.scaled_dot_product_attention(
+            query,
+            key,
+            value,
+            attn_mask=attn_mask,
+            dropout_p=self.dropout_p if self.training else 0.0,
+            is_causal=False,
+        )
+        post_softmax_bias = self.pe_module.get_post_softmax_bias(
+            q_len=Lq, k_len=Lk, time_ids=time_ids
+        )
+        if post_softmax_bias is not None:
+            masked_bias = post_softmax_bias.masked_fill(~attn_mask, 0.0)
+            bias_effect = torch.einsum("bhqk,bhkd->bhqd", masked_bias, value)
+            attn_output = attn_output + bias_effect
+        attn_output = attn_output.transpose(1, 2).flatten(-2)
+        return self.out_proj(attn_output)
+
 
 class TemporalPE(PositionalEncoding):
     """This method combines two components:
@@ -651,13 +713,10 @@ class TUPE(PositionalEncoding):
                 "TUPE requires the full `model_parameters` for initialization."
             )
 
-        # 1. Create the base absolute positional encoding module (time-aware)
         factory_params = model_parameters.copy()
         factory_params["positional_encoding"] = base_pe_config
         self.base_pos_encoder = create_positional_encoding_module(factory_params)
 
-        # 2. Create the untied projection layers for the positional Q/K
-        # This is the `pos_kq` linear layer from the review's code.
         self.pos_kq_proj = nn.Linear(self.dim_token, 2 * self.dim_token, bias=False)
 
     def get_positional_queries_keys(
@@ -666,20 +725,16 @@ class TUPE(PositionalEncoding):
         """
         Generates the untied positional queries and keys for the attention module.
         """
-        # Get the time-aware absolute positional embeddings. Shape: (B, L, D)
-        # We need a dummy tensor of the right shape and device to pass to apply_additive_pe.
         dummy_x = torch.zeros(
             time_ids.shape[0], time_ids.shape[1], self.dim_token, device=time_ids.device
         )
         pos_embed = self.base_pos_encoder.apply_additive_pe(dummy_x, time_ids=time_ids)
 
-        # Project them to get positional queries and keys
         pos_key, pos_query = self.pos_kq_proj(pos_embed).chunk(2, dim=-1)
 
         return pos_query, pos_key
 
     def get_attention_module_class(self) -> type:
-        # Import here to avoid circular dependency
         return TUPEMultiHeadAttention
 
 
@@ -717,7 +772,6 @@ class TUPEMultiHeadAttention(nn.Module):
         x_query = query_selector(x)
         Lq, Lk = x_query.size(1), x.size(1)
 
-        # 1. --- Content Path ---
         content_query, content_key, content_value = self.content_qkv_proj(x).chunk(
             3, dim=-1
         )
@@ -733,7 +787,6 @@ class TUPEMultiHeadAttention(nn.Module):
             x.size(0), Lk, self.nheads, self.E_head
         ).transpose(1, 2)
 
-        # 2. --- Position Path ---
         pos_query, pos_key = self.pe_module.get_positional_queries_keys(time_ids)
         pos_query = query_selector(pos_query)
 
@@ -742,16 +795,12 @@ class TUPEMultiHeadAttention(nn.Module):
         ).transpose(1, 2)
         pos_key = pos_key.view(x.size(0), Lk, self.nheads, self.E_head).transpose(1, 2)
 
-        # 3. --- Combine Scores ---
-        # Term 1: Content-Content Score
         content_score = torch.einsum("bhqd,bhkd->bhqk", content_query, content_key)
 
-        # Term 2: Position-Position Score
         pos_score = torch.einsum("bhqd,bhkd->bhqk", pos_query, pos_key)
 
         attn_scores = (content_score + pos_score) / self.scale
 
-        # 4. --- Standard Attention Finale ---
         attn_mask = mask[:, None, None, :Lk].contiguous()
         attn_scores = attn_scores.masked_fill(~attn_mask, -torch.inf)
         attn_weights = torch.softmax(attn_scores, dim=-1)
