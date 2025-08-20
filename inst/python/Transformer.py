@@ -7,7 +7,7 @@ from torch import nn
 from Embeddings import ClassToken, Embedding
 from PositionalEncodings import EfficientRPE
 from Dataset import FeatureInfo
-from PositionalEncodings import PositionalEncoding
+from PositionalEncodings import PositionalEncoding, NoPositionalEncoding
 
 
 def reglu(x):
@@ -35,7 +35,7 @@ class Transformer(nn.Module):
         activation: Type[nn.Module] = ReGLU,
         norm_layer: Type[nn.Module] = nn.LayerNorm,
         head_norm: Type[nn.Module] = nn.LayerNorm,
-        pe_module: Optional[PositionalEncoding] = None,
+        pe_module: PositionalEncoding = NoPositionalEncoding(),
         model_type="Transformer",
         **kwargs,
     ):
@@ -83,8 +83,9 @@ class Transformer(nn.Module):
     def forward(self, input):
         if "time_ids" in input.keys() and input["time_ids"] is not None:
             time_ids = input["time_ids"]
+            sequence_lengths = input["sequence_lengths"]
         else:
-            time_ids = None
+            time_ids, sequence_lengths = None, None
         mask = input["feature_ids"] != 0
         mask = torch.cat(
             (
@@ -95,10 +96,9 @@ class Transformer(nn.Module):
         )
         x = self.embedding(input)
         x = self.class_token(x)
-        if self.pe_module is not None:
-            x = self.pe_module.apply_additive_pe(
-                x, time_ids=time_ids, lengths=input["sequence_lengths"]
-            )
+        x = self.pe_module.apply_additive_pe(
+            x, time_ids=time_ids, lengths=sequence_lengths
+        )
         for layer in self.layers:
             x = layer(x, mask, time_ids)
         x = self.head(x)
@@ -122,11 +122,11 @@ class TransformerBlock(nn.Module):
         att_dropout: float,
         ffn_dropout: float,
         dim_hidden: int,
-        pe_module: PositionalEncoding,
         norm_layer: Type[nn.Module] = nn.LayerNorm,
         activation: Type[nn.Module] = ReGLU,
         skip_attn_norm: bool = False,
         only_class_token: bool = False,
+        pe_module: PositionalEncoding = NoPositionalEncoding(),
     ):
         super(TransformerBlock, self).__init__()
         if skip_attn_norm:
@@ -242,7 +242,7 @@ class MultiHeadAttention(nn.Module):
         dim_token: int,
         nheads: int,
         dropout_p: float = 0.0,
-        pe_module: Optional[PositionalEncoding] = None,
+        pe_module: PositionalEncoding = NoPositionalEncoding(),
     ):
         super().__init__()
         self.nheads = nheads
@@ -290,7 +290,7 @@ class MultiHeadAttention(nn.Module):
         pos_scores, bias = None, None
         use_manual_path = False
         use_erpe = False
-        if self.pe_module is not None and time_ids is not None:
+        if time_ids is not None:
             query, key = self.pe_module.apply_attention_pe(
                 query, key, time_ids=time_ids
             )
@@ -330,16 +330,20 @@ class MultiHeadAttention(nn.Module):
                 query,
                 key,
                 value,
-                dropout_p=0.0 if use_erpe else (self.dropout_p if self.training else 0.0),
+                dropout_p=0.0
+                if use_erpe
+                else (self.dropout_p if self.training else 0.0),
                 is_causal=False,
                 attn_mask=attn_mask,
             )
-        if use_erpe and self.pe_module is not None:
+        if use_erpe:
             # eRPE uses post-softmax bias, so we need to apply it after the attention
-            post_bias = self.pe_module.get_post_softmax_bias(
-                Lq, Lk, time_ids=time_ids
+            post_bias = self.pe_module.get_post_softmax_bias(Lq, Lk, time_ids=time_ids)
+            post_bias = (
+                post_bias.masked_fill(~attn_mask, 0.0)
+                if post_bias is not None
+                else None
             )
-            post_bias = post_bias.masked_fill(~attn_mask, 0.0) if post_bias is not None else None
             if post_bias is not None:
                 delta = torch.einsum("bhql,bhle->bhqe", post_bias, value)
                 attn_output = attn_output + delta

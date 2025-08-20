@@ -106,6 +106,15 @@ class PositionalEncoding(nn.Module):
         return MultiHeadAttention
 
 
+class NoPositionalEncoding(PositionalEncoding):
+    """A no-op positional encoding class.
+    This is used when no positional encoding is needed, e.g., in some
+    non-sequential models or when the model is not time-aware.
+    """
+
+    def __init__(self, dim_token: int | float = 0):
+        super().__init__(dim_token)
+
 class SinusoidalPE(PositionalEncoding):
     """Sinusoidal positional encoding
     This class pre-computes a sinusoidal embedding for every possible discrete
