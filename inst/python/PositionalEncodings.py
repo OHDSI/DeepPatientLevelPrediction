@@ -824,6 +824,7 @@ def create_positional_encoding_module(model_parameters: dict) -> PositionalEncod
         An instantiated PositionalEncoding module.
     """
     PE_MODULE_REGISTRY = {
+        "NoPositionalEncoding": NoPositionalEncoding,
         "SinusoidalPE": SinusoidalPE,
         "LearnablePE": LearnablePE,
         "TapePE": TapePE,
