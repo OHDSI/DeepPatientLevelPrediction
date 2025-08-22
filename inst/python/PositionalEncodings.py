@@ -811,6 +811,63 @@ class TUPEMultiHeadAttention(nn.Module):
         return self.out_proj(attn_output)
 
 
+class ALiBiPE(PositionalEncoding):
+    """
+    A time-aware adaptation of Attention with Linear Biases (ALiBi).
+
+    Instead of positional embeddings, ALiBi adds a static, non-learnable bias
+    to the attention scores *before* the softmax. This bias penalizes attention
+    between distant tokens, providing a strong inductive bias for locality.
+
+    This implementation is adapted for irregular time series by calculating the
+    distance based on the real `time_ids` of the tokens, rather than their
+    sequence indices.
+    """
+    def __init__(self,
+                 dim_token: int | float,
+                 num_heads: int = 8,
+                 **kwrargs):
+        super().__init__(dim_token)
+        self.num_heads = int(num_heads)
+        closest_power_of_2 = 2 ** (math.ceil(math.log2(self.num_heads)))
+        base = torch.tensor(2**(-math.log2(closest_power_of_2)))
+
+        slopes_of_power_of_2 = torch.pow(base, torch.arange(1, closest_power_of_2 + 1))
+
+        if closest_power_of_2 != self.num_heads:
+            extra_slopes = torch.pow(base, torch.arange(1, 2 * self.num_heads - closest_power_of_2) + 1, 2)
+            slopes = torch.cat((slopes_of_power_of_2, extra_slopes))
+        else:
+            slopes = slopes_of_power_of_2
+        self.register_buffer("slopes", slopes)
+
+    def get_attention_bias(
+        self,
+        q_len: int,
+        k_len: int,
+        time_ids: Optional[torch.Tensor] = None,
+        **kwargs: dict,
+    ) -> torch.Tensor | None:
+        """
+        Calculates the ALiBi bias based on the time_ids of the query and key tokens.
+        """
+        if time_ids is None:
+            raise ValueError("time_ids must be provided for ALiBiPe")
+
+        time_ids_slice = time_ids[:, :k_len]
+        time_ids_q = time_ids_slice[:, :q_len].unsqueeze(2)
+        time_ids_k = time_ids_slice.unsqueeze(1)
+        relative_pos = time_ids_k - time_ids_q  # Shape: (B, L_q, L_k)
+
+        distances = torch.abs(relative_pos)
+        
+        slopes_for_broadcast = self.slopes.view(1, self.num_heads, 1, 1)
+        distances_for_broadcast = distances.unsqueeze(1)
+        
+        bias = -slopes_for_broadcast * distances_for_broadcast
+        return bias
+
+
 def create_positional_encoding_module(model_parameters: dict) -> PositionalEncoding:
     """
     Factory function to create a positional encoding module.
@@ -835,6 +892,7 @@ def create_positional_encoding_module(model_parameters: dict) -> PositionalEncod
         "StochasticConvPE": StochasticConvPE,
         "HybridRoPEConvPE": HybridRoPEConvPE,
         "TUPE": TUPE,
+        "ALiBiPE": ALiBiPE,
     }
     pe_config = model_parameters["positional_encoding"]
 

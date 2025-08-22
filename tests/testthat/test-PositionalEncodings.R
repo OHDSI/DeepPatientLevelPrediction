@@ -123,7 +123,7 @@ test_that("Additive PEs (Sinusoidal, Learnable, TapePE) run and modify output", 
 
 test_that("Standard Attention PEs modify TransformerBlock output", {
   # This group includes ALL PEs that work with the default MultiHeadAttention
-  peClasses <- c("RotaryPE", "RelativePE", "TemporalPE", "StochasticConvPE", "HybridRoPEConvPE")
+  peClasses <- c("RotaryPE", "RelativePE", "TemporalPE", "StochasticConvPE", "HybridRoPEConvPE", "ALiBiPE")
   positionalEncodings <- reticulate::import_from_path("PositionalEncodings", path = path)
   createPeModule <- positionalEncodings$create_positional_encoding_module
   
@@ -205,7 +205,7 @@ test_that("All PE modules handle asymmetric CLS token attention", {
   peClasses <- c(
     "NoPositionalEncoding", "SinusoidalPE", "LearnablePE", "TapePE", 
     "RotaryPE", "RelativePE", "EfficientRPE", "StochasticConvPE",
-    "TUPE", "TemporalPE", "HybridRoPEConvPE"
+    "TUPE", "TemporalPE", "HybridRoPEConvPE", "ALiBiPE"
   )
   
   positionalEncodings <- reticulate::import_from_path("PositionalEncodings", path = path)
