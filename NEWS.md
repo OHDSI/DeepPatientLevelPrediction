@@ -1,4 +1,4 @@
-DeepPatientLevelPrediction 2.1.0.999
+DeepPatientLevelPrediction 2.2.0
 ======================
   - [Feature] Add positional encodings that use `timeId` (PR #154):
         - `SinusoidalPE`: Absolute sinusoidal positional embeddings using

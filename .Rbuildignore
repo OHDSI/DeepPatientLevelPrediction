@@ -16,3 +16,5 @@
 ^Dockerfile$
 ^.devcontainer
 ^.venv/
+^.results/$
+^.vscode/$
