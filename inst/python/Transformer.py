@@ -1,11 +1,13 @@
-from typing import Optional, Type
+from typing import Optional, Type, Callable
 
 import torch
 import torch.nn.functional as F
 from torch import nn
 
-from Embeddings import ClassToken, Embedding, RotaryEmbedding
+from Embeddings import ClassToken, Embedding
+from PositionalEncodings import EfficientRPE
 from Dataset import FeatureInfo
+from PositionalEncodings import PositionalEncoding, NoPositionalEncoding
 
 
 def reglu(x):
@@ -33,8 +35,9 @@ class Transformer(nn.Module):
         activation: Type[nn.Module] = ReGLU,
         norm_layer: Type[nn.Module] = nn.LayerNorm,
         head_norm: Type[nn.Module] = nn.LayerNorm,
-        use_rope: bool = False,
+        pe_module: PositionalEncoding = NoPositionalEncoding(),
         model_type="Transformer",
+        **kwargs,
     ):
         super(Transformer, self).__init__()
         self.name = model_type
@@ -45,6 +48,7 @@ class Transformer(nn.Module):
         dim_out = int(dim_out)
 
         self.embedding = Embedding(embedding_dim=dim_token, feature_info=feature_info)
+        self.pe_module = pe_module
 
         self.class_token = ClassToken(dim_token)
 
@@ -60,8 +64,7 @@ class Transformer(nn.Module):
                 activation=activation,
                 skip_attn_norm=(layer_idx == 0),
                 only_class_token=(layer_idx == num_blocks - 1),
-                use_rope=use_rope,
-                max_time_id=feature_info.get_max_time_id() if use_rope else None,
+                pe_module=self.pe_module,
             )
             self.layers.append(block)
 
@@ -77,12 +80,10 @@ class Transformer(nn.Module):
         self.head_normalization = head_norm
         self.dim_out = dim_out
 
-    def forward(self, x):
-        if "time_ids" in x.keys() and x["time_ids"] is not None:
-            time_ids = x["time_ids"]
-        else:
-            time_ids = None
-        mask = x["feature_ids"] != 0
+    def forward(self, input_data):
+        time_ids = input_data.get("time_ids")
+        sequence_lengths = input_data.get("sequence_lengths")
+        mask = input_data["feature_ids"] != 0
         mask = torch.cat(
             (
                 mask.new_full((mask.size(0), 1), True),  # (B, 1)
@@ -90,8 +91,11 @@ class Transformer(nn.Module):
             ),  # (B, L)
             dim=1,
         )
-        x = self.embedding(x)
+        x = self.embedding(input_data)
         x = self.class_token(x)
+        x = self.pe_module.apply_additive_pe(
+            x, time_ids=time_ids, lengths=sequence_lengths
+        )
         for layer in self.layers:
             x = layer(x, mask, time_ids)
         x = self.head(x)
@@ -119,8 +123,7 @@ class TransformerBlock(nn.Module):
         activation: Type[nn.Module] = ReGLU,
         skip_attn_norm: bool = False,
         only_class_token: bool = False,
-        use_rope: bool = False,
-        max_time_id: Optional[int] = 512,
+        pe_module: PositionalEncoding = NoPositionalEncoding(),
     ):
         super(TransformerBlock, self).__init__()
         if skip_attn_norm:
@@ -137,13 +140,13 @@ class TransformerBlock(nn.Module):
         self.mask_selector = (lambda m: m[:, :1]) if only_class_token else (lambda m: m)
 
         self.only_class_token = only_class_token
+        AttentionModuleClass = pe_module.get_attention_module_class()
 
-        self.attn = MultiHeadAttention(
+        self.attn = AttentionModuleClass(
             dim_token=dim_token,
             nheads=num_heads,
             dropout_p=att_dropout,
-            use_rope=use_rope,
-            max_time_id=max_time_id,
+            pe_module=pe_module,
         )
         self.attn_dropout = nn.Dropout(att_dropout)
 
@@ -236,8 +239,7 @@ class MultiHeadAttention(nn.Module):
         dim_token: int,
         nheads: int,
         dropout_p: float = 0.0,
-        use_rope: bool = False,
-        max_time_id: Optional[int] = 512,
+        pe_module: PositionalEncoding = NoPositionalEncoding(),
     ):
         super().__init__()
         self.nheads = nheads
@@ -246,19 +248,12 @@ class MultiHeadAttention(nn.Module):
         self.out_proj = nn.Linear(dim_token, dim_token)
         assert dim_token % nheads == 0, "Embedding dim is not divisible by nheads"
         self.E_head = dim_token // nheads
-
-        self.use_rope = use_rope
-        if self.use_rope and max_time_id is not None:
-            self.rope = RotaryEmbedding(
-                head_dim=self.E_head, base=10000, max_time_id=max_time_id
-            )
-        else:
-            self.rope = nn.Identity()
+        self.pe_module = pe_module
 
     def forward(
         self,
         x: torch.Tensor,
-        query_selector: callable,
+        query_selector: Callable,
         mask: torch.Tensor,
         time_ids: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
@@ -280,34 +275,52 @@ class MultiHeadAttention(nn.Module):
         """
         query, key, value = self.in_proj(x).chunk(3, dim=-1)
         query = query_selector(query)
-        Lq = query.size(1)
         Lk = key.size(1)
+        Lq = query.size(1)
 
         query = query.unflatten(-1, [self.nheads, self.E_head]).transpose(1, 2)
-        # (N, L_s, E_total) -> (N, L_s, nheads, E_head) -> (N, nheads, L_s, E_head)
         key = key.unflatten(-1, [self.nheads, self.E_head]).transpose(1, 2)
-        # (N, L_s, E_total) -> (N, L_s, nheads, E_head) -> (N, nheads, L_s, E_head)
         value = value.unflatten(-1, [self.nheads, self.E_head]).transpose(1, 2)
 
-        if self.use_rope and time_ids is not None:
-            query = self.rope(query, time_ids[:, :Lq])
-            key = self.rope(key, time_ids[:, :Lk])
-        # Step 3. Run SDPA
-        # (N, nheads, L_t, E_head)
-        attn_mask = mask[:, None, None, :].contiguous()
-        attn_output = F.scaled_dot_product_attention(
-            query,
-            key,
-            value,
-            dropout_p=self.dropout_p if self.training else 0.0,
-            is_causal=False,
-            attn_mask=attn_mask,
+        pos_scores, bias = None, None
+        query, key = self.pe_module.apply_attention_pe(
+            query, key, time_ids=time_ids
         )
-        # (N, nheads, L_t, E_head) -> (N, L_t, nheads, E_head) -> (N, L_t, E_total)
+        pos_scores = self.pe_module.get_positional_scores(
+            query, k_len=Lk, time_ids=time_ids
+        )
+        bias = self.pe_module.get_attention_bias(
+            q_len=Lq, k_len=Lk, time_ids=time_ids
+        )
+
+        use_manual_path = pos_scores is not None or bias is not None
+        attn_mask = mask[:, None, None, :].contiguous()
+
+        if use_manual_path:
+            scale = self.E_head**-0.5
+            attn_scores = (query @ key.transpose(-2, -1)) * scale
+
+            if pos_scores is not None:
+                attn_scores += pos_scores * scale
+            if bias is not None:
+                attn_scores += bias
+            attn_scores = attn_scores.masked_fill(~attn_mask, -torch.inf)
+
+            attn_weights = torch.softmax(attn_scores, dim=-1)
+            attn_weights = F.dropout(
+                attn_weights, p=self.dropout_p, training=self.training
+            )
+
+            attn_output = attn_weights @ value
+        else:
+            attn_output = F.scaled_dot_product_attention(
+                query,
+                key,
+                value,
+                dropout_p= self.dropout_p if self.training else 0.0,
+                is_causal=False,
+                attn_mask=attn_mask,
+            )
         attn_output = attn_output.transpose(1, 2).flatten(-2)
-
-        # Step 4. Apply output projection
-        # (N, L_t, E_total) -> (N, L_t, E_out)
         attn_output = self.out_proj(attn_output)
-
         return attn_output

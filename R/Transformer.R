@@ -66,7 +66,8 @@ setDefaultTransformer <- function(estimatorSettings =
 #' of dimToken (embedding size)
 #' @param temporal                Whether to use a transformer with temporal data
 #' @param temporalSettings        settings for the temporal transformer. Which include
-#'   - `useRope`: Whether to use ROPE (Relative Positional Encoding)
+#'   - `positionalEncoding`: Positional encoding to use, either a character
+#'     or a list with name and settings, default 'SinusoidalPE' with dropout 0.1
 #'   - `maxSequenceLength`: Maximum sequence length, sequences longer than This
 #'     will be truncated and/or padded to this length either a number or 'max' for the Maximum
 #'   - `truncation`: Truncation method, only 'tail' is supported
@@ -91,7 +92,10 @@ setTransformer <- function(numBlocks = 3,
                            dimHiddenRatio = NULL,
                            temporal = FALSE,
                            temporalSettings = list(
-                             useRope = FALSE,
+                             positionalEncoding = list(
+                               name = "SinusoidalPE",
+                               dropout = 0.1
+                             ),
                              maxSequenceLength = 256,
                              truncation = "tail",
                              timeTokens = TRUE
@@ -105,6 +109,21 @@ setTransformer <- function(numBlocks = 3,
                            hyperParamSearch = "random",
                            randomSample = 1,
                            randomSampleSeed = NULL) {
+  defaultTemporalSettings <- list(
+    positionalEncoding = list(
+      name = "SinusoidalPE",
+      dropout = 0.1
+    ),
+    maxSequenceLength = 256,
+    truncation = "tail",
+    timeTokens = FALSE
+  )
+  temporalSettings <- keepDefaults(
+    defaultTemporalSettings,
+    temporalSettings
+  )
+
+
   checkIsClass(numBlocks, c("integer", "numeric"))
   checkHigherEqual(numBlocks, 1)
 
@@ -160,9 +179,10 @@ setTransformer <- function(numBlocks = 3,
     dimHidden <- dimHiddenRatio
   }
 
-  checkIsClass(temporalSettings$useRope, "logical")
-  checkIsClass(temporalSettings$maxSequenceLength, 
-    c("integer", "numeric", "character"))
+  checkIsClass(
+    temporalSettings$maxSequenceLength,
+    c("integer", "numeric", "character")
+  )
   if (!inherits(temporalSettings$maxSequenceLength, "character")) {
     checkHigherEqual(temporalSettings$maxSequenceLength, 1)
   } else if (temporalSettings$maxSequenceLength != "max") {
@@ -172,15 +192,19 @@ setTransformer <- function(numBlocks = 3,
     ))
   }
   if (inherits(temporalSettings$maxSequenceLength, "numeric")) {
-    temporalSettings$maxSequenceLength <- 
+    temporalSettings$maxSequenceLength <-
       as.integer(round(temporalSettings$maxSequenceLength))
   }
   checkIsClass(temporalSettings$truncation, "character")
   if (temporalSettings$truncation != "tail") {
     stop(paste(
-      "Only truncation method 'tail' is supported. truncation =", 
+      "Only truncation method 'tail' is supported. truncation =",
       temporalSettings$truncation
     ))
+  }
+  checkIsClass(temporalSettings$positionalEncoding, c("character", "list", "NULL"))
+  if (inherits(temporalSettings$positionalEncoding, "character")) {
+    temporalSettings$positionalEncoding <- list(name = temporalSettings$positionalEncoding)
   }
 
   paramGrid <- list(
@@ -193,7 +217,10 @@ setTransformer <- function(numBlocks = 3,
     ffnDropout = ffnDropout
   )
   if (temporal) {
-    paramGrid[["useRope"]] <- temporalSettings$useRope
+    if (!is.null(temporalSettings$positionalEncoding)) {
+      paramGrid[["positionalEncoding"]] <- 
+        expandComponentGrid(temporalSettings$positionalEncoding)
+    }
   }
 
   paramGrid <- c(paramGrid, estimatorSettings$paramsToTune)
@@ -238,7 +265,9 @@ setTransformer <- function(numBlocks = 3,
   if (temporal) {
     attr(results$param, "temporalModel") <- TRUE
     attr(results$param, "temporalSettings") <- temporalSettings
-    results$modelParamNames <- c(results$modelParamNames, "useRope")
+    if (!is.null(temporalSettings$positionalEncoding)) {
+      results$modelParamNames <- c(results$modelParamNames, "positionalEncoding")
+    }
   }
   attr(results$param, "settings")$modelType <- results$modelType
   class(results) <- "modelSettings"

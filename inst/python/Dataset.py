@@ -29,70 +29,96 @@ class Data(Dataset):
             temporal_settings: a dictionary with the following keys:
                 time_tokens: whether to insert time tokens or not
                 truncation: the truncation strategy to use, only "tail" is implemented
+                max_sequence_length: the maximum sequence length to use, can be "max" 
+                or an integer
         """
         start = time.time()
 
         data_dict = read_data(data_path, lazy=True, data_reference=data_reference)
         self.use_time = "timeId" in data_dict["data"].collect_schema().names()
 
-        data = fill_missing_means_zero(
-            data_dict["data"], data_dict["data_ref"], with_time=self.use_time
+        sequence_data, self.data_ref, self.time_ref = self._build_sequences(
+            data_dict,
+            temporal_settings=temporal_settings,
         )
 
-        if (
-                self.use_time
-                and temporal_settings is not None
-                and temporal_settings["time_tokens"]
-        ):
+        self._finalize_tensors(sequence_data, labels)
+
+        delta = time.time() - start
+        print(f"Processed data in {delta:.2f} seconds")
+
+    def _build_sequences(
+        self,
+        data_dict: dict[str, pl.DataFrame | pl.LazyFrame],
+        temporal_settings: Optional[dict] = None,
+    ) -> tuple[pl.DataFrame, pl.LazyFrame | pl.DataFrame, Optional[pl.LazyFrame]]:
+        """
+        Builds sequences from the data and returns a LazyFrame with sequences,
+        the data reference, and optionally the time reference.
+        """
+        data = data_dict["data"]
+        data_ref = data_dict["data_ref"]
+        time_ref = data_dict["time_ref"]
+
+        data = fill_missing_means_zero(data, data_ref=data_ref, with_time=self.use_time)
+
+        if self.use_time and temporal_settings and temporal_settings.get("time_tokens"):
             data, data_ref = insert_time_tokens(
-                data, data_ref=data_dict["data_ref"], strategy="coarse"
+                data, data_ref=data_ref, strategy="coarse"
             )
-        else:
-            data_ref = data_dict["data_ref"]
-
-        data = aggregate_sequences(data, with_time=self.use_time)
-
-
-        if self.use_time and temporal_settings is not None:
-            max_sequence_length = temporal_settings["max_sequence_length"]
-            if max_sequence_length == "max":
-                max_sequence_length = (
-                    data
-                    .select(pl.col("feature_ids").list.len().max())
-                    .collect()
-                    .item()
-                )
-                print(f"Using max sequence length: {max_sequence_length}")
-            truncation = temporal_settings["truncation"]
-        else:
-            max_sequence_length = (
-                data
-                .select(pl.col("feature_ids").list.len().max())
-                .collect()
-                .item()
-            )
-            truncation = "tail"
-
-        data = pad_prefix_all(
-            data,
-            max_sequence_length=max_sequence_length,
-            truncation=truncation,
+        sequence_data = aggregate_sequences(data, with_time=self.use_time)
+        max_len = self._get_max_sequence_length(
+            sequence_data, temporal_settings=temporal_settings
+        )
+        self.max_sequence_length = max_len
+        sequence_data = sequence_data.with_columns(
+            pl.col("feature_ids")
+            .list.len()
+            .clip(upper_bound=max_len)
+            .alias("sequence_lengths")
+        )
+        sequence_data = pad_prefix_all(
+            sequence_data,
+            max_sequence_length=max_len,
+            truncation="tail",
             use_time=self.use_time,
         )
 
-        data = data.sort(by="rowId").collect(engine="streaming")
+        sequence_data = sequence_data.sort(by="rowId").collect(engine="streaming")
+        return sequence_data, data_ref, time_ref
 
+    def _get_max_sequence_length(self, aggregated_data, temporal_settings):
+        use_temporal_config = self.use_time and temporal_settings is not None
+
+        if use_temporal_config and "max_sequence_length" in temporal_settings:
+            max_len = temporal_settings["max_sequence_length"]
+            if max_len == "max":
+                # Calculate from data
+                return (
+                    aggregated_data.select(pl.col("feature_ids").list.len().max())
+                    .collect()
+                    .item()
+                )
+            return max_len
+        else:
+            return (
+                aggregated_data.select(pl.col("feature_ids").list.len().max())
+                .collect()
+                .item()
+            )
+
+    def _finalize_tensors(self, sequence_data: pl.LazyFrame, labels: Optional[list]):
         self.data = {
-            "row_ids": data["rowId"].to_torch(),
+            "row_ids": sequence_data["rowId"].to_torch(),
             "feature_ids": torch.as_tensor(
-                data["feature_ids"]
-                .list.to_array(width=max_sequence_length)
+                sequence_data["feature_ids"]
+                .list.to_array(width=self.max_sequence_length)
                 .to_numpy(writable=True),
                 dtype=torch.long,
             ),
             "feature_values": torch.as_tensor(
-                data["feature_values"]
-                .list.to_array(width=max_sequence_length)
+                sequence_data["feature_values"]
+                .list.to_array(width=self.max_sequence_length)
                 .to_numpy(writable=True),
                 dtype=torch.float32,
             ),
@@ -100,19 +126,16 @@ class Data(Dataset):
         if self.use_time:
             # +1 because time_ids don't have class token prepended later
             self.data["time_ids"] = torch.as_tensor(
-                data["time_ids"]
-                .list.to_array(width=max_sequence_length + 1)
+                sequence_data["time_ids"]
+                .list.to_array(width=self.max_sequence_length + 1)
                 .to_numpy(writable=True),
                 dtype=torch.long,
             )
-        self.data_ref = data_ref
-        self.time_ref = data_dict["time_ref"] if self.use_time else None
+            self.data["sequence_lengths"] = sequence_data["sequence_lengths"].to_torch()
 
         self.target = torch.tensor(
-            labels if labels is not None else [0] * len(data), dtype=torch.float32
+            labels if labels is not None else [0] * len(sequence_data), dtype=torch.float32
         )
-        delta = time.time() - start
-        print(f"Processed data in {delta:.2f} seconds")
 
     def get_feature_info(self):
         feature_info = FeatureInfo(
@@ -131,10 +154,22 @@ class Data(Dataset):
 
     def __getitem__(self, item):
         batch = {
-            "feature_ids": self.data["feature_ids"][[item]],
-            "time_ids": self.data["time_ids"][[item]] if self.use_time else None,
-            "feature_values": self.data["feature_values"][[item]],
+            "feature_ids": self.data["feature_ids"][
+                torch.as_tensor(item, dtype=torch.long).reshape(-1)
+            ],
+            "time_ids": self.data["time_ids"][
+                torch.as_tensor(item, dtype=torch.long).reshape(-1)
+            ]
+            if self.use_time
+            else None,
+            "feature_values": self.data["feature_values"][
+                torch.as_tensor(item, dtype=torch.long).reshape(-1)
+            ],
         }
+        if self.use_time:
+            batch["sequence_lengths"] = self.data["sequence_lengths"][
+                torch.as_tensor(item, dtype=torch.long).reshape(-1)
+            ]
         return [batch, self.target[item].squeeze()]
 
 
@@ -144,11 +179,10 @@ class DBReader:
         self.suffix = pathlib.Path(db_path).suffix
         if self.suffix == "":
             # unzip to a new location
-            new_db_path = (
-                pathlib.Path(db_path).parent.joinpath(f"db_{uuid.uuid4().hex}")
+            new_db_path = pathlib.Path(db_path).parent.joinpath(
+                f"db_{uuid.uuid4().hex}"
             )
-            shutil.unpack_archive(db_path, extract_dir=new_db_path,
-                                  format = "zip")
+            shutil.unpack_archive(db_path, extract_dir=new_db_path, format="zip")
             self.db_path = new_db_path.glob("*.duckdb").__next__()
             self.suffix = pathlib.Path(self.db_path).suffix
         else:
@@ -172,7 +206,7 @@ class DBReader:
 
         if self.suffix == ".duckdb":
             conn = duckdb.connect(str(self.db_path))
-            df = conn.sql(query).pl()
+            df = conn.sql(query).pl().with_columns(pl.col(pl.Decimal).cast(pl.Float64))
             conn.close()
         else:
             raise ValueError("Only .duckdb files are supported from Andromeda >= 1.0")
@@ -221,11 +255,11 @@ def read_data(
         data_ref = reader.read_table("covariateRef", lazy=lazy)
     else:
         data_ref = data_reference.lazy()
-    data_ref = (data_ref.
-        with_columns(pl.col("columnId").cast(pl.Int32)).
-        join(analysis_ref, on="analysisId").select(
-        pl.all().exclude("collisions")
-    ))
+    data_ref = (
+        data_ref.with_columns(pl.col("columnId").cast(pl.Int32))
+        .join(analysis_ref, on="analysisId")
+        .select(pl.all().exclude("collisions"))
+    )
     data = reader.read_table("covariates", lazy=lazy)
     # check if there is a timeId column in data
     time = "timeId" in data.collect_schema().names()
@@ -282,7 +316,9 @@ def aggregate_sequences(
     """
     aggs = [
         (
-            pl.col("columnId").sort_by(["timeId", "columnId"]) if with_time else pl.col("columnId")
+            pl.col("columnId").sort_by(["timeId", "columnId"])
+            if with_time
+            else pl.col("columnId")
         ).alias("feature_ids"),
         (
             pl.col("covariateValue").sort_by("timeId")
@@ -291,9 +327,7 @@ def aggregate_sequences(
         ).alias("feature_values"),
     ]
     if with_time:
-        data = data.with_columns(pl.col("timeId")
-                                 .fill_null(0)
-                                 .cast(pl.Int32))
+        data = data.with_columns(pl.col("timeId").fill_null(0).cast(pl.Int32))
         aggs.append(pl.col("timeId").sort_by("timeId").alias("time_ids"))
     grouped = data.group_by("rowId").agg(*aggs)
     all_rows = (
@@ -384,20 +418,16 @@ def insert_time_tokens(
         )
 
     offset = get_offset(data_ref)
-    data = (
-        data
-        .sort(["rowId", "timeId"])
-        .with_columns(
-           [
-                pl.cum_count("rowId").cast(pl.Float64).alias("_pos"),  # 0,1,2…
-                (
-                        pl.col("timeId")  # δt (days)
-                        - pl.col("timeId").shift(1).over("rowId")
-                )
-                .fill_null(0)
-                .alias("_delta"),
-            ]
-        )
+    data = data.sort(["rowId", "timeId"]).with_columns(
+        [
+            pl.cum_count("rowId").cast(pl.Float64).alias("_pos"),  # 0,1,2…
+            (
+                pl.col("timeId")  # δt (days)
+                - pl.col("timeId").shift(1).over("rowId")
+            )
+            .fill_null(0)
+            .alias("_delta"),
+        ]
     )
     delta = pl.col("_delta")
 
@@ -508,4 +538,3 @@ def get_offset(data_ref: pl.LazyFrame) -> int:
     Get the offset for the time tokens based on the maximum columnId in the data reference.
     """
     return data_ref.select(pl.col("columnId")).max().collect().item() + 1
-

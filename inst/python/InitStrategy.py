@@ -5,6 +5,7 @@ import torch
 import polars as pl
 
 from CustomEmbeddings import CustomEmbeddings, PoincareEmbeddings
+from PositionalEncodings import create_positional_encoding_module
 
 
 class InitStrategy(ABC):
@@ -15,6 +16,10 @@ class InitStrategy(ABC):
 
 class DefaultInitStrategy(InitStrategy):
     def initialize(self, model, parameters):
+        if "positional_encoding" in parameters["model_parameters"]:
+            parameters["model_parameters"]["pe_module"] = (
+                create_positional_encoding_module(parameters["model_parameters"])
+            )
         return model(**parameters["model_parameters"])
 
 
@@ -47,9 +52,7 @@ class CustomEmbeddingInitStrategy(InitStrategy):
         file_path = pathlib.Path(self.embedding_file)
         data_reference = parameters["model_parameters"]["feature_info"].data_reference
 
-        # Instantiate the model with the provided parameters
-        model = model(**parameters["model_parameters"])
-
+        model = DefaultInitStrategy().initialize(model, parameters) 
         embeddings = torch.load(file_path, weights_only=True)
 
         if "concept_ids" not in embeddings.keys():
@@ -108,6 +111,6 @@ class CustomEmbeddingInitStrategy(InitStrategy):
             feature_info=parameters["model_parameters"]["feature_info"],
             custom_indices=custom_indices,
             freeze=self.freeze,
-            aggregate=aggregate
+            aggregate=aggregate,
         )
         return model
