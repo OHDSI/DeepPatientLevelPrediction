@@ -10,7 +10,7 @@ RUN apt-get -y update && apt-get install -y \
       default-jre \
       default-jdk \
       libssl-dev  \
-      python2-dev \
+      python3-dev \
       libpcre2-dev \
       libdeflate-dev \
       liblzma-dev \
@@ -47,9 +47,13 @@ RUN install2.r -n -1 \
 RUN Rscript -e "DatabaseConnector::downloadJdbcDrivers(dbms='all', pathToDriver='/database_drivers/')"
 ENV DATABASECONNECTOR_JAR_FOLDER=/database_drivers/
 
+ADD https://astral.sh/uv/0.8.13/install.sh /uv-installer.sh
+RUN sh /uv-installer.sh \
+    && rm /uv-installer.sh
+ENV PATH="/root/.local/bin/:$PATH"
+
 # install Python packages
-RUN pip3 install uv \
-    && uv pip install --system --no-cache-dir --break-system-packages \
+RUN uv pip install --system --no-cache-dir --break-system-packages \
     polars \
     duckdb \
     torch \
