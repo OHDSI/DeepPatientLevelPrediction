@@ -21,7 +21,7 @@ env:
   DOCKER_IMAGE: 'ohdsi/deep_plp' 
 
 jobs:
-  docker:
+  build:
     runs-on: ${{ matrix.config.runner }}
     name: ${{ matrix.config.runner }}
     strategy:
