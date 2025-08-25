@@ -58,8 +58,8 @@
 <span>  dimHidden <span class="op">=</span> <span class="fl">256</span>,</span>
 <span>  dimHiddenRatio <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  temporal <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  temporalSettings <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>useRope <span class="op">=</span> <span class="cn">FALSE</span>, maxSequenceLength <span class="op">=</span> <span class="fl">256</span>, truncation <span class="op">=</span> <span class="st">"tail"</span>,</span>
-<span>    timeTokens <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>,</span>
+<span>  temporalSettings <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>positionalEncoding <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>name <span class="op">=</span> <span class="st">"SinusoidalPE"</span>, dropout <span class="op">=</span></span>
+<span>    <span class="fl">0.1</span><span class="op">)</span>, maxSequenceLength <span class="op">=</span> <span class="fl">256</span>, truncation <span class="op">=</span> <span class="st">"tail"</span>, timeTokens <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>,</span>
 <span>  estimatorSettings <span class="op">=</span> <span class="fu"><a href="setEstimator.html">setEstimator</a></span><span class="op">(</span>weightDecay <span class="op">=</span> <span class="fl">1e-06</span>, batchSize <span class="op">=</span> <span class="fl">1024</span>, epochs <span class="op">=</span> <span class="fl">10</span>,</span>
 <span>    seed <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span>,</span>
 <span>  hyperParamSearch <span class="op">=</span> <span class="st">"random"</span>,</span>
@@ -112,7 +112,8 @@ of dimToken (embedding size)</p></dd>
 
 <dt id="arg-temporalsettings">temporalSettings<a class="anchor" aria-label="anchor" href="#arg-temporalsettings"></a></dt>
 <dd><p>settings for the temporal transformer. Which include
-- `useRope`: Whether to use ROPE (Relative Positional Encoding)
+- `positionalEncoding`: Positional encoding to use, either a character
+  or a list with name and settings, default 'SinusoidalPE' with dropout 0.1
 - `maxSequenceLength`: Maximum sequence length, sequences longer than This
   will be truncated and/or padded to this length either a number or 'max' for the Maximum
 - `truncation`: Truncation method, only 'tail' is supported
