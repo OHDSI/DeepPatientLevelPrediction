@@ -1,9 +1,12 @@
 pandoc: 3.1.11
-pkgdown: 2.1.0
+pkgdown: 2.1.3
 pkgdown_sha: ~
 articles:
   BuildingDeepModels: BuildingDeepModels.html
   FirstModel: FirstModel.html
   Installing: Installing.html
   TransferLearning: TransferLearning.html
-last_built: 2024-08-02T19:05Z
+last_built: 2025-08-25T15:26Z
+urls:
+  reference: https://ohdsi.github.com/DeepPatientLevelPrediction/reference
+  article: https://ohdsi.github.com/DeepPatientLevelPrediction/articles
