@@ -346,7 +346,7 @@ class RelativePE(PositionalEncoding):
 
 class EfficientRPE(PositionalEncoding):
     """
-    Implements the novel 'eRPE' from the paper: https://arxiv.org/abs/2305.16642
+    Implements 'eRPE' from the paper: https://arxiv.org/abs/2305.16642
 
     It adds a learnable, input-independent, scalar bias to the attention weights
     *after* the softmax operation.
@@ -693,7 +693,7 @@ class HybridRoPEConvPE(PositionalEncoding):
 
 class TUPE(PositionalEncoding):
     """
-    A 'signal' class for the Transformer with Untied Positional Encoding (TUPE).
+    Transformer with Untied Positional Encoding (TUPE).
 
     This class holds the learnable projection layers for the positional queries
     and keys. It uses a standard time-aware absolute PE as its base.

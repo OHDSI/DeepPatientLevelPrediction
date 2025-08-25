@@ -1,5 +1,17 @@
 DeepPatientLevelPrediction 2.1.0.999
 ======================
+  - [Feature] Add positional encodings that use `timeId` (PR #154):
+        - `SinusoidalPE`: Absolute sinusoidal positional embeddings using
+        - `LearnablePE`: Learnable absolute positional embeddings 
+        - `TapePE`: Time-absolute Positional Encodings (`tAPE`)
+        - `RotaryPE`: Rotary position embeddings (`RoPE`)
+        - `RelativePE`: Relative positional embeddings (`RPE`)
+        - `EfficientRPE`: Efficient relative positional embeddings (`eRPE`)
+        - `TemporalPE`: Combines an absolute temporal embedding and a semantic one
+        - `StochasticConvPE`: Relative learnable positional embedding (`convSPE`)
+        - `HybridRoPEconvPE`: Combines `RoPE` and `convSPE`
+        - `TUPE`: Transformer with learnable positional encoding (`TUPE`)
+        - `ALiBiPE`: Attention with linear biases (`ALiBi`)
   - [Feature] Use `py_require` from reticulate to manage python dependencies and update min requirements (PR #150)
   - [Internal] Refactor transformer/dataset/embedding classes to use same code wether temporal or not (PR #147)
   - [Feature] Use train/validation split for model selection instead of cross validation (PR #145)
