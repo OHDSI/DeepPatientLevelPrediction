@@ -10,7 +10,7 @@ RUN apt-get -y update && apt-get install -y \
       default-jre \
       default-jdk \
       libssl-dev  \
-      python2-dev \
+      python3-dev \
       libpcre2-dev \
       libdeflate-dev \
       liblzma-dev \
