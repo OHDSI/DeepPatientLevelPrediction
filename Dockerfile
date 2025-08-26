@@ -41,6 +41,8 @@ RUN install2.r -n -1 \
         CirceR \
         Eunomia \
         duckdb \
+        testthat \
+        ResultModelManager \
     && installGithub.r \
         OHDSI/ROhdsiWebApi
 
@@ -56,6 +58,8 @@ ENV PATH="/root/.local/bin/:$PATH"
 RUN uv pip install --system --no-cache-dir --break-system-packages \
     polars \
     duckdb \
+    pyarrow \
+    numpy \
     torch \
     tqdm \
     pynvml \

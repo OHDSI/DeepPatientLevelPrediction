@@ -1,8 +1,7 @@
 Package: DeepPatientLevelPrediction
 Type: Package
-Title: Deep Learning For Patient Level Prediction Using Data In The OMOP Common Data Model
+Title: Deep Learning for Patient Level Prediction Using Data in the OMOP Common Data Model
 Version: 2.2.0
-Date: 25-08-2025
 Authors@R: c(
     person("Egill", "Fridgeirsson", email = "e.fridgeirsson@erasmusmc.nl", role = c("aut", "cre")),
     person("Jenna", "Reps", email = "jreps@its.jnj.com", role = c("aut")), 
