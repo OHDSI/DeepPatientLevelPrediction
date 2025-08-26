@@ -1,4 +1,4 @@
-FROM docker.io/rocker/r-ver:3.5 AS build
+FROM docker.io/rocker/r-ver:4.5 AS build
 
 ENV MAKEFLAGS="-j4"
 RUN --mount=type=cache,id=apt-cache,target=/var/cache/apt,sharing=locked \
