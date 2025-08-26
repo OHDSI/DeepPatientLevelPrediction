@@ -23,8 +23,6 @@ on:
 
 env:
   DOCKER_IMAGE: "ohdsi/deep_plp"
-  GHCR_OWNER: ${{ toLower(github.repository_owner) }}
-  SAFE_REF:  ${{ replace(github.ref_name, '/', '-') }}
 
 jobs:
   build:
@@ -66,19 +64,27 @@ jobs:
 
       - name: Set build parameters
         id: build_params
+        shell: bash
         run: |
+          set -euo pipefail
           echo "SHA8=${GITHUB_SHA::8}" >> $GITHUB_ENV
 
+          owner_lc="${GITHUB_REPOSITORY_OWNER,,}"
+
+          ref="${GITHUB_REF_NAME//\//-}"
+          ref_lc="${ref,,}"
+          echo "owner=${owner_lc}" >> "$GITHUB_OUTPUT"
+          echo "ref=${ref_lc}"     >> "$GITHUB_OUTPUT"
       - name: Build and push by digest
         id: build
         uses: docker/build-push-action@v6
         with:
           cache-from: |
-            type=registry,ref=ghcr.io/${{ env.GHCR_OWNER }}/deep_plp:buildcache-${{ matrix.config.arch }}
-            type=registry,ref=ghcr.io/${{ env.GHCR_OWNER }}/deep_plp:buildcache-${{ matrix.config.arch }}-${{ SAFE_REF }}
+            type=registry,ref=ghcr.io/${{ steps.build_params.outputs.owner }}/deep_plp:buildcache-${{ matrix.config.arch }}
+            type=registry,ref=ghcr.io/${{ steps.build_params.outputs.owner }}/deep_plp:buildcache-${{ matrix.config.arch }}-${{ steps.build_params.outputs.ref }}
           cache-to: |
-            type=registry,ref=ghcr.io/${{ env.GHCR_OWNER }}/deep_plp:buildcache-${{ matrix.config.arch }}-${{ SAFE_REF }},mode=max
-            ${{ github.ref == 'refs/heads/main' && format('type=registry,ref=ghcr.io/{0}/deep_plp:buildcache-{1},mode=max', GHCR_OWNER, matrix.config.arch) || '' }}
+            type=registry,ref=ghcr.io/${{ steps.build_params.outputs.owner }}/deep_plp:buildcache-${{ matrix.config.arch }}-${{ steps.build_params.outputs.ref }},mode=max
+            ${{ github.ref == 'refs/heads/main' && format('type=registry,ref=ghcr.io/{0}/deep_plp:buildcache-{1},mode=max', steps.build_params.outputs.owner, matrix.config.arch) || '' }}
           file: Dockerfile
           platforms: "linux/${{ matrix.config.arch }}"
           secrets: |
