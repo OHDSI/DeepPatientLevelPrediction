@@ -1,8 +1,9 @@
 FROM docker.io/rocker/r-ver:4.5 AS build
 
 ENV MAKEFLAGS="-j4"
-
-RUN apt-get -y update && apt-get install -y \
+RUN --mount=type=cache,id=apt-cache,target=/var/cache/apt,sharing=locked \
+  --mount=type=cache,id=apt-lists,target=/var/lib/apt/lists,sharing=locked \
+  apt-get -y update && apt-get install -y \
   default-jre \
   default-jdk \
   libssl-dev  \
@@ -26,21 +27,16 @@ RUN apt-get -y update && apt-get install -y \
   libfreetype6-dev \
   libtiff5-dev \
   libjpeg-dev \
-  --no-install-recommends \
-  && apt-get clean \
-  && rm -rf /var/lib/apt/lists/*
+  --no-install-recommends
+
 RUN R CMD javareconf
 
 RUN echo 'options(repos = c(CRAN = "https://p3m.dev/cran/__linux__/noble/latest"))' >>"${R_HOME}/etc/Rprofile.site"
-RUN install2.r -n -1 \
-  remotes \
-  CirceR \
-  Eunomia \
-  duckdb \
-  testthat \
-  ResultModelManager \
-  && installGithub.r \
-  OHDSI/ROhdsiWebApi
+ENV PAK_CACHE_DIR=/root/.cache/R/pak
+RUN --mount=type=cache,id=pak-cache,target=/root/.cache/R/pak,sharing=locked \
+  Rscript -e "install.packages('pak')"
+RUN --mount=type=cache,id=pak-cache,target=/root/.cache/R/pak,sharing=locked \
+  Rscript -e "pak::pkg_install(c('remotes', 'CirceR', 'Eunomia', 'duckdb', 'testthat', 'ResultModelManager'))"
 
 RUN Rscript -e "DatabaseConnector::downloadJdbcDrivers(dbms='all', pathToDriver='/database_drivers/')"
 ENV DATABASECONNECTOR_JAR_FOLDER=/database_drivers/
@@ -50,16 +46,15 @@ RUN sh /uv-installer.sh \
   && rm /uv-installer.sh
 ENV PATH="/root/.local/bin/:$PATH"
 
-# install Python packages
-RUN uv pip install --system --no-cache-dir --break-system-packages \
+RUN --mount=type=cache,id=pip-cache,target=/root/.cache/uv,sharing=locked \
+  uv pip install --system --break-system-packages \
   polars \
   duckdb \
   pyarrow \
   numpy \
   torch \
   tqdm \
-  pynvml \
-  && rm -rf /root/.cache/pip
+  pynvml
 
 RUN --mount=type=secret,id=build_github_pat export GITHUB_PAT=$(cat /run/secrets/build_github_pat)
 ARG GIT_BRANCH='main'
@@ -76,8 +71,11 @@ COPY --from=build /usr/local/lib/R/site-library /usr/local/lib/R/site-library
 COPY --from=build /usr/local/lib/R/library /usr/local/lib/R/library
 
 ENV RETICULATE_PYTHON=/usr/bin/python3
-# runtime dependanceis
-RUN apt-get -y update && apt-get install -y \
+# runtime dependancies
+
+RUN --mount=type=cache,id=apt-cache,target=/var/cache/apt,sharing=locked \
+  --mount=type=cache,id=apt-lists,target=/var/lib/apt/lists,sharing=locked \
+  apt-get -y update && apt-get install -y \
   default-jre \
   default-jdk \
   libssl3 \

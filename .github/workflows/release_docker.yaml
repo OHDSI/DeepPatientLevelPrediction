@@ -9,6 +9,10 @@
 #                      Needed to avoid "API rate limit exceeded" from github.
 name: Release Docker
 
+permissions:
+  contents: read
+  packages: write
+
 on:
   push:
     branches:
@@ -51,6 +55,12 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set build parameters
         id: build_params
@@ -62,10 +72,11 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           cache-from: |
-            type=gha,scope=deep_plp-${{ matrix.config.arch }}-shared
-            type=gha,scope=deep_plp-${{ matrix.config.arch }}-${{ github.ref_name }}
+            type=registry,ref=ghcr.io/${{ github.repository_owner }}/deep_plp:buildcache-${{ matrix.config.arch }}
+            type=registry,ref=ghcr.io/${{ github.repository_owner }}/deep_plp:buildcache-${{ matrix.config.arch }}-${{ github.ref_name }}
           cache-to: |
-            type=gha,scope=deep_plp-${{ matrix.config.arch }}-${{ github.ref_name }},mode=max
+            type=registry,ref=ghcr.io/${{ github.repository_owner }}/deep_plp:buildcache-${{ matrix.config.arch }}-${{ github.ref_name }},mode=max
+            ${{ github.ref == 'refs/heads/main' && format('type=registry,ref=ghcr.io/{0}/deep_plp:buildcache-{1},mode=max', github.repository_owner, matrix.config.arch) || '' }}
           file: Dockerfile
           platforms: "linux/${{ matrix.config.arch }}"
           secrets: |
