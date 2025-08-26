@@ -86,7 +86,7 @@ checkIsClass <- function(parameter, classes) {
 #' @param value which value it should be higher than
 checkHigher <- function(parameter, value) {
   name <- deparse(substitute(parameter))
-  if (!is.numeric(parameter) || all(parameter == value)) {
+  if (!is.numeric(parameter) || all(parameter <= value)) {
     ParallelLogger::logError(paste0(name, " needs to be > ", value))
     stop(paste0(name, " needs to be > ", value))
   }
@@ -104,4 +104,142 @@ checkHigherEqual <- function(parameter, value) {
     stop(paste0(name, " needs to be >= ", value))
   }
   return(TRUE)
+}
+
+#' helper function to check if a file exists
+#' @param file the file to check
+checkFileExists <- function(file) {
+  if (!file.exists(file)) {
+    ParallelLogger::logError(paste0("File ", file, " does not exist"))
+    stop(paste0("File ", file, " does not exist"))
+  }
+  return(TRUE)
+}
+
+checkInStringVector <- function(parameter, values) {
+  name <- deparse(substitute(parameter))
+  if (!parameter %in% values) {
+    ParallelLogger::logError(paste0(
+      name, " should be ",
+      paste0(as.character(values),
+        collapse = "or "
+      )
+    ))
+    stop(paste0(name, " has incorrect value"))
+  }
+  return(TRUE)
+}
+
+# is included from R4.4.0
+if (!exists("%||%", "package:base")) `%||%` <- function(x, y) if (is.null(x)) y else x
+
+#' Use polars instead of pandas for default conversion from R to Python
+#' @exportS3Method reticulate::r_to_py data.frame
+#' @param x A data.frame object in R
+#' @param convert Logical, whether to convert the data types to Python types
+#' @return A polars DataFrame object in Python
+r_to_py.data.frame <- function(x, convert = FALSE) {
+  if (!requireNamespace("reticulate", quietly = TRUE)) {
+    stop("package \"reticulate\" is required")
+  }
+
+  if (reticulate::py_module_available("polars")) {
+    pl <- reticulate::import("polars", convert = FALSE)
+    toPyCol <- function(col) {
+
+        if (is.factor(col))
+          col <- as.character(col)
+
+        if (is.atomic(col)) {
+          col <- lapply(col, function(v) if (is.na(v)) NULL else v)
+        }
+
+        reticulate::r_to_py(col, convert = FALSE)
+      }
+    columns <- lapply(x, toPyCol)
+    names(columns) <- names(x)
+
+    pdf <- pl$DataFrame(columns)
+
+    return(pdf)
+  } else {
+    stop("package \"polars\" is required")
+  }
+}
+
+#' Use polars instead of pandas for default conversion from python to R
+#' @exportS3Method reticulate::py_to_r polars.dataframe.frame.DataFrame
+#' @param x A polars DataFrame object
+#' @return The same data.frame in R
+py_to_r.polars.dataframe.frame.DataFrame <- function(x) {
+  lst <- py_to_r(x$to_dict(as_series = FALSE))
+  dtypes <- py_to_r(x$dtypes)
+  lst <- noneToNA(lst, dtypes)
+  df <- data.frame(lst)
+  return(df)
+}
+
+# Convert a list with NULL values to correct NA values
+noneToNA <- function(x, dtypes) {
+  Map(function(col, dtype) {
+    if (is.atomic(col)) {
+      return(col)
+    }
+    dtype <- as.character(dtype)
+
+    proto <- if (dtype %in% c("Float32", "Float64", "f32", "f64")) {
+      NA_real_
+    } else if (dtype %in% c("Int32", "Int64", "i32", "i64")) {
+      NA_integer_
+    } else if (dtype %in% c("Boolean", "bool")) {
+      NA
+    } else {
+      NA_character_
+    }
+    vapply(col, function(v) {
+      if (is.null(v)) proto else v
+    }, proto)
+  },
+  col = x,
+  dtype = dtypes)
+}
+
+#' Expand a Component's Hyperparameter Grid
+#'
+#' This function takes a user-defined setting for a configurable component
+#' (like a positional encoding) and expands it
+#' into a flat list of all possible configurations. This list can then be
+#' used directly within a `paramGrid` for `PatientLevelPrediction::listCartesian`.
+#'
+#' @param componentSetting The user's setting for the component. This can be:
+#'   - A single string (e.g., "AdamW").
+#'   - A single named list representing one configuration (e.g., `list(name = "AdamW", lr = 0.001)`).
+#'   - A list of named lists, where each list is a template for configurations.
+#'     Vectors within these templates will be expanded (e.g., `lr = c(0.001, 0.0001)`).
+#'
+#' @return A list where each element is a fully-specified, named list for one
+#'         component configuration.
+expandComponentGrid <- function(componentSetting) {
+
+  if (!is.list(componentSetting)) {
+    componentSetting <- list(list(name = componentSetting))
+  } else if ("name" %in% names(componentSetting)) {
+    componentSetting <- list(componentSetting)
+  }
+
+  expandedConfigs <- lapply(componentSetting, function(configTemplate) {
+    PatientLevelPrediction::listCartesian(configTemplate)
+  })
+  finalComponentGrid <- do.call(c, expandedConfigs)
+  return(finalComponentGrid)
+}
+
+keepDefaults <- function(defaultSettings, userSettings) {
+  if (!is.null(userSettings) && !is.list(userSettings)) {
+    stop("Settings argument must be a list.")
+  }
+  userSettingsNames <- names(userSettings)
+  defaultSettings[userSettingsNames] <- userSettings
+
+  return(defaultSettings)
 }

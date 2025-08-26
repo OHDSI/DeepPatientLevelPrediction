@@ -40,7 +40,6 @@ setDefaultTransformer <- function(estimatorSettings =
     numHeads = 8,
     attDropout = 0.2,
     ffnDropout = 0.1,
-    resDropout = 0.0,
     dimHidden = 256,
     estimatorSettings = estimatorSettings,
     hyperParamSearch = "random",
@@ -50,10 +49,10 @@ setDefaultTransformer <- function(estimatorSettings =
   return(transformerSettings)
 }
 
-#' create settings for training a non-temporal transformer
+#' create settings for training a transformer
 #'
 #' @description A transformer model
-#' @details from https://arxiv.org/abs/2106.11959
+#' @details The non-temporal transformer is from https://arxiv.org/abs/2106.11959
 #'
 #' @param numBlocks               number of transformer blocks
 #' @param dimToken                dimension of each token (embedding size)
@@ -62,10 +61,17 @@ setDefaultTransformer <- function(estimatorSettings =
 #' @param numHeads                number of attention heads
 #' @param attDropout              dropout to use on attentions
 #' @param ffnDropout              dropout to use in feedforward block
-#' @param resDropout              dropout to use in residual connections
 #' @param dimHidden               dimension of the feedworward block
 #' @param dimHiddenRatio          dimension of the feedforward block as a ratio
 #' of dimToken (embedding size)
+#' @param temporal                Whether to use a transformer with temporal data
+#' @param temporalSettings        settings for the temporal transformer. Which include
+#'   - `positionalEncoding`: Positional encoding to use, either a character
+#'     or a list with name and settings, default 'SinusoidalPE' with dropout 0.1
+#'   - `maxSequenceLength`: Maximum sequence length, sequences longer than This
+#'     will be truncated and/or padded to this length either a number or 'max' for the Maximum
+#'   - `truncation`: Truncation method, only 'tail' is supported
+#'   - `timeTokens`: Whether to use time tokens, default TRUE
 #' @param estimatorSettings       created with `setEstimator`
 #' @param hyperParamSearch        what kind of hyperparameter search to do,
 #' default 'random'
@@ -73,6 +79,7 @@ setDefaultTransformer <- function(estimatorSettings =
 #' search if random
 #' @param randomSampleSeed        Random seed to sample hyperparameter
 #' combinations
+#' @return list of settings for the transformer model
 #'
 #' @export
 setTransformer <- function(numBlocks = 3,
@@ -81,9 +88,18 @@ setTransformer <- function(numBlocks = 3,
                            numHeads = 8,
                            attDropout = 0.2,
                            ffnDropout = 0.1,
-                           resDropout = 0,
                            dimHidden = 256,
                            dimHiddenRatio = NULL,
+                           temporal = FALSE,
+                           temporalSettings = list(
+                             positionalEncoding = list(
+                               name = "SinusoidalPE",
+                               dropout = 0.1
+                             ),
+                             maxSequenceLength = 256,
+                             truncation = "tail",
+                             timeTokens = TRUE
+                           ),
                            estimatorSettings = setEstimator(
                              weightDecay = 1e-6,
                              batchSize = 1024,
@@ -93,6 +109,20 @@ setTransformer <- function(numBlocks = 3,
                            hyperParamSearch = "random",
                            randomSample = 1,
                            randomSampleSeed = NULL) {
+  defaultTemporalSettings <- list(
+    positionalEncoding = list(
+      name = "SinusoidalPE",
+      dropout = 0.1
+    ),
+    maxSequenceLength = 256,
+    truncation = "tail",
+    timeTokens = FALSE
+  )
+  temporalSettings <- keepDefaults(
+    defaultTemporalSettings,
+    temporalSettings
+  )
+
   checkIsClass(numBlocks, c("integer", "numeric"))
   checkHigherEqual(numBlocks, 1)
 
@@ -111,13 +141,11 @@ setTransformer <- function(numBlocks = 3,
   checkIsClass(ffnDropout, c("numeric"))
   checkHigherEqual(ffnDropout, 0)
 
-  checkIsClass(resDropout, c("numeric"))
-  checkHigherEqual(resDropout, 0)
-
   checkIsClass(dimHidden, c("integer", "numeric", "NULL"))
   if (!is.null(dimHidden)) {
     checkHigherEqual(dimHidden, 1)
   }
+  checkIsClass(temporal, "logical")
 
   checkIsClass(dimHiddenRatio, c("numeric", "NULL"))
   if (!is.null(dimHiddenRatio)) {
@@ -150,6 +178,34 @@ setTransformer <- function(numBlocks = 3,
     dimHidden <- dimHiddenRatio
   }
 
+  checkIsClass(
+    temporalSettings$maxSequenceLength,
+    c("integer", "numeric", "character")
+  )
+  if (!inherits(temporalSettings$maxSequenceLength, "character")) {
+    checkHigherEqual(temporalSettings$maxSequenceLength, 1)
+  } else if (temporalSettings$maxSequenceLength != "max") {
+    stop(paste(
+      "maxSequenceLength must be either 'max' or a positive integer. maxSequenceLength =",
+      temporalSettings$maxSequenceLength
+    ))
+  }
+  if (inherits(temporalSettings$maxSequenceLength, "numeric")) {
+    temporalSettings$maxSequenceLength <-
+      as.integer(round(temporalSettings$maxSequenceLength))
+  }
+  checkIsClass(temporalSettings$truncation, "character")
+  if (temporalSettings$truncation != "tail") {
+    stop(paste(
+      "Only truncation method 'tail' is supported. truncation =",
+      temporalSettings$truncation
+    ))
+  }
+  checkIsClass(temporalSettings$positionalEncoding, c("character", "list", "NULL"))
+  if (inherits(temporalSettings$positionalEncoding, "character")) {
+    temporalSettings$positionalEncoding <- list(name = temporalSettings$positionalEncoding)
+  }
+
   paramGrid <- list(
     numBlocks = numBlocks,
     dimToken = dimToken,
@@ -157,9 +213,14 @@ setTransformer <- function(numBlocks = 3,
     numHeads = numHeads,
     dimHidden = dimHidden,
     attDropout = attDropout,
-    ffnDropout = ffnDropout,
-    resDropout = resDropout
+    ffnDropout = ffnDropout
   )
+  if (temporal) {
+    if (!is.null(temporalSettings$positionalEncoding)) {
+      paramGrid[["positionalEncoding"]] <- 
+        expandComponentGrid(temporalSettings$positionalEncoding)
+    }
+  }
 
   paramGrid <- c(paramGrid, estimatorSettings$paramsToTune)
 
@@ -196,10 +257,17 @@ setTransformer <- function(numBlocks = 3,
     saveType = "file",
     modelParamNames = c(
       "numBlocks", "dimToken", "dimOut", "numHeads",
-      "attDropout", "ffnDropout", "resDropout", "dimHidden"
+      "attDropout", "ffnDropout", "dimHidden"
     ),
     modelType = "Transformer"
   )
+  if (temporal) {
+    attr(results$param, "temporalModel") <- TRUE
+    attr(results$param, "temporalSettings") <- temporalSettings
+    if (!is.null(temporalSettings$positionalEncoding)) {
+      results$modelParamNames <- c(results$modelParamNames, "positionalEncoding")
+    }
+  }
   attr(results$param, "settings")$modelType <- results$modelType
   class(results) <- "modelSettings"
   return(results)

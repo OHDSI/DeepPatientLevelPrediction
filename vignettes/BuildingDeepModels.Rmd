@@ -57,7 +57,7 @@ package and
 package to build Deep Learning models. This vignette assumes you have
 read and are comfortable with building patient level prediction models
 as described in the [`BuildingPredictiveModels`
-vignette](https://github.com/OHDSI/PatientLevelPrediction/blob/main/inst/doc/BuildingPredictiveModels.pdf).
+vignette](https://ohdsi.github.io/PatientLevelPrediction/articles/BuildingPredictiveModels.html).
 Furthermore, this vignette assumes you are familiar with Deep Learning
 methods.
 
@@ -243,12 +243,12 @@ mlpResult <- PatientLevelPrediction::runPlp(
     splitSettings = PatientLevelPrediction::createDefaultSplitSetting(), 
     preprocessSettings = PatientLevelPrediction::createPreprocessSettings(), 
     executeSettings = PatientLevelPrediction::createExecuteSettings(
-      runSplitData = T, 
-      runSampleData = F, 
-      runfeatureEngineering = F, 
-      runPreprocessData = T, 
-      runModelDevelopment = T, 
-      runCovariateSummary = F
+      runSplitData = TRUE, 
+      runSampleData = FALSE, 
+      runFeatureEngineering = FALSE, 
+      runPreprocessData = TRUE, 
+      runModelDevelopment = TRUE, 
+      runCovariateSummary = FALSE
     ), 
     saveDirectory = file.path(testLoc, 'DeepNNTorch')
   )
@@ -364,12 +364,12 @@ resResult <- PatientLevelPrediction::runPlp(
     splitSettings = PatientLevelPrediction::createDefaultSplitSetting(), 
     preprocessSettings = PatientLevelPrediction::createPreprocessSettings(), 
     executeSettings = PatientLevelPrediction::createExecuteSettings(
-      runSplitData = T, 
-      runSampleData = F, 
-      runfeatureEngineering = F, 
-      runPreprocessData = T, 
-      runModelDevelopment = T, 
-      runCovariateSummary = F
+      runSplitData = TRUE, 
+      runSampleData = FALSE, 
+      runFeatureEngineering = FALSE, 
+      runPreprocessData = TRUE, 
+      runModelDevelopment = TRUE, 
+      runCovariateSummary = FALSE
     ), 
     saveDirectory = file.path(getwd(), 'ResNet') # change to save elsewhere
   )
@@ -420,8 +420,8 @@ self-attention layer and a feedforward block with two linear layers.
 `numHeads` : Number of attention heads for the self-attention, `dimToken` needs
 to be divisible by `numHeads`.
 
-`attDropout`, `ffnDropout` and `resDropout` : How much dropout to apply
-on attentions, feedforward block or in residual connections
+`attDropout`, `ffnDropout` : How much dropout to apply
+on attentions or feedforward block
 
 `dimHidden` : How many neurons in linear layers inside the feedforward
 block
@@ -436,7 +436,6 @@ modelSettings <- setTransformer(numBlocks = 3L,
                                 numHeads = 4L,
                                 attDropout = 0.25,
                                 ffnDropout = 0.25,
-                                resDropout = 0,
                                 dimHidden = 128L,
                                 estimatorSettings = setEstimator(
                                   learningRate = 3e-4,
@@ -459,12 +458,12 @@ TransformerResult <- PatientLevelPrediction::runPlp(
     splitSettings = PatientLevelPrediction::createDefaultSplitSetting(), 
     preprocessSettings = PatientLevelPrediction::createPreprocessSettings(), 
     executeSettings = PatientLevelPrediction::createExecuteSettings(
-      runSplitData = T, 
-      runSampleData = F, 
-      runfeatureEngineering = F, 
-      runPreprocessData = T, 
-      runModelDevelopment = T, 
-      runCovariateSummary = F
+      runSplitData = TRUE, 
+      runSampleData = FALSE, 
+      runFeatureEngineering = FALSE, 
+      runPreprocessData = TRUE, 
+      runModelDevelopment = TRUE, 
+      runCovariateSummary = FALSE
     ), 
     saveDirectory = file.path(getwd(), 'Transformer') # change to save elsewhere
   )

@@ -1,10 +1,13 @@
-import math
+from typing import Optional, Type, Callable
 
 import torch
-from torch import nn
 import torch.nn.functional as F
+from torch import nn
 
-from ResNet import NumericalEmbedding
+from Embeddings import ClassToken, Embedding
+from PositionalEncodings import EfficientRPE
+from Dataset import FeatureInfo
+from PositionalEncodings import PositionalEncoding, NoPositionalEncoding
 
 
 def reglu(x):
@@ -20,67 +23,50 @@ class ReGLU(nn.Module):
 class Transformer(nn.Module):
     def __init__(
         self,
-        cat_features: int,
-        num_features: int,
+        feature_info: FeatureInfo,
         num_blocks: int,
         dim_token: int,
         num_heads: int,
-        att_dropout,
-        ffn_dropout,
-        res_dropout,
+        att_dropout: float,
+        ffn_dropout: float,
         dim_hidden: int,
         dim_out: int = 1,
-        head_activation=nn.ReLU,
-        activation=ReGLU,
-        ffn_norm=nn.LayerNorm,
-        head_norm=nn.LayerNorm,
-        att_norm=nn.LayerNorm,
-        model_type="Transformer"
+        head_activation: Type[nn.Module] = nn.ReLU,
+        activation: Type[nn.Module] = ReGLU,
+        norm_layer: Type[nn.Module] = nn.LayerNorm,
+        head_norm: Type[nn.Module] = nn.LayerNorm,
+        pe_module: PositionalEncoding = NoPositionalEncoding(),
+        model_type="Transformer",
+        **kwargs,
     ):
         super(Transformer, self).__init__()
         self.name = model_type
-        cat_features = int(cat_features)
-        num_features = int(num_features)
         num_blocks = int(num_blocks)
         dim_token = int(dim_token)
         num_heads = int(num_heads)
         dim_hidden = int(dim_hidden)
         dim_out = int(dim_out)
 
-        self.categorical_embedding = nn.Embedding(
-            cat_features + 1, dim_token, padding_idx=0
-        )
+        self.embedding = Embedding(embedding_dim=dim_token, feature_info=feature_info)
+        self.pe_module = pe_module
 
-        if num_features != 0 and num_features is not None:
-            self.numerical_embedding = NumericalEmbedding(num_features, dim_token)
-            self.use_numerical = True
-        else:
-            self.use_numerical = False
         self.class_token = ClassToken(dim_token)
 
-        self.layers = nn.ModuleList([])
+        self.layers = nn.ModuleList()
         for layer_idx in range(num_blocks):
-            layer = nn.ModuleDict(
-                {
-                    "attention": nn.MultiheadAttention(
-                        dim_token, num_heads, dropout=att_dropout
-                    ),
-                    "ffn": FeedForwardBlock(
-                        dim_token,
-                        dim_hidden,
-                        bias_first=True,
-                        bias_second=True,
-                        dropout=ffn_dropout,
-                        activation=activation,
-                    ),
-                    "attention_res_dropout": nn.Dropout(res_dropout),
-                    "ffn_res_dropout": nn.Dropout(res_dropout),
-                    "ffn_norm": ffn_norm(dim_token),
-                }
+            block = TransformerBlock(
+                dim_token=dim_token,
+                num_heads=num_heads,
+                att_dropout=att_dropout,
+                ffn_dropout=ffn_dropout,
+                dim_hidden=dim_hidden,
+                norm_layer=norm_layer,
+                activation=activation,
+                skip_attn_norm=(layer_idx == 0),
+                only_class_token=(layer_idx == num_blocks - 1),
+                pe_module=self.pe_module,
             )
-            if layer_idx != 0:
-                layer["attention_norm"] = att_norm(dim_token)
-            self.layers.append(layer)
+            self.layers.append(block)
 
         self.head = Head(
             dim_token,
@@ -94,57 +80,26 @@ class Transformer(nn.Module):
         self.head_normalization = head_norm
         self.dim_out = dim_out
 
-    def forward(self, x):
-        mask = torch.where(x["cat"] == 0, True, False)
-        cat = self.categorical_embedding(x["cat"])
-        if self.use_numerical:
-            num = self.numerical_embedding(x["num"])
-            x = torch.cat([cat, num], dim=1)
-            mask = torch.cat(
-                [
-                    mask,
-                    torch.zeros(
-                        [x.shape[0], num.shape[1]], device=mask.device, dtype=mask.dtype
-                    ),
-                ],
-                dim=1,
-            )
-        else:
-            x = cat
-        x = self.class_token(x)
+    def forward(self, input_data):
+        time_ids = input_data.get("time_ids")
+        sequence_lengths = input_data.get("sequence_lengths")
+        mask = input_data["feature_ids"] != 0
         mask = torch.cat(
-            [mask, torch.zeros([x.shape[0], 1], device=mask.device, dtype=mask.dtype)],
+            (
+                mask.new_full((mask.size(0), 1), True),  # (B, 1)
+                mask,
+            ),  # (B, L)
             dim=1,
         )
-
-        for i, layer in enumerate(self.layers):
-            x_residual = self.start_residual(layer, "attention", x)
-
-            if i == len(self.layers) - 1:
-                dims = x_residual.shape
-                x_residual = layer["attention"](
-                    x_residual[:, -1].view([dims[0], 1, dims[2]]).transpose(0, 1),
-                    x_residual.transpose(0, 1),
-                    x_residual.transpose(0, 1),
-                    mask,
-                )
-                x_residual = x_residual[0]
-                x = x[:, -1].view([dims[0], 1, dims[2]])
-            else:
-                x_residual = layer["attention"](
-                    x_residual.transpose(0, 1),
-                    x_residual.transpose(0, 1),
-                    x_residual.transpose(0, 1),
-                    mask,
-                )[0]
-            x = self.end_residual(layer, "attention", x, x_residual.transpose(0, 1))
-
-            x_residual = self.start_residual(layer, "ffn", x)
-            x_residual = layer["ffn"](x_residual)
-            x = self.end_residual(layer, "ffn", x, x_residual)
-
-        x = self.head(x)[:, 0]
-        return x
+        x = self.embedding(input_data)
+        x = self.class_token(x)
+        x = self.pe_module.apply_additive_pe(
+            x, time_ids=time_ids, lengths=sequence_lengths
+        )
+        for layer in self.layers:
+            x = layer(x, mask, time_ids)
+        x = self.head(x)
+        return x.squeeze()
 
     def reset_head(self):
         self.head = Head(
@@ -152,31 +107,90 @@ class Transformer(nn.Module):
             bias=True,
             activation=self.head_activation,
             normalization=self.head_normalization,
-            dim_out=self.dim_out
+            dim_out=self.dim_out,
         )
 
-    @staticmethod
-    def start_residual(layer, stage, x):
-        norm = f"{stage}_norm"
-        if norm in layer.keys():
-            x = layer[stage + "_norm"](x)
-        return x
 
-    @staticmethod
-    def end_residual(layer, stage, x, x_residual):
-        x_residual = layer[f"{stage}_res_dropout"](x_residual)
-        return x + x_residual
+class TransformerBlock(nn.Module):
+    def __init__(
+        self,
+        dim_token: int,
+        num_heads: int,
+        att_dropout: float,
+        ffn_dropout: float,
+        dim_hidden: int,
+        norm_layer: Type[nn.Module] = nn.LayerNorm,
+        activation: Type[nn.Module] = ReGLU,
+        skip_attn_norm: bool = False,
+        only_class_token: bool = False,
+        pe_module: PositionalEncoding = NoPositionalEncoding(),
+    ):
+        super(TransformerBlock, self).__init__()
+        if skip_attn_norm:
+            self.attn_norm = nn.Identity()
+        else:
+            self.attn_norm = norm_layer(dim_token)
+
+        self.query_selector = (
+            (lambda x: x[:, :1, :]) if only_class_token else (lambda x: x)
+        )
+        self.residual_selector = (
+            (lambda x: x[:, :1, :]) if only_class_token else (lambda x: x)
+        )
+        self.mask_selector = (lambda m: m[:, :1]) if only_class_token else (lambda m: m)
+
+        self.only_class_token = only_class_token
+        AttentionModuleClass = pe_module.get_attention_module_class()
+
+        self.attn = AttentionModuleClass(
+            dim_token=dim_token,
+            nheads=num_heads,
+            dropout_p=att_dropout,
+            pe_module=pe_module,
+        )
+        self.attn_dropout = nn.Dropout(att_dropout)
+
+        self.ffn_norm = norm_layer(dim_token)
+        self.ffn = FeedForwardBlock(
+            dim_token=dim_token,
+            dim_hidden=dim_hidden,
+            dropout=ffn_dropout,
+            activation=activation,
+        )
+        self.ffn_dropout = nn.Dropout(ffn_dropout)
+
+    def forward(
+        self,
+        x: torch.Tensor,
+        mask: torch.Tensor,
+        time_ids: Optional[torch.Tensor] = None,
+    ) -> torch.Tensor:
+        x_norm = self.attn_norm(x)
+        attn_out = self.attn(
+            x=x_norm,
+            query_selector=self.query_selector,
+            mask=mask,
+            time_ids=time_ids if time_ids is not None else None,
+        )
+        attn_out = self.attn_dropout(attn_out)
+        x = self.residual_selector(x) + attn_out
+
+        x_norm = self.ffn_norm(x)
+        ffn_out = self.ffn(x_norm)
+        ffn_out = self.ffn_dropout(ffn_out)
+        x = self.residual_selector(x) + ffn_out
+        return x
 
 
 class FeedForwardBlock(nn.Module):
     def __init__(
         self,
-        dim_token,
-        dim_hidden,
-        bias_first=True,
-        bias_second=True,
-        dropout=0.0,
-        activation=ReGLU,
+        dim_token: int,
+        dim_hidden: int,
+        bias_first: bool = True,
+        bias_second: bool = True,
+        dropout: float = 0.0,
+        activation: Type[nn.Module] = ReGLU,
     ):
         super(FeedForwardBlock, self).__init__()
         self.linear0 = nn.Linear(dim_token, int(dim_hidden * 2), bias=bias_first)
@@ -200,22 +214,113 @@ class Head(nn.Module):
         self.linear = nn.Linear(dim_in, dim_out, bias=bias)
 
     def forward(self, x):
-        x = x[:, -1]
         x = self.normalization(x)
         x = self.activation(x)
         x = self.linear(x)
         return x
 
 
-class ClassToken(nn.Module):
-    def __init__(self, dim_token):
-        super(ClassToken, self).__init__()
-        self.weight = nn.Parameter(torch.empty(dim_token, 1))
-        nn.init.kaiming_uniform_(self.weight, a=math.sqrt(5))
+class MultiHeadAttention(nn.Module):
+    """
+    Computes multi-head attention. Supports nested or padded tensors.
 
-    def expand(self, dims):
-        new_dims = [1] * (len(dims) - 1)
-        return self.weight.view(new_dims + [-1]).expand(dims + [-1])
+    Args:
+        dim_token (int): Size of embedding dim for query, key and value
+        nheads (int): Number of heads
+        dropout_p (float, optional): Dropout probability. Default: 0.0
+        use_rope (bool, optional): Whether to use RoPE (rotary positional
+            embedding). Default: False
+        max_time_id (int, optional): Maximum time_id for RoPE.
+            Default: 512
+    """
 
-    def forward(self, x):
-        return torch.cat([x, self.expand([x.shape[0], 1])], dim=1)
+    def __init__(
+        self,
+        dim_token: int,
+        nheads: int,
+        dropout_p: float = 0.0,
+        pe_module: PositionalEncoding = NoPositionalEncoding(),
+    ):
+        super().__init__()
+        self.nheads = nheads
+        self.dropout_p = dropout_p
+        self.in_proj = nn.Linear(dim_token, 3 * dim_token)
+        self.out_proj = nn.Linear(dim_token, dim_token)
+        assert dim_token % nheads == 0, "Embedding dim is not divisible by nheads"
+        self.E_head = dim_token // nheads
+        self.pe_module = pe_module
+
+    def forward(
+        self,
+        x: torch.Tensor,
+        query_selector: Callable,
+        mask: torch.Tensor,
+        time_ids: Optional[torch.Tensor] = None,
+    ) -> torch.Tensor:
+        """
+        Forward pass; runs the following process:
+            1. Apply input projection
+            2. Split heads and prepare for SDPA
+            3. Run SDPA
+            4. Apply output projection
+
+        Args:
+            x (torch.Tensor): query of shape (N, L_t, dim_token)
+            query_selector (callable): function to select query from x
+            mask (torch.Tensor): mask of shape (N, L_t)
+            time_ids (torch.Tensor, optional): time ids of shape (N, L_t) for RoPE
+
+        Returns:
+            attn_output (torch.Tensor): output of shape (N, L_t, E_q)
+        """
+        query, key, value = self.in_proj(x).chunk(3, dim=-1)
+        query = query_selector(query)
+        Lk = key.size(1)
+        Lq = query.size(1)
+
+        query = query.unflatten(-1, [self.nheads, self.E_head]).transpose(1, 2)
+        key = key.unflatten(-1, [self.nheads, self.E_head]).transpose(1, 2)
+        value = value.unflatten(-1, [self.nheads, self.E_head]).transpose(1, 2)
+
+        pos_scores, bias = None, None
+        query, key = self.pe_module.apply_attention_pe(
+            query, key, time_ids=time_ids
+        )
+        pos_scores = self.pe_module.get_positional_scores(
+            query, k_len=Lk, time_ids=time_ids
+        )
+        bias = self.pe_module.get_attention_bias(
+            q_len=Lq, k_len=Lk, time_ids=time_ids
+        )
+
+        use_manual_path = pos_scores is not None or bias is not None
+        attn_mask = mask[:, None, None, :].contiguous()
+
+        if use_manual_path:
+            scale = self.E_head**-0.5
+            attn_scores = (query @ key.transpose(-2, -1)) * scale
+
+            if pos_scores is not None:
+                attn_scores += pos_scores * scale
+            if bias is not None:
+                attn_scores += bias
+            attn_scores = attn_scores.masked_fill(~attn_mask, -torch.inf)
+
+            attn_weights = torch.softmax(attn_scores, dim=-1)
+            attn_weights = F.dropout(
+                attn_weights, p=self.dropout_p, training=self.training
+            )
+
+            attn_output = attn_weights @ value
+        else:
+            attn_output = F.scaled_dot_product_attention(
+                query,
+                key,
+                value,
+                dropout_p= self.dropout_p if self.training else 0.0,
+                is_causal=False,
+                attn_mask=attn_mask,
+            )
+        attn_output = attn_output.transpose(1, 2).flatten(-2)
+        attn_output = self.out_proj(attn_output)
+        return attn_output

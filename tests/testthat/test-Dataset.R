@@ -1,22 +1,22 @@
 test_that("number of num and cat features sum correctly", {
+  featureInfo <- dataset$get_feature_info()
   testthat::expect_equal(
-    length(dataset$get_numerical_features()) +
-      length(dataset$get_cat_features()),
+    featureInfo$get_vocabulary_size(),
     dplyr::n_distinct(mappedData$covariates %>%
-                        dplyr::collect() %>%
-                        dplyr::pull(covariateId))
+      dplyr::collect() %>%
+      dplyr::pull(covariateId))
   )
 })
 
 
 test_that("length of dataset correct", {
-  expect_equal(length(dataset), dataset$cat$shape[0])
-  expect_equal(length(dataset), dataset$num$shape[0])
+  expect_equal(length(dataset), dataset$data[["feature_ids"]]$shape[[0]])
+  expect_equal(length(dataset), dataset$data[["feature_values"]]$shape[[0]])
   expect_equal(
     length(dataset),
     dplyr::n_distinct(mappedData$covariates %>%
-                        dplyr::collect() %>%
-                        dplyr::pull(.data$rowId))
+      dplyr::collect() %>%
+      dplyr::pull(.data$rowId))
   )
 })
 
@@ -34,29 +34,29 @@ test_that(".getbatch works", {
   expect_true(out[[2]]$item() %in% c(0, 1))
 
   # shape of batch is correct
-  expect_equal(length(out[[1]]), 2)
-  expect_equal(out[[1]]$cat$shape[0], 1)
-  expect_equal(out[[1]]$num$shape[0], 1)
+  expect_equal(length(out[[1]]), 3)
+  expect_equal(out[[1]]$feature_ids$shape[0], 1)
+  expect_equal(out[[1]]$feature_values$shape[0], 1)
 
   # shape of target
   expect_equal(out[[2]]$shape$numel(), 1)
 
   # get a whole batch
-  out <- dataset[10:(10 + batchSize)]
+  seq <- 10:(10 + batchSize - 1)
+  out <- dataset[seq]
 
   expect_equal(length(out), 2)
   expect_true(all(out[[2]]$numpy() %in% c(0, 1)))
 
-  expect_equal(length(out[[1]]), 2)
-  expect_equal(out[[1]]$cat$shape[0], 16)
-  expect_equal(out[[1]]$num$shape[0], 16)
+  expect_equal(length(out[[1]]), 3)
+  expect_equal(out[[1]]$feature_ids$shape[0], 16)
+  expect_equal(out[[1]]$feature_values$shape[0], 16)
 
   expect_equal(out[[2]]$shape[0], 16)
 })
 
 test_that("Column order is preserved when features are missing", {
   # important for transfer learning and external validation
-
   reducedCovData <- Andromeda::copyAndromeda(trainData$Train$covariateData)
 
   # remove one numerical and one categorical
@@ -79,47 +79,119 @@ test_that("Column order is preserved when features are missing", {
     dplyr::filter(covariateId == numFeature) %>%
     dplyr::pull("columnId")
 
-  reducedDataset <- datasetClass$Data(
-    data =
-      reticulate::r_to_py(normalizePath(attributes(mappedReducedData)$dbname)),
-    labels = reticulate::r_to_py(trainData$Train$labels$outcomeCount),
-    numerical_features = dataset$numerical_features$to_list()
+  reducedDataset <- createDataset(
+    data = mappedReducedData,
+    labels = trainData$Train$labels,
   )
 
-  # should have same number of columns
-  expect_equal(dataset$num$shape[[1]], reducedDataset$num$shape[[1]])
-
-  # all zeros in column with removed feature, -1 because r to py
-  expect_true(reducedDataset$num[, numColumn - 1]$sum()$item() == 0)
+  # all zeros in columns with removed feature
+  expect_true(reducedDataset$data[["feature_values"]][reducedDataset$data[["feature_ids"]] == numColumn]$sum()$item() == 0)
 
   # all other columns are same
-  indexReduced <- !torch$isin(torch$arange(reducedDataset$num$shape[[1]]),
-                              numColumn - 1)
-  index <- !torch$isin(torch$arange(dataset$num$shape[[1]]),
-                       numColumn - 1)
+  indexReduced <- !torch$isin(
+    reducedDataset$data[["feature_ids"]],
+    torch$as_tensor(c(numColumn, catColumn))
+  )
+  index <- !torch$isin(
+    dataset$data[["feature_ids"]],
+    torch$as_tensor(c(numColumn, catColumn))
+  )
 
-  expect_equal(reducedDataset$num[, indexReduced]$mean()$item(),
-               dataset$num[, index]$mean()$item())
 
-  # cat data should have same counts of all columnIds
-  # expect the one that was removed
+  expect_equal(
+    reducedDataset$data[["feature_values"]][indexReduced]$sum()$item(),
+    dataset$data[["feature_values"]][index]$sum()$item()
+  )
+
   # not same counts for removed feature
-  expect_false(isTRUE(all.equal((reducedDataset$cat == catColumn)$sum()$item(),
-                                (dataset$cat == catColumn)$sum()$item())))
+  expect_false(isTRUE(all.equal(
+    (reducedDataset$data[["feature_ids"]] == catColumn)$sum()$item(),
+    (dataset$data[["feature_ids"]] == catColumn)$sum()$item()
+  )))
 
   # get counts
-  counts <- as.array(torch$unique(dataset$cat,
-                                  return_counts = TRUE)[[2]]$numpy())
+  counts <- as.array(torch$unique(dataset$data[["feature_ids"]],
+    return_counts = TRUE
+  )[[2]]$numpy())
   counts <- counts[-(catColumn + 1)] # +1 because py_to_r
   counts <- counts[-1]
 
-  reducedCounts <- as.array(torch$unique(reducedDataset$cat,
-                                         return_counts = TRUE)[[2]]$numpy())
+  reducedCounts <- as.array(torch$unique(reducedDataset$data[["feature_ids"]],
+    return_counts = TRUE
+  )[[2]]$numpy())
   reducedCounts <- reducedCounts[-(catColumn + 1)] # +1 because py_to_r
   reducedCounts <- reducedCounts[-1]
 
   expect_false(isTRUE(all.equal(counts, reducedCounts)))
-  expect_equal(dataset$get_cat_features()$max(),
-               reducedDataset$get_cat_features()$max())
+  expect_equal(
+    dataset$get_feature_info()$get_vocabulary_size(),
+    reducedDataset$get_feature_info()$get_vocabulary_size()
+  )
+})
 
+test_that("feature_ids and feature_values remain in sync in dataset with timeIds", {
+  analysisRef <- data.frame(
+    analysisId = 1,
+    analysisName = "dummy",
+    domainId = "Condition",
+    startDay = -365,
+    endDay = -1,
+    isBinary = "N",
+    missingMeansZero = "N"
+  )
+  covariateRef <- data.frame(
+    covariateId = c(1, 2, 3, 4, 5, 6),
+    columnId = c(1L, 2L, 3L, 4L, 5L, 6L),
+    covariateName = paste0("Cov_", 1:6),
+    analysisId = c(1, 1, 1, 1, 1, 1)
+  )
+  covariates <- data.frame(
+    rowId = c(1L, 1L, 1L, 2L, 2L, 2L),
+    covariateId = c(5, 2, 4, 6, 3, 1),
+    covariateValue = c(0.5, 0.2, 0.4, 1.0, 2.0, 3.0),
+    timeId = c(10, 10, 12, 7, 7, 8),
+    columnId = c(5L, 2L, 4L, 6L, 3L, 1L)
+  )
+  timeRef <- data.frame(
+    timePart = "month",
+    timeInterval = 1,
+    sequenceStartDay = -365,
+    sequenceEndDay = -1
+  )
+  covData <- Andromeda::andromeda(
+    analysisRef = analysisRef,
+    covariateRef = covariateRef,
+    covariates = covariates,
+    timeRef = timeRef
+  )
+  dataset <- createDataset(
+    data = covData,
+    labels = data.frame(rowId = c(1L, 2L), outcomeCount = c(1L, 0L)),
+    temporalSettings = list(
+      useRope = FALSE,
+      maxSequenceLength = 12L,
+      truncation = "tail",
+      timeTokens = FALSE
+    )
+  )
+
+  featureIds <- dataset$data[["feature_ids"]]
+  featureValues <- dataset$data[["feature_values"]]
+  rowIds <- dataset$data[["row_ids"]]
+  for (i in seq_along(rowIds)) {
+    id <- rowIds[i - 1]$item()
+    datasetFeatures <- data.frame(
+      ids = featureIds[i - 1][0:3]$tolist(),
+      values = featureValues[i - 1][0:3]$tolist()
+    )
+    datasetFeatures <- datasetFeatures %>% dplyr::arrange(.data$ids)
+
+    expectedFeatures <- covariates %>% 
+      dplyr::filter(.data$rowId == id + 1) %>% # +1 because py_to_r
+      dplyr::arrange(.data$columnId) %>%
+      dplyr::select("columnId", "covariateValue")
+
+    expect_equal(datasetFeatures$ids, expectedFeatures$columnId)
+    expect_equal(datasetFeatures$values, expectedFeatures$covariateValue)
+  }
 })

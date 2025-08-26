@@ -16,11 +16,10 @@ modelSettings <- setMultiLayerPerceptron(
 )
 
 test_that("setMultiLayerPerceptron works", {
-  testthat::expect_s3_class(object = modelSettings, class = "modelSettings")
+  expect_s3_class(object = modelSettings, class = "modelSettings")
 
-  testthat::expect_equal(modelSettings$fitFunction, "DeepPatientLevelPrediction::fitEstimator")
-
-  testthat::expect_true(length(modelSettings$param) > 0)
+  expect_equal(modelSettings$fitFunction, "DeepPatientLevelPrediction::fitEstimator")
+  expect_true(length(modelSettings$param) > 0)
 
   expect_error(setMultiLayerPerceptron(numLayers = 1,
                                        sizeHidden = 128,
@@ -49,7 +48,7 @@ results <- tryCatch(
       executeSettings = PatientLevelPrediction::createExecuteSettings(
         runSplitData = TRUE,
         runSampleData = FALSE,
-        runfeatureEngineering = FALSE,
+        runFeatureEngineering = FALSE,
         runPreprocessData = TRUE,
         runModelDevelopment = TRUE,
         runCovariateSummary = FALSE
@@ -65,31 +64,30 @@ results <- tryCatch(
 sink()
 
 test_that("MLP with runPlp working checks", {
-  testthat::expect_false(is.null(results))
+  expect_false(is.null(results))
 
   # check structure
-  testthat::expect_true("prediction" %in% names(results))
-  testthat::expect_true("model" %in% names(results))
-  testthat::expect_true("covariateSummary" %in% names(results))
-  testthat::expect_true("performanceEvaluation" %in% names(results))
+  expect_true("prediction" %in% names(results))
+  expect_true("model" %in% names(results))
+  expect_true("covariateSummary" %in% names(results))
+  expect_true("performanceEvaluation" %in% names(results))
 
   # check prediction same size as pop
-  testthat::expect_equal(nrow(results$prediction %>%
+  expect_equal(nrow(results$prediction %>%
                                 dplyr::filter(evaluationType %in% c("Train",
                                                                     "Test"))),
                          nrow(population))
 
   # check prediction between 0 and 1
-  testthat::expect_gte(min(results$prediction$value), 0)
-  testthat::expect_lte(max(results$prediction$value), 1)
+  expect_gte(min(results$prediction$value), 0)
+  expect_lte(max(results$prediction$value), 1)
 })
 
 
 test_that("MLP nn-module works ", {
   mlp <- reticulate::import_from_path("MultiLayerPerceptron", path = path)$MultiLayerPerceptron
   model <- mlp(
-    cat_features = 5,
-    num_features = 1,
+    feature_info = dataset$get_feature_info(),
     size_embedding = 5,
     size_hidden = 16,
     num_layers = 1,
@@ -101,11 +99,11 @@ test_that("MLP nn-module works ", {
   pars <- sum(reticulate::iterate(model$parameters(), function(x) x$numel()))
 
   # expected number of parameters
-  expect_equal(pars, 489)
+  expect_equal(pars, 994.0)
 
   input <- list()
-  input$cat <- torch$randint(0L, 5L, c(10L, 5L), dtype = torch$long)
-  input$num <- torch$randn(10L, 1L, dtype = torch$float32)
+  input$feature_ids <- torch$randint(0L, 5L, c(10L, 5L), dtype = torch$long)
+  input$feature_values <- torch$randint(0L, 5L, c(10L, 5L), dtype = torch$long)
 
 
   output <- model(input)
@@ -113,10 +111,8 @@ test_that("MLP nn-module works ", {
   # output is correct shape
   expect_equal(output$shape[0], 10L)
 
-  input$num <- NULL
   model <- mlp(
-    cat_features = 5L,
-    num_features = 0,
+    feature_info = dataset$get_feature_info(),
     size_embedding = 5L,
     size_hidden = 16L,
     num_layers = 1L,
@@ -158,7 +154,7 @@ test_that("Can upload results to database", {
 
   sink(nullfile())
   sqliteFile <-
-    insertResultsToSqlite(resultLocation = file.path(testLoc, "MLP"),
+    PatientLevelPrediction::insertResultsToSqlite(resultLocation = file.path(testLoc, "MLP"),
                           cohortDefinitions = cohortDefinitions)
   sink()
 
@@ -176,5 +172,5 @@ test_that("Can upload results to database", {
   # check the results table is populated
   sql <- "select count(*) as N from main.performances;"
   res <- DatabaseConnector::querySql(conn, sql)
-  testthat::expect_true(res$N[1] > 0)
+  expect_true(res$N[1] > 0)
 })

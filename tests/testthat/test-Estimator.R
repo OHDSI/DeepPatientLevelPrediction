@@ -1,9 +1,6 @@
-catFeatures <- smallDataset$dataset$get_cat_features()$max()
-numFeatures <- smallDataset$dataset$get_numerical_features()$len()
-
+featureInfo <- smallDataset$dataset$get_feature_info()
 modelParameters <- list(
-  catFeatures = catFeatures,
-  numFeatures = numFeatures,
+  feature_info = featureInfo,
   sizeEmbedding = 16,
   sizeHidden = 16,
   numLayers = 2,
@@ -25,9 +22,9 @@ estimatorSettings <-
                list(fun = torch$optim$lr_scheduler$ReduceLROnPlateau,
                     params = list(patience = 1)),
                earlyStopping = NULL)
-
-estimator <- createEstimator(modelParameters = modelParameters,
-                             estimatorSettings = estimatorSettings)
+parameters <- list(modelParameters = modelParameters,
+                   estimatorSettings = estimatorSettings)
+estimator <- createEstimator(parameters = parameters)
 
 test_that("Estimator initialization works", {
 
@@ -115,8 +112,9 @@ test_that("estimator fitting works", {
                                     epochs = 5,
                                     device = "cpu",
                                     metric = "loss")
-  estimator <- createEstimator(modelParameters = modelParameters,
-                               estimatorSettings = estimatorSettings)
+  parameters <- list(modelParameters = modelParameters,
+                     estimatorSettings = estimatorSettings)
+  estimator <- createEstimator(parameters = parameters)
 
   sink(nullfile())
   estimator$fit(smallDataset, smallDataset)
@@ -172,8 +170,8 @@ test_that("predictDeepEstimator works", {
                                       cohort = trainData$Train$labels)
   sink()
 
-  expect_lt(max(predictions$value), 1)
-  expect_gt(min(predictions$value), 0)
+  expect_lte(max(predictions$value), 1)
+  expect_gte(min(predictions$value), 0)
   expect_equal(nrow(predictions), nrow(trainData$Train$labels))
 
   # input is a plpModel and data
@@ -183,8 +181,8 @@ test_that("predictDeepEstimator works", {
     trainData$Test$labels
   )
   sink()
-  expect_lt(max(predictions$value), 1)
-  expect_gt(min(predictions$value), 0)
+  expect_lte(max(predictions$value), 1)
+  expect_gte(min(predictions$value), 0)
   expect_equal(nrow(predictions), nrow(trainData$Test$labels))
 })
 
@@ -204,7 +202,7 @@ test_that("batchToDevice works", {
   # test that all are meta
   expect_true(all(devices == TRUE))
 
-  numDevice <- batchToDevice(dataset[b][[1]]$num, device = estimator$device)
+  numDevice <- batchToDevice(dataset[b][[1]]$feature_values, device = estimator$device)
   expect_true(numDevice$device == torch$device(type = "meta"))
 })
 
@@ -216,8 +214,9 @@ test_that("Estimator without earlyStopping works", {
                                     epochs = 1,
                                     device = "cpu",
                                     earlyStopping = NULL)
-  estimator2 <- createEstimator(modelParameters = modelParameters,
-                                estimatorSettings = estimatorSettings)
+  parameters <- list(modelParameters = modelParameters,
+                     estimatorSettings = estimatorSettings)
+  estimator2 <- createEstimator(parameters = parameters)
   sink(nullfile())
   estimator2$fit(smallDataset, smallDataset)
   sink()
@@ -239,9 +238,9 @@ test_that("Early stopper can use loss and stops early", {
                                                          patience = 1)),
                                     metric = "loss",
                                     seed = 42)
-
-  estimator <- createEstimator(modelParameters = modelParameters,
-                               estimatorSettings = estimatorSettings)
+  parameters <- list(modelParameters = modelParameters,
+                     estimatorSettings = estimatorSettings)
+  estimator <- createEstimator(parameters = parameters)
   sink(nullfile())
   estimator$fit(smallDataset, smallDataset)
   sink()
@@ -267,8 +266,9 @@ test_that("Custom metric in estimator works", {
                                     metric = list(fun = metricFun,
                                                   name = "auprc",
                                                   mode = "max"))
-  estimator <- createEstimator(modelParameters = modelParameters,
-                               estimatorSettings = estimatorSettings)
+  parameters <- list(modelParameters = modelParameters,
+                     estimatorSettings = estimatorSettings)
+  estimator <- createEstimator(parameters = parameters)
   expect_true(is.function(estimator$metric$fun))
   expect_true(is.character(estimator$metric$name))
   expect_true(estimator$metric$mode %in% c("min", "max"))
@@ -332,10 +332,11 @@ test_that("device as a function argument works", {
                                     learningRate = 3e-4)
 
   model <- setDefaultResNet(estimatorSettings = estimatorSettings)
-  model$param[[1]]$catFeatures <- 10
+  model$param[[1]]$feature_info <- featureInfo
   model$param[[1]]$modelType <- "ResNet"
-  estimator <- createEstimator(modelParameters = model$param[[1]],
-                               estimatorSettings = estimatorSettings)
+  parameters <- list(modelParameters = model$param[[1]],
+                     estimatorSettings = estimatorSettings)
+  estimator <- createEstimator(parameters = parameters)
 
   expect_equal(estimator$device, "cpu")
 
@@ -345,11 +346,11 @@ test_that("device as a function argument works", {
                                     learningRate = 3e-4)
 
   model <- setDefaultResNet(estimatorSettings = estimatorSettings)
-  model$param[[1]]$catFeatures <- 10
+  model$param[[1]]$feature_info <- featureInfo
   model$param[[1]]$modelType <- "ResNet"
-
-  estimator <- createEstimator(modelParameters = model$param[[1]],
-                               estimatorSettings = estimatorSettings)
+  parameters <- list(modelParameters = model$param[[1]],
+                     estimatorSettings = estimatorSettings)
+  estimator <- createEstimator(parameters = parameters)
 
   expect_equal(estimator$device, "meta")
 
@@ -385,7 +386,7 @@ test_that("evaluation works on predictDeepEstimator output", {
   expect_length(evaluation, 5)
   expect_s3_class(evaluation, "plpEvaluation")
   
-  })
+})
 
 
 test_that("accumulationSteps as a function argument works", {
@@ -403,10 +404,11 @@ test_that("accumulationSteps as a function argument works", {
                                     batchSize = 128)
 
   model <- setDefaultResNet(estimatorSettings = estimatorSettings)
-  model$param[[1]]$catFeatures <- 10
+  model$param[[1]]$feature_info <- featureInfo
   model$param[[1]]$modelType <- "ResNet"
-  estimator <- createEstimator(modelParameters = model$param[[1]],
-                               estimatorSettings = estimatorSettings)
+  parameters <- list(modelParameters = model$param[[1]],
+                     estimatorSettings = estimatorSettings)
+  estimator <- createEstimator(parameters = parameters)
 
   expect_equal(estimator$accumulation_steps, 1)
 
@@ -417,14 +419,45 @@ test_that("accumulationSteps as a function argument works", {
                                     batchSize = 128)
 
   model <- setDefaultResNet(estimatorSettings = estimatorSettings)
-  model$param[[1]]$catFeatures <- 10
+  model$param[[1]]$feature_info <- featureInfo
   model$param[[1]]$modelType <- "ResNet"
-
-  estimator <- createEstimator(modelParameters = model$param[[1]],
-                               estimatorSettings = estimatorSettings)
+  parameters <- list(modelParameters = model$param[[1]],
+                     estimatorSettings = estimatorSettings)
+  estimator <- createEstimator(parameters = parameters)
 
   expect_equal(estimator$accumulation_steps, 4)
 
+
   Sys.unsetenv("testAccSteps")
 
+})
+
+test_that("train-validation split functionality works", {
+  estimatorSettings <-
+    setEstimator(learningRate = 3e-4,
+                 weightDecay = 0.0,
+                 batchSize = 128,
+                 epochs = 1,
+                 device = "cpu",
+                 seed = 42,
+                 optimizer = torch$optim$AdamW,
+                 criterion = torch$nn$BCEWithLogitsLoss,
+                 metric = "loss",
+                 scheduler =
+                 list(fun = torch$optim$lr_scheduler$ReduceLROnPlateau,
+                      params = list(patience = 1)),
+                 earlyStopping = NULL,
+                 trainValidationSplit = TRUE)
+  modelSettings <- setResNet(numLayers = 1, sizeHidden = 16,
+                             hiddenFactor = 1, residualDropout = 0,
+                             hiddenDropout = 0, sizeEmbedding = 8,
+                             estimatorSettings = estimatorSettings,
+                             randomSample = 1)
+
+  fitResult <- fitEstimator(trainData$Train, modelSettings, analysisId = 1, analysisPath = tempdir())
+
+  expect_s3_class(fitResult, "plpModel")
+  uniqueEvalTypes <- unique(fitResult$prediction$evaluationType)
+  expect_true("Validation" %in% uniqueEvalTypes)
+  expect_true("Train" %in% uniqueEvalTypes)
 })

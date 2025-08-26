@@ -9,35 +9,44 @@
 # You may obtain a copy of the License at
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
-#
+
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-createDataset <- function(data, labels, plpModel = NULL) {
+createDataset <- function(data, labels,
+                          plpModel = NULL,
+                          temporalSettings = NULL) {
   path <- system.file("python", package = "DeepPatientLevelPrediction")
+
+  newPath <- tempfile()
+  Andromeda::saveAndromeda(data, newPath, maintainConnection = TRUE)
+
+  attributes(data)$path <- attributes(data)$path %||% attributes(data)$dbname
+
+  args <- list(
+    r_to_py(normalizePath(newPath))
+  )
+
   dataset <- reticulate::import_from_path("Dataset", path = path)$Data
-  if (is.null(attributes(data)$path)) {
-    # sqlite object
-    attributes(data)$path <- attributes(data)$dbname
+  if ("timeId" %in% names(data$covariates)) {
+    args$temporal_settings <- r_to_py(camelCaseToSnakeCaseNames(temporalSettings))
   }
-  if (is.null(plpModel) && is.null(data$numericalIndex)) {
-    data <- dataset(r_to_py(normalizePath(attributes(data)$path)),
-                    r_to_py(labels$outcomeCount))
-  } else if (!is.null(data$numericalIndex)) {
-    numericalIndex <-
-      r_to_py(as.array(data$numericalIndex %>% dplyr::pull()))
-    data <- dataset(r_to_py(normalizePath(attributes(data)$path)),
-                    r_to_py(labels$outcomeCount),
-                    numericalIndex)
-  } else {
-    numericalFeatures <-
-      r_to_py(as.array(which(plpModel$covariateImportance$isNumeric)))
-    data <- dataset(r_to_py(normalizePath(attributes(data)$path)),
-      numerical_features = numericalFeatures
-    )
+  # training
+  if (is.null(plpModel)) {
+    args$labels <- r_to_py(labels$outcomeCount)
+    return(do.call(dataset, args))
   }
 
-  return(data)
+  # backwards compatibility with numerical index either from data from plpModel
+  numericalIndex <- data$numericalIndex %||% plpModel$covariateImportance$isNumeric
+  if (!is.null(numericalIndex)) {
+    args$numericalIndex <- r_to_py(as.array(numericalIndex %>% dplyr::pull()))
+    return(do.call(dataset, args))
+  }
+
+  # testing
+  args$data_reference <- r_to_py(plpModel$covariateImportance)
+  return(do.call(dataset, args))
 }

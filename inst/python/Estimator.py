@@ -6,97 +6,93 @@ from torch.utils.data import DataLoader, BatchSampler, RandomSampler, Sequential
 from tqdm import tqdm
 
 from gpu_memory_cleanup import memory_cleanup
-
+from InitStrategy import InitStrategy, DefaultInitStrategy
 
 class Estimator:
     """
     A class that wraps around pytorch models.
     """
 
-    def __init__(self, model, model_parameters, estimator_settings):
-        self.seed = estimator_settings["seed"]
-        if callable(estimator_settings["device"]):
-            self.device = estimator_settings["device"]()
+    def __init__(self, model, parameters):
+        self.seed = parameters["estimator_settings"]["seed"]
+        if callable(parameters["estimator_settings"]["device"]):
+            self.device = parameters["estimator_settings"]["device"]()
         else:
-            self.device = estimator_settings["device"]
+            self.device = parameters["estimator_settings"]["device"]
         torch.manual_seed(seed=self.seed)
-        if "finetune" in estimator_settings.keys() and estimator_settings["finetune"]:
-            path = estimator_settings["finetune_model_path"]
-            fitted_estimator = torch.load(path, map_location="cpu")
-            fitted_parameters = fitted_estimator["model_parameters"]
-            self.model = model(**fitted_parameters)
-            self.model.load_state_dict(fitted_estimator["model_state_dict"])
-            for param in self.model.parameters():
-                param.requires_grad = False
-            self.model.reset_head()
-        else:
-            self.model = model(**model_parameters)
-        self.model_parameters = model_parameters
-        self.estimator_settings = estimator_settings
 
-        self.epochs = int(estimator_settings.get("epochs", 5))
-        if estimator_settings["find_l_r"]:
+        if "init_strategy" in parameters["estimator_settings"]:
+            self.model = parameters["estimator_settings"]["init_strategy"].initialize(model, parameters)
+        else:
+            self.model = DefaultInitStrategy().initialize(model, parameters)
+            
+        self.model_parameters = parameters["model_parameters"]
+        self.estimator_settings = parameters["estimator_settings"]
+
+        self.epochs = int(parameters["estimator_settings"].get("epochs", 5))
+        if parameters["estimator_settings"]["find_l_r"]:
             self.learning_rate = 3e-4
         else:
-            self.learning_rate = estimator_settings.get("learning_rate", 3e-4)
-        self.weight_decay = estimator_settings.get("weight_decay", 1e-5)
-        self.batch_size = int(estimator_settings.get("batch_size", 1024))
-        self.prefix = estimator_settings.get("prefix", self.model.name)
+            self.learning_rate = parameters["estimator_settings"].get("learning_rate", 3e-4)
+        self.weight_decay = parameters["estimator_settings"].get("weight_decay", 1e-5)
+        self.batch_size = int(parameters["estimator_settings"].get("batch_size", 1024))
+        self.prefix = parameters["estimator_settings"].get("prefix", self.model.name)
         
-        if "accumulation_steps" in estimator_settings.keys() and estimator_settings["accumulation_steps"]:
-            self.accumulation_steps = int(estimator_settings["accumulation_steps"])
+        if "accumulation_steps" in parameters["estimator_settings"].keys() \
+        and parameters["estimator_settings"]["accumulation_steps"]:
+            self.accumulation_steps = int(parameters["estimator_settings"]["accumulation_steps"])
             self.sub_batch_size = self.batch_size // self.accumulation_steps
         else:
             self.accumulation_steps = 1
             self.sub_batch_size = self.batch_size
         
-        self.previous_epochs = int(estimator_settings.get("previous_epochs", 0))
+        self.previous_epochs = int(parameters["estimator_settings"].get("previous_epochs", 0))
         self.model.to(device=self.device)
 
-        self.optimizer = estimator_settings["optimizer"](
+        self.optimizer = parameters["estimator_settings"]["optimizer"](
             params=self.model.parameters(),
             lr=self.learning_rate,
             weight_decay=self.weight_decay,
         )
-        self.criterion = estimator_settings["criterion"](reduction="sum")
+        self.criterion = parameters["estimator_settings"]["criterion"](reduction="sum")
 
         if (
-            "metric" in estimator_settings.keys()
-            and estimator_settings["metric"] is not None
+            "metric" in parameters["estimator_settings"].keys()
+            and parameters["estimator_settings"]["metric"] is not None
         ):
-            self.metric = estimator_settings["metric"]
+            self.metric = parameters["estimator_settings"]["metric"]
             if isinstance(self.metric, str):
                 if self.metric == "auc":
                     self.metric = {"name": "auc", "mode": "max"}
                 elif self.metric == "loss":
                     self.metric = {"name": "loss", "mode": "min"}
             if (
-                "scheduler" in estimator_settings.keys()
-                and estimator_settings["scheduler"] is not None
+                "scheduler" in parameters["estimator_settings"].keys()
+                and parameters["estimator_settings"]["scheduler"] is not None
             ):
-                estimator_settings["scheduler"]["params"]["mode"] = self.metric["mode"]
+                parameters["estimator_settings"]["scheduler"]["params"]["mode"] = self.metric["mode"]
             if (
-                "early_stopping" in estimator_settings.keys()
-                and estimator_settings["early_stopping"] is not None
+                "early_stopping" in parameters["estimator_settings"].keys()
+                and parameters["estimator_settings"]["early_stopping"] is not None
             ):
-                estimator_settings["early_stopping"]["params"]["mode"] = self.metric[
+                parameters["estimator_settings"]["early_stopping"]["params"]["mode"] = self.metric[
                     "mode"
                 ]
 
         if (
-            "scheduler" in estimator_settings.keys()
-            and estimator_settings["scheduler"] is not None
+            "scheduler" in parameters["estimator_settings"].keys()
+            and parameters["estimator_settings"]["scheduler"] is not None
         ):
-            self.scheduler = estimator_settings["scheduler"]["fun"](
-                self.optimizer, **estimator_settings["scheduler"]["params"]
+            self.scheduler = parameters["estimator_settings"]["scheduler"]["fun"](
+                self.optimizer, **parameters["estimator_settings"]["scheduler"]["params"]
             )
 
         if (
-            "early_stopping" in estimator_settings.keys()
-            and estimator_settings["early_stopping"] is not None
+            "early_stopping" in parameters["estimator_settings"].keys()
+            and parameters["estimator_settings"]["early_stopping"] is not None
         ):
             self.early_stopper = EarlyStopping(
-                **estimator_settings["early_stopping"]["params"]
+                **parameters["estimator_settings"]["early_stopping"]["params"]
             )
         else:
             self.early_stopper = None
@@ -104,6 +100,9 @@ class Estimator:
         self.best_score = None
         self.best_epoch = None
         self.learn_rate_schedule = None
+        torch_compile = parameters["estimator_settings"].get("compile", False)
+        if torch_compile:
+            self.model = torch.compile(self.model, dynamic=False)
 
     def fit(self, dataset, test_dataset):
         train_dataloader = DataLoader(
@@ -112,8 +111,9 @@ class Estimator:
             sampler=BatchSampler(
                 sampler=RandomSampler(dataset),
                 batch_size=self.batch_size,
-                drop_last=True,
+                drop_last=True if len(dataset) > self.batch_size else False,
             ),
+            pin_memory=True,
         )
         test_dataloader = DataLoader(
             dataset=test_dataset,
@@ -123,6 +123,7 @@ class Estimator:
                 batch_size=self.batch_size,
                 drop_last=False,
             ),
+            pin_memory=True,
         )
 
         trained_epochs = dict()
@@ -281,7 +282,7 @@ class Estimator:
         return
 
     def split_batch(self, batch):
-        if self.accumulation_steps > 1 and len(batch[0]["cat"]) > self.sub_batch_size:
+        if self.accumulation_steps > 1 and len(batch[0]["feature_ids"]) > self.sub_batch_size:
             data, labels = batch
             split_data = {key: list(torch.split(value, self.sub_batch_size))
                           for key, value in data.items() if value is not None}
@@ -400,7 +401,7 @@ class EarlyStopping:
 
 def batch_to_device(batch, device="cpu"):
     if torch.is_tensor(batch):
-        batch = batch.to(device=device)
+        batch = batch.to(device=device, non_blocking=True)
     else:
         for ix, b in enumerate(batch):
             if isinstance(b, str):
@@ -411,7 +412,7 @@ def batch_to_device(batch, device="cpu"):
             if b is None:
                 continue
             if torch.is_tensor(b):
-                b_out = b.to(device=device)
+                b_out = b.to(device=device, non_blocking=True)
             else:
                 b_out = batch_to_device(b, device)
             if b_out is not None:

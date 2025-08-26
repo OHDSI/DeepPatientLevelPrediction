@@ -14,3 +14,4 @@ inst/python/__pycache__
 /doc/
 /Meta/
 *.pt
+.aider*

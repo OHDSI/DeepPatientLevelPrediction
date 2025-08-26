@@ -9,25 +9,51 @@
 #                      Needed to avoid "API rate limit exceeded" from github.
 name: Release Docker
 
+permissions:
+  contents: read
+  packages: write
+
 on:
   push:
+    branches:
+      - "main"
     tags:
-      - 'v*'
+      - "v*"
   workflow_dispatch:
 
+env:
+  DOCKER_IMAGE: "ohdsi/deep_plp"
+
 jobs:
-  docker:
-    runs-on: ubuntu-latest
-    env:
-      DOCKER_IMAGE: 'ohdsi/deep_plp' 
+  build:
+    runs-on: ${{ matrix.config.runner }}
+    name: ${{ matrix.config.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - { runner: ubuntu-24.04, arch: "amd64" }
+          - { runner: ubuntu-24.04-arm, arch: "arm64" }
     steps:
-      - uses: actions/checkout@v4
+      - name: Prepare
+        run: |
+          platform=${{ matrix.config.arch }}
+          echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
 
-      # ------------------------------------
-      # The pattern for the following steps is specified
-      # in OHDSI/WebAPI.
+      - name: Free disk space
+        shell: bash
+        run: |
+          set -euxo pipefail
+          df -h
+          sudo rm -rf /usr/local/lib/android || true
+          sudo rm -rf /usr/share/dotnet || true
+          sudo rm -rf /opt/ghc || true
+          sudo rm -rf /opt/hostedtoolcache || true
+          docker system prune -af || true
+          sudo apt-get clean || true
+          sudo rm -rf /var/lib/apt/lists/* || true
+          df -h
 
-      # Add Docker labels and tags
       - name: Docker meta
         id: docker_meta
         uses: docker/metadata-action@v5
@@ -35,9 +61,6 @@ jobs:
           images: ${{ env.DOCKER_IMAGE }}
           tags: |
             type=semver,pattern={{version}}
-      # Setup docker build environment
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -47,21 +70,38 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set build parameters
         id: build_params
+        shell: bash
         run: |
+          set -euo pipefail
           echo "SHA8=${GITHUB_SHA::8}" >> $GITHUB_ENV
-      - name: Build and push
-        id: docker_build
+
+          owner_lc="${GITHUB_REPOSITORY_OWNER,,}"
+
+          ref="${GITHUB_REF_NAME//\//-}"
+          ref_lc="${ref,,}"
+          echo "owner=${owner_lc}" >> "$GITHUB_OUTPUT"
+          echo "ref=${ref_lc}"     >> "$GITHUB_OUTPUT"
+      - name: Build and push by digest
+        id: build
         uses: docker/build-push-action@v6
         with:
-          context: ./
-          cache-from: type=gha
-          cache-to: type=gha, mode=max
+          cache-from: |
+            type=registry,ref=ghcr.io/${{ steps.build_params.outputs.owner }}/deep_plp:buildcache-${{ matrix.config.arch }}
+            type=registry,ref=ghcr.io/${{ steps.build_params.outputs.owner }}/deep_plp:buildcache-${{ matrix.config.arch }}-${{ steps.build_params.outputs.ref }}
+          cache-to: |
+            type=registry,ref=ghcr.io/${{ steps.build_params.outputs.owner }}/deep_plp:buildcache-${{ matrix.config.arch }}-${{ steps.build_params.outputs.ref }},mode=max
+            ${{ github.ref == 'refs/heads/main' && format('type=registry,ref=ghcr.io/{0}/deep_plp:buildcache-{1},mode=max', steps.build_params.outputs.owner, matrix.config.arch) || '' }}
           file: Dockerfile
-          platforms: linux/amd64, linux/arm64
-          push: true
+          platforms: "linux/${{ matrix.config.arch }}"
           secrets: |
             build_github_pat=${{ secrets.GH_TOKEN }}
           build-args: |
@@ -69,14 +109,130 @@ jobs:
             GIT_COMMIT_ID_ABBREV=${{ env.SHA8 }}
           tags: ${{ steps.docker_meta.outputs.tags }}
           # Use runtime labels from docker_meta as well as fixed labels
+          outputs: type=image, name=${{ env.DOCKER_IMAGE }}, push-by-digest=true, name-canonical=true, push=true
+
           labels: |
             ${{ steps.docker_meta.outputs.labels }}
             maintainer=Egill A. Fridgeirsson <e.fridgeirsson@erasmusmc.nl>
             org.opencontainers.image.authors=Egill A. Fridgeirsson <e.fridgeirsson@erasmusmc.nl>, Henrik John <l.john@erasmusmc.nl>
             org.opencontainers.image.vendor=OHDSI
             org.opencontainers.image.licenses=Apache-2.0
+      - name: Export digest
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.build.outputs.digest }}"
+          echo "${digest#sha256:}" > "/tmp/digests/digest-${{ matrix.config.arch }}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digest-${{ env.PLATFORM_PAIR }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  test:
+    name: "test-${{ matrix.config.arch }}-docker"
+    runs-on: ${{ matrix.config.runs_on }}
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - { runs_on: "ubuntu-24.04", arch: "amd64" }
+          - { runs_on: "ubuntu-24.04-arm", arch: "arm64" }
+    needs: build
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: "digest-${{ matrix.config.arch }}"
+          merge-multiple: true
+
+      - name: Run R CMD check
+        run: |
+          digest=$(cat /tmp/digests/digest-${{ matrix.config.arch }})
+
+          # run package checks
+          docker run --rm \
+          -e _R_CHECK_FORCE_SUGGESTS=false \
+          -e _R_CHECK_CRAN_INCOMING=false \
+          -v $(pwd):/workspace -w /workspace \
+          ${{ env.DOCKER_IMAGE }}@sha256:$digest Rscript -e \
+          "options(repos = c(CRAN = 'https://cloud.r-project.org'));
+          install.packages('rcmdcheck');
+          rcmdcheck::rcmdcheck('.', args=c('--no-manual', '--as-cran'),
+          build_args='--no-manual', error_on='warning')"
+
+  merge:
+    runs-on: ubuntu-24.04
+    needs:
+      - build
+      - test
+    steps:
+      - name: Download digest
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: digest-*
+          merge-multiple: true
+
+      - name: Set up docker buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKER_IMAGE }}
+          tags: |
+            type=semver,pattern={{version}}
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+      - name: Create manifest list and push
+        working-directory: /tmp/digests
+        run: |
+          set -euo pipefail
+
+          IMAGES=()
+          for f in digest-*; do
+            DIGEST="$(tr -d '\r\n' < "$f")"
+            if [ -z "$DIGEST" ]; then
+              echo "Empty digest in file: $f" >&2
+              exit 1
+            fi
+            IMAGES+=("${DOCKER_IMAGE}@sha256:${DIGEST}")
+          done
+          echo "Using image references:"
+          printf ' - %s\n' "${IMAGES[@]}"
+
+          TAGS="$(jq -cr '.tags // [] | map("-t " + .) | join(" ")' <<< "${DOCKER_METADATA_OUTPUT_JSON:-}")"
+          if [ -z "$TAGS" ]; then
+            FALLBACK_TAG="${DOCKER_IMAGE}:dev-${GITHUB_REF_NAME//\//-}-${GITHUB_RUN_NUMBER}-${GITHUB_SHA:0:7}"
+            TAGS="-t ${FALLBACK_TAG}"
+            echo "No release tags; using fallback tag: ${FALLBACK_TAG}"
+            echo "FALLBACK_TAG=${FALLBACK_TAG}" >> "$GITHUB_ENV"
+          else
+            echo "Using tags from metadata: ${TAGS}"
+          fi
+
+          docker buildx imagetools create $TAGS "${IMAGES[@]}"
 
       - name: Inspect image
         run: |
-          docker pull ${{ env.DOCKER_IMAGE }}:${{ steps.docker_meta.outputs.version }}
-          docker image inspect ${{ env.DOCKER_IMAGE }}:${{ steps.docker_meta.outputs.version }}
+          set -euo pipefail
+          if [ -n "${FALLBACK_TAG:-}" ]; then
+            TAG="${FALLBACK_TAG}"
+          else
+            TAG="${DOCKER_IMAGE}:${{ steps.meta.outputs.version }}"
+          fi
+          echo "Inspecting ${TAG}"
+          docker buildx imagetools inspect "${TAG}"

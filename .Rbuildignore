@@ -13,3 +13,9 @@
 ^.*\.pt$
 ^doc$
 ^Meta$
+^Dockerfile$
+^.devcontainer
+^.venv/
+^.results/$
+^.vscode/$
+^.mypy_cache$

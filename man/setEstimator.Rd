@@ -15,9 +15,11 @@ setEstimator(
     list(patience = 1)),
   criterion = torch$nn$BCEWithLogitsLoss,
   earlyStopping = list(useEarlyStopping = TRUE, params = list(patience = 4)),
+  compile = FALSE,
   metric = "auc",
   accumulationSteps = NULL,
-  seed = NULL
+  seed = NULL,
+  trainValidationSplit = FALSE
 )
 }
 \arguments{
@@ -41,6 +43,8 @@ that evaluates to the device during runtime}
 \item{earlyStopping}{If earlyStopping should be used which stops the
 training of your metric is not improving}
 
+\item{compile}{if the model should be compiled before training, default FALSE}
+
 \item{metric}{either `auc` or `loss` or a custom metric to use. This is the
 metric used for scheduler and earlyStopping.
 Needs to be a list with function `fun`, mode either `min` or `max` and a
@@ -52,6 +56,9 @@ outputs a score.}
 updating weights, can also be a function that is evaluated during runtime}
 
 \item{seed}{seed to initialize weights of model with}
+
+\item{trainValidationSplit}{if TRUE, perform a train-validation split for
+model selection instead of cross validation}
 }
 \description{
 creates settings for the Estimator, which takes a model and trains it

@@ -1,14 +1,12 @@
-import math
-
-import torch
 from torch import nn
 
+from Dataset import FeatureInfo
+from Embeddings import Embedding
 
 class ResNet(nn.Module):
     def __init__(
         self,
-        cat_features: int,
-        num_features: int = 0,
+        feature_info: FeatureInfo,
         size_embedding: int = 256,
         size_hidden: int = 256,
         num_layers: int = 2,
@@ -18,27 +16,24 @@ class ResNet(nn.Module):
         hidden_dropout=0,
         residual_dropout=0,
         dim_out: int = 1,
-        concat_num=True,
-        model_type="ResNet"
+        concat_num=False,
+        model_type="ResNet",
     ):
         super(ResNet, self).__init__()
         self.name = model_type
-        cat_features = int(cat_features)
-        num_features = int(num_features)
         size_embedding = int(size_embedding)
         size_hidden = int(size_hidden)
         num_layers = int(num_layers)
         hidden_factor = int(hidden_factor)
         dim_out = int(dim_out)
 
-        self.embedding = nn.EmbeddingBag(
-            num_embeddings=cat_features + 1, embedding_dim=size_embedding, padding_idx=0
+
+        self.embedding = Embedding(
+            feature_info=feature_info,
+            numeric_mode="concatenate" if concat_num else "scale",
+            embedding_dim=size_embedding,
+            aggregate="sum"
         )
-        if num_features != 0 and not concat_num:
-            self.num_embedding = NumericalEmbedding(num_features, size_embedding)
-        else:
-            self.num_embedding = None
-            size_embedding = size_embedding + num_features
 
         self.first_layer = nn.Linear(size_embedding, size_hidden)
 
@@ -65,22 +60,7 @@ class ResNet(nn.Module):
         self.last_act = activation()
 
     def forward(self, x):
-        x_cat = x["cat"]
-        x_cat = self.embedding(x_cat)
-        if (
-            "num" in x.keys()
-            and x["num"] is not None
-            and self.num_embedding is not None
-        ):
-            x_num = x["num"]
-            # take the average af numerical and categorical embeddings
-            x = (x_cat + self.num_embedding(x_num).mean(dim=1)) / 2
-        elif "num" in x.keys() and x["num"] is not None and self.num_embedding is None:
-            x_num = x["num"]
-            # concatenate numerical to categorical embedding
-            x = torch.cat([x_cat, x_num], dim=1)
-        else:
-            x = x_cat
+        x = self.embedding(x)
         x = self.first_layer(x)
         for layer in self.layers:
             x = layer(x)
@@ -128,23 +108,3 @@ class ResLayer(nn.Module):
             z = self.residual_dropout(z)
         z = z + input
         return z
-
-
-class NumericalEmbedding(nn.Module):
-    def __init__(self, num_embeddings, embedding_dim, bias=True):
-        super(NumericalEmbedding, self).__init__()
-        self.weight = nn.Parameter(torch.empty(num_embeddings, embedding_dim))
-        if bias:
-            self.bias = nn.Parameter(torch.empty(num_embeddings, embedding_dim))
-        else:
-            self.bias = None
-
-        for parameter in [self.weight, self.bias]:
-            if parameter is not None:
-                nn.init.kaiming_uniform_(parameter, a=math.sqrt(5))
-
-    def forward(self, input):
-        x = self.weight[None] * input[..., None]
-        if self.bias is not None:
-            x = x + self.bias[None]
-        return x

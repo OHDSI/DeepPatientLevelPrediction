@@ -1,6 +1,9 @@
+url: https://ohdsi.github.com/DeepPatientLevelPrediction
+
 template:
-  params:
-    bootswatch: cosmo
+    bootstrap: 5
+    bslib:
+      bootswatch: cosmo
     
 development:
   mode: auto
