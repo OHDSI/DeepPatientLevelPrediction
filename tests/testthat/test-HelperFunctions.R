@@ -91,3 +91,73 @@ test_that("noneToNA() replaces NULLs with correct typed NA", {
   expect_identical(res$lgl, c(TRUE, NA, FALSE))
   expect_identical(res$chr, c("a", NA_character_, "c"))
 })
+
+test_that("expandComponentGrid expands user settings into a flat grid", {
+  res <- expandComponentGrid("AdamW")
+  expect_type(res, "list")
+  expect_length(res, 1)
+  expect_equal(as.character(res[[1]]$name), "AdamW")
+
+  res <- expandComponentGrid(list(name = "AdamW", lr = 0.001))
+  expect_length(res, 1)
+  expect_identical(as.character(res[[1]]$name), "AdamW")
+  expect_identical(res[[1]]$lr, 0.001)
+
+  res <- expandComponentGrid(list(
+    name = "AdamW",
+    lr = c(0.001, 0.0001),
+    weight_decay = c(1e-3, 1e-6)
+  ))
+  expect_length(res, 4)
+  combos <- expand.grid(
+    lr = c(0.001, 0.0001),
+    weight_decay = c(1e-3, 1e-6),
+    stringsAsFactors = FALSE
+  )
+  for (i in seq_len(nrow(combos))) {
+    expect_true(
+      any(vapply(
+        res,
+        function(x) {
+          identical(as.character(x$name), "AdamW") &&
+            identical(x$lr, combos$lr[[i]]) &&
+            identical(x$weight_decay, combos$weight_decay[[i]])
+        },
+        logical(1)
+      )),
+      info = paste("Missing combo:", combos$lr[[i]], combos$weight_decay[[i]])
+    )
+  }
+  res <- expandComponentGrid(list(
+    list(name = "AdamW", lr = c(0.001, 0.0001)),
+    list(name = "SGD", lr = c(0.1, 0.01), momentum = c(0.9, 0.95))
+  ))
+  expect_length(res, 6)
+  expect_true(all(vapply(res, function(x) "name" %in% names(x), logical(1))))
+  expect_true(any(vapply(res, function(x) identical(as.character(x$name), "AdamW") && x$lr %in% c(0.001, 0.0001), logical(1))))
+  expect_true(any(vapply(res, function(x) identical(as.character(x$name), "SGD") && x$lr == 0.1 && x$momentum == 0.9, logical(1))))
+  expect_true(any(vapply(res, function(x) identical(as.character(x$name), "SGD") && x$lr == 0.01 && x$momentum == 0.95, logical(1))))
+})
+
+test_that("keepDefaults overrides defaults and adds new keys", {
+  defaults <- list(lr = 0.01, weight_decay = 0)
+  users <- list(lr = 0.001, beta1 = 0.9)
+
+  res <- keepDefaults(defaults, users)
+
+  expect_equal(res$lr, 0.001)
+  expect_equal(res$weight_decay, 0)
+  expect_true("beta1" %in% names(res))
+  expect_equal(res$beta1, 0.9)
+})
+
+test_that("keepDefaults returns defaults when userSettings is NULL", {
+  defaults <- list(lr = 0.01, weight_decay = 0)
+  res <- keepDefaults(defaults, NULL)
+  expect_identical(res, defaults)
+})
+
+test_that("keepDefaults errors when userSettings is not a list", {
+  defaults <- list(lr = 0.01)
+  expect_error(keepDefaults(defaults, "not-a-list"), "Settings argument must be a list.")
+})
