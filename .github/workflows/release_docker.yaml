@@ -167,22 +167,29 @@ jobs:
         working-directory: /tmp/digests
         run: |
           set -euo pipefail
-          IMAGES=""
+
+          IMAGES=()
           for f in digest-*; do
-            DIGEST=$(cat "$f" | tr -d '\n')
-            IMAGES="$IMAGES ${{ env.DOCKER_IMAGE }}@sha256:$DIGEST"
+            DIGEST="$(tr -d '\r\n' < "$f")"
+            if [ -z "$DIGEST" ]; then
+              echo "Empty digest in file: $f" >&2
+              exit 1
+            fi
+            IMAGES+=("${DOCKER_IMAGE}@sha256:${DIGEST}")
           done
           echo "Using image references:"
           printf ' - %s\n' "${IMAGES[@]}"
-          tags="$(jq -cr '.tags // [] | map("-t " + .) | join(" ")' <<< "${docker_metadata_output_json:-}")"
-             if [ -z "$tags" ]; then
-               fallback_tag="${{ env.docker_image }}:dev-${github_ref_name//\//-}-${github_run_number}-${github_sha:0:7}"
-               tags="-t ${fallback_tag}"
-              echo "no release tags; using fallback tag: ${fallback_tag}"
-              echo "fallback_tag=${fallback_tag}" >> "$github_env"
-            else
-              echo "using tags from metadata: ${tags}"
-            fi
+
+          TAGS="$(jq -cr '.tags // [] | map("-t " + .) | join(" ")' <<< "${DOCKER_METADATA_OUTPUT_JSON:-}")"
+          if [ -z "$TAGS" ]; then
+            FALLBACK_TAG="${DOCKER_IMAGE}:dev-${GITHUB_REF_NAME//\//-}-${GITHUB_RUN_NUMBER}-${GITHUB_SHA:0:7}"
+            TAGS="-t ${FALLBACK_TAG}"
+            echo "No release tags; using fallback tag: ${FALLBACK_TAG}"
+            echo "FALLBACK_TAG=${FALLBACK_TAG}" >> "$GITHUB_ENV"
+          else
+            echo "Using tags from metadata: ${TAGS}"
+          fi
+
           docker buildx imagetools create $TAGS "${IMAGES[@]}"
 
       - name: Inspect image
@@ -191,7 +198,7 @@ jobs:
           if [ -n "${FALLBACK_TAG:-}" ]; then
             TAG="${FALLBACK_TAG}"
           else
-            TAG="${{ env.DOCKER_IMAGE }}:${{ steps.meta.outputs.version }}"
+            TAG="${DOCKER_IMAGE}:${{ steps.meta.outputs.version }}"
           fi
           echo "Inspecting ${TAG}"
           docker buildx imagetools inspect "${TAG}"
