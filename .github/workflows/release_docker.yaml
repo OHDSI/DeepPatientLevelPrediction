@@ -23,6 +23,8 @@ on:
 
 env:
   DOCKER_IMAGE: "ohdsi/deep_plp"
+  GHCR_OWNER: ${{ toLower(github.repository_owner) }}
+  SAFE_REF:  ${{ replace(github.ref_name, '/', '-') }}
 
 jobs:
   build:
@@ -72,11 +74,11 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           cache-from: |
-            type=registry,ref=ghcr.io/${{ github.repository_owner }}/deep_plp:buildcache-${{ matrix.config.arch }}
-            type=registry,ref=ghcr.io/${{ github.repository_owner }}/deep_plp:buildcache-${{ matrix.config.arch }}-${{ github.ref_name }}
+            type=registry,ref=ghcr.io/${{ env.GHCR_OWNER }}/deep_plp:buildcache-${{ matrix.config.arch }}
+            type=registry,ref=ghcr.io/${{ env.GHCR_OWNER }}/deep_plp:buildcache-${{ matrix.config.arch }}-${{ SAFE_REF }}
           cache-to: |
-            type=registry,ref=ghcr.io/${{ github.repository_owner }}/deep_plp:buildcache-${{ matrix.config.arch }}-${{ github.ref_name }},mode=max
-            ${{ github.ref == 'refs/heads/main' && format('type=registry,ref=ghcr.io/{0}/deep_plp:buildcache-{1},mode=max', github.repository_owner, matrix.config.arch) || '' }}
+            type=registry,ref=ghcr.io/${{ env.GHCR_OWNER }}/deep_plp:buildcache-${{ matrix.config.arch }}-${{ SAFE_REF }},mode=max
+            ${{ github.ref == 'refs/heads/main' && format('type=registry,ref=ghcr.io/{0}/deep_plp:buildcache-{1},mode=max', GHCR_OWNER, matrix.config.arch) || '' }}
           file: Dockerfile
           platforms: "linux/${{ matrix.config.arch }}"
           secrets: |
