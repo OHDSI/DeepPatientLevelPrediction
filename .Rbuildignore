@@ -18,3 +18,4 @@
 ^.venv/
 ^.results/$
 ^.vscode/$
+^.mypy_cache$

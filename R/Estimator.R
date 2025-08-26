@@ -117,7 +117,6 @@ setEstimator <- function(
   if (!is.null(trainValidationSplit)) {
     estimatorSettings$trainValidationSplit <- trainValidationSplit
   }
-
   optimizer <- rlang::enquo(optimizer)
   estimatorSettings$optimizer <- function() rlang::eval_tidy(optimizer)
   class(estimatorSettings$optimizer) <- c(
@@ -145,7 +144,6 @@ setEstimator <- function(
       class(estimatorSettings$device)
     )
   }
-
   if (is.function(accumulationSteps)) {
     class(estimatorSettings$accumulationSteps) <- c(
       "delayed",
@@ -409,7 +407,6 @@ gridCvDeep <- function(
     temporalSettings = attr(paramSearch, "temporalSettings")
   )
 
-
   if (!trainCache$isFull()) {
     for (gridId in trainCache$getLastGridSearchIndex():length(paramSearch)) {
       ParallelLogger::logInfo(paste0(
@@ -453,7 +450,6 @@ gridCvDeep <- function(
     hyperparameterResults,
     function(x) x$gridPerformance
   )
-
   # get best CV prediction
   cvPrediction <- hyperparameterResults[[indexOfMax]]$prediction
   if (modelSettings$estimatorSettings$trainValidationSplit) {
@@ -526,6 +522,19 @@ createEstimator <- function(parameters) {
     parameters$modelParameters$modelType,
     path = path
   )[[parameters$modelParameters$modelType]]
+
+  if (modelParameters$modelType == "Finetuner") {
+    estimatorSettings$finetune <- TRUE
+    plpModel <- PatientLevelPrediction::loadPlpModel(modelParameters$modelPath)
+    estimatorSettings$finetuneModelPath <-
+      normalizePath(file.path(plpModel$model, "DeepEstimatorModel.pt"))
+    modelParameters$modelType <-
+      plpModel$modelDesign$modelSettings$modelType
+  }
+
+  model <-
+    reticulate::import_from_path(modelParameters$modelType,
+                                 path = path)[[modelParameters$modelType]]
   estimator <- reticulate::import_from_path("Estimator", path = path)$Estimator
 
   parameters$modelParameters <- camelCaseToSnakeCaseNames(

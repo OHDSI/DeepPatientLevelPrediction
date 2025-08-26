@@ -123,7 +123,6 @@ setTransformer <- function(numBlocks = 3,
     temporalSettings
   )
 
-
   checkIsClass(numBlocks, c("integer", "numeric"))
   checkHigherEqual(numBlocks, 1)
 

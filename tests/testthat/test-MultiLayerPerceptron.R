@@ -19,7 +19,6 @@ test_that("setMultiLayerPerceptron works", {
   expect_s3_class(object = modelSettings, class = "modelSettings")
 
   expect_equal(modelSettings$fitFunction, "DeepPatientLevelPrediction::fitEstimator")
-
   expect_true(length(modelSettings$param) > 0)
 
   expect_error(setMultiLayerPerceptron(numLayers = 1,

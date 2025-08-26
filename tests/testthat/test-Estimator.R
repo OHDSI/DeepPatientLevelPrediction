@@ -386,7 +386,7 @@ test_that("evaluation works on predictDeepEstimator output", {
   expect_length(evaluation, 5)
   expect_s3_class(evaluation, "plpEvaluation")
   
-  })
+})
 
 
 test_that("accumulationSteps as a function argument works", {
