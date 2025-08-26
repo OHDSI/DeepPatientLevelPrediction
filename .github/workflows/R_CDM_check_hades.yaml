@@ -144,12 +144,12 @@ jobs:
           version="${{ env.new_version }}"
           version="${version#v}"
           notes=$(awk -v ver=$version '
-          $0=="PatientLevelPrediction "ver {
+          $0=="DeepPatientLevelPrediction "ver {
             getline
             printing=1
             next
           }
-          printing && /^PatientLevelPrediction / { exit }
+          printing && /^DeepPatientLevelPrediction / { exit }
           printing { print }
           ' NEWS.md)
           if [ -z "$notes" ]; then
