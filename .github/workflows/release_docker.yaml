@@ -39,6 +39,21 @@ jobs:
         run: |
           platform=${{ matrix.config.arch }}
           echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
+
+      - name: Free disk space
+        shell: bash
+        run: |
+          set -euxo pipefail
+          df -h
+          sudo rm -rf /usr/local/lib/android || true
+          sudo rm -rf /usr/share/dotnet || true
+          sudo rm -rf /opt/ghc || true
+          sudo rm -rf /opt/hostedtoolcache || true
+          docker system prune -af || true
+          sudo apt-get clean || true
+          sudo rm -rf /var/lib/apt/lists/* || true
+          df -h
+
       - name: Docker meta
         id: docker_meta
         uses: docker/metadata-action@v5
