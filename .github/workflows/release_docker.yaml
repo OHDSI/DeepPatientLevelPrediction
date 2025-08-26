@@ -61,8 +61,11 @@ jobs:
         id: build
         uses: docker/build-push-action@v6
         with:
-          cache-from: type=gha
-          cache-to: type=gha, mode=max
+          cache-from: |
+            type=gha,scope=deep_plp-${{ matrix.config.arch }}-shared
+            type=gha,scope=deep_plp-${{ matrix.config.arch }}-${{ github.ref_name }}
+          cache-to: |
+            type=gha,scope=deep_plp-${{ matrix.config.arch }}-${{ github.ref_name }},mode=max
           file: Dockerfile
           platforms: "linux/${{ matrix.config.arch }}"
           secrets: |
