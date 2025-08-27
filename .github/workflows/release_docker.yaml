@@ -103,10 +103,8 @@ jobs:
           secrets: |
             build_github_pat=${{ secrets.GH_TOKEN }}
           build-args: |
-            GIT_BRANCH=${{ steps.docker_meta.outputs.version }}
+            GIT_BRANCH=${{ steps.docker_meta.outputs.version != '' && steps.docker_meta.outputs.version || github.ref_name }}
             GIT_COMMIT_ID_ABBREV=${{ env.SHA8 }}
-          tags: ${{ steps.docker_meta.outputs.tags }}
-          # Use runtime labels from docker_meta as well as fixed labels
           outputs: type=image, name=${{ env.DOCKER_IMAGE }}, push-by-digest=true, name-canonical=true, push=true
 
           labels: |
@@ -156,8 +154,8 @@ jobs:
 
           # run package checks
           docker run --rm \
-          -e _R_CHECK_FORCE_SUGGESTS=false \
-          -e _R_CHECK_CRAN_INCOMING=false \
+          -e _R_CHECK_FORCE_SUGGESTS_=false \
+          -e _R_CHECK_CRAN_INCOMING_=false \
           -v $(pwd):/workspace -w /workspace \
           ${{ env.DOCKER_IMAGE }}@sha256:$digest Rscript -e \
           "options(repos = c(CRAN = 'https://cloud.r-project.org'));
