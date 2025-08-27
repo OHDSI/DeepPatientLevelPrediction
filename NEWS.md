@@ -1,3 +1,6 @@
+DeepPatientLevelPrediction 2.2.0.9999
+======================
+
 DeepPatientLevelPrediction 2.2.0
 ======================
 - [Feature] Add positional encodings that use `timeId` (PR #154):
