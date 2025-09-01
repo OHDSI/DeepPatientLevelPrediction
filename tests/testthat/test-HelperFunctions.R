@@ -139,6 +139,221 @@ test_that("expandComponentGrid expands user settings into a flat grid", {
   expect_true(any(vapply(res, function(x) identical(as.character(x$name), "SGD") && x$lr == 0.01 && x$momentum == 0.95, logical(1))))
 })
 
+test_that("handles a single component name as a string", {
+  componentSetting <- "SinusoidalPE"
+  result <- expandComponentGrid(componentSetting)
+
+  expect_type(result, "list")
+  expect_length(result, 1)
+  expect_equal(result[[1]], list(name = "SinusoidalPE"))
+})
+
+test_that("handles a single, fully-specified configuration", {
+  componentSetting <- list(name = "LearnablePE", dropout = 0.1)
+  result <- expandComponentGrid(componentSetting)
+
+  expect_type(result, "list")
+  expect_length(result, 1)
+  expect_equal(result[[1]], list(name = "LearnablePE", dropout = 0.1))
+})
+
+test_that("expands a single vector hyperparameter", {
+  componentSetting <- list(name = "SinusoidalPE", dropout = c(0.1, 0.2))
+  result <- expandComponentGrid(componentSetting)
+
+  expect_length(result, 2)
+  expect_equal(result[[1]], list(name = "SinusoidalPE", dropout = 0.1))
+  expect_equal(result[[2]], list(name = "SinusoidalPE", dropout = 0.2))
+})
+
+test_that("expands multiple vector hyperparameters (Cartesian product)", {
+  componentSetting <- list(name = "AdamW", lr = c(1e-3, 1e-4), weight_decay = c(0.1, 0.01))
+  result <- expandComponentGrid(componentSetting)
+
+  expect_length(result, 4)
+  expect_equal(result[[1]], list(name = "AdamW", lr = 1e-3, weight_decay = 0.1))
+  expect_equal(result[[2]], list(name = "AdamW", lr = 1e-4, weight_decay = 0.1))
+  expect_equal(result[[3]], list(name = "AdamW", lr = 1e-3, weight_decay = 0.01))
+  expect_equal(result[[4]], list(name = "AdamW", lr = 1e-4, weight_decay = 0.01))
+})
+
+test_that("preserves a single nested list as a static config", {
+  componentSetting <- list(
+    name = "TUPE",
+    base_pe_config = list(name = "SinusoidalPE", dropout = 0.1)
+  )
+  result <- expandComponentGrid(componentSetting)
+
+  expect_length(result, 1)
+  expect_equal(result[[1]], componentSetting)
+})
+
+test_that("preserves nested list while expanding a hyperparameter", {
+  componentSetting <- list(
+    name = "TUPE",
+    dropout = c(0.1, 0.2), # Hyperparameter to expand
+    base_pe_config = list(name = "SinusoidalPE", dropout = 0.0) # Static config
+  )
+  result <- expandComponentGrid(componentSetting)
+
+  expect_length(result, 2)
+
+  expected1 <- list(
+    name = "TUPE",
+    dropout = 0.1,
+    base_pe_config = list(name = "SinusoidalPE", dropout = 0.0)
+  )
+  expect_equal(result[[1]], expected1)
+
+  expected2 <- list(
+    name = "TUPE",
+    dropout = 0.2,
+    base_pe_config = list(name = "SinusoidalPE", dropout = 0.0)
+  )
+  expect_equal(result[[2]], expected2)
+})
+
+test_that("preserves multiple nested lists while expanding hyperparameters", {
+  componentSetting <- list(
+    name = "TemporalPE",
+    dropout = c(0.1, 0.2),
+    abs_config = list(name = "SinusoidalPE"),
+    rel_config = list(name = "RelativePE")
+  )
+  result <- expandComponentGrid(componentSetting)
+
+  expect_length(result, 2)
+
+  expect_equal(result[[1]]$dropout, 0.1)
+  expect_equal(result[[1]]$abs_config, list(name = "SinusoidalPE"))
+  expect_equal(result[[1]]$rel_config, list(name = "RelativePE"))
+})
+
+
+test_that("expands a list of multiple component templates", {
+  componentSetting <- list(
+    list(name = "SinusoidalPE", dropout = 0.1),
+    list(name = "LearnablePE", dropout = c(0.2, 0.3))
+  )
+  result <- expandComponentGrid(componentSetting)
+
+  expect_length(result, 3)
+
+  expect_equal(result[[1]], list(name = "SinusoidalPE", dropout = 0.1))
+  expect_equal(result[[2]], list(name = "LearnablePE", dropout = 0.2))
+  expect_equal(result[[3]], list(name = "LearnablePE", dropout = 0.3))
+})
+
+test_that("expands a list of templates containing nested static configs", {
+  componentSetting <- list(
+    list(
+      name = "TUPE",
+      dropout = c(0.1, 0.2),
+      base_pe_config = list(name = "SinusoidalPE")
+    ),
+    list(name = "LearnablePE", dropout = 0.15)
+  )
+  result <- expandComponentGrid(componentSetting)
+
+  expect_length(result, 3)
+
+  expect_equal(
+    result[[1]],
+    list(
+      name = "TUPE",
+      dropout = 0.1,
+      base_pe_config = list(name = "SinusoidalPE")
+    )
+  )
+  expect_equal(
+    result[[2]], 
+    list(
+      name = "TUPE", 
+      dropout = 0.2, 
+      base_pe_config = list(name = "SinusoidalPE")))
+  expect_equal(result[[3]], list(name = "LearnablePE", dropout = 0.15))
+})
+
+test_that("recursively expands hyperparameters within nested lists", {
+  componentSetting <- list(
+    name = "TUPE",
+    top_level_dropout = c(0.1, 0.2),
+    base_pe_config = list(
+      name = "SinusoidalPE",
+      dropout = c(0.01, 0.02, 0.03)
+    )
+  )
+
+  result <- expandComponentGrid(componentSetting)
+
+  expect_length(result, 6)
+
+  expect_equal(result[[1]], list(
+    name = "TUPE",
+    top_level_dropout = 0.1,
+    base_pe_config = list(name = "SinusoidalPE", dropout = 0.01)
+  ))
+  expect_equal(result[[2]], list(
+    name = "TUPE",
+    top_level_dropout = 0.2,
+    base_pe_config = list(name = "SinusoidalPE", dropout = 0.01)
+  ))
+  expect_equal(result[[3]], list(
+    name = "TUPE",
+    top_level_dropout = 0.1,
+    base_pe_config = list(name = "SinusoidalPE", dropout = 0.02)
+  ))
+  expect_equal(result[[4]], list(
+    name = "TUPE",
+    top_level_dropout = 0.2,
+    base_pe_config = list(name = "SinusoidalPE", dropout = 0.02)
+  ))
+  expect_equal(result[[5]], list(
+    name = "TUPE",
+    top_level_dropout = 0.1,
+    base_pe_config = list(name = "SinusoidalPE", dropout = 0.03)
+  ))
+  expect_equal(result[[6]], list( 
+    name = "TUPE",
+    top_level_dropout = 0.2,
+    base_pe_config = list(name = "SinusoidalPE", dropout = 0.03)
+  ))
+})
+
+test_that("handles multiple nested hyperparameter lists", {
+  componentSetting <- list(
+    name = "TemporalPE",
+    abs_config = list(name = "LearnablePE", dropout = c(0.1, 0.2)), # 2 values
+    rel_config = list(name = "RelativePE", max_relative_position = c(16, 32)) # 2 values
+  )
+  result <- expandComponentGrid(componentSetting)
+
+  # Expected number of combinations = 2 * 2 = 4
+  expect_length(result, 4)
+
+  expect_true(all(sapply(result, function(x) x$name == "TemporalPE")))
+  expect_equal(result[[1]], list(
+    name = "TemporalPE",
+    abs_config = list(name = "LearnablePE", dropout = 0.1),
+    rel_config = list(name = "RelativePE", max_relative_position = 16)
+  ))
+  expect_equal(result[[2]], list(
+    name = "TemporalPE",
+    abs_config = list(name = "LearnablePE", dropout = 0.2),
+    rel_config = list(name = "RelativePE", max_relative_position = 16)
+  ))
+  expect_equal(result[[3]], list(
+    name = "TemporalPE",
+    abs_config = list(name = "LearnablePE", dropout = 0.1),
+    rel_config = list(name = "RelativePE", max_relative_position = 32)
+  ))
+  expect_equal(result[[4]], list(
+    name = "TemporalPE",
+    abs_config = list(name = "LearnablePE", dropout = 0.2),
+    rel_config = list(name = "RelativePE", max_relative_position = 32)
+  ))
+
+})
 test_that("keepDefaults overrides defaults and adds new keys", {
   defaults <- list(lr = 0.01, weight_decay = 0)
   users <- list(lr = 0.001, beta1 = 0.9)

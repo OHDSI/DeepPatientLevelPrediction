@@ -220,18 +220,46 @@ noneToNA <- function(x, dtypes) {
 #' @return A list where each element is a fully-specified, named list for one
 #'         component configuration.
 expandComponentGrid <- function(componentSetting) {
-
   if (!is.list(componentSetting)) {
-    componentSetting <- list(list(name = componentSetting))
+    return(list(list(name = componentSetting)))
   } else if ("name" %in% names(componentSetting)) {
-    componentSetting <- list(componentSetting)
+    return(.expandSingleTemplate(componentSetting))
+  } else {
+    expandedConfigs <- lapply(componentSetting, .expandSingleTemplate)
+    return(do.call(c, expandedConfigs))
   }
+}
 
-  expandedConfigs <- lapply(componentSetting, function(configTemplate) {
-    PatientLevelPrediction::listCartesian(configTemplate)
+.expandSingleTemplate <- function(configTemplate) {
+  
+  isSubGrid <- sapply(configTemplate, is.list)
+  
+  subGrids <- configTemplate[isSubGrid]
+  mainParams <- configTemplate[!isSubGrid]
+  mainGrid <- PatientLevelPrediction::listCartesian(mainParams)
+  mainGrid <- lapply(mainGrid, function(cfg) {
+    cfg[] <- lapply(cfg, function(v) if (is.factor(v)) as.character(v) else v)
+    cfg
   })
-  finalComponentGrid <- do.call(c, expandedConfigs)
-  return(finalComponentGrid)
+  
+  expandedSubGrids <- lapply(subGrids, expandComponentGrid)
+  
+  if (length(expandedSubGrids) == 0) {
+    return(mainGrid)
+  }
+  
+  allGridsForCartesian <- c(
+    list(mainGrid = mainGrid), 
+    expandedSubGrids
+  )
+  
+  combinedGrid <- PatientLevelPrediction::listCartesian(allGridsForCartesian)
+  
+  finalGrid <- lapply(combinedGrid, function(item) {
+    c(item$mainGrid, item[names(item) != "mainGrid"])
+  })
+  
+  return(finalGrid)
 }
 
 keepDefaults <- function(defaultSettings, userSettings) {
@@ -243,3 +271,4 @@ keepDefaults <- function(defaultSettings, userSettings) {
 
   return(defaultSettings)
 }
+
