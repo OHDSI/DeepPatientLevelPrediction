@@ -136,11 +136,6 @@ test_that("Standard Attention PEs modify TransformerBlock output", {
     message("Testing Standard Attention PE: ", peName)
     
     peConfig <- list(name = peName)
-    if (peName == "TemporalPE") {
-      peConfig$abs_config <- list(name = "SinusoidalPE")
-      peConfig$rel_config <- list(name = "RelativePE")
-    }
-    
     modelParams <- reticulate::r_to_py(list(
       dim_token = 32L, num_heads = 4L, feature_info = mockFeatureInfo,
       positional_encoding = peConfig
@@ -219,11 +214,6 @@ test_that("All PE modules handle asymmetric CLS token attention", {
     if (peName == "TUPE") {
       peConfig$base_pe_config <- list(name = "SinusoidalPE")
     }
-    if (peName == "TemporalPE") {
-      peConfig$abs_config <- list(name = "SinusoidalPE")
-      peConfig$rel_config <- list(name = "RelativePE")
-    }
-    
     modelParams <- reticulate::r_to_py(list(
       dim_token = 32L,
       num_heads = 4L,
@@ -248,5 +238,68 @@ test_that("All PE modules handle asymmetric CLS token attention", {
     expect_equal(output$shape[0], 4L)
     expect_equal(output$shape[1], 1L)
     expect_equal(output$shape[2], 32L)
+  }
+})
+
+test_that("Methods using dropout apply dropout", {
+  peClassesWithDropout <- c("SinusoidalPE", "LearnablePE", "TapePE", "TemporalPE", "TUPE")
+  PositionalEncodings <- reticulate::import_from_path("PositionalEncodings", path = path)
+  createPeModule <- PositionalEncodings$create_positional_encoding_module
+  
+  mockFeatureInfo <- featureInfoMock$FeatureInfoMock(max_time_id = 512L)
+  
+  for (peName in peClassesWithDropout) {
+    message("Testing dropout for PE: ", peName)
+
+    if (peName == "TUPE") {
+      peConfig <- list(
+        name = peName,
+        base_pe_config = list(name = "SinusoidalPE",
+          dropout = 0.5)
+      )
+    } else {
+      peConfig <- list(
+        name = peName,
+        dropout = 0.5 
+      )
+    }
+    modelParams <- reticulate::r_to_py(list(
+      dim_token = 32L,
+      num_heads = 4L,
+      feature_info = mockFeatureInfo,
+      positional_encoding = peConfig
+    ))
+    
+    peModuleWithDropout <- createPeModule(modelParams)
+    
+    harness <- createTestHarness(peModuleWithDropout, mockFeatureInfo)
+    
+    model <- harness$fullModel
+    inputData <- harness$inputData
+    
+    model$train()
+    torch$manual_seed(42)
+    outputTrain1 <- model(inputData)
+    outputTrain2 <- model(inputData)
+    
+    expect_false(
+      torch$allclose(outputTrain1, outputTrain2)
+    )
+    
+    model$eval()
+    torch$manual_seed(42)
+    outputEval1 <- model(inputData)
+    outputEval2 <- model(inputData)
+    
+    expect_true(
+      torch$allclose(outputEval1, outputEval2)
+    )
+    
+    model$train()
+    torch$manual_seed(42)
+    outputTrainFinal <- model(inputData)
+    expect_false(
+      torch$allclose(outputTrainFinal, outputEval1)
+    )
   }
 })
