@@ -1,12 +1,34 @@
 import time
 import pathlib
+from contextlib import nullcontext
 
 import torch
 from torch.utils.data import DataLoader, BatchSampler, RandomSampler, SequentialSampler
 from tqdm import tqdm
 
 from gpu_memory_cleanup import memory_cleanup
-from InitStrategy import InitStrategy, DefaultInitStrategy
+from InitStrategy import DefaultInitStrategy
+
+
+def set_fp32_speed_mode(enable_tf32: bool, device: str) -> None:
+    """
+    Enable/disable TF32 for remaining FP32 matmul/conv on CUDA.
+    Uses new API on PyTorch >= 2.9, falls back to legacy flags otherwise.
+    No-op on non-CUDA devices.
+    """
+    if device != "cuda":
+        return
+    mode = "tf32" if enable_tf32 else "ieee"
+    if hasattr(torch.backends.cuda, "matmul") and hasattr(
+        torch.backends.cuda.matmul, "fp32_precision"
+    ):
+        torch.backends.cuda.matmul.fp32_precision = mode
+        if hasattr(torch.backends.cudnn, "fp32_precision"):
+            torch.backends.cudnn.fp32_precision = mode
+        return
+    torch.set_float32_matmul_precision("high" if enable_tf32 else "highest")
+    torch.backends.cudnn.allow_tf32 = bool(enable_tf32)
+
 
 class Estimator:
     """
@@ -22,10 +44,12 @@ class Estimator:
         torch.manual_seed(seed=self.seed)
 
         if "init_strategy" in parameters["estimator_settings"]:
-            self.model = parameters["estimator_settings"]["init_strategy"].initialize(model, parameters)
+            self.model = parameters["estimator_settings"]["init_strategy"].initialize(
+                model, parameters
+            )
         else:
             self.model = DefaultInitStrategy().initialize(model, parameters)
-            
+
         self.model_parameters = parameters["model_parameters"]
         self.estimator_settings = parameters["estimator_settings"]
 
@@ -33,26 +57,51 @@ class Estimator:
         if parameters["estimator_settings"]["find_l_r"]:
             self.learning_rate = 3e-4
         else:
-            self.learning_rate = parameters["estimator_settings"].get("learning_rate", 3e-4)
+            self.learning_rate = parameters["estimator_settings"].get(
+                "learning_rate", 3e-4
+            )
         self.weight_decay = parameters["estimator_settings"].get("weight_decay", 1e-5)
         self.batch_size = int(parameters["estimator_settings"].get("batch_size", 1024))
         self.prefix = parameters["estimator_settings"].get("prefix", self.model.name)
-        
-        if "accumulation_steps" in parameters["estimator_settings"].keys() \
-        and parameters["estimator_settings"]["accumulation_steps"]:
-            self.accumulation_steps = int(parameters["estimator_settings"]["accumulation_steps"])
+
+        if (
+            "accumulation_steps" in parameters["estimator_settings"].keys()
+            and parameters["estimator_settings"]["accumulation_steps"]
+        ):
+            self.accumulation_steps = int(
+                parameters["estimator_settings"]["accumulation_steps"]
+            )
             self.sub_batch_size = self.batch_size // self.accumulation_steps
         else:
             self.accumulation_steps = 1
             self.sub_batch_size = self.batch_size
-        
-        self.previous_epochs = int(parameters["estimator_settings"].get("previous_epochs", 0))
+
+        self.previous_epochs = int(
+            parameters["estimator_settings"].get("previous_epochs", 0)
+        )
         self.model.to(device=self.device)
+
+        self.precision = str(
+            parameters["estimator_settings"].get("precision", "float32")
+        ).lower()
+
+        set_fp32_speed_mode(enable_tf32=True, device=self.device)
+
+        if self.device == "cuda" and self.precision == "bfloat16":
+            self.autocast_dtype = torch.bfloat16
+            self.grad_scaler = None  # BF16 doesn't need GradScaler
+        elif self.device == "cuda" and self.precision == "float16":
+            self.autocast_dtype = torch.float16
+            self.grad_scaler = torch.amp.GradScaler("cuda", enabled=True)
+        else:
+            self.autocast_dtype = None
+            self.grad_scaler = None
 
         self.optimizer = parameters["estimator_settings"]["optimizer"](
             params=self.model.parameters(),
             lr=self.learning_rate,
             weight_decay=self.weight_decay,
+            fused=True if self.device == "cuda" else False,
         )
         self.criterion = parameters["estimator_settings"]["criterion"](reduction="sum")
 
@@ -70,21 +119,24 @@ class Estimator:
                 "scheduler" in parameters["estimator_settings"].keys()
                 and parameters["estimator_settings"]["scheduler"] is not None
             ):
-                parameters["estimator_settings"]["scheduler"]["params"]["mode"] = self.metric["mode"]
+                parameters["estimator_settings"]["scheduler"]["params"]["mode"] = (
+                    self.metric["mode"]
+                )
             if (
                 "early_stopping" in parameters["estimator_settings"].keys()
                 and parameters["estimator_settings"]["early_stopping"] is not None
             ):
-                parameters["estimator_settings"]["early_stopping"]["params"]["mode"] = self.metric[
-                    "mode"
-                ]
+                parameters["estimator_settings"]["early_stopping"]["params"]["mode"] = (
+                    self.metric["mode"]
+                )
 
         if (
             "scheduler" in parameters["estimator_settings"].keys()
             and parameters["estimator_settings"]["scheduler"] is not None
         ):
             self.scheduler = parameters["estimator_settings"]["scheduler"]["fun"](
-                self.optimizer, **parameters["estimator_settings"]["scheduler"]["params"]
+                self.optimizer,
+                **parameters["estimator_settings"]["scheduler"]["params"],
             )
 
         if (
@@ -97,6 +149,8 @@ class Estimator:
         else:
             self.early_stopper = None
 
+        self.prefetch = self.device == "cuda"
+        self.variable_len = False
         self.best_score = None
         self.best_epoch = None
         self.learn_rate_schedule = None
@@ -113,7 +167,10 @@ class Estimator:
                 batch_size=self.batch_size,
                 drop_last=True if len(dataset) > self.batch_size else False,
             ),
-            pin_memory=True,
+            pin_memory=(self.device == "cuda"),
+            num_workers=4,
+            prefetch_factor=2,
+            persistent_workers=True,
         )
         test_dataloader = DataLoader(
             dataset=test_dataset,
@@ -123,8 +180,16 @@ class Estimator:
                 batch_size=self.batch_size,
                 drop_last=False,
             ),
-            pin_memory=True,
+            pin_memory=(self.device == "cuda"),
+            num_workers=4,
+            prefetch_factor=2,
+            persistent_workers=True,
         )
+        if self.prefetch:
+            train_dataloader = CudaPrefetcher(train_dataloader,
+                                              device=self.device)
+            test_dataloader = CudaPrefetcher(test_dataloader,
+                                             device=self.device)
 
         trained_epochs = dict()
         times = list()
@@ -169,23 +234,35 @@ class Estimator:
         return
 
     def fit_epoch(self, dataloader):
-        training_losses = torch.empty(len(dataloader))
+        training_losses = torch.empty(
+            len(dataloader), device=self.device, dtype=torch.float
+        )
         self.model.train()
         index = 0
         self.optimizer.zero_grad()
         for batch in tqdm(dataloader):
             split_batch = self.split_batch(batch)
             accumulated_loss = 0
-            all_out = []
             for sub_batch in split_batch:
-                sub_batch = batch_to_device(sub_batch, device=self.device)
-                out = self.model(sub_batch[0])
-                all_out.append(out.detach())
-                loss = self.criterion(out.squeeze(), sub_batch[1])
-                loss.backward()
+                cm = (
+                    torch.autocast("cuda", dtype=self.autocast_dtype)
+                    if (self.device == "cuda" and self.autocast_dtype is not None)
+                    else nullcontext()
+                )
+                with cm:
+                    out = self.model(sub_batch[0])
+                    loss = self.criterion(out.squeeze(), sub_batch[1])
+
+                if self.grad_scaler is not None:
+                    self.grad_scaler.scale(loss).backward()
+                else:
+                    loss.backward()
                 accumulated_loss += loss.detach()
-            
-            self.optimizer.step()
+            if self.grad_scaler is not None:
+                self.grad_scaler.step(self.optimizer)
+                self.grad_scaler.update()
+            else:
+                self.optimizer.step()
             self.optimizer.zero_grad()
             training_losses[index] = accumulated_loss / self.batch_size
             index += 1
@@ -202,11 +279,18 @@ class Estimator:
                 split_batch = self.split_batch(batch)
                 accumulated_loss = 0
                 for sub_batch in split_batch:
-                    sub_batch = batch_to_device(sub_batch, device=self.device)
-                    pred = self.model(sub_batch[0])
+                    cm = (
+                        torch.autocast("cuda", dtype=self.autocast_dtype)
+                        if (self.device == "cuda" and self.autocast_dtype is not None)
+                        else nullcontext()
+                    )
+                    with cm:
+                        pred = self.model(sub_batch[0])
+                        accumulated_loss += self.criterion(
+                            pred.squeeze(), sub_batch[1]
+                        ).detach()
                     predictions.append(pred)
                     targets.append(sub_batch[1])
-                    accumulated_loss += self.criterion(pred.squeeze(), sub_batch[1]).detach()
                 loss[index] = accumulated_loss / self.batch_size
 
                 index += 1
@@ -282,10 +366,16 @@ class Estimator:
         return
 
     def split_batch(self, batch):
-        if self.accumulation_steps > 1 and len(batch[0]["feature_ids"]) > self.sub_batch_size:
+        if (
+            self.accumulation_steps > 1
+            and len(batch[0]["feature_ids"]) > self.sub_batch_size
+        ):
             data, labels = batch
-            split_data = {key: list(torch.split(value, self.sub_batch_size))
-                          for key, value in data.items() if value is not None}
+            split_data = {
+                key: list(torch.split(value, self.sub_batch_size))
+                for key, value in data.items()
+                if value is not None
+            }
             split_labels = list(torch.split(labels, self.sub_batch_size))
 
             sub_batches = []
@@ -347,8 +437,13 @@ class Estimator:
             for batch in tqdm(dataloader):
                 split_batch = self.split_batch(batch)
                 for sub_batch in split_batch:
-                    sub_batch = batch_to_device(sub_batch, device=self.device)
-                    pred = self.model(sub_batch[0])
+                    cm = (
+                        torch.autocast("cuda", dtype=self.autocast_dtype)
+                        if (self.device == "cuda" and self.autocast_dtype is not None)
+                        else nullcontext()
+                    )
+                    with cm:
+                        pred = self.model(sub_batch[0])
                     predictions.append(torch.sigmoid(pred))
             predictions = torch.concat(predictions).cpu().numpy()
         return predictions
@@ -387,9 +482,7 @@ class EarlyStopping:
             self.counter += 1
             self.improved = False
             if self.verbose:
-                print(
-                    f"Early stopping counter: {self.counter}" f" out of {self.patience}"
-                )
+                print(f"Early stopping counter: {self.counter} out of {self.patience}")
             if self.counter >= self.patience:
                 self.early_stop = True
         else:
@@ -399,27 +492,45 @@ class EarlyStopping:
         self.previous_score = score
 
 
-def batch_to_device(batch, device="cpu"):
+def batch_to_device(batch, device=None, *, stream=None, keep_cpu_keys=frozenset()):
+    """
+    Move a batch of {Tensor | list | dict} to device.
+    - non_blocking=True (relies on pin_memory=True in DataLoader)
+    - Optional CUDA stream support for prefetch overlap
+    """
+    if device is None:
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    nb = device == "cuda"
+
     if torch.is_tensor(batch):
-        batch = batch.to(device=device, non_blocking=True)
-    else:
-        for ix, b in enumerate(batch):
-            if isinstance(b, str):
-                key = b
-                b = batch[b]
+        out = batch.to(device=device, non_blocking=nb)
+        # Keep pinned CPU memory alive on the prefetch stream until copy completes
+        if (
+            stream is not None
+            and nb
+            and batch.device.type == "cpu"
+            and batch.is_pinned()
+        ):
+            out.record_stream(stream)
+        return out
+
+    if isinstance(batch, dict):
+        out = {}
+        for k, v in batch.items():
+            if k in keep_cpu_keys:
+                out[k] = v
             else:
-                key = None
-            if b is None:
-                continue
-            if torch.is_tensor(b):
-                b_out = b.to(device=device, non_blocking=True)
-            else:
-                b_out = batch_to_device(b, device)
-            if b_out is not None:
-                if key is not None:
-                    batch[key] = b_out
-                else:
-                    batch[ix] = b_out
+                out[k] = batch_to_device(
+                    v, device, stream=stream, keep_cpu_keys=keep_cpu_keys
+                )
+        return out
+
+    if isinstance(batch, list):
+        return [
+            batch_to_device(v, device, stream=stream, keep_cpu_keys=keep_cpu_keys)
+            for v in batch
+        ]
+
     return batch
 
 
@@ -455,3 +566,56 @@ def fit_estimator(estimator, train, test):
         memory_cleanup()
         raise e
     return estimator
+
+
+class CudaPrefetcher:
+    def __init__(
+        self,
+        loader,
+        device,
+        *,
+        keep_cpu_keys=None,
+        lengths_key: str = "sequence_lengths",
+    ):
+        self.loader = loader
+        self.device = device
+        self.lengths_key = lengths_key
+
+        if keep_cpu_keys is not None:
+            keep = set(keep_cpu_keys)
+        else:
+            keep = set()
+        self.keep_cpu_keys = frozenset(keep)
+
+        self.stream = torch.cuda.Stream() if device == "cuda" else None
+
+    def __iter__(self):
+        it = iter(self.loader)
+        if self.stream is None:
+            for b in it:
+                yield batch_to_device(
+                    b, self.device, stream=None, keep_cpu_keys=self.keep_cpu_keys
+                )
+            return
+
+        next_b = self._preload_next(it)
+        while next_b is not None:
+            torch.cuda.current_stream().wait_stream(self.stream)
+            b = next_b
+            next_b = self._preload_next(it)
+            yield b
+
+    def _preload_next(self, it):
+        try:
+            cpu_b = next(it)
+        except StopIteration:
+            return None
+
+        with torch.cuda.stream(self.stream):
+            return batch_to_device(
+                cpu_b, self.device, stream=self.stream, keep_cpu_keys=self.keep_cpu_keys
+            )
+
+    def __len__(self):
+        return len(self.loader)
+

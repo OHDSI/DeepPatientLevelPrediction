@@ -44,6 +44,8 @@
 #' updating weights, can also be a function that is evaluated during runtime
 #' @param seed seed to initialize weights of model with
 #' @param trainValidationSplit if TRUE, perform a train-validation split for
+#' @param precision numeric precision policy, one of 'float32', 'float16', 'bfloat16'.
+#'   
 #' model selection instead of cross validation
 #' @export
 setEstimator <- function(
@@ -52,6 +54,7 @@ setEstimator <- function(
     batchSize = 512,
     epochs = 30,
     device = "cpu",
+    precision = "float32",
     optimizer = torch$optim$AdamW,
     scheduler = list(
       fun = torch$optim$lr_scheduler$ReduceLROnPlateau,
@@ -80,6 +83,13 @@ setEstimator <- function(
   checkHigher(batchSize, 0)
   checkIsClass(epochs, c("numeric", "integer"))
   checkHigher(epochs, 0)
+  checkIsClass(precision, "character")
+  if (!precision %in% c("float32", "float16", "bfloat16")) {
+    stop(paste0(
+      "precision must be one of 'float32', 'float16', 'bfloat16'. You provided: ",
+      precision
+    ))
+  }
   checkIsClass(earlyStopping, c("list", "NULL"))
   checkIsClass(compile, "logical")
   checkIsClass(metric, c("character", "list"))
@@ -107,6 +117,7 @@ setEstimator <- function(
     batchSize = batchSize,
     epochs = epochs,
     device = device,
+    precision = precision,
     earlyStopping = earlyStopping,
     compile = compile,
     findLR = findLR,

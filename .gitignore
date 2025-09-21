@@ -17,4 +17,4 @@ inst/python/__pycache__
 .aider*
 /.vscode/
 /.devcontainer/
-
+/traces/

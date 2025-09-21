@@ -106,6 +106,12 @@ class PositionalEncoding(nn.Module):
 
         return MultiHeadAttention
 
+    def attention_accepts_impl(self) -> bool:
+        """
+        Indicates wether the attention module can accept the `impl` argument
+        """
+        return True
+
 
 class NoPositionalEncoding(PositionalEncoding):
     """A no-op positional encoding class.
@@ -394,6 +400,9 @@ class EfficientRPE(PositionalEncoding):
 
     def get_attention_module_class(self) -> type:
         return eRPEAttention
+    
+    def attention_accepts_impl(self) -> bool:
+        return False
 
 
 class eRPEAttention(nn.Module):
@@ -738,6 +747,9 @@ class TUPE(PositionalEncoding):
 
     def get_attention_module_class(self) -> type:
         return TUPEMultiHeadAttention
+
+    def attention_accepts_impl(self) -> bool:
+        return False
 
 
 class TUPEMultiHeadAttention(nn.Module):

@@ -13,6 +13,7 @@ setTransformer(
   ffnDropout = 0.1,
   dimHidden = 256,
   dimHiddenRatio = NULL,
+  attnImplementation = "sdpa",
   temporal = FALSE,
   temporalSettings = list(positionalEncoding = list(name = "SinusoidalPE", dropout =
     0.1), maxSequenceLength = 256, truncation = "tail", timeTokens = TRUE),
@@ -41,6 +42,13 @@ problems}
 
 \item{dimHiddenRatio}{dimension of the feedforward block as a ratio
 of dimToken (embedding size)}
+
+\item{attnImplementation}{attention implementation to use, either
+'sdpa' (scaled dot product attention from pytorch) or 'flash" (flash attention v2
+from `flash-attn` package). Flash requires a new GPU with compute capability 8.0
+or higher, bfloat16 and the `flash-attn` package to be installed.
+If you chose flash attention you need to force the which python environment 
+is and need to make sure it has all required packages installed.}
 
 \item{temporal}{Whether to use a transformer with temporal data}
 

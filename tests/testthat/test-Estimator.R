@@ -461,3 +461,11 @@ test_that("train-validation split functionality works", {
   expect_true("Validation" %in% uniqueEvalTypes)
   expect_true("Train" %in% uniqueEvalTypes)
 })
+
+test_that("setEstimator errors on invalid precision", {
+  expect_error(
+    setEstimator(precision = "fp32"),
+    regexp = "precision must be one of 'float32', 'float16', 'bfloat16'",
+    fixed = FALSE
+  )
+})

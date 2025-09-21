@@ -64,6 +64,12 @@ setDefaultTransformer <- function(estimatorSettings =
 #' @param dimHidden               dimension of the feedworward block
 #' @param dimHiddenRatio          dimension of the feedforward block as a ratio
 #' of dimToken (embedding size)
+#' @param attnImplementation      attention implementation to use, either
+#' 'sdpa' (scaled dot product attention from pytorch) or 'flash" (flash attention v2
+#' from `flash-attn` package). Flash requires a new GPU with compute capability 8.0
+#' or higher, bfloat16 and the `flash-attn` package to be installed.
+#' If you chose flash attention you need to force the which python environment 
+#' is and need to make sure it has all required packages installed.
 #' @param temporal                Whether to use a transformer with temporal data
 #' @param temporalSettings        settings for the temporal transformer. Which include
 #'   - `positionalEncoding`: Positional encoding to use, either a character
@@ -90,6 +96,7 @@ setTransformer <- function(numBlocks = 3,
                            ffnDropout = 0.1,
                            dimHidden = 256,
                            dimHiddenRatio = NULL,
+                           attnImplementation = "sdpa",
                            temporal = FALSE,
                            temporalSettings = list(
                              positionalEncoding = list(
@@ -177,6 +184,13 @@ setTransformer <- function(numBlocks = 3,
   } else if (!is.null(dimHiddenRatio)) {
     dimHidden <- dimHiddenRatio
   }
+  checkIsClass(attnImplementation, "character")
+  if (!(attnImplementation %in% c("sdpa", "flash"))) {
+    stop(paste(
+      "attnImplementation must be either 'sdpa' or 'flash'. You provided: ",
+      attnImplementation
+    ))
+  }
 
   checkIsClass(
     temporalSettings$maxSequenceLength,
@@ -213,7 +227,8 @@ setTransformer <- function(numBlocks = 3,
     numHeads = numHeads,
     dimHidden = dimHidden,
     attDropout = attDropout,
-    ffnDropout = ffnDropout
+    ffnDropout = ffnDropout,
+    attnImplementation = attnImplementation
   )
   if (temporal) {
     if (!is.null(temporalSettings$positionalEncoding)) {
@@ -250,6 +265,49 @@ setTransformer <- function(numBlocks = 3,
       )]
     }))
   }
+  if (attnImplementation == "flash") {
+    envCheck <- flashEnvCheck(estimatorSettings)
+    if (!envCheck$ok) {
+      stop(
+        formatFlashErrors(
+          "FlashAttention-2 environment validation failed for the following reasons:", 
+          envCheck$reasons
+        ),
+        call. = FALSE
+      )
+    }
+    paramChecks <- lapply(param, function(x) {
+      flashParamCheck(
+        paramCombo = x,
+        temporal = temporal,
+        temporalSettings = temporalSettings,
+        envInfo = envCheck
+      )
+    }
+    )
+
+    badIdx <- which(!vapply(paramChecks, function(z) z$ok, logical(1)))
+    if (length(badIdx) > 0) {
+      lines <- c("FlashAttention-2 is not supported for the following hyperparameter combinations:")
+      for (i in badIdx) {
+        x <- param[[i]]
+        peName <- if (!is.null(x$positionalEncoding) && is.list(x$positionalEncoding))
+          x$positionalEncoding$name %||% NA_character_ else NA_character_
+        lines <- c(
+          lines,
+          paste0("  combo #", i,
+                 " (dimToken=", x$dimToken,
+                 ", numHeads=", x$numHeads,
+                 if (!is.na(peName)) paste0(", positionalEncoding='", peName, "'") else "",
+                 "):"),
+          paste0("     - ", paramChecks[[i]]$reasons)
+        )
+      }
+    stop(paste0(lines, collapse = "\n"), call. = FALSE)
+    }
+  }
+
+
   results <- list(
     fitFunction = "DeepPatientLevelPrediction::fitEstimator",
     param = param,
@@ -257,7 +315,7 @@ setTransformer <- function(numBlocks = 3,
     saveType = "file",
     modelParamNames = c(
       "numBlocks", "dimToken", "dimOut", "numHeads",
-      "attDropout", "ffnDropout", "dimHidden"
+      "attDropout", "ffnDropout", "dimHidden", "attnImplementation"
     ),
     modelType = "Transformer"
   )
@@ -271,4 +329,172 @@ setTransformer <- function(numBlocks = 3,
   attr(results$param, "settings")$modelType <- results$modelType
   class(results) <- "modelSettings"
   return(results)
+}
+
+# Check if flash attention v2 can be used
+flashEnvCheck <- function(estimatorSettings) {
+  reasons <- character(0)
+  info <- list()
+
+  # FlashAttention-2 effectively targets Linux
+  sysName <- getSysName()
+  if (sysName != "linux") {
+    reasons <- c(
+      reasons, paste0("FlashAttention 2 requires Linux; detected '", 
+      Sys.info()[["sysname"]], "'."))
+  }
+
+  device <- estimatorSettings$device %||% "cpu"
+  if (!identical(device, "cuda")) {
+    reasons <- c(reasons, "estimatorSettings$device must be 'cuda' to use FlashAttention 2.")
+  }
+
+  pt <- getTorch()
+  if (!isTRUE(pt$cuda$is_available())) {
+    reasons <- c(reasons, "torch.cuda.is_available() is FALSE; a CUDA-enabled PyTorch is required.")
+  }
+
+  torchCudaVersion <- tryCatch(pt$version$cuda, error = function(e) NULL)
+  if (is.null(torchCudaVersion) || is.na(torchCudaVersion)) {
+    reasons <- c(reasons, "torch.version.cuda is NULL; your PyTorch does not have a CUDA runtime.")
+  } else {
+    info$torchCudaVersion <- torchCudaVersion
+  }
+
+  if (!pyModuleAvailable("flash_attn.flash_attn_interface")) {
+    reasons <- c(
+      reasons,
+      paste0(
+        "flash-attn (v2) is not importable in the Python env used by reticulate. ",
+        "Point reticulate to a Python env where flash-attn is preinstalled (built from source). ",
+        "Example before loading the package:\n",
+        "  Sys.setenv(RETICULATE_PYTHON='/path/to/python')\n",
+        "Then restart R and library(DeepPatientLevelPrediction)."
+      )
+    )
+  } else {
+    fa <- reticulate::import("flash_attn", delay_load = TRUE)
+    info$flashAttnVersion <- tryCatch(fa$`__version__`, error = function(e) NA_character_)
+  }
+
+  cap <- tryCatch(pt$cuda$get_device_capability(), error = function(e) list(0L, 0L))
+  major <- as.integer(cap[[1]])
+  minor <- as.integer(cap[[2]])
+  info$computeCapability <- paste0(major, ".", minor)
+  info$deviceName <- tryCatch(pt$cuda$get_device_name(), error = function(e) NA_character_)
+  if (is.na(major) || major < 8L) {
+    reasons <- c(
+      reasons, 
+      "FlashAttention 2 requires NVIDIA Ampere/Ada/Hopper or newer (compute capability >= 8.0).")
+  }
+
+  bf16Supported <- isTRUE(tryCatch(pt$cuda$is_bf16_supported(), error = function(e) FALSE))
+  if (!bf16Supported) {
+    reasons <- c(
+      reasons, 
+      "BF16 is not supported on this GPU/driver/torch build (torch.cuda.is_bf16_supported() is FALSE).")
+  }
+  precisionVal <- estimatorSettings$precision
+
+  if (!identical(precisionVal, "bfloat16")) {
+    reasons <- c(reasons, 
+      paste0(
+        "precision must be 'bfloat16' when using FlashAttention 2; got '", 
+        precisionVal, "'."
+      )
+    )
+  }
+  list(ok = length(reasons) == 0, reasons = reasons, info = info)
+}
+
+# Check if the paramCombo is compatible with flash attention v2
+flashParamCheck <- function(paramCombo, temporal, temporalSettings, envInfo) {
+  reasons <- character(0)
+
+  if ((paramCombo$dimToken %% paramCombo$numHeads) != 0) {
+    reasons <- c(
+      reasons,
+      paste0(
+        "dimToken (", paramCombo$dimToken, ") must be divisible by numHeads (", 
+        paramCombo$numHeads, ")."
+      )
+    )
+  } else {
+    headDim <- as.integer(paramCombo$dimToken / paramCombo$numHeads)
+    if ((headDim %% 8L) != 0L) {
+      reasons <- c(
+        reasons, 
+        paste0("headDim must be a multiple of 8 for flash-attn; got ", headDim, ".")
+      )
+    }
+    if (headDim > 256L) {
+      reasons <- c(
+        reasons, 
+        paste0("headDim must be <= 256 for flash-attn; got ", headDim, ".")
+      )
+    }
+  }
+
+  peName <- NULL
+  if (temporal) {
+    if (!is.null(paramCombo$positionalEncoding) && is.list(paramCombo$positionalEncoding)) {
+      peName <- paramCombo$positionalEncoding$name %||% NULL
+    } else if (!is.null(temporalSettings$positionalEncoding) && 
+      is.list(temporalSettings$positionalEncoding)) {
+      peName <- temporalSettings$positionalEncoding$name %||% NULL
+    }
+  }
+
+  disallowed <- c(
+    "RelativePE", 
+    "TemporalPE", 
+    "TUPE",
+    "EfficientRPE",
+    "ALiBiPE"
+  )
+
+  allowed <- c(
+    "NoPositionalEncoding", 
+    "SinusoidalPE", 
+    "LearnablePE",
+    "TapePE",
+    "RotaryPE", 
+    "StochasticConvPE",
+    "HybridRoPEConvPE"
+  )
+
+  if (!is.null(peName) && (peName %in% disallowed)) {
+    reasons <- c(
+      reasons,
+      paste0("positionalEncoding '", peName, 
+        "' injects additive attention bias/scores and is not supported by flash-attn v2.")
+    )
+  }
+  if (!is.null(peName) && !(peName %in% c(disallowed, allowed))) {
+    reasons <- c(
+      reasons,
+      paste0("Unknown positionalEncoding '", peName, 
+        "'. Ensure it does not add attention bias/scores for flash-attn v2.")
+    )
+  }
+
+  list(ok = length(reasons) == 0, reasons = reasons)
+}
+
+formatFlashErrors <- function(header, reasons) {
+  if (length(reasons) == 0) return("")
+  paste0(header, "\n", paste0("  - ", reasons, collapse = "\n"))
+}
+
+# thin wrappers for easier mocking in tests
+pyModuleAvailable <- function(mod) {
+  reticulate::py_module_available(mod)
+}
+
+getTorch <- function() {
+  reticulate::import("torch", delay_load = TRUE)
+}
+
+getSysName <- function() {
+  tolower(Sys.info()[["sysname"]])
 }

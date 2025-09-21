@@ -391,3 +391,81 @@ test_that("temporal transformer works", {
 #   # Use sort to make the comparison order-independent
 #   expect_equal(sort(paramSummary), sort(expectedSummary))
 # })
+
+test_that("setTransformer errors early on Flash when environment is not compatible", {
+  expect_error(
+    setTransformer(
+      numBlocks = 1, dimToken = 192, numHeads = 8, dimHidden = 256,
+      attnImplementation = "flash",
+      estimatorSettings = setEstimator(device = "cpu"),
+      temporal = FALSE
+    ),
+    regexp = "FlashAttention-2 environment validation failed",
+    fixed = FALSE
+  )
+})
+
+test_that("setTransformer errors on invalid attnImplementation", {
+  expect_error(
+    DeepPatientLevelPrediction::setTransformer(
+      numBlocks = 1, dimToken = 192, numHeads = 8, dimHidden = 256,
+      attnImplementation = "flashy",      # invalid
+      temporal = FALSE
+    ),
+    regexp = "attnImplementation must be either 'sdpa' or 'flash'. You provided:",
+    fixed = FALSE
+  )
+})
+
+test_that("setTransformer converts character positionalEncoding to list(name=...)", {
+  res <- DeepPatientLevelPrediction::setTransformer(
+    numBlocks = 1, dimToken = 192, numHeads = 8, dimHidden = 256,
+    attnImplementation = "sdpa",         
+    temporal = TRUE,
+    temporalSettings = list(
+      positionalEncoding = "SinusoidalPE",
+      maxSequenceLength = 32,
+      truncation = "tail",
+      timeTokens = FALSE
+    ),
+    estimatorSettings = setEstimator(device = "cpu"),
+    hyperParamSearch = "random",
+    randomSample = 1
+  )
+
+  ts <- attr(res$param, "temporalSettings")
+  expect_true(is.list(ts$positionalEncoding))
+  expect_equal(ts$positionalEncoding$name, "SinusoidalPE")
+
+  expect_true("positionalEncoding" %in% res$modelParamNames)
+})
+
+test_that("setTransformer aggregates flashParamCheck errors into a single message", {
+  fake <- makeFakeTorch(
+    cudaAvailable = TRUE,
+    cudaVersion = "12.1",
+    capMajor = 8L, capMinor = 0L,
+    deviceName = "NVIDIA A100-SXM4-40GB",
+    bf16Supported = TRUE
+  )
+  localMockFlashBindings(fakeTorch = fake, flashModuleAvailable = TRUE, .scope = environment())
+
+  expect_error(
+    DeepPatientLevelPrediction::setTransformer(
+      numBlocks = 1, dimToken = 192, numHeads = 8, dimHidden = 256,
+      attnImplementation = "flash",
+      temporal = TRUE,
+      temporalSettings = list(
+        positionalEncoding = "RelativePE", 
+        maxSequenceLength = 32,
+        truncation = "tail",
+        timeTokens = FALSE
+      ),
+      estimatorSettings = setEstimator(device = "cuda", precision = "bfloat16"),
+      hyperParamSearch = "random",
+      randomSample = 1
+    ),
+    regexp = "FlashAttention-2 is not supported for the following hyperparameter combinations:",
+    fixed = FALSE
+  )
+})
