@@ -1,5 +1,6 @@
 DeepPatientLevelPrediction 2.2.0.9999
 ======================
+- [Internal] Switch to `nvidia-ml-py` instead of `pynvml` due to the latter being deprecated
 
 DeepPatientLevelPrediction 2.2.0
 ======================
