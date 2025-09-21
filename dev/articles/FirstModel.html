@@ -65,7 +65,7 @@
                         <h4 data-toc-skip class="author">Egill
 Fridgeirsson</h4>
             
-            <h4 data-toc-skip class="date">2025-09-02</h4>
+            <h4 data-toc-skip class="date">2025-09-21</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/OHDSI/DeepPatientLevelPrediction/blob/develop/vignettes/FirstModel.Rmd" class="external-link"><code>vignettes/FirstModel.Rmd</code></a></small>
       <div class="d-none name"><code>FirstModel.Rmd</code></div>
@@ -100,8 +100,8 @@ so called plpData object with the features we want to use.</p>
 <p>In Eunomia the cohorts have already been defined but we need to
 create them. This we can do by running:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">connectionDetails</span> <span class="op">&lt;-</span> <span class="fu">Eunomia</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/Eunomia/man/getEunomiaConnectionDetails.html" class="external-link">getEunomiaConnectionDetails</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="fu">Eunomia</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/Eunomia/man/createCohorts.html" class="external-link">createCohorts</a></span><span class="op">(</span><span class="va">connectionDetails</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">connectionDetails</span> <span class="op">&lt;-</span> <span class="fu">Eunomia</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/Eunomia/reference/getEunomiaConnectionDetails.html" class="external-link">getEunomiaConnectionDetails</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="fu">Eunomia</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/Eunomia/reference/createCohorts.html" class="external-link">createCohorts</a></span><span class="op">(</span><span class="va">connectionDetails</span><span class="op">)</span></span></code></pre></div>
 <p>The first line gets the Eunomia connection details. The Eunomia data
 is stored in a sqlite database. The second line creates the cohorts. You
 should see output confirming that three target cohorts have been
