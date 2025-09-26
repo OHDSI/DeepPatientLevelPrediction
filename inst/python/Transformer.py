@@ -5,9 +5,43 @@ import torch.nn.functional as F
 from torch import nn
 
 from Embeddings import ClassToken, Embedding
-from PositionalEncodings import EfficientRPE
 from Dataset import FeatureInfo
 from PositionalEncodings import PositionalEncoding, NoPositionalEncoding
+
+_FLASH_AVAILABLE = None
+flash_attn_func = None
+flash_attn_varlen_func = None
+flash_attn_pad_input = None
+flash_attn_unpad_input = None
+flash_attn_index_first_axis = None
+
+
+def _require_flash_attn():
+    """Lazy import flash-attn only when needed."""
+    global \
+        _FLASH_AVAILABLE, \
+        flash_attn_func, \
+        flash_attn_varlen_func, \
+        flash_attn_pad_input, \
+        flash_attn_unpad_input, \
+        flash_attn_index_first_axis
+    if _FLASH_AVAILABLE is None:
+        try:
+            from flash_attn.flash_attn_interface import (
+                flash_attn_func as _fa_func,
+                flash_attn_varlen_func as _fa_varlen_func,
+            )
+            from flash_attn.bert_padding import unpad_input, pad_input, index_first_axis
+
+            flash_attn_func = _fa_func
+            flash_attn_pad_input = pad_input
+            flash_attn_unpad_input = unpad_input
+            flash_attn_varlen_func = _fa_varlen_func
+            flash_attn_index_first_axis = index_first_axis
+            _FLASH_AVAILABLE = True
+        except Exception:
+            _FLASH_AVAILABLE = False
+    return _FLASH_AVAILABLE
 
 
 def reglu(x):
@@ -51,6 +85,7 @@ class Transformer(nn.Module):
         self.pe_module = pe_module
 
         self.class_token = ClassToken(dim_token)
+        self.attn_impl = kwargs.pop("attn_implementation", "sdpa")
 
         self.layers = nn.ModuleList()
         for layer_idx in range(num_blocks):
@@ -65,6 +100,7 @@ class Transformer(nn.Module):
                 skip_attn_norm=(layer_idx == 0),
                 only_class_token=(layer_idx == num_blocks - 1),
                 pe_module=self.pe_module,
+                attn_impl=self.attn_impl,
             )
             self.layers.append(block)
 
@@ -97,7 +133,11 @@ class Transformer(nn.Module):
             x, time_ids=time_ids, lengths=sequence_lengths
         )
         for layer in self.layers:
-            x = layer(x, mask, time_ids)
+            x = layer(
+                x,
+                mask,
+                time_ids,
+            )
         x = self.head(x)
         return x.squeeze()
 
@@ -124,6 +164,8 @@ class TransformerBlock(nn.Module):
         skip_attn_norm: bool = False,
         only_class_token: bool = False,
         pe_module: PositionalEncoding = NoPositionalEncoding(),
+        attn_impl: str = "sdpa",
+        **kwargs,
     ):
         super(TransformerBlock, self).__init__()
         if skip_attn_norm:
@@ -142,12 +184,19 @@ class TransformerBlock(nn.Module):
         self.only_class_token = only_class_token
         AttentionModuleClass = pe_module.get_attention_module_class()
 
-        self.attn = AttentionModuleClass(
+        attn_kwargs = dict(
             dim_token=dim_token,
             nheads=num_heads,
             dropout_p=att_dropout,
             pe_module=pe_module,
         )
+        if (
+            hasattr(pe_module, "attention_accepts_impl")
+            and pe_module.attention_accepts_impl()
+        ):
+            attn_kwargs["impl"] = attn_impl
+
+        self.attn = AttentionModuleClass(**attn_kwargs)
         self.attn_dropout = nn.Dropout(att_dropout)
 
         self.ffn_norm = norm_layer(dim_token)
@@ -240,6 +289,7 @@ class MultiHeadAttention(nn.Module):
         nheads: int,
         dropout_p: float = 0.0,
         pe_module: PositionalEncoding = NoPositionalEncoding(),
+        impl: str = "sdpa",
     ):
         super().__init__()
         self.nheads = nheads
@@ -249,6 +299,13 @@ class MultiHeadAttention(nn.Module):
         assert dim_token % nheads == 0, "Embedding dim is not divisible by nheads"
         self.E_head = dim_token // nheads
         self.pe_module = pe_module
+        self.impl = impl
+
+        if self.impl == "flash" and not _require_flash_attn():
+            raise ImportError(
+                "flash-attn is not available but impl='flash' was requested. "
+                "Install flash-attn or select impl='sdpa'."
+            )
 
     def forward(
         self,
@@ -260,8 +317,8 @@ class MultiHeadAttention(nn.Module):
         """
         Forward pass; runs the following process:
             1. Apply input projection
-            2. Split heads and prepare for SDPA
-            3. Run SDPA
+            2. Split heads and prepare for attention
+            3. Run attention
             4. Apply output projection
 
         Args:
@@ -269,34 +326,100 @@ class MultiHeadAttention(nn.Module):
             query_selector (callable): function to select query from x
             mask (torch.Tensor): mask of shape (N, L_t)
             time_ids (torch.Tensor, optional): time ids of shape (N, L_t) for RoPE
+            kv_row_splits (torch.Tensor, optional): row splits for variable length sequences for flash attention 2
+            kv_max_seq_len (int, optional): max sequence length for key/value for flash attention 2
+
 
         Returns:
             attn_output (torch.Tensor): output of shape (N, L_t, E_q)
         """
-        query, key, value = self.in_proj(x).chunk(3, dim=-1)
-        query = query_selector(query)
-        Lk = key.size(1)
-        Lq = query.size(1)
+        qkv = self.in_proj(x)                         # (B, L, 3*E)
+        E_total = self.nheads * self.E_head
+        q, k, v = qkv.split(E_total, dim=-1)          # each (B, L, E)
+        q = query_selector(q)                         # (B, Lq, E)
+        B = x.size(0)
+        Lk = k.size(1)
+        Lq = q.size(1)
+        query = q.reshape(B, Lq, self.nheads, self.E_head)
+        key   = k.view(  B, Lk, self.nheads, self.E_head)
+        value = v.view(  B, Lk, self.nheads, self.E_head)
 
-        query = query.unflatten(-1, [self.nheads, self.E_head]).transpose(1, 2)
-        key = key.unflatten(-1, [self.nheads, self.E_head]).transpose(1, 2)
-        value = value.unflatten(-1, [self.nheads, self.E_head]).transpose(1, 2)
+        if self.impl == "flash":
+            # (B, L*, H, E)
+            q_b_lhe = query
+            k_b_lhe = key
+            v_b_lhe = value
 
-        pos_scores, bias = None, None
-        query, key = self.pe_module.apply_attention_pe(
-            query, key, time_ids=time_ids
-        )
+            if Lq == 1:
+                # CLS only, no packing for Q
+                q_unpad = q_b_lhe[:, 0, :, :]  # (B, H, E)
+                cu_q = torch.arange(0, B + 1, device=q_unpad.device, dtype=torch.int32)
+                max_q = 1
+
+                k_unpad, indices_k, cu_k, max_k, _ = flash_attn_unpad_input(
+                    k_b_lhe, mask
+                )
+                v_unpad = flash_attn_index_first_axis(
+                    v_b_lhe.reshape(B * Lk, v_b_lhe.size(2), v_b_lhe.size(3)),
+                    indices_k,
+                )
+
+                out_unpad = flash_attn_varlen_func(
+                    q_unpad,
+                    k_unpad,
+                    v_unpad,
+                    cu_seqlens_q=cu_q,
+                    cu_seqlens_k=cu_k,
+                    max_seqlen_q=max_q,
+                    max_seqlen_k=max_k,
+                    dropout_p=self.dropout_p if self.training else 0.0,
+                    softmax_scale=None,
+                    causal=False,
+                    return_attn_probs=False,
+                )  # (B, H, E)
+                out_b_lhe = out_unpad.unsqueeze(1)  # (B, 1, H, E)
+            else:
+                k_unpad, indices_k, cu_k, max_k, _ = flash_attn_unpad_input(
+                    k_b_lhe, mask
+                )
+                q_unpad = flash_attn_index_first_axis(
+                    q_b_lhe.reshape(B * Lq, q_b_lhe.size(2), q_b_lhe.size(3)), indices_k
+                )
+                v_unpad = flash_attn_index_first_axis(
+                    v_b_lhe.reshape(B * Lk, v_b_lhe.size(2), v_b_lhe.size(3)),
+                    indices_k,
+                )
+                cu_q, max_q = cu_k, max_k
+
+                out_unpad = flash_attn_varlen_func(
+                    q_unpad,
+                    k_unpad,
+                    v_unpad,
+                    cu_seqlens_q=cu_q,
+                    cu_seqlens_k=cu_k,
+                    max_seqlen_q=max_q,
+                    max_seqlen_k=max_k,
+                    dropout_p=self.dropout_p if self.training else 0.0,
+                    softmax_scale=None,
+                    causal=False,
+                    return_attn_probs=False,
+                )
+                out_b_lhe = flash_attn_pad_input(out_unpad, indices_k, B, Lq)
+
+            out = out_b_lhe.flatten(-2)
+            return self.out_proj(out)
+
+        query = query.transpose(1, 2)
+        key = key.transpose(1, 2)
+        value = value.transpose(1, 2)
+        query, key = self.pe_module.apply_attention_pe(query, key, time_ids=time_ids)
         pos_scores = self.pe_module.get_positional_scores(
             query, k_len=Lk, time_ids=time_ids
         )
-        bias = self.pe_module.get_attention_bias(
-            q_len=Lq, k_len=Lk, time_ids=time_ids
-        )
+        bias = self.pe_module.get_attention_bias(q_len=Lq, k_len=Lk, time_ids=time_ids)
 
-        use_manual_path = pos_scores is not None or bias is not None
-        attn_mask = mask[:, None, None, :].contiguous()
-
-        if use_manual_path:
+        if (pos_scores is not None) or (bias is not None):
+            attn_mask = mask[:, None, None, :].contiguous()
             scale = self.E_head**-0.5
             attn_scores = (query @ key.transpose(-2, -1)) * scale
 
@@ -312,15 +435,17 @@ class MultiHeadAttention(nn.Module):
             )
 
             attn_output = attn_weights @ value
-        else:
-            attn_output = F.scaled_dot_product_attention(
-                query,
-                key,
-                value,
-                dropout_p= self.dropout_p if self.training else 0.0,
-                is_causal=False,
-                attn_mask=attn_mask,
-            )
-        attn_output = attn_output.transpose(1, 2).flatten(-2)
-        attn_output = self.out_proj(attn_output)
-        return attn_output
+            attn_output = attn_output.transpose(1, 2).flatten(-2)
+            return self.out_proj(attn_output)
+
+        attn_mask = mask[:, None, None, :].contiguous()
+        out = F.scaled_dot_product_attention(
+            query,
+            key,
+            value,
+            dropout_p=self.dropout_p if self.training else 0.0,
+            is_causal=False,
+            attn_mask=attn_mask,
+        )
+        out = out.transpose(1, 2).flatten(-2)
+        return self.out_proj(out)

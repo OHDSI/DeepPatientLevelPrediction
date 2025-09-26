@@ -34,7 +34,7 @@ Suggests:
     ResultModelManager (>= 0.2.0),
     DatabaseConnector (>= 6.3.0),
     Andromeda (> 1.0.0)
-RoxygenNote: 7.3.2
+RoxygenNote: 7.3.3
 Encoding: UTF-8
 Config/testthat/edition: 3
 Config/testthat/parallel: FALSE

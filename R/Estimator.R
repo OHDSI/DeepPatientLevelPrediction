@@ -28,6 +28,7 @@
 #' @param epochs  how many epochs to train for
 #' @param device  what device to train on, can be a string or a function to
 #' that evaluates to the device during runtime
+#' @param precision numeric precision policy, one of 'float32', 'float16', 'bfloat16'.
 #' @param optimizer which optimizer to use
 #' @param scheduler which learning rate scheduler to use
 #' @param criterion loss function to use
@@ -45,6 +46,11 @@
 #' @param seed seed to initialize weights of model with
 #' @param trainValidationSplit if TRUE, perform a train-validation split for
 #' model selection instead of cross validation
+#' @param numWorkers number of workers to use for data loading
+#' @param prefetchFactor number of samples loaded in advance by each worker
+#' @param persistentWorkers whether to keep workers alive between epochs
+#' @param prefetch whether to use prefetching of data when loading batches
+#' on GPU
 #' @export
 setEstimator <- function(
     learningRate = "auto",
@@ -52,6 +58,7 @@ setEstimator <- function(
     batchSize = 512,
     epochs = 30,
     device = "cpu",
+    precision = "float32",
     optimizer = torch$optim$AdamW,
     scheduler = list(
       fun = torch$optim$lr_scheduler$ReduceLROnPlateau,
@@ -66,7 +73,12 @@ setEstimator <- function(
     metric = "auc",
     accumulationSteps = NULL,
     seed = NULL,
-    trainValidationSplit = FALSE) {
+    trainValidationSplit = FALSE,
+    numWorkers = 0,
+    prefetchFactor = NULL,
+    persistentWorkers = FALSE,
+    prefetch = FALSE
+    ) {
   checkIsClass(learningRate, c("numeric", "character"))
   if (inherits(learningRate, "character") && learningRate != "auto") {
     stop(paste0(
@@ -80,6 +92,13 @@ setEstimator <- function(
   checkHigher(batchSize, 0)
   checkIsClass(epochs, c("numeric", "integer"))
   checkHigher(epochs, 0)
+  checkIsClass(precision, "character")
+  if (!precision %in% c("float32", "float16", "bfloat16")) {
+    stop(paste0(
+      "precision must be one of 'float32', 'float16', 'bfloat16'. You provided: ",
+      precision
+    ))
+  }
   checkIsClass(earlyStopping, c("list", "NULL"))
   checkIsClass(compile, "logical")
   checkIsClass(metric, c("character", "list"))
@@ -92,6 +111,12 @@ setEstimator <- function(
       stop("Batch size should be divisible by accumulation steps")
     }
   }
+  checkIsClass(numWorkers, c("numeric", "integer"))
+  checkHigherEqual(numWorkers, 0)
+  checkIsClass(prefetchFactor, c("numeric", "integer", "NULL"))
+  if (!is.null(prefetchFactor)) checkHigher(prefetchFactor, 0)
+  checkIsClass(persistentWorkers, "logical")
+  checkIsClass(prefetch, "logical")
 
   if (length(learningRate) == 1 && learningRate == "auto") {
     findLR <- TRUE
@@ -107,12 +132,17 @@ setEstimator <- function(
     batchSize = batchSize,
     epochs = epochs,
     device = device,
+    precision = precision,
     earlyStopping = earlyStopping,
     compile = compile,
     findLR = findLR,
     metric = metric,
     accumulationSteps = accumulationSteps,
-    seed = seed[1]
+    seed = seed[1],
+    numWorkers = as.integer(numWorkers),
+    prefetchFactor = if (!is.null(prefetchFactor)) as.integer(prefetchFactor) else prefetchFactor,
+    persistentWorkers = persistentWorkers,
+    prefetch = prefetch
   )
   if (!is.null(trainValidationSplit)) {
     estimatorSettings$trainValidationSplit <- trainValidationSplit

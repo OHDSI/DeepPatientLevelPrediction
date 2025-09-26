@@ -10,6 +10,7 @@ setEstimator(
   batchSize = 512,
   epochs = 30,
   device = "cpu",
+  precision = "float32",
   optimizer = torch$optim$AdamW,
   scheduler = list(fun = torch$optim$lr_scheduler$ReduceLROnPlateau, params =
     list(patience = 1)),
@@ -19,7 +20,11 @@ setEstimator(
   metric = "auc",
   accumulationSteps = NULL,
   seed = NULL,
-  trainValidationSplit = FALSE
+  trainValidationSplit = FALSE,
+  numWorkers = 0,
+  prefetchFactor = NULL,
+  persistentWorkers = FALSE,
+  prefetch = FALSE
 )
 }
 \arguments{
@@ -33,6 +38,8 @@ setEstimator(
 
 \item{device}{what device to train on, can be a string or a function to
 that evaluates to the device during runtime}
+
+\item{precision}{numeric precision policy, one of 'float32', 'float16', 'bfloat16'.}
 
 \item{optimizer}{which optimizer to use}
 
@@ -59,6 +66,15 @@ updating weights, can also be a function that is evaluated during runtime}
 
 \item{trainValidationSplit}{if TRUE, perform a train-validation split for
 model selection instead of cross validation}
+
+\item{numWorkers}{number of workers to use for data loading}
+
+\item{prefetchFactor}{number of samples loaded in advance by each worker}
+
+\item{persistentWorkers}{whether to keep workers alive between epochs}
+
+\item{prefetch}{whether to use prefetching of data when loading batches
+on GPU}
 }
 \description{
 creates settings for the Estimator, which takes a model and trains it

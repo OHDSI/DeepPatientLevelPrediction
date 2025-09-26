@@ -338,7 +338,7 @@ test_that("device as a function argument works", {
                      estimatorSettings = estimatorSettings)
   estimator <- createEstimator(parameters = parameters)
 
-  expect_equal(estimator$device, "cpu")
+  expect_equal(estimator$device$type, "cpu")
 
   Sys.setenv("testDeepPLPDevice" = "meta")
 
@@ -352,7 +352,7 @@ test_that("device as a function argument works", {
                      estimatorSettings = estimatorSettings)
   estimator <- createEstimator(parameters = parameters)
 
-  expect_equal(estimator$device, "meta")
+  expect_equal(estimator$device$type, "meta")
 
   Sys.unsetenv("testDeepPLPDevice")
 
@@ -460,4 +460,12 @@ test_that("train-validation split functionality works", {
   uniqueEvalTypes <- unique(fitResult$prediction$evaluationType)
   expect_true("Validation" %in% uniqueEvalTypes)
   expect_true("Train" %in% uniqueEvalTypes)
+})
+
+test_that("setEstimator errors on invalid precision", {
+  expect_error(
+    setEstimator(precision = "fp32"),
+    regexp = "precision must be one of 'float32', 'float16', 'bfloat16'",
+    fixed = FALSE
+  )
 })
