@@ -10,13 +10,13 @@ from gpu_memory_cleanup import memory_cleanup
 from InitStrategy import DefaultInitStrategy
 
 
-def set_fp32_speed_mode(enable_tf32: bool, device: str) -> None:
+def set_fp32_speed_mode(enable_tf32: bool, device: torch.device) -> None:
     """
     Enable/disable TF32 for remaining FP32 matmul/conv on CUDA.
     Uses new API on PyTorch >= 2.9, falls back to legacy flags otherwise.
     No-op on non-CUDA devices.
     """
-    if device != "cuda":
+    if device.type != "cuda":
         return
     mode = "tf32" if enable_tf32 else "ieee"
     if hasattr(torch.backends.cuda, "matmul") and hasattr(
@@ -37,10 +37,11 @@ class Estimator:
 
     def __init__(self, model, parameters):
         self.seed = parameters["estimator_settings"]["seed"]
-        if callable(parameters["estimator_settings"]["device"]):
-            self.device = parameters["estimator_settings"]["device"]()
-        else:
-            self.device = parameters["estimator_settings"]["device"]
+        raw_device = parameters["estimator_settings"]["device"]
+        if callable(raw_device):
+            raw_device = raw_device()
+        self.device = torch.device(raw_device)
+        self.is_cuda = self.device.type == "cuda"
         torch.manual_seed(seed=self.seed)
 
         if "init_strategy" in parameters["estimator_settings"]:
@@ -87,10 +88,10 @@ class Estimator:
 
         set_fp32_speed_mode(enable_tf32=True, device=self.device)
 
-        if self.device == "cuda" and self.precision == "bfloat16":
+        if self.is_cuda and self.precision == "bfloat16":
             self.autocast_dtype = torch.bfloat16
             self.grad_scaler = None  # BF16 doesn't need GradScaler
-        elif self.device == "cuda" and self.precision == "float16":
+        elif self.is_cuda and self.precision == "float16":
             self.autocast_dtype = torch.float16
             self.grad_scaler = torch.amp.GradScaler("cuda", enabled=True)
         else:
@@ -101,7 +102,7 @@ class Estimator:
             params=self.model.parameters(),
             lr=self.learning_rate,
             weight_decay=self.weight_decay,
-            fused=True if self.device == "cuda" else False,
+            fused=self.is_cuda,
         )
         self.criterion = parameters["estimator_settings"]["criterion"](reduction="sum")
 
@@ -149,8 +150,16 @@ class Estimator:
         else:
             self.early_stopper = None
 
-        self.prefetch = self.device == "cuda"
-        self.variable_len = False
+        self.prefetch = parameters["estimator_settings"].get("prefetch", False) and (
+                self.is_cuda # only makes sense for GPU
+                )
+        self.num_workers = parameters["estimator_settings"].get("num_workers", 0)
+        self.persistent_workers = parameters["estimator_settings"].get(
+            "persistent_workers", False
+        )
+        self.prefetch_factor = parameters["estimator_settings"].get(
+            "prefetch_factor", None
+        )
         self.best_score = None
         self.best_epoch = None
         self.learn_rate_schedule = None
@@ -167,10 +176,10 @@ class Estimator:
                 batch_size=self.batch_size,
                 drop_last=True if len(dataset) > self.batch_size else False,
             ),
-            pin_memory=(self.device == "cuda"),
-            num_workers=4,
-            prefetch_factor=2,
-            persistent_workers=True,
+            pin_memory=self.is_cuda,
+            num_workers=self.num_workers,
+            prefetch_factor=self.prefetch_factor,
+            persistent_workers=self.persistent_workers,
         )
         test_dataloader = DataLoader(
             dataset=test_dataset,
@@ -180,10 +189,10 @@ class Estimator:
                 batch_size=self.batch_size,
                 drop_last=False,
             ),
-            pin_memory=(self.device == "cuda"),
-            num_workers=4,
-            prefetch_factor=2,
-            persistent_workers=True,
+            pin_memory=self.is_cuda,
+            num_workers=self.num_workers,
+            prefetch_factor=self.prefetch_factor,
+            persistent_workers=self.persistent_workers,
         )
         if self.prefetch:
             train_dataloader = CudaPrefetcher(train_dataloader,
@@ -246,7 +255,7 @@ class Estimator:
             for sub_batch in split_batch:
                 cm = (
                     torch.autocast("cuda", dtype=self.autocast_dtype)
-                    if (self.device == "cuda" and self.autocast_dtype is not None)
+                    if (self.is_cuda and self.autocast_dtype is not None)
                     else nullcontext()
                 )
                 with cm:
@@ -281,7 +290,7 @@ class Estimator:
                 for sub_batch in split_batch:
                     cm = (
                         torch.autocast("cuda", dtype=self.autocast_dtype)
-                        if (self.device == "cuda" and self.autocast_dtype is not None)
+                        if (self.is_cuda and self.autocast_dtype is not None)
                         else nullcontext()
                     )
                     with cm:
@@ -396,7 +405,13 @@ class Estimator:
                 batch_size=self.batch_size,
                 drop_last=True,
             ),
+            num_workers=self.num_workers,
+            pin_memory=self.is_cuda,
+            prefetch_factor=self.prefetch_factor,
+            persistent_workers=self.persistent_workers,
         )
+        if self.prefetch:
+            dataloader = CudaPrefetcher(dataloader, device=self.device)
         if isinstance(learning_rates, list):
             self.best_epoch = len(learning_rates)
         elif ~isinstance(learning_rates, list):
@@ -430,7 +445,13 @@ class Estimator:
                 batch_size=self.batch_size,
                 drop_last=False,
             ),
+            pin_memory=self.is_cuda,
+            num_workers=self.num_workers,
+            prefetch_factor=self.prefetch_factor,
+            persistent_workers=self.persistent_workers,
         )
+        if self.prefetch:
+            dataloader = CudaPrefetcher(dataloader, device=self.device)
         with torch.no_grad():
             predictions = list()
             self.model.eval()
@@ -439,7 +460,7 @@ class Estimator:
                 for sub_batch in split_batch:
                     cm = (
                         torch.autocast("cuda", dtype=self.autocast_dtype)
-                        if (self.device == "cuda" and self.autocast_dtype is not None)
+                        if (self.is_cuda and self.autocast_dtype is not None)
                         else nullcontext()
                     )
                     with cm:
