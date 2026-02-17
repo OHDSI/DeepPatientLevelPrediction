@@ -7,6 +7,7 @@ from tqdm import tqdm
 
 from gpu_memory_cleanup import memory_cleanup
 from InitStrategy import InitStrategy, DefaultInitStrategy
+from schedules import get_schedule
 
 class Estimator:
     """
@@ -37,7 +38,9 @@ class Estimator:
         self.weight_decay = parameters["estimator_settings"].get("weight_decay", 1e-5)
         self.batch_size = int(parameters["estimator_settings"].get("batch_size", 1024))
         self.prefix = parameters["estimator_settings"].get("prefix", self.model.name)
-        
+        self.base_learning_rate = float(self.learning_rate)
+        self.base_weight_decay = float(self.weight_decay)
+
         if "accumulation_steps" in parameters["estimator_settings"].keys() \
         and parameters["estimator_settings"]["accumulation_steps"]:
             self.accumulation_steps = int(parameters["estimator_settings"]["accumulation_steps"])
@@ -45,17 +48,30 @@ class Estimator:
         else:
             self.accumulation_steps = 1
             self.sub_batch_size = self.batch_size
-        
+
         self.previous_epochs = int(parameters["estimator_settings"].get("previous_epochs", 0))
         self.model.to(device=self.device)
 
-        self.optimizer = parameters["estimator_settings"]["optimizer"](
-            params=self.model.parameters(),
-            lr=self.learning_rate,
-            weight_decay=self.weight_decay,
-        )
-        self.criterion = parameters["estimator_settings"]["criterion"](reduction="sum")
+        self.realmlp_mode = self.model.name == "RealMLP"
+        self.beta2 = float(parameters["estimator_settings"].get("beta2", 0.999))
+        self.eps = float(parameters["estimator_settings"].get("eps", 1e-8))
+        self.scaling_lr_mult = float(parameters["estimator_settings"].get("scaling_lr_mult", 1.0))
+        self.bias_lr_mult = float(parameters["estimator_settings"].get("bias_lr_mult", 1.0))
+        self.act_lr_mult = float(parameters["estimator_settings"].get("act_lr_mult", 1.0))
+        self.bias_wd_factor = float(parameters["estimator_settings"].get("bias_wd_factor", 0.0))
+        self.label_smoothing = float(parameters["estimator_settings"].get("label_smoothing", 0.0))
+        self.base_dropout = float(parameters["model_parameters"].get("dropout", 0.0))
+        self.lr_schedule_name = parameters["estimator_settings"].get("lr_schedule")
+        self.dropout_schedule_name = parameters["estimator_settings"].get("dropout_schedule")
+        self.weight_decay_schedule_name = parameters["estimator_settings"].get("weight_decay_schedule")
+        self.lr_schedule = get_schedule(self.lr_schedule_name)
+        self.dropout_schedule = get_schedule(self.dropout_schedule_name)
+        self.weight_decay_schedule = get_schedule(self.weight_decay_schedule_name)
+        self.total_steps = 1
+        self.global_step = 0
+        self.apply_realmlp_dynamic_schedule = self.realmlp_mode
 
+        self.metric = None
         if (
             "metric" in parameters["estimator_settings"].keys()
             and parameters["estimator_settings"]["metric"] is not None
@@ -79,13 +95,20 @@ class Estimator:
                     "mode"
                 ]
 
-        if (
+        self.optimizer = self._create_optimizer(parameters["estimator_settings"]["optimizer"])
+        self.criterion = parameters["estimator_settings"]["criterion"](reduction="sum")
+
+        self.use_external_lr_scheduler = (
             "scheduler" in parameters["estimator_settings"].keys()
             and parameters["estimator_settings"]["scheduler"] is not None
-        ):
+            and not (self.realmlp_mode and self.lr_schedule_name is not None)
+        )
+        if self.use_external_lr_scheduler:
             self.scheduler = parameters["estimator_settings"]["scheduler"]["fun"](
                 self.optimizer, **parameters["estimator_settings"]["scheduler"]["params"]
             )
+        else:
+            self.scheduler = None
 
         if (
             "early_stopping" in parameters["estimator_settings"].keys()
@@ -103,6 +126,107 @@ class Estimator:
         torch_compile = parameters["estimator_settings"].get("compile", False)
         if torch_compile:
             self.model = torch.compile(self.model, dynamic=False)
+
+    def _create_optimizer(self, optimizer_class):
+        if not self.realmlp_mode:
+            return optimizer_class(
+                params=self.model.parameters(),
+                lr=self.learning_rate,
+                weight_decay=self.weight_decay,
+            )
+
+        param_groups = self._create_realmlp_param_groups()
+        kwargs = {
+            "params": param_groups,
+            "lr": self.learning_rate,
+            "weight_decay": self.weight_decay,
+            "betas": (0.9, self.beta2),
+            "eps": self.eps,
+        }
+        try:
+            return optimizer_class(**kwargs)
+        except TypeError:
+            kwargs.pop("betas")
+            kwargs.pop("eps")
+            return optimizer_class(**kwargs)
+
+    def _create_realmlp_param_groups(self):
+        scale_params = []
+        act_params = []
+        bias_params = []
+        other_params = []
+
+        for name, param in self.model.named_parameters():
+            if not param.requires_grad:
+                continue
+            if getattr(param, "_is_scale_param", False):
+                scale_params.append(param)
+            elif getattr(param, "_is_act_param", False):
+                act_params.append(param)
+            elif name.endswith(".bias"):
+                bias_params.append(param)
+            else:
+                other_params.append(param)
+
+        groups = []
+        if other_params:
+            groups.append(
+                {
+                    "params": other_params,
+                    "name": "other",
+                    "lr_factor": 1.0,
+                    "wd_factor": 1.0,
+                }
+            )
+        if scale_params:
+            groups.append(
+                {
+                    "params": scale_params,
+                    "name": "scale",
+                    "lr_factor": self.scaling_lr_mult,
+                    "wd_factor": 1.0,
+                }
+            )
+        if bias_params:
+            groups.append(
+                {
+                    "params": bias_params,
+                    "name": "bias",
+                    "lr_factor": self.bias_lr_mult,
+                    "wd_factor": self.bias_wd_factor,
+                }
+            )
+        if act_params:
+            groups.append(
+                {
+                    "params": act_params,
+                    "name": "act",
+                    "lr_factor": self.act_lr_mult,
+                    "wd_factor": 1.0,
+                }
+            )
+        return groups
+
+    def _prepare_targets_for_loss(self, targets):
+        targets = targets.float()
+        if self.label_smoothing > 0.0:
+            targets = targets * (1.0 - self.label_smoothing) + 0.5 * self.label_smoothing
+        return targets
+
+    def _apply_realmlp_step_hparams(self):
+        if not self.realmlp_mode or not self.apply_realmlp_dynamic_schedule:
+            return
+        t = self.global_step / max(self.total_steps - 1, 1)
+        lr_scale = self.lr_schedule(t)
+        wd_scale = self.weight_decay_schedule(t)
+        drop_scale = self.dropout_schedule(t)
+        for group in self.optimizer.param_groups:
+            group["lr"] = self.base_learning_rate * group.get("lr_factor", 1.0) * lr_scale
+            group["weight_decay"] = (
+                self.base_weight_decay * group.get("wd_factor", 1.0) * wd_scale
+            )
+        if hasattr(self.model, "set_dropout"):
+            self.model.set_dropout(self.base_dropout * drop_scale)
 
     def fit(self, dataset, test_dataset):
         train_dataloader = DataLoader(
@@ -125,6 +249,9 @@ class Estimator:
             ),
             pin_memory=True,
         )
+        self.total_steps = max(1, self.epochs * len(train_dataloader))
+        self.global_step = 0
+        self.apply_realmlp_dynamic_schedule = self.realmlp_mode
 
         trained_epochs = dict()
         times = list()
@@ -140,7 +267,8 @@ class Estimator:
             current_epoch = epoch + self.previous_epochs
             lr = self.optimizer.param_groups[0]["lr"]
             self.print_progress(scores, training_loss, delta_time, current_epoch)
-            self.scheduler.step(scores["metric"])
+            if self.scheduler is not None:
+                self.scheduler.step(scores["metric"])
             all_scores.append(scores)
             learning_rates.append(lr)
             times.append(round(delta_time, 3))
@@ -174,19 +302,22 @@ class Estimator:
         index = 0
         self.optimizer.zero_grad()
         for batch in tqdm(dataloader):
+            self._apply_realmlp_step_hparams()
             split_batch = self.split_batch(batch)
             accumulated_loss = 0
-            all_out = []
             for sub_batch in split_batch:
                 sub_batch = batch_to_device(sub_batch, device=self.device)
                 out = self.model(sub_batch[0])
-                all_out.append(out.detach())
-                loss = self.criterion(out.squeeze(), sub_batch[1])
+                loss = self.criterion(
+                    out.squeeze(), self._prepare_targets_for_loss(sub_batch[1])
+                )
                 loss.backward()
                 accumulated_loss += loss.detach()
             
             self.optimizer.step()
             self.optimizer.zero_grad()
+            if self.realmlp_mode:
+                self.global_step += 1
             training_losses[index] = accumulated_loss / self.batch_size
             index += 1
         return training_losses.mean().item()
@@ -206,7 +337,9 @@ class Estimator:
                     pred = self.model(sub_batch[0])
                     predictions.append(pred)
                     targets.append(sub_batch[1])
-                    accumulated_loss += self.criterion(pred.squeeze(), sub_batch[1]).detach()
+                    accumulated_loss += self.criterion(
+                        pred.squeeze(), self._prepare_targets_for_loss(sub_batch[1])
+                    ).detach()
                 loss[index] = accumulated_loss / self.batch_size
 
                 index += 1
@@ -228,14 +361,11 @@ class Estimator:
             return scores
 
     def finish_fit(self, scores, model_state_dict, epoch, learning_rates):
-        if self.metric["mode"] == "max":
-            best_epoch_index = torch.argmax(
-                torch.as_tensor([x["metric"] for x in scores])
-            ).item()
-        elif self.metric["mode"] == "min":
-            best_epoch_index = torch.argmin(
-                torch.as_tensor([x["metric"] for x in scores])
-            ).item()
+        metric_values = [x["metric"] for x in scores]
+        if self.metric["mode"] in ("max", "min"):
+            best_epoch_index = select_best_epoch(metric_values, self.metric["mode"])
+        else:
+            raise ValueError(f"Unknown metric mode: {self.metric['mode']}")
 
         best_model_state_dict = model_state_dict[best_epoch_index]
         self.model.load_state_dict(best_model_state_dict)
@@ -309,14 +439,23 @@ class Estimator:
         )
         if isinstance(learning_rates, list):
             self.best_epoch = len(learning_rates)
-        elif ~isinstance(learning_rates, list):
+            self.apply_realmlp_dynamic_schedule = False
+        elif learning_rates is not None:
             learning_rates = [learning_rates]
             self.best_epoch = len(learning_rates)
+            self.apply_realmlp_dynamic_schedule = False
         else:
             self.best_epoch = self.epochs
+            self.apply_realmlp_dynamic_schedule = self.realmlp_mode
+            learning_rates = [self.base_learning_rate] * self.best_epoch
 
         for epoch in range(self.best_epoch):
-            self.optimizer.param_groups[0]["lr"] = learning_rates[epoch]
+            if self.realmlp_mode:
+                base_lr = learning_rates[epoch]
+                for group in self.optimizer.param_groups:
+                    group["lr"] = base_lr * group.get("lr_factor", 1.0)
+            else:
+                self.optimizer.param_groups[0]["lr"] = learning_rates[epoch]
             self.fit_epoch(dataloader)
         return
 
@@ -446,6 +585,16 @@ def compute_auc(y_true, y_pred):
     # Compute AUC
     auc = num_crossings / (n_pos * n_neg)
     return auc
+
+
+def select_best_epoch(metric_values, mode):
+    if mode == "max":
+        best_metric = max(metric_values)
+        return max(i for i, value in enumerate(metric_values) if value == best_metric)
+    if mode == "min":
+        best_metric = min(metric_values)
+        return max(i for i, value in enumerate(metric_values) if value == best_metric)
+    raise ValueError(f"Unknown mode: {mode}")
 
 
 def fit_estimator(estimator, train, test):
