@@ -58,6 +58,9 @@ class Estimator:
         self.scaling_lr_mult = float(parameters["estimator_settings"].get("scaling_lr_mult", 1.0))
         self.bias_lr_mult = float(parameters["estimator_settings"].get("bias_lr_mult", 1.0))
         self.act_lr_mult = float(parameters["estimator_settings"].get("act_lr_mult", 1.0))
+        self.embedding_lr_mult = float(
+            parameters["estimator_settings"].get("embedding_lr_mult", 1.0)
+        )
         self.bias_wd_factor = float(parameters["estimator_settings"].get("bias_wd_factor", 0.0))
         self.label_smoothing = float(parameters["estimator_settings"].get("label_smoothing", 0.0))
         self.base_dropout = float(parameters["model_parameters"].get("dropout", 0.0))
@@ -70,6 +73,21 @@ class Estimator:
         self.total_steps = 1
         self.global_step = 0
         self.apply_realmlp_dynamic_schedule = self.realmlp_mode
+        self.use_data_dependent_init = bool(
+            parameters["estimator_settings"].get("data_dependent_init", self.realmlp_mode)
+        )
+        self.data_dependent_init_batches = int(
+            parameters["estimator_settings"].get("data_dependent_init_batches", 8)
+        )
+        self.data_dependent_init_bias_mode = parameters["estimator_settings"].get(
+            "data_dependent_init_bias_mode",
+            "he5",
+        )
+        self.data_dependent_init_bias_scale = float(
+            parameters["estimator_settings"].get("data_dependent_init_bias_scale", 1.0)
+        )
+        self.data_dependent_init_done = False
+        self._log_realmlp_configuration()
 
         self.metric = None
         if (
@@ -127,6 +145,25 @@ class Estimator:
         if torch_compile:
             self.model = torch.compile(self.model, dynamic=False)
 
+    def _log_realmlp_configuration(self):
+        if not self.realmlp_mode:
+            return
+        token_aggregation = self.model_parameters.get("token_aggregation", "mean")
+        feature_scale_mode = self.model_parameters.get("feature_scale_mode", "scalar")
+        paper_mode = bool(self.model_parameters.get("paper_mode", False))
+        print(
+            "RealMLP config | "
+            f"paper_mode={paper_mode} | "
+            f"token_aggregation={token_aggregation} | "
+            f"feature_scale_mode={feature_scale_mode} | "
+            f"label_smoothing={self.label_smoothing} | "
+            f"lr_schedule={self.lr_schedule_name} | "
+            f"dropout_schedule={self.dropout_schedule_name} | "
+            f"weight_decay_schedule={self.weight_decay_schedule_name} | "
+            f"data_dependent_init={self.use_data_dependent_init} | "
+            f"data_dependent_init_bias_mode={self.data_dependent_init_bias_mode}"
+        )
+
     def _create_optimizer(self, optimizer_class):
         if not self.realmlp_mode:
             return optimizer_class(
@@ -152,6 +189,7 @@ class Estimator:
 
     def _create_realmlp_param_groups(self):
         scale_params = []
+        embedding_params = []
         act_params = []
         bias_params = []
         other_params = []
@@ -163,6 +201,8 @@ class Estimator:
                 scale_params.append(param)
             elif getattr(param, "_is_act_param", False):
                 act_params.append(param)
+            elif getattr(param, "_is_embedding_param", False):
+                embedding_params.append(param)
             elif name.endswith(".bias"):
                 bias_params.append(param)
             else:
@@ -184,6 +224,15 @@ class Estimator:
                     "params": scale_params,
                     "name": "scale",
                     "lr_factor": self.scaling_lr_mult,
+                    "wd_factor": 1.0,
+                }
+            )
+        if embedding_params:
+            groups.append(
+                {
+                    "params": embedding_params,
+                    "name": "embed",
+                    "lr_factor": self.embedding_lr_mult,
                     "wd_factor": 1.0,
                 }
             )
@@ -228,6 +277,34 @@ class Estimator:
         if hasattr(self.model, "set_dropout"):
             self.model.set_dropout(self.base_dropout * drop_scale)
 
+    def _maybe_run_realmlp_data_dependent_init(self, dataloader):
+        if (
+            not self.realmlp_mode
+            or not self.use_data_dependent_init
+            or self.data_dependent_init_done
+            or not hasattr(self.model, "data_dependent_init")
+        ):
+            return
+        sampled_batches = []
+        max_batches = max(1, self.data_dependent_init_batches)
+        for batch_index, batch in enumerate(dataloader):
+            if batch_index >= max_batches:
+                break
+            split_batch = self.split_batch(batch)
+            for sub_batch in split_batch:
+                sub_batch = batch_to_device(sub_batch, device=self.device)
+                sampled_batches.append(sub_batch[0])
+
+        if len(sampled_batches) == 0:
+            return
+        with torch.no_grad():
+            self.model.data_dependent_init(
+                sampled_batches,
+                bias_mode=self.data_dependent_init_bias_mode,
+                bias_scale=self.data_dependent_init_bias_scale,
+            )
+        self.data_dependent_init_done = True
+
     def fit(self, dataset, test_dataset):
         train_dataloader = DataLoader(
             dataset=dataset,
@@ -249,6 +326,7 @@ class Estimator:
             ),
             pin_memory=True,
         )
+        self._maybe_run_realmlp_data_dependent_init(train_dataloader)
         self.total_steps = max(1, self.epochs * len(train_dataloader))
         self.global_step = 0
         self.apply_realmlp_dynamic_schedule = self.realmlp_mode
@@ -437,6 +515,21 @@ class Estimator:
                 drop_last=True,
             ),
         )
+        self._maybe_run_realmlp_data_dependent_init(dataloader)
+        if self.realmlp_mode:
+            if isinstance(learning_rates, list):
+                self.best_epoch = len(learning_rates)
+            elif learning_rates is not None:
+                self.best_epoch = 1
+            else:
+                self.best_epoch = self.epochs
+            self.total_steps = max(1, self.best_epoch * len(dataloader))
+            self.global_step = 0
+            self.apply_realmlp_dynamic_schedule = True
+            for _ in range(self.best_epoch):
+                self.fit_epoch(dataloader)
+            return
+
         if isinstance(learning_rates, list):
             self.best_epoch = len(learning_rates)
             self.apply_realmlp_dynamic_schedule = False
@@ -450,12 +543,7 @@ class Estimator:
             learning_rates = [self.base_learning_rate] * self.best_epoch
 
         for epoch in range(self.best_epoch):
-            if self.realmlp_mode:
-                base_lr = learning_rates[epoch]
-                for group in self.optimizer.param_groups:
-                    group["lr"] = base_lr * group.get("lr_factor", 1.0)
-            else:
-                self.optimizer.param_groups[0]["lr"] = learning_rates[epoch]
+            self.optimizer.param_groups[0]["lr"] = learning_rates[epoch]
             self.fit_epoch(dataloader)
         return
 

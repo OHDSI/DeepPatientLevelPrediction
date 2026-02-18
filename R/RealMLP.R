@@ -12,6 +12,10 @@
 #' @param scalingLrMult LR multiplier for scaling parameters (default 6.0)
 #' @param biasLrMult LR multiplier for bias parameters (default 0.1)
 #' @param actLrMult LR multiplier for parametric activation parameters (default 0.1)
+#' @param embeddingLrMult LR multiplier for embedding parameters (default 0.1)
+#' @param paperMode if TRUE, enforce paper-aligned defaults where possible
+#' @param tokenAggregation token aggregation mode: "auto", "mean", "sum", "sum_len_norm"
+#' @param featureScaleMode feature scale mode: "auto", "scalar", "vector"
 #' @param device     "cpu" or "cuda" (default "cpu")
 #' @export
 setRealMLP <- function(
@@ -23,6 +27,10 @@ setRealMLP <- function(
   scalingLrMult = 6.0,
   biasLrMult = 0.1,
   actLrMult = 0.1,
+  embeddingLrMult = 0.1,
+  paperMode = TRUE,
+  tokenAggregation = "auto",
+  featureScaleMode = "auto",
   device = "cpu"
 ) {
   checkIsClass(numLayers, c("integer", "numeric"))
@@ -44,7 +52,27 @@ setRealMLP <- function(
   checkHigherEqual(biasLrMult, 0)
   checkIsClass(actLrMult, "numeric")
   checkHigherEqual(actLrMult, 0)
+  checkIsClass(embeddingLrMult, "numeric")
+  checkHigherEqual(embeddingLrMult, 0)
+  checkIsClass(paperMode, "logical")
+  checkIsClass(tokenAggregation, "character")
+  checkInStringVector(
+    tokenAggregation,
+    c("auto", "mean", "sum", "sum_len_norm")
+  )
+  checkIsClass(featureScaleMode, "character")
+  checkInStringVector(
+    featureScaleMode,
+    c("auto", "scalar", "vector")
+  )
   checkIsClass(device, c("character", "function"))
+
+  if (tokenAggregation == "auto") {
+    tokenAggregation <- if (isTRUE(paperMode)) "sum" else "mean"
+  }
+  if (featureScaleMode == "auto") {
+    featureScaleMode <- "scalar"
+  }
 
   est <- setEstimator(
     learningRate = 2e-3,
@@ -75,13 +103,21 @@ setRealMLP <- function(
   est$scalingLrMult <- scalingLrMult
   est$biasLrMult <- biasLrMult
   est$actLrMult <- actLrMult
+  est$embeddingLrMult <- embeddingLrMult
   est$biasWdFactor <- 0.0
+  est$dataDependentInit <- TRUE
+  est$dataDependentInitBatches <- 8L
+  est$dataDependentInitBiasMode <- "he5"
+  est$dataDependentInitBiasScale <- 1.0
 
   param <- list(
     numLayers = as.integer(numLayers),
     sizeHidden = as.integer(sizeHidden),
     dropout = dropout,
-    sizeEmbedding = as.integer(sizeEmbedding)
+    sizeEmbedding = as.integer(sizeEmbedding),
+    paperMode = paperMode,
+    tokenAggregation = tokenAggregation,
+    featureScaleMode = featureScaleMode
   )
 
   results <- list(
