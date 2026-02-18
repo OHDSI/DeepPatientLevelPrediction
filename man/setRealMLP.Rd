@@ -13,6 +13,10 @@ setRealMLP(
   scalingLrMult = 6,
   biasLrMult = 0.1,
   actLrMult = 0.1,
+  embeddingLrMult = 0.1,
+  paperMode = TRUE,
+  tokenAggregation = "auto",
+  featureScaleMode = "auto",
   device = "cpu"
 )
 }
@@ -32,6 +36,14 @@ setRealMLP(
 \item{biasLrMult}{LR multiplier for bias parameters (default 0.1)}
 
 \item{actLrMult}{LR multiplier for parametric activation parameters (default 0.1)}
+
+\item{embeddingLrMult}{LR multiplier for embedding parameters (default 0.1)}
+
+\item{paperMode}{if TRUE, enforce paper-aligned defaults where possible}
+
+\item{tokenAggregation}{token aggregation mode: "auto", "mean", "sum", "sum_len_norm"}
+
+\item{featureScaleMode}{feature scale mode: "auto", "scalar", "vector"}
 
 \item{device}{"cpu" or "cuda" (default "cpu")}
 }
