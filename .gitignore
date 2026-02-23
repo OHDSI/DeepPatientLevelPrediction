@@ -15,6 +15,5 @@ inst/python/__pycache__
 /Meta/
 *.pt
 .aider*
-
 /.devcontainer/
 /.vscode/
