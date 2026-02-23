@@ -18,6 +18,13 @@ class RealMLPWideFM(RealMLP):
         fm_norm_mode: str = "sqrt_k",
         fm_alpha_nonnegative: bool = False,
         wide_alpha_nonnegative: bool = False,
+        numeric_residual_enabled: bool = False,
+        numeric_residual_hidden_dim: int = 64,
+        numeric_residual_num_layers: int = 2,
+        numeric_residual_dropout: float = 0.0,
+        numeric_residual_alpha_init: float = 0.0,
+        numeric_residual_alpha_trainable: bool = True,
+        numeric_residual_alpha_nonnegative: bool = False,
         **kwargs,
     ):
         model_init_path = kwargs.pop("model_init_path", None)
@@ -31,6 +38,9 @@ class RealMLPWideFM(RealMLP):
         self.fm_norm_mode = str(fm_norm_mode)
         self.fm_alpha_nonnegative = bool(fm_alpha_nonnegative)
         self.wide_alpha_nonnegative = bool(wide_alpha_nonnegative)
+        self.numeric_residual_enabled = bool(numeric_residual_enabled)
+        self.numeric_residual_alpha_trainable = bool(numeric_residual_alpha_trainable)
+        self.numeric_residual_alpha_nonnegative = bool(numeric_residual_alpha_nonnegative)
         vocabulary_size = int(self.feature_info.get_vocabulary_size())
         self.fm_embedding = nn.Embedding(
             vocabulary_size + 1,
@@ -47,6 +57,39 @@ class RealMLPWideFM(RealMLP):
             self.fm_embedding.weight[0].zero_()
         setattr(self.fm_embedding.weight, "_is_fm_param", True)
         setattr(self.fm_alpha, "_is_fm_param", True)
+        self.numerical_feature_count = int(
+            getattr(self.embedding, "n_num", 0)
+        )
+        if self.numeric_residual_enabled and self.numerical_feature_count > 0:
+            hidden_dim = int(max(1, numeric_residual_hidden_dim))
+            num_layers = int(max(1, numeric_residual_num_layers))
+            dropout = float(max(0.0, numeric_residual_dropout))
+            layers = []
+            in_dim = self.numerical_feature_count
+            for _ in range(num_layers - 1):
+                layers.append(nn.Linear(in_dim, hidden_dim))
+                layers.append(nn.SiLU())
+                if dropout > 0:
+                    layers.append(nn.Dropout(dropout))
+                in_dim = hidden_dim
+            layers.append(nn.Linear(in_dim, 1))
+            self.numeric_residual = nn.Sequential(*layers)
+            with torch.no_grad():
+                last_linear = self.numeric_residual[-1]
+                if isinstance(last_linear, nn.Linear):
+                    last_linear.weight.zero_()
+                    if last_linear.bias is not None:
+                        last_linear.bias.zero_()
+            self.numeric_residual_alpha = nn.Parameter(
+                torch.tensor(float(numeric_residual_alpha_init), dtype=torch.float32),
+                requires_grad=self.numeric_residual_alpha_trainable,
+            )
+            for parameter in self.numeric_residual.parameters():
+                setattr(parameter, "_is_num_residual_param", True)
+            setattr(self.numeric_residual_alpha, "_is_num_residual_param", True)
+        else:
+            self.numeric_residual = None
+            self.numeric_residual_alpha = None
 
         if model_init_path is not None and str(model_init_path).strip() != "":
             self.load_model_from_file(
@@ -66,9 +109,19 @@ class RealMLPWideFM(RealMLP):
         if self.freeze_deep:
             self.fm_embedding.weight.requires_grad_(False)
             self.fm_alpha.requires_grad_(False)
+            if self.numeric_residual is not None:
+                for parameter in self.numeric_residual.parameters():
+                    parameter.requires_grad_(False)
+            if self.numeric_residual_alpha is not None:
+                self.numeric_residual_alpha.requires_grad_(False)
         else:
             self.fm_embedding.weight.requires_grad_(True)
             self.fm_alpha.requires_grad_(self.fm_alpha_trainable)
+            if self.numeric_residual is not None:
+                for parameter in self.numeric_residual.parameters():
+                    parameter.requires_grad_(True)
+            if self.numeric_residual_alpha is not None:
+                self.numeric_residual_alpha.requires_grad_(self.numeric_residual_alpha_trainable)
 
     @staticmethod
     def _constrain_alpha(alpha, nonnegative: bool):
@@ -112,6 +165,31 @@ class RealMLPWideFM(RealMLP):
             raise ValueError(f"Unsupported fm_norm_mode: {self.fm_norm_mode}")
         return fm_logit
 
+    def _numeric_dense_values(self, feature_ids, feature_values):
+        if feature_values is None:
+            return None
+        if self.numerical_feature_count <= 0:
+            return None
+
+        numeric_lookup = self.embedding.input_to_numeric[feature_ids]
+        numeric_mask = numeric_lookup != 0
+        if not torch.any(numeric_mask):
+            return feature_values.new_zeros(
+                (feature_ids.shape[0], self.numerical_feature_count)
+            )
+
+        dense = feature_values.new_zeros(
+            (feature_ids.shape[0], self.numerical_feature_count)
+        )
+        scatter_index = (numeric_lookup - 1).clamp_min(0)
+        values = torch.where(
+            numeric_mask,
+            feature_values.to(dtype=dense.dtype),
+            torch.zeros_like(feature_values, dtype=dense.dtype),
+        )
+        dense.scatter_add_(1, scatter_index, values)
+        return dense
+
     def forward(self, x):
         feature_ids = x["feature_ids"]
         feature_values = x.get("feature_values", None)
@@ -139,7 +217,21 @@ class RealMLPWideFM(RealMLP):
 
         self._last_wide_alpha = float(wide_alpha.detach().item())
         self._last_fm_alpha = float(fm_alpha.detach().item())
-        combined = wide_logit + fm_alpha * fm_logit + deep_component
+        numeric_component = torch.zeros_like(wide_logit)
+        numeric_alpha = torch.zeros_like(fm_alpha)
+        if self.numeric_residual is not None:
+            numeric_dense = self._numeric_dense_values(
+                feature_ids=feature_ids,
+                feature_values=feature_values,
+            )
+            if numeric_dense is not None:
+                numeric_component = self.numeric_residual(numeric_dense).squeeze(-1)
+                numeric_alpha = self._constrain_alpha(
+                    self.numeric_residual_alpha,
+                    self.numeric_residual_alpha_nonnegative,
+                )
+        self._last_numeric_alpha = float(numeric_alpha.detach().item())
+        combined = wide_logit + fm_alpha * fm_logit + deep_component + numeric_alpha * numeric_component
         if self.use_two_logit_ce:
             return torch.stack((-0.5 * combined, 0.5 * combined), dim=1)
         return combined
