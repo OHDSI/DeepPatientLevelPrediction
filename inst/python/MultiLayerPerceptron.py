@@ -81,6 +81,8 @@ class MultiLayerPerceptron(nn.Module):
         self.head = nn.Linear(self.size_hidden, self.dim_out)
 
     def _aggregate_tokens(self, tokens, feature_ids):
+        if tokens.dim() <= 2:
+            return tokens
         token_sum = tokens.sum(dim=1)
         if self.token_aggregation == "sum":
             return token_sum

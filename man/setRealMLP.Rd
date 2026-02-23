@@ -9,7 +9,17 @@ setRealMLP(
   sizeHidden = 256L,
   dropout = 0.15,
   sizeEmbedding = 64L,
-  labelSmoothing = 0.1,
+  labelSmoothing = 0,
+  numericEmbeddingMode = "scale",
+  numericNumFrequencies = 8L,
+  numericPeriodicInitStd = 0.1,
+  numericPbldHiddenDim = 16L,
+  numericPbldEmbeddingDim = 4L,
+  dataDependentInitMode = "paper_lsuv",
+  dataDependentInitTargetVar = 1,
+  dataDependentInitMaxRows = 65536L,
+  dataDependentInitGainClip = 10,
+  dataDependentInitBiasRefitSteps = 2L,
   scalingLrMult = 6,
   biasLrMult = 0.1,
   actLrMult = 0.1,
@@ -29,7 +39,27 @@ setRealMLP(
 
 \item{sizeEmbedding}{embedding dim for compatibility with existing Embedding (default 64)}
 
-\item{labelSmoothing}{epsilon for BCE label smoothing (default 0.1)}
+\item{labelSmoothing}{epsilon for label smoothing (default 0.0 for AUROC mode)}
+
+\item{numericEmbeddingMode}{numeric token embedding mode: "scale", "pl", or "pbld"}
+
+\item{numericNumFrequencies}{periodic frequency count for PL/PBLD modes}
+
+\item{numericPeriodicInitStd}{std used to initialize periodic frequencies}
+
+\item{numericPbldHiddenDim}{hidden width for PBLD per-feature block}
+
+\item{numericPbldEmbeddingDim}{low-dimensional PBLD output width before projection}
+
+\item{dataDependentInitMode}{data-dependent init mode: "paper_lsuv" or "current"}
+
+\item{dataDependentInitTargetVar}{target pre-activation variance per neuron}
+
+\item{dataDependentInitMaxRows}{max sampled rows for init statistics (0 means all sampled rows)}
+
+\item{dataDependentInitGainClip}{optional clip on LSUV gain multipliers (>1 enables clipping)}
+
+\item{dataDependentInitBiasRefitSteps}{bias recenter iterations during data-dependent init}
 
 \item{scalingLrMult}{LR multiplier for scaling parameters (default 6.0)}
 
