@@ -745,7 +745,7 @@ trainFinalModel <- function(dataset, finalParam, modelSettings, labels) {
     fitParams,
     finalParam
   )
-  if (modelSettings$modelType != "RealMLP") {
+  if (!startsWith(modelSettings$modelType, "RealMLP")) {
     estimatorSettings$learningRate <- finalParam$learnSchedule$LRs[[1]]
   }
   parameters <- list(

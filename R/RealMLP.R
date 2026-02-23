@@ -8,7 +8,17 @@
 #' @param sizeHidden hidden width (default 256)
 #' @param dropout    base dropout p (default 0.15; scheduled with flat_cos)
 #' @param sizeEmbedding embedding dim for compatibility with existing Embedding (default 64)
-#' @param labelSmoothing epsilon for BCE label smoothing (default 0.1)
+#' @param labelSmoothing epsilon for label smoothing (default 0.0 for AUROC mode)
+#' @param numericEmbeddingMode numeric token embedding mode: "scale", "pl", or "pbld"
+#' @param numericNumFrequencies periodic frequency count for PL/PBLD modes
+#' @param numericPeriodicInitStd std used to initialize periodic frequencies
+#' @param numericPbldHiddenDim hidden width for PBLD per-feature block
+#' @param numericPbldEmbeddingDim low-dimensional PBLD output width before projection
+#' @param dataDependentInitMode data-dependent init mode: "paper_lsuv" or "current"
+#' @param dataDependentInitTargetVar target pre-activation variance per neuron
+#' @param dataDependentInitMaxRows max sampled rows for init statistics (0 means all sampled rows)
+#' @param dataDependentInitGainClip optional clip on LSUV gain multipliers (>1 enables clipping)
+#' @param dataDependentInitBiasRefitSteps bias recenter iterations during data-dependent init
 #' @param scalingLrMult LR multiplier for scaling parameters (default 6.0)
 #' @param biasLrMult LR multiplier for bias parameters (default 0.1)
 #' @param actLrMult LR multiplier for parametric activation parameters (default 0.1)
@@ -23,7 +33,17 @@ setRealMLP <- function(
   sizeHidden = 256L,
   dropout = 0.15,
   sizeEmbedding = 64L,
-  labelSmoothing = 0.1,
+  labelSmoothing = 0.0,
+  numericEmbeddingMode = "scale",
+  numericNumFrequencies = 8L,
+  numericPeriodicInitStd = 0.1,
+  numericPbldHiddenDim = 16L,
+  numericPbldEmbeddingDim = 4L,
+  dataDependentInitMode = "paper_lsuv",
+  dataDependentInitTargetVar = 1.0,
+  dataDependentInitMaxRows = 65536L,
+  dataDependentInitGainClip = 10.0,
+  dataDependentInitBiasRefitSteps = 2L,
   scalingLrMult = 6.0,
   biasLrMult = 0.1,
   actLrMult = 0.1,
@@ -46,6 +66,32 @@ setRealMLP <- function(
   if (labelSmoothing > 1) {
     stop("labelSmoothing needs to be <= 1")
   }
+  checkIsClass(numericEmbeddingMode, "character")
+  checkInStringVector(
+    numericEmbeddingMode,
+    c("scale", "pl", "pbld")
+  )
+  checkIsClass(numericNumFrequencies, c("integer", "numeric"))
+  checkHigherEqual(numericNumFrequencies, 1)
+  checkIsClass(numericPeriodicInitStd, "numeric")
+  checkHigherEqual(numericPeriodicInitStd, 0)
+  checkIsClass(numericPbldHiddenDim, c("integer", "numeric"))
+  checkHigherEqual(numericPbldHiddenDim, 1)
+  checkIsClass(numericPbldEmbeddingDim, c("integer", "numeric"))
+  checkHigherEqual(numericPbldEmbeddingDim, 1)
+  checkIsClass(dataDependentInitMode, "character")
+  checkInStringVector(
+    dataDependentInitMode,
+    c("paper_lsuv", "current")
+  )
+  checkIsClass(dataDependentInitTargetVar, "numeric")
+  checkHigher(dataDependentInitTargetVar, 0)
+  checkIsClass(dataDependentInitMaxRows, c("integer", "numeric"))
+  checkHigherEqual(dataDependentInitMaxRows, 0)
+  checkIsClass(dataDependentInitGainClip, "numeric")
+  checkHigherEqual(dataDependentInitGainClip, 0)
+  checkIsClass(dataDependentInitBiasRefitSteps, c("integer", "numeric"))
+  checkHigherEqual(dataDependentInitBiasRefitSteps, 1)
   checkIsClass(scalingLrMult, "numeric")
   checkHigherEqual(scalingLrMult, 0)
   checkIsClass(biasLrMult, "numeric")
@@ -89,7 +135,7 @@ setRealMLP <- function(
     criterion = torch$nn$BCEWithLogitsLoss, # logits + label smoothing inside Estimator
     earlyStopping = NULL, # train full and pick best
     compile = FALSE,
-    metric = "auc",
+    metric = "loss",
     seed = NULL,
     trainValidationSplit = FALSE
   )
@@ -107,14 +153,24 @@ setRealMLP <- function(
   est$biasWdFactor <- 0.0
   est$dataDependentInit <- TRUE
   est$dataDependentInitBatches <- 8L
+  est$dataDependentInitMode <- dataDependentInitMode
+  est$dataDependentInitTargetVar <- dataDependentInitTargetVar
+  est$dataDependentInitMaxRows <- as.integer(dataDependentInitMaxRows)
+  est$dataDependentInitGainClip <- dataDependentInitGainClip
   est$dataDependentInitBiasMode <- "he5"
   est$dataDependentInitBiasScale <- 1.0
+  est$dataDependentInitBiasRefitSteps <- as.integer(dataDependentInitBiasRefitSteps)
 
   param <- list(
     numLayers = as.integer(numLayers),
     sizeHidden = as.integer(sizeHidden),
     dropout = dropout,
     sizeEmbedding = as.integer(sizeEmbedding),
+    numericEmbeddingMode = numericEmbeddingMode,
+    numericNumFrequencies = as.integer(numericNumFrequencies),
+    numericPeriodicInitStd = numericPeriodicInitStd,
+    numericPbldHiddenDim = as.integer(numericPbldHiddenDim),
+    numericPbldEmbeddingDim = as.integer(numericPbldEmbeddingDim),
     paperMode = paperMode,
     tokenAggregation = tokenAggregation,
     featureScaleMode = featureScaleMode
