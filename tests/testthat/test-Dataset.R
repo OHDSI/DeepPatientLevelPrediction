@@ -34,7 +34,9 @@ test_that(".getbatch works", {
   expect_true(out[[2]]$item() %in% c(0, 1))
 
   # shape of batch is correct
-  expect_equal(length(out[[1]]), 3)
+  expect_equal(length(out[[1]]), 4)
+  expect_true("row_ids" %in% names(out[[1]]))
+  expect_equal(out[[1]]$row_ids$shape[0], 1)
   expect_equal(out[[1]]$feature_ids$shape[0], 1)
   expect_equal(out[[1]]$feature_values$shape[0], 1)
 
@@ -48,7 +50,9 @@ test_that(".getbatch works", {
   expect_equal(length(out), 2)
   expect_true(all(out[[2]]$numpy() %in% c(0, 1)))
 
-  expect_equal(length(out[[1]]), 3)
+  expect_equal(length(out[[1]]), 4)
+  expect_true("row_ids" %in% names(out[[1]]))
+  expect_equal(out[[1]]$row_ids$shape[0], 16)
   expect_equal(out[[1]]$feature_ids$shape[0], 16)
   expect_equal(out[[1]]$feature_values$shape[0], 16)
 
