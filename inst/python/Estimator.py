@@ -4,6 +4,8 @@ import inspect
 import hashlib
 import os
 import random
+import contextlib
+import csv
 
 import torch
 from torch.utils.data import DataLoader, BatchSampler, RandomSampler, SequentialSampler
@@ -84,6 +86,23 @@ class Estimator:
         self.grad_clip_norm = (
             None if grad_clip_norm is None else float(grad_clip_norm)
         )
+        self.sam_enabled = bool(parameters["estimator_settings"].get("sam_enabled", False))
+        self.sam_rho = float(parameters["estimator_settings"].get("sam_rho", 0.05))
+        self.sam_adaptive = bool(parameters["estimator_settings"].get("sam_adaptive", False))
+        self.sam_eps = float(parameters["estimator_settings"].get("sam_eps", 1e-12))
+        self.ema_enabled = bool(parameters["estimator_settings"].get("ema_enabled", False))
+        self.ema_decay = float(parameters["estimator_settings"].get("ema_decay", 0.999))
+        self.ema_start_step = int(parameters["estimator_settings"].get("ema_start_step", 0))
+        ema_start_fraction = parameters["estimator_settings"].get("ema_start_fraction")
+        self.ema_start_fraction = None if ema_start_fraction is None else float(ema_start_fraction)
+        self.ema_eval_use = bool(parameters["estimator_settings"].get("ema_eval_use", True))
+        self.ema_state = dict()
+        self.ema_initialized = False
+        self.ema_active = False
+        self.ema_first_active_step = None
+        self.ema_active_by_epoch = list()
+        self.best_epoch_index = None
+        self.ema_active_at_best_epoch = False
 
         if "accumulation_steps" in parameters["estimator_settings"].keys() \
         and parameters["estimator_settings"]["accumulation_steps"]:
@@ -117,6 +136,7 @@ class Estimator:
         self.weight_decay_schedule = get_schedule(self.weight_decay_schedule_name)
         self.total_steps = 1
         self.global_step = 0
+        self.optimizer_step_count = 0
         self.apply_dynamic_schedule = any(
             x is not None
             for x in (
@@ -179,6 +199,33 @@ class Estimator:
             "input_fingerprint_output"
         )
         self.input_fingerprint_logged = False
+        self.distill_enabled = bool(
+            parameters["estimator_settings"].get("distill_enabled", False)
+        )
+        self.distill_lambda = float(
+            parameters["estimator_settings"].get("distill_lambda", 1.0)
+        )
+        self.distill_loss = str(
+            parameters["estimator_settings"].get("distill_loss", "mse")
+        ).lower()
+        self.distill_huber_delta = float(
+            parameters["estimator_settings"].get("distill_huber_delta", 1.0)
+        )
+        self.distill_weight_mode = str(
+            parameters["estimator_settings"].get("distill_weight_mode", "none")
+        ).lower()
+        self.distill_teacher_path = parameters["estimator_settings"].get("distill_teacher_path")
+        self.distill_teacher_rowid_zero_indexed = bool(
+            parameters["estimator_settings"].get(
+                "distill_teacher_rowid_zero_indexed", True
+            )
+        )
+        self.teacher_residual_map = None
+        self.teacher_residual_max_row_id = -1
+        self.teacher_abs_gap_map = None
+        self.teacher_residual_device_cache = dict()
+        self.teacher_abs_gap_device_cache = dict()
+        self._load_teacher_residuals_if_available()
         self._log_model_training_configuration()
 
         self.metric = None
@@ -357,16 +404,231 @@ class Estimator:
             targets = targets * (1.0 - self.label_smoothing) + 0.5 * self.label_smoothing
         return targets
 
-    def _compute_loss(self, predictions, targets):
+    def _compute_loss(self, predictions, targets, features=None, training=False):
         if self.has_custom_loss:
-            return self.model.compute_loss(
+            base_loss = self.model.compute_loss(
                 predictions=predictions,
                 targets=targets,
                 criterion=self.criterion,
                 label_smoothing=self.label_smoothing,
             )
-        prepared_targets = self._default_prepare_targets_for_loss(targets)
-        return self.criterion(predictions.squeeze(), prepared_targets)
+        else:
+            prepared_targets = self._default_prepare_targets_for_loss(targets)
+            base_loss = self.criterion(predictions.squeeze(), prepared_targets)
+
+        if training:
+            distill = self._distillation_loss(predictions=predictions, features=features)
+            if distill is not None:
+                base_loss = base_loss + self.distill_lambda * distill
+        return base_loss
+
+    def _load_teacher_residuals_if_available(self):
+        if not self.distill_enabled:
+            return
+        if self.distill_teacher_path is None or str(self.distill_teacher_path).strip() == "":
+            print("Distillation enabled but distill_teacher_path missing; disabling distillation.")
+            self.distill_enabled = False
+            return
+        path = pathlib.Path(str(self.distill_teacher_path))
+        if not path.exists():
+            print(f"Distillation teacher file not found: {path}; disabling distillation.")
+            self.distill_enabled = False
+            return
+        row_to_values = dict()
+        duplicate_rows_collapsed = 0
+        has_abs_gap = False
+
+        def _evaluation_priority(value):
+            if value is None:
+                return 3
+            text = str(value).strip().lower()
+            if text == "train":
+                return 0
+            if text == "cv":
+                return 1
+            if text == "test":
+                return 2
+            return 3
+
+        with open(path, "r", encoding="utf-8", newline="") as handle:
+            reader = csv.DictReader(handle)
+            field_map = {x.lower(): x for x in (reader.fieldnames or [])}
+            row_key = field_map.get("rowid")
+            residual_key = (
+                field_map.get("teacherresidual")
+                or field_map.get("residual")
+                or field_map.get("r_teacher")
+            )
+            abs_gap_key = field_map.get("absprobgap")
+            evaluation_type_key = field_map.get("evaluationtype")
+            if row_key is None or residual_key is None:
+                raise ValueError(
+                    "Distillation file must include columns rowId and teacherResidual."
+                )
+            has_abs_gap = abs_gap_key is not None
+            for row in reader:
+                row_id = int(float(row[row_key]))
+                if not self.distill_teacher_rowid_zero_indexed:
+                    row_id -= 1
+                residual_value = float(row[residual_key])
+                abs_gap_value = (
+                    float(row[abs_gap_key]) if has_abs_gap and row.get(abs_gap_key) not in (None, "") else float("nan")
+                )
+                priority = _evaluation_priority(
+                    row.get(evaluation_type_key) if evaluation_type_key is not None else None
+                )
+                existing = row_to_values.get(row_id)
+                if existing is None:
+                    row_to_values[row_id] = (priority, residual_value, abs_gap_value)
+                else:
+                    duplicate_rows_collapsed += 1
+                    if priority < existing[0]:
+                        row_to_values[row_id] = (priority, residual_value, abs_gap_value)
+        if len(row_to_values) == 0:
+            print(f"Distillation teacher file is empty: {path}; disabling distillation.")
+            self.distill_enabled = False
+            return
+        row_ids = sorted(row_to_values.keys())
+        residuals = [row_to_values[row_id][1] for row_id in row_ids]
+        abs_prob_gaps = [row_to_values[row_id][2] for row_id in row_ids]
+        max_row_id = max(row_ids)
+        teacher_map = torch.full((max_row_id + 1,), float("nan"), dtype=torch.float32)
+        teacher_map[torch.as_tensor(row_ids, dtype=torch.long)] = torch.as_tensor(
+            residuals, dtype=torch.float32
+        )
+        self.teacher_residual_map = teacher_map
+        self.teacher_residual_max_row_id = max_row_id
+        if has_abs_gap and len(abs_prob_gaps) == len(row_ids):
+            abs_gap_map = torch.full((max_row_id + 1,), float("nan"), dtype=torch.float32)
+            abs_gap_map[torch.as_tensor(row_ids, dtype=torch.long)] = torch.as_tensor(
+                abs_prob_gaps, dtype=torch.float32
+            )
+            finite = torch.isfinite(abs_gap_map)
+            if torch.any(finite):
+                mean_gap = torch.clamp(abs_gap_map[finite].mean(), min=1e-12)
+                abs_gap_map[finite] = abs_gap_map[finite] / mean_gap
+            self.teacher_abs_gap_map = abs_gap_map
+        elif self.distill_weight_mode != "none":
+            print(
+                "Distillation weight mode requested, but absProbGap column missing; "
+                "falling back to unweighted distillation."
+            )
+            self.distill_weight_mode = "none"
+        if duplicate_rows_collapsed > 0:
+            print(
+                f"Collapsed duplicate distillation rows: {duplicate_rows_collapsed} "
+                f"(kept best-priority evaluation type per rowId)"
+            )
+        print(
+            f"Loaded distillation targets from {path} | rows={len(row_ids)} | "
+            f"max_row_id={self.teacher_residual_max_row_id}"
+        )
+
+    def _get_teacher_residual_map_on_device(self, device):
+        if self.teacher_residual_map is None:
+            return None
+        cache_key = str(device)
+        cached = self.teacher_residual_device_cache.get(cache_key)
+        if cached is None:
+            cached = self.teacher_residual_map.to(device=device, non_blocking=True)
+            self.teacher_residual_device_cache[cache_key] = cached
+        return cached
+
+    def _lookup_teacher_residual(self, row_ids):
+        if self.teacher_residual_map is None:
+            return None, None
+        if row_ids is None:
+            return None, None
+        row_ids = row_ids.reshape(-1).long()
+        device_map = self._get_teacher_residual_map_on_device(row_ids.device)
+        if device_map is None:
+            return None, None
+        valid = (row_ids >= 0) & (row_ids <= self.teacher_residual_max_row_id)
+        if not torch.any(valid):
+            return None, None
+        teacher = torch.full_like(row_ids, float("nan"), dtype=torch.float32)
+        teacher[valid] = device_map[row_ids[valid]]
+        finite = torch.isfinite(teacher)
+        if not torch.any(finite):
+            return None, None
+        return teacher, finite
+
+    def _get_teacher_abs_gap_map_on_device(self, device):
+        if self.teacher_abs_gap_map is None:
+            return None
+        cache_key = str(device)
+        cached = self.teacher_abs_gap_device_cache.get(cache_key)
+        if cached is None:
+            cached = self.teacher_abs_gap_map.to(device=device, non_blocking=True)
+            self.teacher_abs_gap_device_cache[cache_key] = cached
+        return cached
+
+    def _lookup_teacher_abs_gap(self, row_ids):
+        if self.teacher_abs_gap_map is None:
+            return None
+        if row_ids is None:
+            return None
+        row_ids = row_ids.reshape(-1).long()
+        device_map = self._get_teacher_abs_gap_map_on_device(row_ids.device)
+        if device_map is None:
+            return None
+        valid = (row_ids >= 0) & (row_ids <= self.teacher_residual_max_row_id)
+        if not torch.any(valid):
+            return None
+        values = torch.full_like(row_ids, float("nan"), dtype=torch.float32)
+        values[valid] = device_map[row_ids[valid]]
+        return values
+
+    def _predicted_residual_logit(self, predictions):
+        if hasattr(self.model, "_last_deep_total_logit"):
+            deep_total = self.model._last_deep_total_logit
+            if deep_total is not None:
+                return deep_total.reshape(-1).float()
+        if hasattr(self.model, "_last_wide_logit"):
+            wide = self.model._last_wide_logit
+            if wide is not None:
+                total = self._prediction_scores(predictions).reshape(-1)
+                return (total - wide.reshape(-1)).float()
+        return None
+
+    def _distillation_loss(self, predictions, features):
+        if not self.distill_enabled or self.teacher_residual_map is None:
+            return None
+        row_ids = None if features is None else features.get("row_ids")
+        teacher, mask = self._lookup_teacher_residual(row_ids=row_ids)
+        if teacher is None or mask is None:
+            return None
+        pred_residual = self._predicted_residual_logit(predictions)
+        if pred_residual is None:
+            return None
+        pred_residual = pred_residual[mask]
+        teacher = teacher[mask]
+        row_ids_masked = row_ids.reshape(-1).long()[mask]
+        weights = None
+        if self.distill_weight_mode == "abs_gap":
+            abs_gap = self._lookup_teacher_abs_gap(row_ids=row_ids_masked)
+            if abs_gap is not None:
+                finite_w = torch.isfinite(abs_gap)
+                if torch.any(finite_w):
+                    weights = torch.ones_like(abs_gap)
+                    weights[finite_w] = torch.clamp(abs_gap[finite_w], min=0.0)
+        if self.distill_loss == "huber":
+            per_sample = torch.nn.functional.smooth_l1_loss(
+                pred_residual,
+                teacher,
+                beta=self.distill_huber_delta,
+                reduction="none",
+            )
+        else:
+            per_sample = torch.nn.functional.mse_loss(
+                pred_residual,
+                teacher,
+                reduction="none",
+            )
+        if weights is not None:
+            denom = torch.clamp(weights.sum(), min=1e-12)
+            return (per_sample * weights).sum() / denom
+        return per_sample.mean()
 
     def _regularization_loss(self):
         if not self.has_custom_regularization:
@@ -491,7 +753,12 @@ class Estimator:
         )
         self._maybe_run_data_dependent_init(train_dataloader)
         self.total_steps = max(1, self.epochs * len(train_dataloader))
+        if self.ema_enabled and self.ema_start_fraction is not None:
+            fraction = min(max(self.ema_start_fraction, 0.0), 1.0)
+            self.ema_start_step = int(fraction * self.total_steps)
         self.global_step = 0
+        self.optimizer_step_count = 0
+        self._initialize_ema_if_needed()
 
         trained_epochs = dict()
         times = list()
@@ -512,11 +779,12 @@ class Estimator:
             all_scores.append(scores)
             learning_rates.append(lr)
             times.append(round(delta_time, 3))
+            self.ema_active_by_epoch.append(bool(self.ema_active))
 
             if self.early_stopper:
                 self.early_stopper(scores["metric"])
                 if self.early_stopper.improved:
-                    model_state_dict[epoch] = self.model.state_dict()
+                    model_state_dict[epoch] = self._current_eval_state_dict()
                     trained_epochs[epoch] = current_epoch
                 if self.early_stopper.early_stop:
                     print("Early stopping, validation metric stopped improving")
@@ -528,7 +796,7 @@ class Estimator:
                     )
                     return
             else:
-                model_state_dict[epoch] = self.model.state_dict()
+                model_state_dict[epoch] = self._current_eval_state_dict()
                 trained_epochs[epoch] = current_epoch
         print(
             f"Average time per epoch was: {torch.mean(torch.as_tensor(times)).item()} seconds"
@@ -552,7 +820,12 @@ class Estimator:
                     self._log_batch_diagnostics(sub_batch[0])
                     logged_diagnostics = True
                 out = self.model(sub_batch[0])
-                loss = self._compute_loss(out, sub_batch[1])
+                loss = self._compute_loss(
+                    out,
+                    sub_batch[1],
+                    features=sub_batch[0],
+                    training=True,
+                )
                 reg = self._regularization_loss()
                 if reg is not None:
                     # Main loss uses reduction="sum"; scale regularization accordingly.
@@ -560,18 +833,75 @@ class Estimator:
                 loss.backward()
                 accumulated_loss += loss.detach()
 
-            if self.grad_clip_norm is not None and self.grad_clip_norm > 0:
-                torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.grad_clip_norm)
-            self.optimizer.step()
-            self.optimizer.zero_grad()
+            if self.sam_enabled:
+                self._sam_step(split_batch)
+            else:
+                if self.grad_clip_norm is not None and self.grad_clip_norm > 0:
+                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.grad_clip_norm)
+                self.optimizer.step()
+                self.optimizer.zero_grad()
+            self._update_ema()
+            self.optimizer_step_count += 1
             if self.apply_dynamic_schedule:
                 self.global_step += 1
             training_losses[index] = accumulated_loss / self.batch_size
             index += 1
         return training_losses.mean().item()
 
-    def score(self, dataloader):
+    def _sam_step(self, split_batch):
+        params = [p for p in self.model.parameters() if p.requires_grad and p.grad is not None]
+        if len(params) == 0:
+            self.optimizer.step()
+            self.optimizer.zero_grad()
+            return
+
         with torch.no_grad():
+            grad_norm_sq = torch.zeros((), device=self.device)
+            for p in params:
+                grad = p.grad
+                if self.sam_adaptive:
+                    grad = grad * p.abs()
+                grad_norm_sq += torch.sum(grad * grad)
+            grad_norm = torch.sqrt(grad_norm_sq).clamp_min(self.sam_eps)
+            scale = self.sam_rho / grad_norm
+            for p in params:
+                grad = p.grad
+                if self.sam_adaptive:
+                    e_w = (p * p) * grad * scale
+                else:
+                    e_w = grad * scale
+                p.add_(e_w)
+                p._sam_e_w = e_w
+
+        self.optimizer.zero_grad()
+        for sub_batch in split_batch:
+            sub_batch = batch_to_device(sub_batch, device=self.device)
+            out = self.model(sub_batch[0])
+            loss = self._compute_loss(
+                out,
+                sub_batch[1],
+                features=sub_batch[0],
+                training=True,
+            )
+            reg = self._regularization_loss()
+            if reg is not None:
+                loss = loss + reg * sub_batch[1].shape[0]
+            loss.backward()
+
+        with torch.no_grad():
+            for p in params:
+                e_w = getattr(p, "_sam_e_w", None)
+                if e_w is not None:
+                    p.sub_(e_w)
+                    delattr(p, "_sam_e_w")
+
+        if self.grad_clip_norm is not None and self.grad_clip_norm > 0:
+            torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.grad_clip_norm)
+        self.optimizer.step()
+        self.optimizer.zero_grad()
+
+    def score(self, dataloader):
+        with self._ema_eval_context(), torch.no_grad():
             loss = torch.empty(len(dataloader))
             predictions = list()
             targets = list()
@@ -585,7 +915,9 @@ class Estimator:
                     pred = self.model(sub_batch[0])
                     predictions.append(self._prediction_scores(pred))
                     targets.append(sub_batch[1])
-                    accumulated_loss += self._compute_loss(pred, sub_batch[1]).detach()
+                    accumulated_loss += self._compute_loss(
+                        pred, sub_batch[1], features=sub_batch[0], training=False
+                    ).detach()
                 loss[index] = accumulated_loss / self.batch_size
 
                 index += 1
@@ -606,12 +938,90 @@ class Estimator:
             scores["loss"] = mean_loss
             return scores
 
+    def _initialize_ema_if_needed(self):
+        if not self.ema_enabled:
+            return
+        self.ema_state = {
+            name: parameter.detach().clone()
+            for name, parameter in self.model.named_parameters()
+            if parameter.requires_grad
+        }
+        self.ema_initialized = len(self.ema_state) > 0
+        self.ema_active = False
+        self.ema_first_active_step = None
+        self.ema_active_by_epoch = list()
+
+    def _update_ema(self):
+        if not self.ema_enabled or not self.ema_initialized:
+            return
+        if self.optimizer_step_count < self.ema_start_step:
+            return
+        decay = float(min(max(self.ema_decay, 0.0), 0.999999))
+        with torch.no_grad():
+            for name, parameter in self.model.named_parameters():
+                if not parameter.requires_grad:
+                    continue
+                ema_parameter = self.ema_state.get(name)
+                if ema_parameter is None:
+                    self.ema_state[name] = parameter.detach().clone()
+                    continue
+                ema_parameter.mul_(decay).add_(parameter.detach(), alpha=(1.0 - decay))
+        self.ema_active = True
+        if self.ema_first_active_step is None:
+            self.ema_first_active_step = int(self.optimizer_step_count + 1)
+
+    @contextlib.contextmanager
+    def _ema_eval_context(self):
+        if not (
+            self.ema_enabled
+            and self.ema_eval_use
+            and self.ema_initialized
+            and self.ema_active
+        ):
+            yield
+            return
+        backup_state = dict()
+        with torch.no_grad():
+            for name, parameter in self.model.named_parameters():
+                if name not in self.ema_state:
+                    continue
+                backup_state[name] = parameter.detach().clone()
+                parameter.copy_(self.ema_state[name])
+        try:
+            yield
+        finally:
+            with torch.no_grad():
+                for name, parameter in self.model.named_parameters():
+                    backup_parameter = backup_state.get(name)
+                    if backup_parameter is not None:
+                        parameter.copy_(backup_parameter)
+
+    def _current_eval_state_dict(self):
+        if not (
+            self.ema_enabled
+            and self.ema_eval_use
+            and self.ema_initialized
+            and self.ema_active
+        ):
+            return self.model.state_dict()
+        state = self.model.state_dict()
+        for name, value in self.ema_state.items():
+            if name in state:
+                state[name] = value.detach().clone()
+        return state
+
     def finish_fit(self, scores, model_state_dict, epoch, learning_rates):
         metric_values = [x["metric"] for x in scores]
         if self.metric["mode"] in ("max", "min"):
             best_epoch_index = select_best_epoch(metric_values, self.metric["mode"])
         else:
             raise ValueError(f"Unknown metric mode: {self.metric['mode']}")
+
+        self.best_epoch_index = int(best_epoch_index)
+        if len(self.ema_active_by_epoch) > best_epoch_index:
+            self.ema_active_at_best_epoch = bool(self.ema_active_by_epoch[best_epoch_index])
+        else:
+            self.ema_active_at_best_epoch = False
 
         best_model_state_dict = model_state_dict[best_epoch_index]
         self.model.load_state_dict(best_model_state_dict)
@@ -626,6 +1036,15 @@ class Estimator:
         print(f"Loaded best model (based on {metric_name}) from epoch {self.best_epoch}")
         print(f"ValLoss: {self.best_score['loss']}")
         print(f"valAUC: {self.best_score['auc']}")
+        print(
+            "EMA diagnostics | "
+            f"ema_enabled={self.ema_enabled} | "
+            f"ema_start_step={self.ema_start_step} | "
+            f"ema_first_active_step={self.ema_first_active_step} | "
+            f"best_epoch={self.best_epoch} | "
+            f"best_epoch_index={self.best_epoch_index} | "
+            f"ema_active_at_best_epoch={self.ema_active_at_best_epoch}"
+        )
         if (
             self.metric
             and self.metric["name"] != "auc"
