@@ -154,6 +154,9 @@ class Data(Dataset):
 
     def __getitem__(self, item):
         batch = {
+            "row_ids": self.data["row_ids"][
+                torch.as_tensor(item, dtype=torch.long).reshape(-1)
+            ],
             "feature_ids": self.data["feature_ids"][
                 torch.as_tensor(item, dtype=torch.long).reshape(-1)
             ],
