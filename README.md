@@ -23,7 +23,7 @@ Features
 
 Technology
 ==========
-DeepPatientLevelPrediction is an R package. It uses [torch in R](https://torch.mlverse.org/) to build deep learning models without using python.
+DeepPatientLevelPrediction is an R package. It uses Python [PyTorch](https://pytorch.org/) through [reticulate](https://rstudio.github.io/reticulate/) for deep learning model training and inference.
 
 System Requirements
 ===================
@@ -59,4 +59,3 @@ DeepPatientLevelPrediction is licensed under Apache License 2.0
 Development
 ===========
 DeepPatientLevelPrediction is being developed in R Studio.
-

@@ -1,6 +1,8 @@
 DeepPatientLevelPrediction 2.2.0.9999
 ======================
 - [Internal] Switch to `nvidia-ml-py` instead of `pynvml` due to the latter being deprecated
+- [Docs] Update installation guide to recommend `uv` and Python 3.12
+- [CI] Use Python 3.12 in GitHub Actions checks
 
 DeepPatientLevelPrediction 2.2.0
 ======================
