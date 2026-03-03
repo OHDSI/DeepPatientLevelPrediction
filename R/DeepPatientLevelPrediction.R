@@ -43,7 +43,7 @@ torch <- NULL
 
 .onLoad <- function(libname, pkgname) {
   reticulate::py_require(c(
-    "polars>=1.31.0", "pyarrow", "duckdb", "torch<=2.6.0", "tqdm",
+    "polars>=1.31.0", "pyarrow", "duckdb", "torch>=2.6,<3", "tqdm",
     "nvidia-ml-py"
   ))
   torch <<- reticulate::import("torch", delay_load = TRUE)

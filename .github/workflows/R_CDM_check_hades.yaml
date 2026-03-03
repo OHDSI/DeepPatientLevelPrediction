@@ -14,15 +14,16 @@ jobs:
   R-CMD-check:
     runs-on: ${{ matrix.config.os }}
 
-    name: ${{ matrix.config.os }} (${{ matrix.config.r }})
+    name: ${{ matrix.config.os }} (R-${{ matrix.config.r }}, Py-${{ matrix.config.python }}, Torch-${{ matrix.config.torch }})
 
     strategy:
       fail-fast: false
       matrix:
         config:
-          - {os: windows-latest, r: 'release'}
-          - {os: macOS-latest, r: 'release'}
-          - {os: ubuntu-24.04, r: 'release', rspm: "https://packagemanager.rstudio.com/cran/__linux__/noble/latest"}
+          - {os: windows-latest, r: 'release', python: '3.12', torch: '2.10.0'}
+          - {os: macOS-latest, r: 'release', python: '3.12', torch: '2.10.0'}
+          - {os: ubuntu-24.04, r: 'release', python: '3.12', torch: '2.10.0', rspm: "https://packagemanager.rstudio.com/cran/__linux__/noble/latest"}
+          - {os: ubuntu-24.04, r: 'release', python: '3.10', torch: 'latest', rspm: "https://packagemanager.rstudio.com/cran/__linux__/noble/latest"}
 
     env:
       GITHUB_PAT: ${{ secrets.GH_TOKEN }}
@@ -59,13 +60,13 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: ${{ matrix.config.python }}
 
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@v4
         with:
           version: "latest"
-          python-version: "3.12"
+          python-version: ${{ matrix.config.python }}
         
       - name: Install system requirements
         if: runner.os == 'Linux'
@@ -84,9 +85,13 @@ jobs:
           needs: check
 
       - name: setup r-reticulate venv
-        run: | 
+        run: |
           uv pip install polars tqdm pyarrow duckdb nvidia-ml-py numpy
-          uv pip install torch --index https://download.pytorch.org/whl/cpu/
+          if [ "${{ matrix.config.torch }}" = "latest" ]; then
+            uv pip install torch --index https://download.pytorch.org/whl/cpu/
+          else
+            uv pip install "torch==${{ matrix.config.torch }}" --index https://download.pytorch.org/whl/cpu/
+          fi
 
       - uses: r-lib/actions/check-r-package@v2
         with:

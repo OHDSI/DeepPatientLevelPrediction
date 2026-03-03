@@ -3,6 +3,8 @@ DeepPatientLevelPrediction 2.2.0.9999
 - [Internal] Switch to `nvidia-ml-py` instead of `pynvml` due to the latter being deprecated
 - [Docs] Update installation guide to recommend `uv` and Python 3.12
 - [CI] Use Python 3.12 in GitHub Actions checks
+- [Internal] Relax torch requirement to `torch>=2.6,<3`
+- [CI] Pin stable CI lanes to `torch==2.10.0` and add a Python 3.10 compatibility lane using latest torch
 
 DeepPatientLevelPrediction 2.2.0
 ======================
