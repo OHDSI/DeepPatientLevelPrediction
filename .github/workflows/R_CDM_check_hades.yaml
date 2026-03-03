@@ -59,13 +59,13 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.12'
 
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@v4
         with:
           version: "latest"
-          python-version: "3.11"
+          python-version: "3.12"
         
       - name: Install system requirements
         if: runner.os == 'Linux'
@@ -85,7 +85,7 @@ jobs:
 
       - name: setup r-reticulate venv
         run: | 
-          uv pip install polars tqdm pyarrow duckdb pynvml numpy
+          uv pip install polars tqdm pyarrow duckdb nvidia-ml-py numpy
           uv pip install torch --index https://download.pytorch.org/whl/cpu/
 
       - uses: r-lib/actions/check-r-package@v2
