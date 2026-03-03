@@ -51,9 +51,9 @@ jobs:
           needs: check
 
       - name: setup r-reticulate venv
-        run: | 
+        run: |
           uv pip install polars tqdm pyarrow duckdb nvidia-ml-py numpy
-          uv pip install torch --index https://download.pytorch.org/whl/cpu/
+          uv pip install "torch==2.10.0" --index https://download.pytorch.org/whl/cpu/
 
       - uses: r-lib/actions/check-r-package@v2
         with:
