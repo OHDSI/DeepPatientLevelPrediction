@@ -1,7 +1,8 @@
 # @file: RealMLP.R
 
-#' setRealMLP
-#' Create settings for the RealMLP model (binary classification)
+#' Create RealMLP Settings
+#'
+#' Create settings for the RealMLP model (binary classification).
 #' Preprocessing (robust scaling + clipping) is assumed to be handled upstream.
 #'
 #' @param numLayers  hidden layers (default 3)
