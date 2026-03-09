@@ -23,7 +23,10 @@ class Estimator:
     """
 
     def __init__(self, model, parameters):
-        self.seed = parameters["estimator_settings"]["seed"]
+        raw_seed = parameters["estimator_settings"].get("seed", 0)
+        if raw_seed is None:
+            raw_seed = 0
+        self.seed = int(raw_seed)
         if callable(parameters["estimator_settings"]["device"]):
             self.device = parameters["estimator_settings"]["device"]()
         else:
@@ -377,13 +380,17 @@ class Estimator:
 
     def _prediction_scores(self, predictions):
         if self.has_custom_scores:
-            return self.model.prediction_scores(predictions)
-        return predictions.squeeze()
+            scores = self.model.prediction_scores(predictions)
+        else:
+            scores = predictions.squeeze()
+        return scores.reshape(-1)
 
     def _prediction_proba(self, predictions):
         if self.has_custom_proba:
-            return self.model.predict_proba_from_output(predictions)
-        return torch.sigmoid(predictions.squeeze())
+            proba = self.model.predict_proba_from_output(predictions)
+        else:
+            proba = torch.sigmoid(predictions.squeeze())
+        return proba.reshape(-1)
 
     def _apply_step_hparams(self):
         if not self.apply_dynamic_schedule:
