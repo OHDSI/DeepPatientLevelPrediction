@@ -16,5 +16,5 @@ inst/python/__pycache__
 *.pt
 .aider*
 
-/.devcontainer/
 /.vscode/
+/.devcontainer/
