@@ -17,7 +17,7 @@ Features
 ========
 - Adds deep learning models to use in the OHDSI PatientLevelPrediction framework.
 - Allows to add custom deep learning models.
-- Includes an MLP, ResNet and a Transformer
+- Includes an MLP, ResNet, Transformer, and core RealMLP
 - Allows to use all the features of [PatientLevelPrediction](https://github.com/OHDSI/PatientLevelPrediction/) to validate and explore your model performance.
 
 
@@ -34,6 +34,7 @@ Getting Started
 ===============
 
 - To install the package please read the [Package installation guide](https://ohdsi.github.io/DeepPatientLevelPrediction/articles/Installing.html)
+- For Python, the recommended environment manager is `uv` with Python 3.12
 - Please read the main vignette for the package:
 [Building Deep Learning Models](https://ohdsi.github.io/DeepPatientLevelPrediction/articles/BuildingDeepModels.html)
 

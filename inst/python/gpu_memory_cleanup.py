@@ -2,6 +2,7 @@ import gc
 import contextlib
 
 import torch
+# `nvidia-ml-py` still exposes the NVML bindings under the `pynvml` module name.
 import pynvml
 
 

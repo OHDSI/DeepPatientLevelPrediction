@@ -119,7 +119,7 @@ jobs:
           path: check/*.tar.gz
 
   Release:
-    needs: R-CMD-Check
+    needs: R-CMD-check
     
     runs-on: macOS-latest
 
