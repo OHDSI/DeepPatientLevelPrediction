@@ -15,7 +15,7 @@
 ## Citation
 
 Source:
-[`DESCRIPTION`](https://github.com/OHDSI/DeepPatientLevelPrediction/blob/develop/DESCRIPTION)
+[`DESCRIPTION`](https://github.com/OHDSI/DeepPatientLevelPrediction/blob/main/DESCRIPTION)
 
 Fridgeirsson E, Reps J, Chan You S, Kim C, John H (2026).
 *DeepPatientLevelPrediction: Deep Learning for Patient Level Prediction
