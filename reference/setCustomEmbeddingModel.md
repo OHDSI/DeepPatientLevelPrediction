@@ -1,0 +1,40 @@
+# Create default settings a model using custom embeddings
+
+A model that uses custom embeddings such as Poincare embeddings or
+embeddings form a foundation model
+
+## Usage
+
+``` r
+setCustomEmbeddingModel(
+  embeddingFilePath,
+  modelSettings = setTransformer(numBlocks = 3, dimToken = 16, dimOut = 1, numHeads = 4,
+    attDropout = 0.2, ffnDropout = 0.1, dimHidden = 32, estimatorSettings =
+    setEstimator(learningRate = "auto", weightDecay = 1e-04, batchSize = 256, epochs = 2,
+    seed = NULL, device = "cpu"), hyperParamSearch = "random", randomSample = 1),
+  embeddingsClass = "CustomEmbeddings"
+)
+```
+
+## Arguments
+
+- embeddingFilePath:
+
+  path to the saved embeddings. The embeddings file should be a pytorch
+  file including a dictionary with two two fields: \`concept_ids\`: a
+  pytorch long tensor with the concept ids and \`embeddings\`: a pytorch
+  float tensor with the embeddings
+
+- modelSettings:
+
+  for the model to use, needs to have an embedding layer with a name
+  \`embedding\` which will be replaced by the custom embeddings
+
+- embeddingsClass:
+
+  the class of the custom embeddings, e.g. \`CustomEmbeddings\` or
+  \`PoincareEmbeddings\`
+
+## Value
+
+settings for a model using custom embeddings

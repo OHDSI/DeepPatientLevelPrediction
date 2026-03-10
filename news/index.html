@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">DeepPatientLevelPrediction</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">2.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">2.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -38,9 +38,16 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/OHDSI/DeepPatientLevelPrediction/blob/v2.2.0/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/OHDSI/DeepPatientLevelPrediction/blob/develop/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2.3.0" id="deeppatientlevelprediction-230">DeepPatientLevelPrediction 2.3.0<a class="anchor" aria-label="anchor" href="#deeppatientlevelprediction-230"></a></h2>
+<p>New features - Add core <code>RealMLP</code> support for tabular deep learning, including paper-style numeric embeddings, schedules, and data-dependent initialization (PR <a href="https://github.com/OHDSI/DeepPatientLevelPrediction/issues/171" class="external-link">#171</a>) - Add dropout support to <code>TemporalPE</code> and test coverage for positional-encoding dropout behavior (PR <a href="https://github.com/OHDSI/DeepPatientLevelPrediction/issues/165" class="external-link">#165</a>)</p>
+<p>Bug fixes - Replace deprecated <code>pynvml</code> with <code>nvidia-ml-py</code> (PR <a href="https://github.com/OHDSI/DeepPatientLevelPrediction/issues/167" class="external-link">#167</a>, closes <a href="https://github.com/OHDSI/DeepPatientLevelPrediction/issues/166" class="external-link">#166</a>) - Improve expand-component handling and add regression tests (PR <a href="https://github.com/OHDSI/DeepPatientLevelPrediction/issues/164" class="external-link">#164</a>) - Fix estimator seed casting, prediction shaping, and custom-embedding / Poincare model paths for current torch and reticulate behavior (PR <a href="https://github.com/OHDSI/DeepPatientLevelPrediction/issues/171" class="external-link">#171</a>)</p>
+<p>Runtime and compatibility - Relax the torch requirement to <code>torch&gt;=2.7,&lt;3</code> and validate against <code>torch==2.10.0</code> in stable CI lanes (PR <a href="https://github.com/OHDSI/DeepPatientLevelPrediction/issues/171" class="external-link">#171</a>) - Add a Python 3.10 compatibility lane using the latest available torch (PR <a href="https://github.com/OHDSI/DeepPatientLevelPrediction/issues/171" class="external-link">#171</a>) - Clean <code>torchinductor_runner</code> artifacts during <code>R CMD check</code> (PR <a href="https://github.com/OHDSI/DeepPatientLevelPrediction/issues/171" class="external-link">#171</a>)</p>
+<p>Documentation and CI - Update installation guidance to recommend <code>uv</code> and Python 3.12 (PR <a href="https://github.com/OHDSI/DeepPatientLevelPrediction/issues/171" class="external-link">#171</a>) - Update GitHub Actions checks to use Python 3.12 by default and fix Windows torch installation handling (PR <a href="https://github.com/OHDSI/DeepPatientLevelPrediction/issues/171" class="external-link">#171</a>) - Update pkgdown link checking for current <code>lychee</code> CLI behavior (PR <a href="https://github.com/OHDSI/DeepPatientLevelPrediction/issues/171" class="external-link">#171</a>)</p>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2.2.0" id="deeppatientlevelprediction-220">DeepPatientLevelPrediction 2.2.0<a class="anchor" aria-label="anchor" href="#deeppatientlevelprediction-220"></a></h2>
 <ul><li>[Feature] Add positional encodings that use <code>timeId</code> (PR <a href="https://github.com/OHDSI/DeepPatientLevelPrediction/issues/154" class="external-link">#154</a>):
@@ -188,7 +195,7 @@
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.3.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
 </div>
 
     </footer></div>

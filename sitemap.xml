@@ -28,6 +28,7 @@
 <url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/reference/setEstimator.html</loc></url>
 <url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/reference/setFinetuner.html</loc></url>
 <url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/reference/setMultiLayerPerceptron.html</loc></url>
+<url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/reference/setRealMLP.html</loc></url>
 <url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/reference/setResNet.html</loc></url>
 <url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/reference/setTransformer.html</loc></url>
 <url><loc>https://ohdsi.github.com/DeepPatientLevelPrediction/reference/snakeCaseToCamelCase.html</loc></url>

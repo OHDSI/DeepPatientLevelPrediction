@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">DeepPatientLevelPrediction</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">2.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">2.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -64,9 +64,9 @@
                         <h4 data-toc-skip class="author">Egill
 Fridgeirsson</h4>
             
-            <h4 data-toc-skip class="date">2025-08-27</h4>
+            <h4 data-toc-skip class="date">2026-03-10</h4>
       
-      <small class="dont-index">Source: <a href="https://github.com/OHDSI/DeepPatientLevelPrediction/blob/v2.2.0/vignettes/Installing.Rmd" class="external-link"><code>vignettes/Installing.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/OHDSI/DeepPatientLevelPrediction/blob/develop/vignettes/Installing.Rmd" class="external-link"><code>vignettes/Installing.Rmd</code></a></small>
       <div class="d-none name"><code>Installing.Rmd</code></div>
     </div>
 
@@ -94,8 +94,7 @@ package requires installing:</p>
 <ul>
 <li>R (<a href="https://cran.r-project.org/" class="external-link uri">https://cran.r-project.org/</a> ) - (R &gt;= 4.0.0, but
 latest is recommended)</li>
-<li>Python - The package is tested with python 3.10, but &gt;= 3.8
-should work</li>
+<li>Python - Recommend Python 3.12. Python &gt;= 3.10 is supported</li>
 <li>Rstudio (<a href="https://www.rstudio.com/" class="external-link uri">https://www.rstudio.com/</a> )</li>
 <li>Java (<a href="http://www.java.com" class="external-link uri">http://www.java.com</a> )</li>
 <li>RTools (<a href="https://cran.r-project.org/bin/windows/Rtools/" class="external-link uri">https://cran.r-project.org/bin/windows/Rtools/</a>)</li>
@@ -109,8 +108,7 @@ installing:</p>
 <ul>
 <li>R (<a href="https://cran.r-project.org/" class="external-link uri">https://cran.r-project.org/</a> ) - (R &gt;= 4.0.0, but
 latest is recommended)</li>
-<li>Python - The package is tested with python 3.10, but &gt;= 3.8
-should work</li>
+<li>Python - Recommend Python 3.12. Python &gt;= 3.10 is supported</li>
 <li>Rstudio (<a href="https://www.rstudio.com/" class="external-link uri">https://www.rstudio.com/</a> )</li>
 <li>Java (<a href="http://www.java.com" class="external-link uri">http://www.java.com</a> )</li>
 <li>Xcode command line tools(run in terminal: xcode-select –install)
@@ -132,40 +130,31 @@ them to us if you experience problems.</p>
 <h3 id="installing-python-environment">Installing Python environment<a class="anchor" aria-label="anchor" href="#installing-python-environment"></a>
 </h3>
 <p>Since the package uses <code>pytorch</code> through
-<code>reticulate</code> a working python installation is required. The
-package is tested with python 3.10. To install python an easy way is to
-use miniconda through <code>reticulate</code>:</p>
-<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">'reticulate'</span><span class="op">)</span></span>
-<span><span class="fu">reticulate</span><span class="fu">::</span><span class="fu"><a href="https://rstudio.github.io/reticulate/reference/install_miniconda.html" class="external-link">install_miniconda</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<p>By default <code>install_minconda()</code> creates an environment
-<code>r-reticulate</code> with <code>python 3.9</code>. To use instead
-<code>python 3.10</code> we can do:</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">reticulate</span><span class="fu">::</span><span class="fu"><a href="https://rstudio.github.io/reticulate/reference/conda-tools.html" class="external-link">conda_install</a></span><span class="op">(</span>envname <span class="op">=</span> <span class="st">'r-reticulate'</span>, packages<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">'python=3.10'</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<p>If reticulate is having issues finding the conda installation you can
-use the function <code><a href="https://rstudio.github.io/reticulate/reference/miniconda_path.html" class="external-link">reticulate::miniconda_path()</a></code> to find the
-default installation location for your miniconda installation. Then you
-can force reticulate to use the newly generated environment by setting
-the environment variable <code>RETICULATE_PYTHON</code> to point to the
-python binary in the environment. For example by adding the following to
-the <code>.Renviron</code> file:</p>
-<pre><code><span><span class="va">RETICULATE_PYTHON</span><span class="op">=</span><span class="st">"/path/to/miniconda/envs/r-reticulate/python/bin"</span></span></code></pre>
-<p>Then you need to restart you R session. To verify that
-<code>reticulate</code> finds the correct version. You can call
-<code><a href="https://rstudio.github.io/reticulate/reference/py_config.html" class="external-link">reticulate::py_config()</a></code>.</p>
-<p>Once you have a working python environment that reticulate can locate
-you can install <code>DeepPatientLevelPrediction</code>. If you want to
-use a specific python environment you can set the environment variable
-<code>RETICULATE_PYTHON</code> to point to the python executable of that
-environment in your <code>.Renviron</code> file. You need to do this
-before installing <code>DeepPatientLevelPrediction</code>.</p>
+<code>reticulate</code>, a working Python installation is required. We
+recommend using <code>uv</code> with Python 3.12.</p>
+<p>Install <code>uv</code> by following the official instructions:</p>
+<p><a href="https://docs.astral.sh/uv/getting-started/installation/" class="external-link uri">https://docs.astral.sh/uv/getting-started/installation/</a></p>
+<p>Then create a local virtual environment for this project:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="ex">uv</span> python install 3.12</span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a><span class="ex">uv</span> venv <span class="at">--python</span> 3.12</span></code></pre></div>
+<p>Tell <code>reticulate</code> to use that interpreter by setting
+<code>RETICULATE_PYTHON</code> in <code>.Renviron</code>.</p>
+<p>For Linux/macOS:</p>
+<pre><code><span><span class="va">RETICULATE_PYTHON</span><span class="op">=</span><span class="st">"/path/to/project/.venv/bin/python"</span></span></code></pre>
+<p>For Windows:</p>
+<pre><code><span><span class="va">RETICULATE_PYTHON</span><span class="op">=</span><span class="st">"C:/path/to/project/.venv/Scripts/python.exe"</span></span></code></pre>
+<p>Then restart your R session. You can verify the active interpreter
+with:</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">reticulate</span><span class="fu">::</span><span class="fu"><a href="https://rstudio.github.io/reticulate/reference/py_config.html" class="external-link">py_config</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<p>Python 3.9 is end-of-life and should not be used. Python 3.10 is
+still supported, but Python 3.12 is recommended.</p>
 </div>
 <div class="section level3">
 <h3 id="installing-deeppatientlevelprediction-using-remotes">Installing DeepPatientLevelPrediction using remotes<a class="anchor" aria-label="anchor" href="#installing-deeppatientlevelprediction-using-remotes"></a>
 </h3>
 <p>To install using <code>remotes</code> run:</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"remotes"</span><span class="op">)</span></span>
 <span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"OHDSI/DeepPatientLevelPrediction"</span><span class="op">)</span></span></code></pre></div>
 <p>This should install the required python packages. If that doesn’t
@@ -182,7 +171,7 @@ the package installing.</p>
 <div class="section level2">
 <h2 id="testing-installation">Testing Installation<a class="anchor" aria-label="anchor" href="#testing-installation"></a>
 </h2>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ohdsi.github.io/PatientLevelPrediction/" class="external-link">PatientLevelPrediction</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/OHDSI/DeepPatientLevelPrediction" class="external-link">DeepPatientLevelPrediction</a></span><span class="op">)</span></span>
 <span></span>
@@ -237,14 +226,14 @@ the package installing.</p>
 </h2>
 <p>Considerable work has been dedicated to provide the
 <code>DeepPatientLevelPrediction</code> package.</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/citation.html" class="external-link">citation</a></span><span class="op">(</span><span class="st">"DeepPatientLevelPrediction"</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## To cite package 'DeepPatientLevelPrediction' in publications use:</span></span>
 <span><span class="co">## </span></span>
-<span><span class="co">##   Fridgeirsson E, Reps J, Chan You S, Kim C, John H (2025).</span></span>
+<span><span class="co">##   Fridgeirsson E, Reps J, Chan You S, Kim C, John H (2026).</span></span>
 <span><span class="co">##   _DeepPatientLevelPrediction: Deep Learning for Patient Level</span></span>
 <span><span class="co">##   Prediction Using Data in the OMOP Common Data Model_. R package</span></span>
-<span><span class="co">##   version 2.2.0, &lt;https://github.com/OHDSI/DeepPatientLevelPrediction&gt;.</span></span>
+<span><span class="co">##   version 2.3.0, &lt;https://github.com/OHDSI/DeepPatientLevelPrediction&gt;.</span></span>
 <span><span class="co">## </span></span>
 <span><span class="co">## A BibTeX entry for LaTeX users is</span></span>
 <span><span class="co">## </span></span>
@@ -252,8 +241,8 @@ the package installing.</p>
 <span><span class="co">##     title = {DeepPatientLevelPrediction: Deep Learning for Patient Level Prediction Using Data in the</span></span>
 <span><span class="co">## OMOP Common Data Model},</span></span>
 <span><span class="co">##     author = {Egill Fridgeirsson and Jenna Reps and Seng {Chan You} and Chungsoo Kim and Henrik John},</span></span>
-<span><span class="co">##     year = {2025},</span></span>
-<span><span class="co">##     note = {R package version 2.2.0},</span></span>
+<span><span class="co">##     year = {2026},</span></span>
+<span><span class="co">##     note = {R package version 2.3.0},</span></span>
 <span><span class="co">##     url = {https://github.com/OHDSI/DeepPatientLevelPrediction},</span></span>
 <span><span class="co">##   }</span></span></code></pre>
 <p><strong>Please reference this paper if you use the PLP Package in
@@ -275,7 +264,7 @@ models using observational healthcare data. J Am Med Inform Assoc.
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.3.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
 </div>
 
     </footer>
