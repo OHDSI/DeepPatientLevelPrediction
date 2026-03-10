@@ -1,3 +1,25 @@
+DeepPatientLevelPrediction 2.3.0
+======================
+
+New features
+- Add core `RealMLP` support for tabular deep learning, including paper-style numeric embeddings, schedules, and data-dependent initialization (PR #171)
+- Add dropout support to `TemporalPE` and test coverage for positional-encoding dropout behavior (PR #165)
+
+Bug fixes
+- Replace deprecated `pynvml` with `nvidia-ml-py` (PR #167, closes #166)
+- Improve expand-component handling and add regression tests (PR #164)
+- Fix estimator seed casting, prediction shaping, and custom-embedding / Poincare model paths for current torch and reticulate behavior (PR #171)
+
+Runtime and compatibility
+- Relax the torch requirement to `torch>=2.7,<3` and validate against `torch==2.10.0` in stable CI lanes (PR #171)
+- Add a Python 3.10 compatibility lane using the latest available torch (PR #171)
+- Clean `torchinductor_runner` artifacts during `R CMD check` (PR #171)
+
+Documentation and CI
+- Update installation guidance to recommend `uv` and Python 3.12 (PR #171)
+- Update GitHub Actions checks to use Python 3.12 by default and fix Windows torch installation handling (PR #171)
+- Update pkgdown link checking for current `lychee` CLI behavior (PR #171)
+
 DeepPatientLevelPrediction 2.2.0
 ======================
 - [Feature] Add positional encodings that use `timeId` (PR #154):

@@ -38,7 +38,7 @@ This vignette describes how you need to install the Observational Health Data Sc
 Under Windows the OHDSI Deep Patient Level Prediction (DeepPLP) package requires installing:
 
 -   R (<https://cran.r-project.org/> ) - (R \>= 4.0.0, but latest is recommended)
--   Python - The package is tested with python 3.10, but \>= 3.8 should work
+-   Python - Recommend Python 3.12. Python \>= 3.10 is supported
 -   Rstudio (<https://www.rstudio.com/> )
 -   Java (<http://www.java.com> )
 -   RTools (<https://cran.r-project.org/bin/windows/Rtools/>)
@@ -48,7 +48,7 @@ Under Windows the OHDSI Deep Patient Level Prediction (DeepPLP) package requires
 Under Mac and Linux the OHDSI DeepPLP package requires installing:
 
 -   R (<https://cran.r-project.org/> ) - (R \>= 4.0.0, but latest is recommended)
--   Python - The package is tested with python 3.10, but \>= 3.8 should work
+-   Python - Recommend Python 3.12. Python \>= 3.10 is supported
 -   Rstudio (<https://www.rstudio.com/> )
 -   Java (<http://www.java.com> )
 -   Xcode command line tools(run in terminal: xcode-select --install) [MAC USERS ONLY]
@@ -63,28 +63,40 @@ Note that the latest develop branch could contain bugs, please report them to us
 
 ## Installing Python environment
 
-Since the package uses `pytorch` through `reticulate` a working python installation is required. The package is tested with python 3.10. To install python an easy way is to use miniconda through `reticulate`:
+Since the package uses `pytorch` through `reticulate`, a working Python installation is required. We recommend using `uv` with Python 3.12.
+
+Install `uv` by following the official instructions:
+
+<https://docs.astral.sh/uv/getting-started/installation/>
+
+Then create a local virtual environment for this project:
+
+```bash
+uv python install 3.12
+uv venv --python 3.12
+```
+
+Tell `reticulate` to use that interpreter by setting `RETICULATE_PYTHON` in `.Renviron`.
+
+For Linux/macOS:
+
+```
+RETICULATE_PYTHON="/path/to/project/.venv/bin/python"
+```
+
+For Windows:
+
+```
+RETICULATE_PYTHON="C:/path/to/project/.venv/Scripts/python.exe"
+```
+
+Then restart your R session. You can verify the active interpreter with:
 
 ```{r, echo = TRUE, message = FALSE, warning = FALSE,tidy=FALSE,eval=FALSE}
-install.packages('reticulate')
-reticulate::install_miniconda()
+reticulate::py_config()
 ```
 
-By default `install_minconda()` creates an environment `r-reticulate` with `python 3.9`. To use instead `python 3.10` we can do:
-
-```{r, echo = TRUE, message = FALSE, warning = FALSE,tidy=FALSE,eval=FALSE}
-reticulate::conda_install(envname = 'r-reticulate', packages=c('python=3.10'))
-```
-
-If reticulate is having issues finding the conda installation you can use the function `reticulate::miniconda_path()` to find the default installation location for your miniconda installation. Then you can force reticulate to use the newly generated environment by setting the environment variable `RETICULATE_PYTHON` to point to the python binary in the environment. For example by adding the following to the `.Renviron` file:
-
-```         
-RETICULATE_PYTHON="/path/to/miniconda/envs/r-reticulate/python/bin"
-```
-
-Then you need to restart you R session. To verify that `reticulate` finds the correct version. You can call `reticulate::py_config()`. 
-
-Once you have a working python environment that reticulate can locate you can install `DeepPatientLevelPrediction`. If you want to use a specific python environment you can set the environment variable `RETICULATE_PYTHON` to point to the python executable of that environment in your `.Renviron` file. You need to do this before installing `DeepPatientLevelPrediction`.
+Python 3.9 is end-of-life and should not be used. Python 3.10 is still supported, but Python 3.12 is recommended.
 
 ## Installing DeepPatientLevelPrediction using remotes
 

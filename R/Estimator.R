@@ -623,9 +623,12 @@ doCrossValidationImpl <- function(dataset, labels, parameters, modelSettings) {
     "^estimator",
     names(parameters)
   )]
-  currentModelParams <- parameters[modelSettings$modelParamNames]
-  attr(currentModelParams, "metaData")$names <-
-    modelSettings$modelParamNames
+  modelParamNames <- setdiff(
+    names(parameters)[!grepl("^estimator", names(parameters))],
+    "learnSchedule"
+  )
+  currentModelParams <- parameters[modelParamNames]
+  attr(currentModelParams, "metaData")$names <- modelParamNames
   currentModelParams$modelType <- modelSettings$modelType
   currentEstimatorSettings <- fillEstimatorSettings(
     modelSettings$estimatorSettings,
@@ -726,7 +729,11 @@ extractParamsToTune <- function(estimatorSettings) {
 
 trainFinalModel <- function(dataset, finalParam, modelSettings, labels) {
   # get the params
-  modelParams <- finalParam[modelSettings$modelParamNames]
+  modelParamNames <- setdiff(
+    names(finalParam)[!grepl("^estimator", names(finalParam))],
+    "learnSchedule"
+  )
+  modelParams <- finalParam[modelParamNames]
 
   fitParams <- names(finalParam)[grepl("^estimator", names(finalParam))]
 
@@ -738,7 +745,9 @@ trainFinalModel <- function(dataset, finalParam, modelSettings, labels) {
     fitParams,
     finalParam
   )
-  estimatorSettings$learningRate <- finalParam$learnSchedule$LRs[[1]]
+  if (!startsWith(modelSettings$modelType, "RealMLP")) {
+    estimatorSettings$learningRate <- finalParam$learnSchedule$LRs[[1]]
+  }
   parameters <- list(
     modelParameters = modelParams,
     estimatorSettings = estimatorSettings

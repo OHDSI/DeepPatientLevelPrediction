@@ -17,13 +17,13 @@ Features
 ========
 - Adds deep learning models to use in the OHDSI PatientLevelPrediction framework.
 - Allows to add custom deep learning models.
-- Includes an MLP, ResNet and a Transformer
+- Includes an MLP, ResNet, Transformer, and core RealMLP
 - Allows to use all the features of [PatientLevelPrediction](https://github.com/OHDSI/PatientLevelPrediction/) to validate and explore your model performance.
 
 
 Technology
 ==========
-DeepPatientLevelPrediction is an R package. It uses [torch in R](https://torch.mlverse.org/) to build deep learning models without using python.
+DeepPatientLevelPrediction is an R package. It uses Python [PyTorch](https://pytorch.org/) through [reticulate](https://rstudio.github.io/reticulate/) for deep learning model training and inference.
 
 System Requirements
 ===================
@@ -34,6 +34,7 @@ Getting Started
 ===============
 
 - To install the package please read the [Package installation guide](https://ohdsi.github.io/DeepPatientLevelPrediction/articles/Installing.html)
+- For Python, the recommended environment manager is `uv` with Python 3.12
 - Please read the main vignette for the package:
 [Building Deep Learning Models](https://ohdsi.github.io/DeepPatientLevelPrediction/articles/BuildingDeepModels.html)
 
@@ -59,4 +60,3 @@ DeepPatientLevelPrediction is licensed under Apache License 2.0
 Development
 ===========
 DeepPatientLevelPrediction is being developed in R Studio.
-

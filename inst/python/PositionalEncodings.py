@@ -469,11 +469,13 @@ class TemporalPE(PositionalEncoding):
         num_heads: int = 8,
         base: int = 10000,
         sigma: float = 1.0,
+        dropout: float = 0.0,
         learnable_sigma: bool = False,
     ):
         super().__init__(dim_token, max_time_id)
 
-        self.sinusoidal_pe = SinusoidalPE(dim_token, max_time_id, base)
+        self.sinusoidal_pe = SinusoidalPE(dim_token, max_time_id, base,
+                                          dropout=dropout)
 
         if learnable_sigma:
             self.log_sigma = nn.Parameter(torch.tensor(sigma).log())
