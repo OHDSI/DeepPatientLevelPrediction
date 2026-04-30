@@ -321,14 +321,14 @@ def aggregate_sequences(
             else pl.col("columnId")
         ).alias("feature_ids"),
         (
-            pl.col("covariateValue").sort_by("timeId")
+            pl.col("covariateValue").sort_by(["timeId", "columnId"])
             if with_time
             else pl.col("covariateValue")
         ).alias("feature_values"),
     ]
     if with_time:
         data = data.with_columns(pl.col("timeId").fill_null(0).cast(pl.Int32))
-        aggs.append(pl.col("timeId").sort_by("timeId").alias("time_ids"))
+        aggs.append(pl.col("timeId").sort_by(["timeId", "columnId"]).alias("time_ids"))
     grouped = data.group_by("rowId").agg(*aggs)
     all_rows = (
         data.select("rowId").unique().with_columns((pl.col("rowId")).alias("rowId"))

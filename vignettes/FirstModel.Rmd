@@ -133,7 +133,8 @@ plpResults <- PatientLevelPrediction::runPlp(plpData = plpData,
                modelSettings = modelSettings,
                analysisId = 'ResNet',
                analysisName = 'Testing DeepPlp',
-               populationSettings = populationSettings
+               populationSettings = populationSettings,
+               saveDirectory = "ResNet"
                                                       )
 ```
 
