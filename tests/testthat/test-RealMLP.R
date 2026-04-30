@@ -106,6 +106,29 @@ test_that("setRealMLP random search samples expanded grid combinations", {
   )
 })
 
+test_that("setRealMLP validates vector-aware RealMLP parameters", {
+  expect_error(
+    setRealMLP(labelSmoothing = 1.1),
+    "labelSmoothing needs to be <= 1"
+  )
+  expect_error(
+    setRealMLP(numericEmbeddingMode = c("scale", "invalid")),
+    "numericEmbeddingMode has incorrect value"
+  )
+  expect_error(
+    setRealMLP(dataDependentInitMode = c("paper_lsuv", "invalid")),
+    "dataDependentInitMode has incorrect value"
+  )
+  expect_error(
+    setRealMLP(tokenAggregation = c("mean", "invalid")),
+    "tokenAggregation has incorrect value"
+  )
+  expect_error(
+    setRealMLP(featureScaleMode = c("scalar", "invalid")),
+    "featureScaleMode has incorrect value"
+  )
+})
+
 test_that("RealMLP supports PL and PBLD numerical embedding modes", {
   realMlp <- reticulate::import_from_path("RealMLP", path = path)$RealMLP
   featureInfo <- dataset$get_feature_info()
