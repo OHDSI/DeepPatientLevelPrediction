@@ -18,7 +18,7 @@ resSet <- setResNet(
 test_that("setResNet works", {
   expect_s3_class(object = resSet, class = "modelSettings")
 
-  expect_equal(resSet$fitFunction, "DeepPatientLevelPrediction::fitEstimator")
+  expect_equal(resSet$fitFunction, "DeepPatientLevelPrediction::fitDeepPlpClassifier")
 
   expect_true(length(resSet$param) > 0)
 

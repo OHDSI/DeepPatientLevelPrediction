@@ -1,4 +1,5 @@
 testLoc <- normalizePath(tempdir())
+options(DeepPatientLevelPrediction.suppressLegacySearchWarning = TRUE)
 path <- system.file("python", package = "DeepPatientLevelPrediction")
 # get connection and data from Eunomia
 connectionDetails <- Eunomia::getEunomiaConnectionDetails()

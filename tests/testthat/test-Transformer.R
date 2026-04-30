@@ -16,7 +16,7 @@ settings <- setTransformer(
 
 test_that("Transformer settings work", {
   expect_s3_class(object = settings, class = "modelSettings")
-  expect_equal(settings$fitFunction, "DeepPatientLevelPrediction::fitEstimator")
+  expect_equal(settings$fitFunction, "DeepPatientLevelPrediction::fitDeepPlpClassifier")
   expect_true(length(settings$param) > 0)
   expect_error(setTransformer(
     numBlocks = 1, dimToken = 50,

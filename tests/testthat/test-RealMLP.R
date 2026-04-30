@@ -14,7 +14,7 @@ test_that("setRealMLP settings are created correctly", {
 
   expect_s3_class(settings, "modelSettings")
   expect_equal(settings$modelType, "RealMLP")
-  expect_equal(settings$fitFunction, "DeepPatientLevelPrediction::fitEstimator")
+  expect_equal(settings$fitFunction, "DeepPatientLevelPrediction::fitDeepPlpClassifier")
   expect_equal(settings$estimatorSettings$beta2, 0.95)
   expect_equal(settings$estimatorSettings$eps, 1e-8)
   expect_equal(settings$estimatorSettings$metric, "loss")

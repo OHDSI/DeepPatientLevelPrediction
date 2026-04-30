@@ -16,7 +16,7 @@ test_that("Finetuner settings work", {
   expect_equal(fineTunerSettings$estimatorSettings$device, "cpu")
   expect_equal(fineTunerSettings$estimatorSettings$batchSize, 128)
   expect_equal(fineTunerSettings$estimatorSettings$epochs, 1)  
-  expect_equal(fineTunerSettings$fitFunction, "fitEstimator")
+  expect_equal(fineTunerSettings$fitFunction, "DeepPatientLevelPrediction::fitDeepPlpClassifier")
   expect_equal(fineTunerSettings$saveType, "file")
   expect_equal(fineTunerSettings$modelType, modelType)
   expect_equal(fineTunerSettings$modelParamNames, "modelPath")
