@@ -21,7 +21,7 @@ Inform Assoc. 2018;25(8):969-975.
 - Adds deep learning models to use in the OHDSI PatientLevelPrediction
   framework.
 - Allows to add custom deep learning models.
-- Includes an MLP, ResNet, Transformer, and core RealMLP
+- Includes MLP, ResNet, Transformer, and RealMLP models.
 - Allows to use all the features of
   [PatientLevelPrediction](https://github.com/OHDSI/PatientLevelPrediction/)
   to validate and explore your model performance.
@@ -36,16 +36,17 @@ model training and inference.
 # System Requirements
 
 Requires R (version 4.0.0 or higher). Installation on Windows requires
-[RTools](http://cran.r-project.org/bin/windows/Rtools/). For training
-deep learning models in most cases an nvidia GPU is required using
-either Windows or Linux.
+[RTools](http://cran.r-project.org/bin/windows/Rtools/). A CPU can be
+used for small examples and tests; an NVIDIA GPU is recommended for
+larger deep learning model development.
 
 # Getting Started
 
 - To install the package please read the [Package installation
   guide](https://ohdsi.github.io/DeepPatientLevelPrediction/articles/Installing.html)
-- For Python, the recommended environment manager is `uv` with Python
-  3.12
+- Python dependencies are managed through `reticulate` when the package
+  is loaded or used. Advanced users can point `RETICULATE_PYTHON` at a
+  prebuilt environment for offline or controlled deployments.
 - Please read the main vignette for the package: [Building Deep Learning
   Models](https://ohdsi.github.io/DeepPatientLevelPrediction/articles/BuildingDeepModels.html)
 

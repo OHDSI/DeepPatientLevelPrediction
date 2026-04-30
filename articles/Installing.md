@@ -16,7 +16,7 @@ requires installing:
 - R (<https://cran.r-project.org/> ) - (R \>= 4.0.0, but latest is
   recommended)
 - Python - Recommend Python 3.12. Python \>= 3.10 is supported
-- Rstudio (<https://www.rstudio.com/> )
+- RStudio (<https://www.rstudio.com/> )
 - Java (<http://www.java.com> )
 - RTools (<https://cran.r-project.org/bin/windows/Rtools/>)
 
@@ -27,7 +27,7 @@ Under Mac and Linux the OHDSI DeepPLP package requires installing:
 - R (<https://cran.r-project.org/> ) - (R \>= 4.0.0, but latest is
   recommended)
 - Python - Recommend Python 3.12. Python \>= 3.10 is supported
-- Rstudio (<https://www.rstudio.com/> )
+- RStudio (<https://www.rstudio.com/> )
 - Java (<http://www.java.com> )
 - Xcode command line tools(run in terminal: xcode-select –install) \[MAC
   USERS ONLY\]
@@ -44,24 +44,40 @@ edge version of the package (latest develop branch).
 Note that the latest develop branch could contain bugs, please report
 them to us if you experience problems.
 
-### Installing Python environment
+### Python environment
 
-Since the package uses `pytorch` through `reticulate`, a working Python
-installation is required. We recommend using `uv` with Python 3.12.
+Since the package uses PyTorch through `reticulate`, a working Python
+environment is required. For most users on a computer with internet
+access, no manual Python setup is needed: loading or using
+`DeepPatientLevelPrediction` should let `reticulate` create a managed
+environment from the package requirements.
 
-Install `uv` by following the official instructions:
+You can verify the active interpreter with:
 
-<https://docs.astral.sh/uv/getting-started/installation/>
+``` r
 
-Then create a local virtual environment for this project:
+library(DeepPatientLevelPrediction)
+reticulate::py_config()
+```
+
+Advanced users, users with strict reproducibility requirements, or users
+in airgapped environments can manage the Python environment themselves
+and tell `reticulate` which interpreter to use. One option is to create
+the environment with `uv` and Python 3.12:
 
 ``` bash
 uv python install 3.12
 uv venv --python 3.12
+uv pip install polars tqdm pyarrow duckdb nvidia-ml-py numpy
+uv pip install "torch==2.10.0" --index https://download.pytorch.org/whl/cpu/
 ```
 
-Tell `reticulate` to use that interpreter by setting `RETICULATE_PYTHON`
-in `.Renviron`.
+The second `uv pip install` command installs the CPU build of PyTorch.
+If you want to train on a GPU, install the PyTorch build that matches
+your CUDA setup instead.
+
+To force `reticulate` to use a manually managed interpreter, set
+`RETICULATE_PYTHON` in `.Renviron`.
 
 For Linux/macOS:
 
@@ -71,12 +87,7 @@ For Windows:
 
     RETICULATE_PYTHON="C:/path/to/project/.venv/Scripts/python.exe"
 
-Then restart your R session. You can verify the active interpreter with:
-
-``` r
-
-reticulate::py_config()
-```
+Then restart your R session.
 
 Python 3.9 is end-of-life and should not be used. Python 3.10 is still
 supported, but Python 3.12 is recommended.
@@ -91,72 +102,56 @@ install.packages("remotes")
 remotes::install_github("OHDSI/DeepPatientLevelPrediction")
 ```
 
-This should install the required python packages. If that doesn’t happen
-it can be triggered by calling:
+Loading the package or using the `torch` helper should trigger
+`reticulate` to resolve the Python requirements if you have not
+configured `RETICULATE_PYTHON`.
 
-    library(DeepPatientLevelPrediction)
-    torch$randn(10L)
+``` r
+
+library(DeepPatientLevelPrediction)
+torch$randn(10L)
+```
 
 This should print out a tensor with ten different values.
 
-When installing make sure to close any other Rstudio sessions that are
-using `DeepPatientLevelPrediction` or any dependency. Keeping Rstudio
-sessions open can cause locks on windows that prevent the package
+When installing make sure to close any other RStudio sessions that are
+using `DeepPatientLevelPrediction` or any dependency. Keeping RStudio
+sessions open can cause locks on Windows that prevent the package
 installing.
 
 ## Testing Installation
 
 ``` r
 
-library(PatientLevelPrediction)
 library(DeepPatientLevelPrediction)
 
-data(plpDataSimulationProfile)
-sampleSize <- 1e3
-plpData <- simulatePlpData(
-  plpDataSimulationProfile,
-  n = sampleSize 
+torch$randn(10L)
+
+modelSettings <- setResNet(
+  numLayers = 2L,
+  sizeHidden = 64L,
+  hiddenFactor = 1L,
+  residualDropout = 0,
+  hiddenDropout = 0.2,
+  sizeEmbedding = 64L,
+  estimatorSettings = setEstimator(
+    learningRate = 3e-4,
+    weightDecay = 1e-6,
+    device = "cpu",
+    batchSize = 128L,
+    epochs = 3L,
+    seed = 42L
+  ),
+  hyperParamSearch = "random",
+  randomSample = 1L
 )
 
-populationSettings <- PatientLevelPrediction::createStudyPopulationSettings(
-                                                          requireTimeAtRisk = F, 
-                                                          riskWindowStart = 1, 
-                                                          riskWindowEnd = 365)
-# a very simple resnet
-modelSettings <- setResNet(numLayers = 2L, 
-                           sizeHidden = 64L, 
-                           hiddenFactor = 1L,
-                           residualDropout = 0, 
-                           hiddenDropout = 0.2, 
-                           sizeEmbedding = 64L, 
-                           estimatorSettings = setEstimator(learningRate = 3e-4,
-                                                            weightDecay = 1e-6,
-                                                            device='cpu',
-                                                            batchSize=128L,
-                                                            epochs=3L,
-                                                            seed = 42),
-                           hyperParamSearch = 'random',
-                           randomSample = 1L)
-
-plpResults <- PatientLevelPrediction::runPlp(plpData = plpData,
-               outcomeId = 3,
-               modelSettings = modelSettings,
-               analysisId = 'Test',
-               analysisName = 'Testing DeepPlp',
-               populationSettings = populationSettings,
-               splitSettings = createDefaultSplitSetting(),
-               sampleSettings = createSampleSettings(), 
-               featureEngineeringSettings = createFeatureEngineeringSettings(), 
-               preprocessSettings = createPreprocessSettings(),
-               logSettings = createLogSettings(),
-               executeSettings = createExecuteSettings(runSplitData = TRUE,
-                                                      runSampleData = FALSE,
-                                                      runFeatureEngineering = FALSE,
-                                                      runPreprocessData = TRUE,
-                                                      runModelDevelopment = TRUE,
-                                                      runCovariateSummary = TRUE
-                                                      ))
+stopifnot(inherits(modelSettings, "modelSettings"))
 ```
+
+To run an end-to-end patient-level prediction example, continue with the
+[first-model
+vignette](https://ohdsi.github.com/DeepPatientLevelPrediction/articles/FirstModel.md).
 
 ## Acknowledgments
 

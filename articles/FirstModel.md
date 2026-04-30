@@ -67,15 +67,15 @@ are using Eunomia.
 ``` r
 
 databaseDetails <- PatientLevelPrediction::createDatabaseDetails(
-  connectionDetails = connectionDetails, 
+  connectionDetails = connectionDetails,
   cdmDatabaseSchema = "main",
   cdmDatabaseId = "1",
-  cohortDatabaseSchema = "main", 
-  cohortTable = "cohort", 
-  targetId= 4, 
+  cohortDatabaseSchema = "main",
+  cohortTable = "cohort",
+  targetId= 4,
   outcomeIds = 3,
-  outcomeDatabaseSchema = "main", 
-  outcomeTable =  "cohort", 
+  outcomeDatabaseSchema = "main",
+  outcomeTable =  "cohort",
   cdmDatabaseName = 'eunomia'
 )
 ```
@@ -91,8 +91,8 @@ database.
 ``` r
 
 populationSettings <- PatientLevelPrediction::createStudyPopulationSettings(
-                                                          requireTimeAtRisk = F, 
-                                                          riskWindowStart = 1, 
+                                                          requireTimeAtRisk = FALSE,
+                                                          riskWindowStart = 1,
                                                           riskWindowEnd = 365)
 plpData <- PatientLevelPrediction::getPlpData(
   databaseDetails = databaseDetails,
@@ -101,8 +101,8 @@ plpData <- PatientLevelPrediction::getPlpData(
 ```
 
 When defining our study population we define the time-at-risk. Which is
-when we are predicing if a certain patient gets the outcome or not. Here
-we predict the outcome from the day after the patient starts using
+when we are predicting if a certain patient gets the outcome or not.
+Here we predict the outcome from the day after the patient starts using
 NSAIDs until one year later.
 
 ## The model
@@ -115,10 +115,10 @@ functions with a sensible set of hyperparameters for testing. Best
 practice is though to do an extensive hyperparameter tuning step using
 cross validation.
 
-We will use a simple ResNet for our example. ResNet are simple models
-that have skip connections between layers that allow for deeper models
-without overfitting. The default ResNet is a 6 layer model with 512
-neurons per layer.
+We will use a simple ResNet for our example. ResNets use skip
+connections between layers to support deeper models without overfitting
+as quickly. The default ResNet is a 6 layer model with 512 neurons per
+layer.
 
 ``` r
 
@@ -152,13 +152,12 @@ model. If you have used the PLP this should look familiar to you.
 ``` r
 
 plpResults <- PatientLevelPrediction::runPlp(plpData = plpData,
-               outcomeId = 3,
-               modelSettings = modelSettings,
-               analysisId = 'ResNet',
-               analysisName = 'Testing DeepPlp',
-               populationSettings = populationSettings,
-               saveDirectory = "ResNet"
-                                                      )
+                                             outcomeId = 3,
+                                             modelSettings = modelSettings,
+                                             analysisId = "ResNet",
+                                             analysisName = "Testing DeepPLP",
+                                             populationSettings = populationSettings,
+                                             saveDirectory = "ResNet")
 ```
 
 On my computer this takes about 20 seconds per epoch. While you probably

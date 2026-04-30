@@ -126,15 +126,15 @@ database we are getting which cohorts. Since we don’t have a database we
 are using Eunomia.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">databaseDetails</span> <span class="op">&lt;-</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createDatabaseDetails.html" class="external-link">createDatabaseDetails</a></span><span class="op">(</span></span>
-<span>  connectionDetails <span class="op">=</span> <span class="va">connectionDetails</span>, </span>
+<span>  connectionDetails <span class="op">=</span> <span class="va">connectionDetails</span>,</span>
 <span>  cdmDatabaseSchema <span class="op">=</span> <span class="st">"main"</span>,</span>
 <span>  cdmDatabaseId <span class="op">=</span> <span class="st">"1"</span>,</span>
-<span>  cohortDatabaseSchema <span class="op">=</span> <span class="st">"main"</span>, </span>
-<span>  cohortTable <span class="op">=</span> <span class="st">"cohort"</span>, </span>
-<span>  targetId<span class="op">=</span> <span class="fl">4</span>, </span>
+<span>  cohortDatabaseSchema <span class="op">=</span> <span class="st">"main"</span>,</span>
+<span>  cohortTable <span class="op">=</span> <span class="st">"cohort"</span>,</span>
+<span>  targetId<span class="op">=</span> <span class="fl">4</span>,</span>
 <span>  outcomeIds <span class="op">=</span> <span class="fl">3</span>,</span>
-<span>  outcomeDatabaseSchema <span class="op">=</span> <span class="st">"main"</span>, </span>
-<span>  outcomeTable <span class="op">=</span>  <span class="st">"cohort"</span>, </span>
+<span>  outcomeDatabaseSchema <span class="op">=</span> <span class="st">"main"</span>,</span>
+<span>  outcomeTable <span class="op">=</span>  <span class="st">"cohort"</span>,</span>
 <span>  cdmDatabaseName <span class="op">=</span> <span class="st">'eunomia'</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p>This means we are using cohort 4 as our target cohort, the population
@@ -145,15 +145,15 @@ gastrointestinal bleeding in users of NSAIDs.</p>
 the database.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">populationSettings</span> <span class="op">&lt;-</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createStudyPopulationSettings.html" class="external-link">createStudyPopulationSettings</a></span><span class="op">(</span></span>
-<span>                                                          requireTimeAtRisk <span class="op">=</span> <span class="cn">F</span>, </span>
-<span>                                                          riskWindowStart <span class="op">=</span> <span class="fl">1</span>, </span>
+<span>                                                          requireTimeAtRisk <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>                                                          riskWindowStart <span class="op">=</span> <span class="fl">1</span>,</span>
 <span>                                                          riskWindowEnd <span class="op">=</span> <span class="fl">365</span><span class="op">)</span></span>
 <span><span class="va">plpData</span> <span class="op">&lt;-</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/getPlpData.html" class="external-link">getPlpData</a></span><span class="op">(</span></span>
 <span>  databaseDetails <span class="op">=</span> <span class="va">databaseDetails</span>,</span>
 <span>  covariateSettings <span class="op">=</span> <span class="va">covariateSettings</span>,</span>
 <span>  restrictPlpDataSettings <span class="op">=</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createRestrictPlpDataSettings.html" class="external-link">createRestrictPlpDataSettings</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p>When defining our study population we define the time-at-risk. Which
-is when we are predicing if a certain patient gets the outcome or not.
+is when we are predicting if a certain patient gets the outcome or not.
 Here we predict the outcome from the day after the patient starts using
 NSAIDs until one year later.</p>
 </div>
@@ -167,10 +167,10 @@ define for your model architecture. To help with this
 <code>deepPLP</code> has helper functions with a sensible set of
 hyperparameters for testing. Best practice is though to do an extensive
 hyperparameter tuning step using cross validation.</p>
-<p>We will use a simple ResNet for our example. ResNet are simple models
-that have skip connections between layers that allow for deeper models
-without overfitting. The default ResNet is a 6 layer model with 512
-neurons per layer.</p>
+<p>We will use a simple ResNet for our example. ResNets use skip
+connections between layers to support deeper models without overfitting
+as quickly. The default ResNet is a 6 layer model with 512 neurons per
+layer.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/OHDSI/DeepPatientLevelPrediction" class="external-link">DeepPatientLevelPrediction</a></span><span class="op">)</span></span>
 <span><span class="va">modelSettings</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/setDefaultResNet.html">setDefaultResNet</a></span><span class="op">(</span></span>
@@ -197,13 +197,12 @@ learning model. If you have used the PLP this should look familiar to
 you.</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">plpResults</span> <span class="op">&lt;-</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/runPlp.html" class="external-link">runPlp</a></span><span class="op">(</span>plpData <span class="op">=</span> <span class="va">plpData</span>,</span>
-<span>               outcomeId <span class="op">=</span> <span class="fl">3</span>,</span>
-<span>               modelSettings <span class="op">=</span> <span class="va">modelSettings</span>,</span>
-<span>               analysisId <span class="op">=</span> <span class="st">'ResNet'</span>,</span>
-<span>               analysisName <span class="op">=</span> <span class="st">'Testing DeepPlp'</span>,</span>
-<span>               populationSettings <span class="op">=</span> <span class="va">populationSettings</span>,</span>
-<span>               saveDirectory <span class="op">=</span> <span class="st">"ResNet"</span></span>
-<span>                                                      <span class="op">)</span></span></code></pre></div>
+<span>                                             outcomeId <span class="op">=</span> <span class="fl">3</span>,</span>
+<span>                                             modelSettings <span class="op">=</span> <span class="va">modelSettings</span>,</span>
+<span>                                             analysisId <span class="op">=</span> <span class="st">"ResNet"</span>,</span>
+<span>                                             analysisName <span class="op">=</span> <span class="st">"Testing DeepPLP"</span>,</span>
+<span>                                             populationSettings <span class="op">=</span> <span class="va">populationSettings</span>,</span>
+<span>                                             saveDirectory <span class="op">=</span> <span class="st">"ResNet"</span><span class="op">)</span></span></code></pre></div>
 <p>On my computer this takes about 20 seconds per epoch. While you
 probably won’t see any kind of good performance using this model and
 this data, at least the training loss should be decreasing in the

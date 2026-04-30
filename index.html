@@ -73,7 +73,7 @@
 <ul>
 <li>Adds deep learning models to use in the OHDSI PatientLevelPrediction framework.</li>
 <li>Allows to add custom deep learning models.</li>
-<li>Includes an MLP, ResNet, Transformer, and core RealMLP</li>
+<li>Includes MLP, ResNet, Transformer, and RealMLP models.</li>
 <li>Allows to use all the features of <a href="https://github.com/OHDSI/PatientLevelPrediction/" class="external-link">PatientLevelPrediction</a> to validate and explore your model performance.</li>
 </ul>
 </div>
@@ -85,7 +85,7 @@
 <div class="section level1">
 <h1 id="system-requirements">System Requirements<a class="anchor" aria-label="anchor" href="#system-requirements"></a>
 </h1>
-<p>Requires R (version 4.0.0 or higher). Installation on Windows requires <a href="http://cran.r-project.org/bin/windows/Rtools/" class="external-link">RTools</a>. For training deep learning models in most cases an nvidia GPU is required using either Windows or Linux.</p>
+<p>Requires R (version 4.0.0 or higher). Installation on Windows requires <a href="http://cran.r-project.org/bin/windows/Rtools/" class="external-link">RTools</a>. A CPU can be used for small examples and tests; an NVIDIA GPU is recommended for larger deep learning model development.</p>
 </div>
 <div class="section level1">
 <h1 id="getting-started">Getting Started<a class="anchor" aria-label="anchor" href="#getting-started"></a>
@@ -93,7 +93,7 @@
 <ul>
 <li>To install the package please read the <a href="https://ohdsi.github.io/DeepPatientLevelPrediction/articles/Installing.html" class="external-link">Package installation guide</a>
 </li>
-<li>For Python, the recommended environment manager is <code>uv</code> with Python 3.12</li>
+<li>Python dependencies are managed through <code>reticulate</code> when the package is loaded or used. Advanced users can point <code>RETICULATE_PYTHON</code> at a prebuilt environment for offline or controlled deployments.</li>
 <li>Please read the main vignette for the package: <a href="https://ohdsi.github.io/DeepPatientLevelPrediction/articles/BuildingDeepModels.html" class="external-link">Building Deep Learning Models</a>
 </li>
 </ul>

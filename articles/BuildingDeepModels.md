@@ -7,7 +7,7 @@
 Patient level prediction aims to use historic data to learn a function
 between an input (a patient’s features such as age/gender/comorbidities
 at index) and an output (whether the patient experienced an outcome
-during some time-at-risk). Deep learning is example of the the current
+during some time-at-risk). Deep learning is an example of the current
 state-of-the-art classifiers that can be implemented to learn the
 function between inputs and outputs.
 
@@ -33,7 +33,7 @@ methods.
 
 ### Background
 
-Deep Learning models are build by stacking an often large number of
+Deep Learning models are built by stacking an often large number of
 neural network layers that perform feature engineering steps, e.g
 embedding, and are collapsed in a final linear layer (equivalent to
 logistic regression). These algorithms need a lot of data to converge to
@@ -46,20 +46,20 @@ current implementation allows us to perform research at scale on the
 value and limitations of Deep Learning using observational healthcare
 data.
 
-In the package we use `pytorch` through the `reticulate` package.
+In the package we use PyTorch through the `reticulate` package.
 
 Many network architectures have recently been proposed and we have
 implemented a number of them, however, this list will grow in the near
 future. It is important to understand that some of these architectures
 require a 2D data matrix, i.e. \|patient\|x\|feature\|, and others use a
 3D data matrix \|patient\|x\|feature\|x\|time\|. The [FeatureExtraction
-Package](https://ohdsi.github.com/DeepPatientLevelPrediction/articles/www.github.com%5Cohdsi%5CFeatureExtraction)
-has been extended to enable the extraction of both data formats as will
-be described with examples below.
+package](https://github.com/OHDSI/FeatureExtraction) has been extended
+to enable the extraction of both data formats as will be described with
+examples below.
 
 Note that training Deep Learning models is computationally intensive,
 our implementation therefore supports both GPU and CPU. A GPU is highly
-recommended and neccesary for most models for Deep Learning!
+recommended for most deep learning model development.
 
 ### Requirements
 
@@ -75,7 +75,13 @@ settings that can be used within the `PatientLevelPrediction` package
 first need to pick the deep learning architecture you wish to fit (see
 below) and then you specify this as the modelSettings inside `runPlp()`.
 
+The model examples below assume you have already loaded both packages
+and created `plpData` and `populationSettings` as shown in the
+first-model vignette.
+
 ``` r
+
+library(DeepPatientLevelPrediction)
 
 # load the data
 plpData <- PatientLevelPrediction::loadPlpData('locationOfData')
@@ -85,10 +91,12 @@ deepLearningModel <- DeepPatientLevelPrediction::setDefaultResNet()
 
 # use PatientLevelPrediction to fit model
 deepLearningResult <- PatientLevelPrediction::runPlp(
-    plpData = plpData, 
-    outcomeId = 1230, 
+    plpData = plpData,
+    outcomeId = 1230,
     modelSettings = deepLearningModel,
-    analysisId = 'resNetTorch', 
+    analysisId = 'resNetTorch',
+    populationSettings = populationSettings,
+    saveDirectory = file.path(getwd(), 'resNetTorch'),
     ...
   )
 ```
@@ -108,9 +116,9 @@ takes in the input feature values and feeds these forward through the
 graph to determine the output class. A process known as
 ‘backpropagation’ is used to train the model. Backpropagation requires
 some ground truth and involves automatically calculating the derivative
-of the model parameters with respect to the the error between the
-model’s predictions and ground truth. Then the model learns how to
-adjust the model’s parameters to reduce the error.
+of the model parameters with respect to the error between the model’s
+predictions and ground truth. Then the model learns how to adjust the
+model’s parameters to reduce the error.
 
 #### Example
 
@@ -166,14 +174,14 @@ search unless the network is really small.
 
 The `randomSample` chooses how many random samples to use.
 
-The `device` specifies what device to use. Either `cpu` or `cuda`. Or if
-you have many GPU’s `cuda:x` where x is the gpu number as seen in
-`nvidia-smi`.
+The `device` specifies what device to use. Either `cpu` or `cuda`. If
+you have multiple GPUs, use `cuda:x`, where `x` is the GPU number as
+seen in `nvidia-smi`.
 
 The `batchSize` corresponds to the number of data points (patients) used
 per iteration to estimate the network error during model fitting.
 
-The `epochs` corresponds to how many time to run through the entire
+The `epochs` corresponds to how many times to run through the entire
 training data while fitting the model.
 
 ##### Example Code
@@ -191,7 +199,7 @@ Note that all possible combinations are 2*2*2\*2 or 16 but specify
 
 modelSettings <- setMultiLayerPerceptron(
   numLayers = c(3L, 5L),
-  sizeHidden = c(64L, 128L), 
+  sizeHidden = c(64L, 128L),
   dropout = c(0.2),
   sizeEmbedding = c(32L, 64L),
   estimatorSettings = setEstimator(
@@ -205,23 +213,23 @@ modelSettings <- setMultiLayerPerceptron(
 )
 
 mlpResult <- PatientLevelPrediction::runPlp(
-    plpData = plpData, 
-    outcomeId = 3, 
+    plpData = plpData,
+    outcomeId = 3,
     modelSettings = modelSettings,
-    analysisId = 'MLP', 
-    analysisName = 'Testing Deep Learning', 
-    populationSettings = populationSet, 
-    splitSettings = PatientLevelPrediction::createDefaultSplitSetting(), 
-    preprocessSettings = PatientLevelPrediction::createPreprocessSettings(), 
+    analysisId = 'MLP',
+    analysisName = 'Testing Deep Learning',
+    populationSettings = populationSettings,
+    splitSettings = PatientLevelPrediction::createDefaultSplitSetting(),
+    preprocessSettings = PatientLevelPrediction::createPreprocessSettings(),
     executeSettings = PatientLevelPrediction::createExecuteSettings(
-      runSplitData = TRUE, 
-      runSampleData = FALSE, 
-      runFeatureEngineering = FALSE, 
-      runPreprocessData = TRUE, 
-      runModelDevelopment = TRUE, 
+      runSplitData = TRUE,
+      runSampleData = FALSE,
+      runFeatureEngineering = FALSE,
+      runPreprocessData = TRUE,
+      runModelDevelopment = TRUE,
       runCovariateSummary = FALSE
-    ), 
-    saveDirectory = file.path(testLoc, 'DeepNNTorch')
+    ),
+    saveDirectory = file.path(getwd(), 'MLP')
   )
 ```
 
@@ -302,23 +310,23 @@ For example, the following code will fit a two layer ResNet where each
 layer has 32 neurons which increases by a factor of two before
 decreasing again (hiddenFactor). 10% of inputs to each layer and
 residual connection within the layer are randomly zeroed during training
-but not testing.The embedding layer has 32 neurons. Learning rate of
+but not testing. The embedding layer has 32 neurons. Learning rate of
 3e-4 with weight decay of 1e-6 is used for the optimizer. No
 hyperparameter search is done since each input only includes one option.
 
 ``` r
 
 resset <- setResNet(
-  numLayers = c(2L), 
+  numLayers = c(2L),
   sizeHidden = c(32L),
   hiddenFactor = c(2L),
-  residualDropout = c(0.1), 
+  residualDropout = c(0.1),
   hiddenDropout = c(0.1),
   sizeEmbedding = c(32L),
   estimatorSettings = setEstimator(learningRate = c(3e-4),
                                    weightDecay = c(1e-6),
                                    #device='cuda:0', # uncomment to use GPU
-                                   batchSize = 128L, 
+                                   batchSize = 128L,
                                    epochs = 3L,
                                    seed = 42L),
   hyperParamSearch = 'random',
@@ -326,23 +334,73 @@ resset <- setResNet(
 )
 
 resResult <- PatientLevelPrediction::runPlp(
-    plpData = plpData, 
-    outcomeId = 3, 
+    plpData = plpData,
+    outcomeId = 3,
     modelSettings = resset,
-    analysisId = 'ResNet', 
-    analysisName = 'Testing ResNet', 
-    populationSettings = populationSet, 
-    splitSettings = PatientLevelPrediction::createDefaultSplitSetting(), 
-    preprocessSettings = PatientLevelPrediction::createPreprocessSettings(), 
+    analysisId = 'ResNet',
+    analysisName = 'Testing ResNet',
+    populationSettings = populationSettings,
+    splitSettings = PatientLevelPrediction::createDefaultSplitSetting(),
+    preprocessSettings = PatientLevelPrediction::createPreprocessSettings(),
     executeSettings = PatientLevelPrediction::createExecuteSettings(
-      runSplitData = TRUE, 
-      runSampleData = FALSE, 
-      runFeatureEngineering = FALSE, 
-      runPreprocessData = TRUE, 
-      runModelDevelopment = TRUE, 
+      runSplitData = TRUE,
+      runSampleData = FALSE,
+      runFeatureEngineering = FALSE,
+      runPreprocessData = TRUE,
+      runModelDevelopment = TRUE,
       runCovariateSummary = FALSE
-    ), 
+    ),
     saveDirectory = file.path(getwd(), 'ResNet') # change to save elsewhere
+  )
+```
+
+### RealMLP
+
+#### Overall concept
+
+RealMLP is a tabular neural network with paper-aligned defaults for
+optimizer settings, schedules, feature scaling, and data-dependent
+initialization. It is exposed through
+[`setRealMLP()`](https://ohdsi.github.com/DeepPatientLevelPrediction/reference/setRealMLP.md)
+and can be used as the `modelSettings` argument in
+[`PatientLevelPrediction::runPlp()`](https://ohdsi.github.io/PatientLevelPrediction/reference/runPlp.html).
+
+Like the other model setting helpers,
+[`setRealMLP()`](https://ohdsi.github.com/DeepPatientLevelPrediction/reference/setRealMLP.md)
+can be called with one value per argument for a fixed model
+configuration, or with multiple values for tunable parameters such as
+`numLayers`, `sizeHidden`, `dropout`, and `sizeEmbedding` to run a
+hyperparameter or sensitivity search.
+
+#### Example Code
+
+``` r
+
+modelSettings <- setRealMLP(
+  numLayers = 3L,
+  sizeHidden = 256L,
+  dropout = 0.15,
+  device = "cpu"
+)
+
+realMlpResult <- PatientLevelPrediction::runPlp(
+    plpData = plpData,
+    outcomeId = 3,
+    modelSettings = modelSettings,
+    analysisId = 'RealMLP',
+    analysisName = 'Testing RealMLP',
+    populationSettings = populationSettings,
+    splitSettings = PatientLevelPrediction::createDefaultSplitSetting(),
+    preprocessSettings = PatientLevelPrediction::createPreprocessSettings(),
+    executeSettings = PatientLevelPrediction::createExecuteSettings(
+      runSplitData = TRUE,
+      runSampleData = FALSE,
+      runFeatureEngineering = FALSE,
+      runPreprocessData = TRUE,
+      runModelDevelopment = TRUE,
+      runCovariateSummary = FALSE
+    ),
+    saveDirectory = file.path(getwd(), 'RealMLP') # change to save elsewhere
   )
 ```
 
@@ -402,7 +460,7 @@ block
 
 modelSettings <- setTransformer(numBlocks = 3L,
                                 dimToken = 32L,
-                                dimOut = 1, 
+                                dimOut = 1,
                                 numHeads = 4L,
                                 attDropout = 0.25,
                                 ffnDropout = 0.25,
@@ -415,26 +473,26 @@ modelSettings <- setTransformer(numBlocks = 3L,
                                   device = 'cpu'
                                 ),
                                 randomSample=1L)
-                              
+
 
 
 TransformerResult <- PatientLevelPrediction::runPlp(
-    plpData = plpData, 
-    outcomeId = 3, 
+    plpData = plpData,
+    outcomeId = 3,
     modelSettings = modelSettings,
-    analysisId = 'Transformer', 
-    analysisName = 'Testing transformer', 
-    populationSettings = populationSet, 
-    splitSettings = PatientLevelPrediction::createDefaultSplitSetting(), 
-    preprocessSettings = PatientLevelPrediction::createPreprocessSettings(), 
+    analysisId = 'Transformer',
+    analysisName = 'Testing transformer',
+    populationSettings = populationSettings,
+    splitSettings = PatientLevelPrediction::createDefaultSplitSetting(),
+    preprocessSettings = PatientLevelPrediction::createPreprocessSettings(),
     executeSettings = PatientLevelPrediction::createExecuteSettings(
-      runSplitData = TRUE, 
-      runSampleData = FALSE, 
-      runFeatureEngineering = FALSE, 
-      runPreprocessData = TRUE, 
-      runModelDevelopment = TRUE, 
+      runSplitData = TRUE,
+      runSampleData = FALSE,
+      runFeatureEngineering = FALSE,
+      runPreprocessData = TRUE,
+      runModelDevelopment = TRUE,
       runCovariateSummary = FALSE
-    ), 
+    ),
     saveDirectory = file.path(getwd(), 'Transformer') # change to save elsewhere
   )
 ```
