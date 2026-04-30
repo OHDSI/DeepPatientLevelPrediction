@@ -193,14 +193,13 @@ fast.
 The `seed` lets the user use the same random initialization of the network's
 weights as a previous run.
 
-The `hyperParamSearch` chooses the strategy to find the best hyperparameters.
-Currently a random search and grid search are supported. Grid search searches
-every possible combination of hyperparameters while random search samples
-randomly from the combinations. Since neural networks can be very flexible and
-have many hyperparameter combinations it's almost never feasible to do a full
+Hyperparameter tuning is controlled by PatientLevelPrediction through
+`PatientLevelPrediction::createHyperparameterSettings()`. Grid search evaluates
+every possible combination of model and estimator hyperparameters, random
+search samples from those combinations, and custom search can supply candidate
+sets or an adaptive generator. Since neural networks can be very flexible and
+have many hyperparameter combinations, it is almost never feasible to do a full
 grid search unless the network is really small.
-
-The `randomSample` chooses how many random samples to use.
 
 The `device` specifies what device to use. Either `cpu` or `cuda`. If you
 have multiple GPUs, use `cuda:x`, where `x` is the GPU number as seen in `nvidia-smi`.
@@ -221,8 +220,8 @@ that obtains the greatest AUROC via cross validation in the training data and
 then fit the model with that configuration using all the training data. The
 standard output of `runPlp()` will be returned - this contains the MLP model
 along with the performance details and settings. Note that all possible
-combinations are 2*2*2*2 or 16 but specify ```randomSample=10``` to only try
-10 of those.
+combinations are 2*2*2*2 or 16 but specify `sampleSize = 10` to only try 10 of
+those.
 
 ```{r, eval=FALSE}
 
@@ -237,14 +236,20 @@ modelSettings <- setMultiLayerPerceptron(
     batchSize = c(128L),
     epochs=c(5L),
     seed=12L
-  ),
-  randomSample=10L
+  )
+)
+
+hyperparameterSettings <- PatientLevelPrediction::createHyperparameterSettings(
+  search = "random",
+  sampleSize = 10L,
+  randomSeed = 12L
 )
 
 mlpResult <- PatientLevelPrediction::runPlp(
     plpData = plpData,
     outcomeId = 3,
     modelSettings = modelSettings,
+    hyperparameterSettings = hyperparameterSettings,
     analysisId = 'MLP',
     analysisName = 'Testing Deep Learning',
     populationSettings = populationSettings,
@@ -261,6 +266,22 @@ mlpResult <- PatientLevelPrediction::runPlp(
     saveDirectory = file.path(getwd(), 'MLP')
   )
 
+```
+
+To tune against a different metric, pass a tuning metric to the same
+hyperparameter settings object:
+
+```{r, eval=FALSE}
+auprcMetric <- PatientLevelPrediction::createTuningMetric(
+  fun = PatientLevelPrediction::computeAuprc,
+  maximize = TRUE,
+  name = "AUPRC"
+)
+
+hyperparameterSettings <- PatientLevelPrediction::createHyperparameterSettings(
+  search = "grid",
+  tuningMetric = auprcMetric
+)
 ```
 
 ## ResNet
@@ -325,13 +346,9 @@ weights
 
 ##### Hyperparameter tuning inputs:
 
-`hyperParamSearch` : Which type of hyperparameter search to use, either
-random sampling or exhaustive (grid) search
-
-`randomSample`: If doing a random search for hyperparameters, how many
-random samples to use
-
-`randomSampleSeed`: Seed to make hyperparameter search reproducible
+Use the `hyperparameterSettings` argument to `PatientLevelPrediction::runPlp()`.
+Create it with `PatientLevelPrediction::createHyperparameterSettings()` and set
+`search` to `"grid"`, `"random"`, or `"custom"`.
 
 #### Example Code
 
@@ -357,9 +374,7 @@ resset <- setResNet(
                                    #device='cuda:0', # uncomment to use GPU
                                    batchSize = 128L,
                                    epochs = 3L,
-                                   seed = 42L),
-  hyperParamSearch = 'random',
-  randomSample = 1
+                                   seed = 42L)
 )
 
 resResult <- PatientLevelPrediction::runPlp(
@@ -404,16 +419,21 @@ search.
 ```{r, eval=FALSE}
 
 modelSettings <- setRealMLP(
-  numLayers = 3L,
-  sizeHidden = 256L,
+  numLayers = c(2L, 3L),
+  sizeHidden = c(128L, 256L),
   dropout = 0.15,
   device = "cpu"
+)
+
+hyperparameterSettings <- PatientLevelPrediction::createHyperparameterSettings(
+  search = "grid"
 )
 
 realMlpResult <- PatientLevelPrediction::runPlp(
     plpData = plpData,
     outcomeId = 3,
     modelSettings = modelSettings,
+    hyperparameterSettings = hyperparameterSettings,
     analysisId = 'RealMLP',
     analysisName = 'Testing RealMLP',
     populationSettings = populationSettings,
@@ -498,8 +518,7 @@ modelSettings <- setTransformer(numBlocks = 3L,
                                   batchSize = 128L,
                                   epochs = 10L,
                                   device = 'cpu'
-                                ),
-                                randomSample=1L)
+                                ))
 
 
 

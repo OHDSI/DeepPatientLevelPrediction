@@ -92,9 +92,7 @@ modelSettings <- setResNet(numLayers = c(2),
                              batchSize = 256,
                              epochs = 5,
                              seed = 42
-                           ),
-                           hyperParamSearch = "random",
-                           randomSample = 1)
+                           ))
 
 plpResults <- PatientLevelPrediction::runPlp(
   plpData = plpData,
