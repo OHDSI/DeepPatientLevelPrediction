@@ -30,7 +30,10 @@ setRealMLP(
   paperMode = TRUE,
   tokenAggregation = "auto",
   featureScaleMode = "auto",
-  device = "cpu"
+  device = "cpu",
+  hyperParamSearch = "grid",
+  randomSample = 100,
+  randomSampleSeed = NULL
 )
 ```
 
@@ -127,3 +130,17 @@ setRealMLP(
 - device:
 
   "cpu" or "cuda" (default "cpu")
+
+- hyperParamSearch:
+
+  Which kind of hyperparameter search to use: random sampling or
+  exhaustive grid search. Default: "grid"
+
+- randomSample:
+
+  How many random samples from hyperparameter space to use when
+  \`hyperParamSearch = "random"\`
+
+- randomSampleSeed:
+
+  Random seed to sample hyperparameter combinations
