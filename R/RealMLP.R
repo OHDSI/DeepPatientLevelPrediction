@@ -28,6 +28,11 @@
 #' @param tokenAggregation token aggregation mode: "auto", "mean", "sum", "sum_len_norm"
 #' @param featureScaleMode feature scale mode: "auto", "scalar", "vector"
 #' @param device     "cpu" or "cuda" (default "cpu")
+#' @param hyperParamSearch Which kind of hyperparameter search to use: random
+#' sampling or exhaustive grid search. Default: "grid"
+#' @param randomSample How many random samples from hyperparameter space to use
+#' when `hyperParamSearch = "random"`
+#' @param randomSampleSeed Random seed to sample hyperparameter combinations
 #' @export
 setRealMLP <- function(
   numLayers = 3L,
@@ -52,7 +57,10 @@ setRealMLP <- function(
   paperMode = TRUE,
   tokenAggregation = "auto",
   featureScaleMode = "auto",
-  device = "cpu"
+  device = "cpu",
+  hyperParamSearch = "grid",
+  randomSample = 100,
+  randomSampleSeed = NULL
 ) {
   checkIsClass(numLayers, c("integer", "numeric"))
   checkHigherEqual(numLayers, 1)
@@ -64,14 +72,13 @@ setRealMLP <- function(
   checkHigherEqual(sizeEmbedding, 1)
   checkIsClass(labelSmoothing, "numeric")
   checkHigherEqual(labelSmoothing, 0)
-  if (labelSmoothing > 1) {
+  if (any(labelSmoothing > 1)) {
     stop("labelSmoothing needs to be <= 1")
   }
   checkIsClass(numericEmbeddingMode, "character")
-  checkInStringVector(
-    numericEmbeddingMode,
-    c("scale", "pl", "pbld")
-  )
+  if (!all(numericEmbeddingMode %in% c("scale", "pl", "pbld"))) {
+    stop("numericEmbeddingMode has incorrect value")
+  }
   checkIsClass(numericNumFrequencies, c("integer", "numeric"))
   checkHigherEqual(numericNumFrequencies, 1)
   checkIsClass(numericPeriodicInitStd, "numeric")
@@ -81,10 +88,9 @@ setRealMLP <- function(
   checkIsClass(numericPbldEmbeddingDim, c("integer", "numeric"))
   checkHigherEqual(numericPbldEmbeddingDim, 1)
   checkIsClass(dataDependentInitMode, "character")
-  checkInStringVector(
-    dataDependentInitMode,
-    c("paper_lsuv", "current")
-  )
+  if (!all(dataDependentInitMode %in% c("paper_lsuv", "current"))) {
+    stop("dataDependentInitMode has incorrect value")
+  }
   checkIsClass(dataDependentInitTargetVar, "numeric")
   checkHigher(dataDependentInitTargetVar, 0)
   checkIsClass(dataDependentInitMaxRows, c("integer", "numeric"))
@@ -103,23 +109,21 @@ setRealMLP <- function(
   checkHigherEqual(embeddingLrMult, 0)
   checkIsClass(paperMode, "logical")
   checkIsClass(tokenAggregation, "character")
-  checkInStringVector(
-    tokenAggregation,
-    c("auto", "mean", "sum", "sum_len_norm")
-  )
+  if (!all(tokenAggregation %in% c("auto", "mean", "sum", "sum_len_norm"))) {
+    stop("tokenAggregation has incorrect value")
+  }
   checkIsClass(featureScaleMode, "character")
-  checkInStringVector(
-    featureScaleMode,
-    c("auto", "scalar", "vector")
-  )
+  if (!all(featureScaleMode %in% c("auto", "scalar", "vector"))) {
+    stop("featureScaleMode has incorrect value")
+  }
   checkIsClass(device, c("character", "function"))
 
-  if (tokenAggregation == "auto") {
-    tokenAggregation <- if (isTRUE(paperMode)) "sum" else "mean"
-  }
-  if (featureScaleMode == "auto") {
-    featureScaleMode <- "scalar"
-  }
+  checkIsClass(hyperParamSearch, "character")
+
+  checkIsClass(randomSample, c("numeric", "integer"))
+  checkHigherEqual(randomSample, 1)
+
+  checkIsClass(randomSampleSeed, c("numeric", "integer", "NULL"))
 
   est <- setEstimator(
     learningRate = 2e-3,
@@ -161,8 +165,9 @@ setRealMLP <- function(
   est$dataDependentInitBiasMode <- "he5"
   est$dataDependentInitBiasScale <- 1.0
   est$dataDependentInitBiasRefitSteps <- as.integer(dataDependentInitBiasRefitSteps)
+  est$paramsToTune <- extractParamsToTune(est)
 
-  param <- list(
+  paramGrid <- list(
     numLayers = as.integer(numLayers),
     sizeHidden = as.integer(sizeHidden),
     dropout = dropout,
@@ -176,13 +181,49 @@ setRealMLP <- function(
     tokenAggregation = tokenAggregation,
     featureScaleMode = featureScaleMode
   )
+  paramGrid <- c(paramGrid, est$paramsToTune)
+
+  param <- PatientLevelPrediction::listCartesian(paramGrid)
+  param <- lapply(param, function(x) {
+    if (x$tokenAggregation == "auto") {
+      x$tokenAggregation <- if (isTRUE(x$paperMode)) "sum" else "mean"
+    }
+    if (x$featureScaleMode == "auto") {
+      x$featureScaleMode <- "scalar"
+    }
+    x
+  })
+
+  if (hyperParamSearch == "random" && randomSample > length(param)) {
+    stop(paste(
+      "\n Chosen amount of randomSamples is higher than the amount of
+               possible hyperparameter combinations.", "\n randomSample:",
+      randomSample, "\n Possible hyperparameter combinations:",
+      length(param), "\n Please lower the amount of randomSamples"
+    ))
+  }
+
+  if (hyperParamSearch == "random") {
+    suppressWarnings(withr::with_seed(randomSampleSeed, {
+      param <- param[sample(
+        length(param),
+        randomSample
+      )]
+    }))
+  }
 
   results <- list(
     fitFunction = "DeepPatientLevelPrediction::fitEstimator",
-    param = list(param), # fixed tuned defaults; no grid/HPO
+    param = param,
     estimatorSettings = est,
     saveType = "file",
-    modelParamNames = c("numLayers", "sizeHidden", "dropout", "sizeEmbedding"),
+    modelParamNames = c(
+      "numLayers", "sizeHidden", "dropout", "sizeEmbedding",
+      "numericEmbeddingMode", "numericNumFrequencies",
+      "numericPeriodicInitStd", "numericPbldHiddenDim",
+      "numericPbldEmbeddingDim", "paperMode", "tokenAggregation",
+      "featureScaleMode"
+    ),
     modelType = "RealMLP"
   )
   attr(results$param, "settings")$modelType <- results$modelType

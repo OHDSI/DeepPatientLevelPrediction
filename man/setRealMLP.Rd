@@ -27,7 +27,10 @@ setRealMLP(
   paperMode = TRUE,
   tokenAggregation = "auto",
   featureScaleMode = "auto",
-  device = "cpu"
+  device = "cpu",
+  hyperParamSearch = "grid",
+  randomSample = 100,
+  randomSampleSeed = NULL
 )
 }
 \arguments{
@@ -76,6 +79,14 @@ setRealMLP(
 \item{featureScaleMode}{feature scale mode: "auto", "scalar", "vector"}
 
 \item{device}{"cpu" or "cuda" (default "cpu")}
+
+\item{hyperParamSearch}{Which kind of hyperparameter search to use: random
+sampling or exhaustive grid search. Default: "grid"}
+
+\item{randomSample}{How many random samples from hyperparameter space to use
+when `hyperParamSearch = "random"`}
+
+\item{randomSampleSeed}{Random seed to sample hyperparameter combinations}
 }
 \description{
 Create settings for the RealMLP model (binary classification).
