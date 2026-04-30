@@ -8,11 +8,13 @@ test_that("deep model settings expose the PLP model interface", {
   expect_named(
     settings$settings,
     c(
-      "modelName", "modelType", "prepareData", "train", "predict",
-      "variableImportance", "saveType", "requiresDenseMatrix", "seed"
+      "modelName", "modelType", "deepModelType", "estimatorSettings",
+      "prepareData", "train", "predict", "variableImportance", "saveType",
+      "requiresDenseMatrix", "seed"
     )
   )
   expect_equal(settings$settings$modelType, "binary")
+  expect_equal(settings$settings$deepModelType, "RealMLP")
   expect_equal(length(settings$paramDefinition$numLayers), 2L)
 })
 
@@ -24,6 +26,20 @@ test_that("legacy helper search arguments warn when used explicitly", {
   expect_warning(
     setRealMLP(hyperParamSearch = "random", randomSample = 1L),
     "deprecated"
+  )
+})
+
+test_that("new PLP hyperparameter settings do not warn for default helper args", {
+  settings <- setRealMLP()
+  hyperparameterSettings <- PatientLevelPrediction::createHyperparameterSettings(
+    search = "random",
+    sampleSize = 1L,
+    randomSeed = 42L
+  )
+
+  expect_warning(
+    resolveHyperparameterSettings(settings, hyperparameterSettings),
+    NA
   )
 })
 
@@ -96,4 +112,17 @@ test_that("adaptive custom generators must expose cache state", {
     ),
     "saveState"
   )
+})
+
+test_that("static PLP search cache detects truncated results", {
+  cachePath <- tempfile("dplp-cache-")
+  dir.create(cachePath)
+  cache <- trainingCache$new(cachePath)
+  cache$saveCandidatePool(list(list(a = 1L), list(a = 2L)))
+  cache$saveSearchResults(list(list(
+    gridPerformance = list(cvPerformance = 0.1)
+  )))
+
+  expect_false(cache$isSearchFull())
+  expect_equal(cache$getNextSearchIndex(), 2L)
 })

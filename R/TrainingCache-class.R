@@ -202,6 +202,10 @@ trainingCache <- R6::R6Class(
       if (is.null(results) || length(results) == 0) {
         return(FALSE)
       }
+      candidatePool <- self$getCandidatePool()
+      if (!is.null(candidatePool) && length(results) < length(candidatePool)) {
+        return(FALSE)
+      }
       all(unlist(lapply(
         results,
         function(x) !is.null(x) && !is.null(x$gridPerformance)

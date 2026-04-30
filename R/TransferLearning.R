@@ -65,7 +65,8 @@ setFinetuner <- function(modelPath,
     estimatorSettings = estimatorSettings,
     saveType = "file",
     modelParamNames = c("modelPath"),
-    modelType = modelType
+    modelType = modelType,
+    legacySearchExplicit = FALSE
   )
   results$settings <- createDeepModelInterfaceSettings(results)
   attr(results$param, "settings")$modelType <- "Finetuner"

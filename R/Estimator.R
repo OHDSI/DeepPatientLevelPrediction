@@ -573,7 +573,7 @@ resolveHyperparameterSettings <- function(modelSettings, hyperparameterSettings)
     )
   }
 
-  if (!is.null(modelSettings$legacyHyperparameterSettings)) {
+  if (isTRUE(modelSettings$legacySearchExplicit)) {
     warning(
       paste(
         "Ignoring deprecated helper-level hyperparameter search settings",
@@ -884,7 +884,9 @@ trainDeepPlpCandidate <- function(
     "learnSchedule"
   )
   currentModelParams <- hyperParameters[modelParamNames]
-  currentModelParams$modelType <- settings$modelType
+  currentModelParams$modelType <- settings$deepModelType %||%
+    settings$modelName %||%
+    settings$modelType
   currentModelParams$feature_info <- dataMatrix$get_feature_info()
   currentEstimatorSettings <- fillEstimatorSettings(
     settings$estimatorSettings,

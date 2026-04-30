@@ -199,6 +199,8 @@ createDeepModelInterfaceSettings <- function(modelSettings) {
   list(
     modelName = modelSettings$modelType,
     modelType = "binary",
+    deepModelType = modelSettings$modelType,
+    estimatorSettings = modelSettings$estimatorSettings,
     prepareData = "DeepPatientLevelPrediction::createDataset",
     train = "DeepPatientLevelPrediction::trainDeepPlpCandidate",
     predict = "DeepPatientLevelPrediction::predictDeepEstimator",
@@ -244,7 +246,8 @@ createDeepModelSettings <- function(
     saveType = "file",
     modelParamNames = modelParamNames,
     modelType = modelType,
-    postProcessHyperParameters = postProcess
+    postProcessHyperParameters = postProcess,
+    legacySearchExplicit = isTRUE(legacySearchExplicit)
   )
   results$settings <- createDeepModelInterfaceSettings(results)
   if (isTRUE(temporalModel)) {
