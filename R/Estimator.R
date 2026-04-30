@@ -268,7 +268,8 @@ fitDeepPlpClassifier <- function(
     dplyr::mutate(
       included = incs,
       covariateValue = 0
-    )
+    ) %>%
+    normalizeCovariateReferenceTypes()
 
   comp <- start - Sys.time()
   modelSettings$estimatorSettings$initStrategy <- NULL
@@ -887,7 +888,7 @@ trainDeepPlpCandidate <- function(
   currentModelParams$modelType <- settings$deepModelType %||%
     settings$modelName %||%
     settings$modelType
-  currentModelParams$feature_info <- dataMatrix$get_feature_info()
+  currentModelParams$feature_info <- getDeepFeatureInfo(dataMatrix)
   currentEstimatorSettings <- fillEstimatorSettings(
     settings$estimatorSettings,
     fitParams,
@@ -905,6 +906,19 @@ trainDeepPlpCandidate <- function(
   )$fit_estimator
   fit_estimator(estimator, dataMatrix, dataMatrix)
   estimator
+}
+
+getDeepFeatureInfo <- function(dataMatrix) {
+  if (reticulate::py_has_attr(dataMatrix, "get_feature_info")) {
+    return(dataMatrix$get_feature_info())
+  }
+  if (
+    reticulate::py_has_attr(dataMatrix, "dataset") &&
+      reticulate::py_has_attr(dataMatrix$dataset, "get_feature_info")
+  ) {
+    return(dataMatrix$dataset$get_feature_info())
+  }
+  stop("Unable to get feature information from the data matrix.", call. = FALSE)
 }
 
 #' Get DeepPLP variable importance

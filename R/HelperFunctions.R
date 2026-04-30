@@ -175,16 +175,21 @@ expandLegacyParameterGrid <- function(
     paramDefinition,
     hyperParamSearch,
     randomSample,
-    randomSampleSeed) {
+    randomSampleSeed,
+    legacySearchExplicit = FALSE) {
   param <- PatientLevelPrediction::listCartesian(paramDefinition)
   if (identical(hyperParamSearch, "random") && randomSample > length(param)) {
-    stop(paste(
-      "\n Chosen amount of randomSamples is higher than the amount of",
-      "possible hyperparameter combinations.",
-      "\n randomSample:", randomSample,
-      "\n Possible hyperparameter combinations:", length(param),
-      "\n Please lower the amount of randomSamples"
-    ))
+    if (!isTRUE(legacySearchExplicit)) {
+      randomSample <- length(param)
+    } else {
+      stop(paste(
+        "\n Chosen amount of randomSamples is higher than the amount of",
+        "possible hyperparameter combinations.",
+        "\n randomSample:", randomSample,
+        "\n Possible hyperparameter combinations:", length(param),
+        "\n Please lower the amount of randomSamples"
+      ))
+    }
   }
 
   if (identical(hyperParamSearch, "random")) {
@@ -228,7 +233,8 @@ createDeepModelSettings <- function(
     paramDefinition = paramDefinition,
     hyperParamSearch = hyperParamSearch,
     randomSample = randomSample,
-    randomSampleSeed = randomSampleSeed
+    randomSampleSeed = randomSampleSeed,
+    legacySearchExplicit = legacySearchExplicit
   )
   if (!is.null(postProcess)) {
     param <- lapply(param, postProcess)
@@ -262,6 +268,13 @@ createDeepModelSettings <- function(
   attr(results$paramDefinition, "settings")$modelType <- results$modelType
   class(results) <- "modelSettings"
   results
+}
+
+normalizeCovariateReferenceTypes <- function(covariateRef) {
+  for (column in intersect(c("analysisId", "columnId"), names(covariateRef))) {
+    covariateRef[[column]] <- as.integer(covariateRef[[column]])
+  }
+  covariateRef
 }
 
 #' Use polars instead of pandas for default conversion from R to Python

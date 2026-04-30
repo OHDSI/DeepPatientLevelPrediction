@@ -43,6 +43,19 @@ test_that("new PLP hyperparameter settings do not warn for default helper args",
   )
 })
 
+test_that("default legacy random sampling does not reject small grids", {
+  settings <- setResNet(
+    numLayers = 1L,
+    sizeHidden = 16L,
+    hiddenFactor = 1L,
+    residualDropout = 0,
+    hiddenDropout = 0,
+    sizeEmbedding = 16L
+  )
+
+  expect_length(settings$param, 2L)
+})
+
 test_that("PLP random settings operate on raw parameter definitions", {
   settings <- setRealMLP(
     numLayers = c(2L, 3L),
@@ -125,4 +138,19 @@ test_that("static PLP search cache detects truncated results", {
 
   expect_false(cache$isSearchFull())
   expect_equal(cache$getNextSearchIndex(), 2L)
+})
+
+test_that("saved covariate references keep join key types stable", {
+  covariateRef <- data.frame(
+    analysisId = c(1, 2),
+    columnId = c(1, 2),
+    covariateId = c(1001, 1002)
+  )
+  covariateRef$analysisId <- as.numeric(covariateRef$analysisId)
+  covariateRef$columnId <- as.numeric(covariateRef$columnId)
+
+  normalized <- normalizeCovariateReferenceTypes(covariateRef)
+
+  expect_type(normalized$analysisId, "integer")
+  expect_type(normalized$columnId, "integer")
 })
