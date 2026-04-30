@@ -80,13 +80,13 @@ setRealMLP(
 
 \item{device}{"cpu" or "cuda" (default "cpu")}
 
-\item{hyperParamSearch}{Which kind of hyperparameter search to use: random
-sampling or exhaustive grid search. Default: "grid"}
+\item{hyperParamSearch}{Deprecated. Use PLP `hyperparameterSettings`
+instead.}
 
-\item{randomSample}{How many random samples from hyperparameter space to use
-when `hyperParamSearch = "random"`}
+\item{randomSample}{Deprecated. Use PLP `hyperparameterSettings` instead.}
 
-\item{randomSampleSeed}{Random seed to sample hyperparameter combinations}
+\item{randomSampleSeed}{Deprecated. Use PLP `hyperparameterSettings`
+instead.}
 }
 \description{
 Create settings for the RealMLP model (binary classification).

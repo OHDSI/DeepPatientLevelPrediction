@@ -2,6 +2,9 @@ DeepPatientLevelPrediction 2.3.0
 ======================
 
 New features
+- Support the PatientLevelPrediction 6.6 hyperparameter interface for deep
+  models, including PLP tuning metrics, random/grid/custom search settings, and
+  cache-aware resume for DeepPLP training.
 - Add core `RealMLP` support for tabular deep learning, including paper-style numeric embeddings, schedules, and data-dependent initialization (PR #171)
 - Add dropout support to `TemporalPE` and test coverage for positional-encoding dropout behavior (PR #165)
 
@@ -11,6 +14,7 @@ Bug fixes
 - Fix estimator seed casting, prediction shaping, and custom-embedding / Poincare model paths for current torch and reticulate behavior (PR #171)
 
 Runtime and compatibility
+- Require `PatientLevelPrediction >= 6.6.0`.
 - Relax the torch requirement to `torch>=2.7,<3` and validate against `torch==2.10.0` in stable CI lanes (PR #171)
 - Add a Python 3.10 compatibility lane using the latest available torch (PR #171)
 - Clean `torchinductor_runner` artifacts during `R CMD check` (PR #171)
