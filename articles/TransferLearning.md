@@ -20,6 +20,7 @@ data. We will use the `Eunomia` package to access a dataset to train the
 model. The following code shows how to train the initial model:
 
 ``` r
+
 library(DeepPatientLevelPrediction)
 
 # Get connection details for the Eunomia dataset and create the cohorts
@@ -41,6 +42,7 @@ the initial model. There are least patients in the `diclofenac` cohort
 for the transfer learning model.
 
 ``` r
+
 # create some simple covariate settings using Sex, Age and Long-term conditions and drug use in the last year.
 covariateSettings <- FeatureExtraction::createCovariateSettings(
   useDemographicsGender = TRUE,
@@ -72,6 +74,7 @@ Now we can set up our initial model development. We will use a simple
 `ResNet`.
 
 ``` r
+
 modelSettings <- setResNet(numLayers = c(2),
                            sizeHidden = 128,
                            hiddenFactor = 1,
@@ -112,6 +115,7 @@ developed we can further finetune it on the `diclofenac` cohort. First
 we need to extract it.
 
 ``` r
+
 databaseDetails <- PatientLevelPrediction::createDatabaseDetails(
   connectionDetails = connectionDetails,
   cdmDatabaseId = "2", # Eunomia version used
@@ -137,6 +141,7 @@ id we gave the analysis. In this case it is `1` and the path to the
 model is: `./output/1/plpResult/model`.
 
 ``` r
+
 modelSettingsTransfer <- setFinetuner(modelPath = './output/1/plpResult/model',
                                       estimatorSettings = setEstimator(
                                         learningRate = 3e-4,
@@ -156,6 +161,7 @@ representations of our data and by modifying the last layer we can mix
 those representations to suit the new task.
 
 ``` r
+
 plpResultsTransfer <- PatientLevelPrediction::runPlp(
   plpData = plpDataTransfer,
   outcomeId = 3,
@@ -192,6 +198,7 @@ Considerable work has been dedicated to provide the
 `DeepPatientLevelPrediction` package.
 
 ``` r
+
 citation("DeepPatientLevelPrediction")
 ```
 

@@ -74,6 +74,7 @@ For Windows:
 Then restart your R session. You can verify the active interpreter with:
 
 ``` r
+
 reticulate::py_config()
 ```
 
@@ -85,6 +86,7 @@ supported, but Python 3.12 is recommended.
 To install using `remotes` run:
 
 ``` r
+
 install.packages("remotes")
 remotes::install_github("OHDSI/DeepPatientLevelPrediction")
 ```
@@ -105,6 +107,7 @@ installing.
 ## Testing Installation
 
 ``` r
+
 library(PatientLevelPrediction)
 library(DeepPatientLevelPrediction)
 
@@ -161,6 +164,7 @@ Considerable work has been dedicated to provide the
 `DeepPatientLevelPrediction` package.
 
 ``` r
+
 citation("DeepPatientLevelPrediction")
 ```
 

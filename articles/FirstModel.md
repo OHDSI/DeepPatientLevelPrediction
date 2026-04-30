@@ -18,6 +18,7 @@ with synthetic data in the OMOP-CDM.
 It can be installed with:
 
 ``` r
+
 install.packages('Eunomia')
 ```
 
@@ -28,6 +29,7 @@ In Eunomia the cohorts have already been defined but we need to create
 them. This we can do by running:
 
 ``` r
+
 connectionDetails <- Eunomia::getEunomiaConnectionDetails()
 Eunomia::createCohorts(connectionDetails)
 ```
@@ -44,6 +46,7 @@ We define our covariate settings using
 [FeatureExtraction](https://github.com/OHDSI/FeatureExtraction)
 
 ``` r
+
 covariateSettings <- FeatureExtraction::createCovariateSettings(
   useDemographicsGender = TRUE,
   useDemographicsAge = TRUE,
@@ -62,6 +65,7 @@ database we are getting which cohorts. Since we don’t have a database we
 are using Eunomia.
 
 ``` r
+
 databaseDetails <- PatientLevelPrediction::createDatabaseDetails(
   connectionDetails = connectionDetails, 
   cdmDatabaseSchema = "main",
@@ -85,6 +89,7 @@ Now we define our study population and get the plpData object from the
 database.
 
 ``` r
+
 populationSettings <- PatientLevelPrediction::createStudyPopulationSettings(
                                                           requireTimeAtRisk = F, 
                                                           riskWindowStart = 1, 
@@ -116,6 +121,7 @@ without overfitting. The default ResNet is a 6 layer model with 512
 neurons per layer.
 
 ``` r
+
 library(DeepPatientLevelPrediction)
 modelSettings <- setDefaultResNet(
   estimatorSettings = setEstimator(learningRate=3e-4,
@@ -144,12 +150,14 @@ Now all that is left is using the PLP to train our first deep learning
 model. If you have used the PLP this should look familiar to you.
 
 ``` r
+
 plpResults <- PatientLevelPrediction::runPlp(plpData = plpData,
                outcomeId = 3,
                modelSettings = modelSettings,
                analysisId = 'ResNet',
                analysisName = 'Testing DeepPlp',
-               populationSettings = populationSettings
+               populationSettings = populationSettings,
+               saveDirectory = "ResNet"
                                                       )
 ```
 
@@ -165,6 +173,7 @@ Considerable work has been dedicated to provide the
 `DeepPatientLevelPrediction` package.
 
 ``` r
+
 citation("DeepPatientLevelPrediction")
 ```
 

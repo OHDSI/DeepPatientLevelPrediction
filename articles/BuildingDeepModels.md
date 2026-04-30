@@ -76,6 +76,7 @@ first need to pick the deep learning architecture you wish to fit (see
 below) and then you specify this as the modelSettings inside `runPlp()`.
 
 ``` r
+
 # load the data
 plpData <- PatientLevelPrediction::loadPlpData('locationOfData')
 
@@ -187,6 +188,7 @@ Note that all possible combinations are 2*2*2\*2 or 16 but specify
 `randomSample=10` to only try 10 of those.
 
 ``` r
+
 modelSettings <- setMultiLayerPerceptron(
   numLayers = c(3L, 5L),
   sizeHidden = c(64L, 128L), 
@@ -305,6 +307,7 @@ but not testing.The embedding layer has 32 neurons. Learning rate of
 hyperparameter search is done since each input only includes one option.
 
 ``` r
+
 resset <- setResNet(
   numLayers = c(2L), 
   sizeHidden = c(32L),
@@ -396,6 +399,7 @@ block
 ##### Example Code
 
 ``` r
+
 modelSettings <- setTransformer(numBlocks = 3L,
                                 dimToken = 32L,
                                 dimOut = 1, 
@@ -441,6 +445,7 @@ Considerable work has been dedicated to provide the
 `DeepPatientLevelPrediction` package.
 
 ``` r
+
 citation("DeepPatientLevelPrediction")
 ```
 
