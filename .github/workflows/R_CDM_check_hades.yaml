@@ -93,6 +93,8 @@ jobs:
           else
             uv pip install "torch==${{ matrix.config.torch }}" --index https://download.pytorch.org/whl/cpu/
           fi
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
 
       - uses: r-lib/actions/check-r-package@v2
         with:
