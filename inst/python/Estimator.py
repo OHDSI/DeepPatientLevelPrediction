@@ -7,10 +7,10 @@ import random
 
 import torch
 from torch.utils.data import DataLoader, BatchSampler, RandomSampler, SequentialSampler
-from tqdm import tqdm
 
 from gpu_memory_cleanup import memory_cleanup
 from InitStrategy import InitStrategy, DefaultInitStrategy
+from progress import tqdm
 from schedules import get_schedule
 try:
     import numpy as np

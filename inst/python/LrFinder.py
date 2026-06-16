@@ -3,10 +3,10 @@ import random
 
 import torch
 from torch.optim.lr_scheduler import _LRScheduler
-from tqdm import tqdm
 
 from Estimator import batch_to_device
 from gpu_memory_cleanup import memory_cleanup
+from progress import tqdm
 
 
 class ExponentialSchedulerPerBatch(_LRScheduler):
@@ -118,5 +118,4 @@ def get_lr(estimator,
         memory_cleanup()
         raise e
     return lr
-
 
