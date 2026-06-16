@@ -17,95 +17,47 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - scenario: rcmdcheck-full
+          - scenario: rcmdcheck-dataset-current
             andromeda: current
-            filter: ""
-            setup_stop: ""
-            finalize_python: "false"
-            skip_teardown: "true"
-          - scenario: rcmdcheck-full-repeat-2
-            andromeda: current
-            filter: ""
-            setup_stop: ""
-            finalize_python: "false"
-            skip_teardown: "true"
-          - scenario: rcmdcheck-full-finalize-python
-            andromeda: current
-            filter: ""
-            setup_stop: ""
-            finalize_python: "true"
-            skip_teardown: "true"
-          - scenario: rcmdcheck-estimator
-            andromeda: current
-            filter: "Estimator|estimator"
-            setup_stop: ""
-            finalize_python: "false"
-            skip_teardown: "true"
-          - scenario: rcmdcheck-dataset
-            andromeda: current
+            py_deps: current
             filter: "Dataset"
             setup_stop: ""
             finalize_python: "false"
             skip_teardown: "true"
-          - scenario: rcmdcheck-transformer
+          - scenario: rcmdcheck-dataset-last-green-pydeps
             andromeda: current
-            filter: "Transformer"
-            setup_stop: ""
-            finalize_python: "false"
-            skip_teardown: "true"
-          - scenario: rcmdcheck-realmlp
-            andromeda: current
-            filter: "RealMLP"
-            setup_stop: ""
-            finalize_python: "false"
-            skip_teardown: "true"
-          - scenario: rcmdcheck-dataset-finalize-python
-            andromeda: current
-            filter: "Dataset"
-            setup_stop: ""
-            finalize_python: "true"
-            skip_teardown: "true"
-          - scenario: rcmdcheck-estimator-finalize-python
-            andromeda: current
-            filter: "Estimator|estimator"
-            setup_stop: ""
-            finalize_python: "true"
-            skip_teardown: "true"
-          - scenario: rcmdcheck-dataset-andromeda-1-2-0
-            andromeda: 1.2.0
+            py_deps: last_green
             filter: "Dataset"
             setup_stop: ""
             finalize_python: "false"
             skip_teardown: "true"
-          - scenario: rcmdcheck-full-andromeda-1-2-0
-            andromeda: 1.2.0
-            filter: ""
+          - scenario: rcmdcheck-dataset-polars-1-40-1
+            andromeda: current
+            py_deps: old_polars
+            filter: "Dataset"
             setup_stop: ""
             finalize_python: "false"
             skip_teardown: "true"
-          - scenario: rcmdcheck-setup-plp-data
+          - scenario: rcmdcheck-dataset-duckdb-1-5-2
             andromeda: current
-            filter: "HelperFunctions"
-            setup_stop: "plp-data"
+            py_deps: old_duckdb
+            filter: "Dataset"
+            setup_stop: ""
             finalize_python: "false"
             skip_teardown: "true"
-          - scenario: rcmdcheck-setup-dataset
+          - scenario: rcmdcheck-dataset-numpy-2-4-4
             andromeda: current
-            filter: "HelperFunctions"
-            setup_stop: "dataset"
+            py_deps: old_numpy
+            filter: "Dataset"
+            setup_stop: ""
             finalize_python: "false"
             skip_teardown: "true"
-          - scenario: rcmdcheck-setup-after-fit
+          - scenario: rcmdcheck-dataset-current-finalize-python
             andromeda: current
-            filter: "HelperFunctions"
-            setup_stop: "after-fit"
-            finalize_python: "false"
-            skip_teardown: "true"
-          - scenario: rcmdcheck-setup-after-save
-            andromeda: current
-            filter: "HelperFunctions"
-            setup_stop: "after-save"
-            finalize_python: "false"
+            py_deps: current
+            filter: "Dataset"
+            setup_stop: ""
+            finalize_python: "true"
             skip_teardown: "true"
 
     env:
@@ -132,6 +84,7 @@ jobs:
       DPLP_SETUP_STOP_AFTER: ${{ matrix.setup_stop }}
       DPLP_FINALIZE_PYTHON: ${{ matrix.finalize_python }}
       DPLP_SKIP_TEST_TEARDOWN: ${{ matrix.skip_teardown }}
+      DPLP_PY_DEPS: ${{ matrix.py_deps }}
 
     steps:
       - uses: actions/checkout@v4
@@ -177,8 +130,33 @@ jobs:
       - name: setup r-reticulate venv
         shell: bash
         run: |
-          uv pip install polars tqdm pyarrow duckdb nvidia-ml-py numpy
+          case "${DPLP_PY_DEPS}" in
+            current)
+              uv pip install polars tqdm pyarrow duckdb nvidia-ml-py numpy
+              ;;
+            last_green)
+              uv pip install polars==1.40.1 duckdb==1.5.2 numpy==2.4.4 pyarrow==24.0.0 tqdm nvidia-ml-py
+              ;;
+            old_polars)
+              uv pip install polars==1.40.1 tqdm pyarrow duckdb nvidia-ml-py numpy
+              ;;
+            old_duckdb)
+              uv pip install polars tqdm pyarrow duckdb==1.5.2 nvidia-ml-py numpy
+              ;;
+            old_numpy)
+              uv pip install polars tqdm pyarrow duckdb nvidia-ml-py numpy==2.4.4
+              ;;
+          esac
           uv pip install "torch==2.10.0" --index https://download.pytorch.org/whl/cpu/
+          python - <<'PY'
+          import duckdb, numpy, polars, pyarrow, torch
+          print("python native versions:")
+          print("duckdb", duckdb.__version__)
+          print("numpy", numpy.__version__)
+          print("polars", polars.__version__)
+          print("pyarrow", pyarrow.__version__)
+          print("torch", torch.__version__)
+          PY
 
       - name: Install package
         if: ${{ !startsWith(matrix.scenario, 'rcmdcheck') }}
