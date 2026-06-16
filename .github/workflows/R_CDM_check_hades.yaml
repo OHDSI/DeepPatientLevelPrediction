@@ -29,9 +29,13 @@ jobs:
             andromeda: current
           - scenario: full-tests
             andromeda: current
+          - scenario: rcmdcheck
+            andromeda: current
           - scenario: setup-after-save-andromeda-1.2.0
             andromeda: 1.2.0
           - scenario: full-tests-andromeda-1.2.0
+            andromeda: 1.2.0
+          - scenario: rcmdcheck-andromeda-1.2.0
             andromeda: 1.2.0
 
     env:
@@ -104,6 +108,7 @@ jobs:
           uv pip install "torch==2.10.0" --index https://download.pytorch.org/whl/cpu/
 
       - name: Install package
+        if: ${{ !startsWith(matrix.scenario, 'rcmdcheck') }}
         shell: bash
         run: R CMD INSTALL --no-multiarch --with-keep.source .
 
@@ -130,10 +135,16 @@ jobs:
             full-tests)
               Rscript -e 'devtools::test()'
               ;;
+            rcmdcheck)
+              Rscript -e 'rcmdcheck::rcmdcheck(".", args = c("--no-manual", "--as-cran"), error_on = "never", check_dir = "check")'
+              ;;
             setup-after-save-andromeda-1.2.0)
               DPLP_SETUP_TRACE=true DPLP_SETUP_STOP_AFTER=after-save Rscript -e 'devtools::test()'
               ;;
             full-tests-andromeda-1.2.0)
               Rscript -e 'devtools::test()'
+              ;;
+            rcmdcheck-andromeda-1.2.0)
+              Rscript -e 'rcmdcheck::rcmdcheck(".", args = c("--no-manual", "--as-cran"), error_on = "never", check_dir = "check")'
               ;;
           esac
