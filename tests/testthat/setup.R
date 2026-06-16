@@ -1,8 +1,20 @@
 testLoc <- normalizePath(tempdir())
 path <- system.file("python", package = "DeepPatientLevelPrediction")
+
+dplpDebugStage <- function(stage) {
+  if (identical(Sys.getenv("DPLP_SETUP_TRACE"), "true")) {
+    cat("DPLP_SETUP_STAGE:", stage, "\n")
+  }
+  if (identical(Sys.getenv("DPLP_SETUP_STOP_AFTER"), stage)) {
+    cat("DPLP_SETUP_STOP_AFTER:", stage, "\n")
+    quit(save = "no", status = 0, runLast = TRUE)
+  }
+}
+
 # get connection and data from Eunomia
 connectionDetails <- Eunomia::getEunomiaConnectionDetails()
 Eunomia::createCohorts(connectionDetails)
+dplpDebugStage("cohorts")
 
 covSet <- FeatureExtraction::createCovariateSettings(
   useDemographicsGender = TRUE,
@@ -52,6 +64,7 @@ plpDataTemporal <- PatientLevelPrediction::getPlpData(
   restrictPlpDataSettings = restrictPlpDataSettings,
   covariateSettings = tempCovSet
 )
+dplpDebugStage("plp-data")
 
 # add age squared so I have more than one numerical feature
 plpData$covariateData$covariateRef <- plpData$covariateData$covariateRef %>%
@@ -95,6 +108,7 @@ trainDataTemporal <- PatientLevelPrediction::splitData(
   population = population,
   splitSettings = PatientLevelPrediction::createDefaultSplitSetting(splitSeed = 42)
 )
+dplpDebugStage("split-data")
 
 mappedData <- PatientLevelPrediction::MapIds(
   covariateData = trainData$Train$covariateData,
@@ -115,6 +129,7 @@ smallDataset <- torch$utils$data$Subset(
   dataset,
   (1:round(length(dataset) / 3))
 )
+dplpDebugStage("dataset")
 
 modelSettings <- setResNet(
   numLayers = 1, sizeHidden = 16, hiddenFactor = 1,
@@ -130,9 +145,12 @@ fitEstimatorPath <- file.path(testLoc, "fitEstimator")
 if (!dir.exists(fitEstimatorPath)) {
   dir.create(fitEstimatorPath)
 }
+dplpDebugStage("before-fit")
 fitEstimatorResults <- fitEstimator(trainData$Train,
   modelSettings = modelSettings,
   analysisId = 1,
   analysisPath = fitEstimatorPath
 )
+dplpDebugStage("after-fit")
 PatientLevelPrediction::savePlpModel(fitEstimatorResults, file.path(fitEstimatorPath, "plpModel"))
+dplpDebugStage("after-save")

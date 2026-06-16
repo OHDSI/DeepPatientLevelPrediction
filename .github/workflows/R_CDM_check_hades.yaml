@@ -19,10 +19,11 @@ jobs:
         scenario:
           - package-load
           - setup-only
-          - tests-first-half
-          - tests-second-half
-          - tests-estimator
-          - tests-transformer
+          - setup-through-dataset
+          - setup-before-fit
+          - setup-after-fit
+          - setup-after-save
+          - full-tests
 
     env:
       GITHUB_PAT: ${{ secrets.GH_TOKEN }}
@@ -92,18 +93,21 @@ jobs:
               Rscript -e 'library(DeepPatientLevelPrediction); reticulate::import("torch"); cat("package-load complete\n"); invisible(gc())'
               ;;
             setup-only)
-              Rscript -e 'library(DeepPatientLevelPrediction); source("tests/testthat/setup.R"); cat("setup-only complete\n"); invisible(gc())'
+              Rscript -e 'library(DeepPatientLevelPrediction); library(dplyr); source("tests/testthat/setup.R"); cat("setup-only complete\n"); invisible(gc())'
               ;;
-            tests-first-half)
-              DPLP_TEST_FILTER='Dataset|Estimator|Finetuner|GradientAccumulation|HelperFunctions|LRFinder' Rscript tests/testthat.R
+            setup-through-dataset)
+              DPLP_SETUP_TRACE=true DPLP_SETUP_STOP_AFTER=dataset Rscript -e 'library(DeepPatientLevelPrediction); library(dplyr); source("tests/testthat/setup.R")'
               ;;
-            tests-second-half)
-              DPLP_TEST_FILTER='MultiLayerPerceptron|PoincareEmbeddings|PositionalEncodings|RealMLP|ResNet|TrainingCache|Transformer' Rscript tests/testthat.R
+            setup-before-fit)
+              DPLP_SETUP_TRACE=true DPLP_SETUP_STOP_AFTER=before-fit Rscript -e 'library(DeepPatientLevelPrediction); library(dplyr); source("tests/testthat/setup.R")'
               ;;
-            tests-estimator)
-              DPLP_TEST_FILTER='Estimator' Rscript tests/testthat.R
+            setup-after-fit)
+              DPLP_SETUP_TRACE=true DPLP_SETUP_STOP_AFTER=after-fit Rscript -e 'library(DeepPatientLevelPrediction); library(dplyr); source("tests/testthat/setup.R")'
               ;;
-            tests-transformer)
-              DPLP_TEST_FILTER='Transformer' Rscript tests/testthat.R
+            setup-after-save)
+              DPLP_SETUP_TRACE=true DPLP_SETUP_STOP_AFTER=after-save Rscript -e 'library(DeepPatientLevelPrediction); library(dplyr); source("tests/testthat/setup.R")'
+              ;;
+            full-tests)
+              Rscript tests/testthat.R
               ;;
           esac
