@@ -45,6 +45,12 @@ test_that("Estimator initialization works", {
     estimator$model_parameters,
     camelCaseToSnakeCaseNames(modelParameters)
   )
+
+  testthat::expect_true(estimator$`_should_pin_memory`("cuda"))
+  testthat::expect_true(estimator$`_should_pin_memory`("cuda:0"))
+  testthat::expect_false(estimator$`_should_pin_memory`("cpu"))
+  testthat::expect_false(estimator$`_should_pin_memory`("mps"))
+  testthat::expect_false(estimator$pin_memory)
 })
 
 test_that("Estimator detects wrong inputs", {

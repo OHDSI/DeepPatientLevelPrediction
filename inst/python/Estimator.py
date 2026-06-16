@@ -31,6 +31,7 @@ class Estimator:
             self.device = parameters["estimator_settings"]["device"]()
         else:
             self.device = parameters["estimator_settings"]["device"]
+        self.pin_memory = self._should_pin_memory(self.device)
         torch.manual_seed(seed=self.seed)
         random.seed(self.seed)
         if np is not None:
@@ -236,6 +237,10 @@ class Estimator:
         torch_compile = parameters["estimator_settings"].get("compile", False)
         if torch_compile:
             self.model = torch.compile(self.model, dynamic=False)
+
+    @staticmethod
+    def _should_pin_memory(device):
+        return str(device).lower().startswith("cuda")
 
     def _configure_determinism(self):
         if not self.deterministic:
@@ -473,7 +478,7 @@ class Estimator:
             ),
             num_workers=self.num_workers,
             persistent_workers=self.persistent_workers,
-            pin_memory=True,
+            pin_memory=self.pin_memory,
             worker_init_fn=self._seed_worker if self.num_workers > 0 else None,
         )
         test_dataloader = DataLoader(
@@ -486,7 +491,7 @@ class Estimator:
             ),
             num_workers=self.num_workers,
             persistent_workers=self.persistent_workers,
-            pin_memory=True,
+            pin_memory=self.pin_memory,
             worker_init_fn=self._seed_worker if self.num_workers > 0 else None,
         )
         self._maybe_run_data_dependent_init(train_dataloader)
@@ -686,7 +691,7 @@ class Estimator:
             ),
             num_workers=self.num_workers,
             persistent_workers=self.persistent_workers,
-            pin_memory=True,
+            pin_memory=self.pin_memory,
             worker_init_fn=self._seed_worker if self.num_workers > 0 else None,
         )
         self._maybe_run_data_dependent_init(dataloader)
@@ -740,7 +745,7 @@ class Estimator:
             ),
             num_workers=self.num_workers,
             persistent_workers=self.persistent_workers,
-            pin_memory=True,
+            pin_memory=self.pin_memory,
             worker_init_fn=self._seed_worker if self.num_workers > 0 else None,
         )
         with torch.no_grad():
