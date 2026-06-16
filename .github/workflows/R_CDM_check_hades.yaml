@@ -17,26 +17,27 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - scenario: package-load
+          - scenario: batch-full
             andromeda: current
-          - scenario: setup-through-dataset
+            filter: ""
+          - scenario: batch-estimator
             andromeda: current
-          - scenario: setup-before-fit
+            filter: "Estimator|estimator"
+          - scenario: batch-realmlp
             andromeda: current
-          - scenario: setup-after-fit
+            filter: "RealMLP"
+          - scenario: batch-transformer
             andromeda: current
-          - scenario: setup-after-save
+            filter: "Transformer|transformer"
+          - scenario: batch-other-models
             andromeda: current
-          - scenario: full-tests
+            filter: "MultiLayerPerceptron|MLP|ResNet|Poincare|Finetuner"
+          - scenario: batch-training-utils
             andromeda: current
-          - scenario: rcmdcheck
+            filter: "LR finder|LR scheduler|Gradient accumulation|Training cache"
+          - scenario: batch-data-utils
             andromeda: current
-          - scenario: setup-after-save-andromeda-1.2.0
-            andromeda: 1.2.0
-          - scenario: full-tests-andromeda-1.2.0
-            andromeda: 1.2.0
-          - scenario: rcmdcheck-andromeda-1.2.0
-            andromeda: 1.2.0
+            filter: "Dataset|dataset|Helper|Positional|PE|encoding"
 
     env:
       GITHUB_PAT: ${{ secrets.GH_TOKEN }}
@@ -58,7 +59,7 @@ jobs:
       CDM5_SQL_SERVER_USER: ${{ secrets.CDM5_SQL_SERVER_USER }}
       UV_SYSTEM_PYTHON: 1
       RETICULATE_USE_MANAGED_VENV: "no"
-      DPLP_TEST_FILTER: ""
+      DPLP_TEST_FILTER: ${{ matrix.filter }}
 
     steps:
       - uses: actions/checkout@v4
@@ -108,7 +109,7 @@ jobs:
           uv pip install "torch==2.10.0" --index https://download.pytorch.org/whl/cpu/
 
       - name: Install package
-        if: ${{ !startsWith(matrix.scenario, 'rcmdcheck') }}
+        if: ${{ !startsWith(matrix.scenario, 'rcmdcheck') && !startsWith(matrix.scenario, 'batch') }}
         shell: bash
         run: R CMD INSTALL --no-multiarch --with-keep.source .
 
@@ -117,34 +118,14 @@ jobs:
         run: |
           set -euxo pipefail
           case "${{ matrix.scenario }}" in
-            package-load)
-              Rscript -e 'library(DeepPatientLevelPrediction); reticulate::import("torch"); cat("package-load complete\n"); invisible(gc())'
-              ;;
-            setup-through-dataset)
-              DPLP_SETUP_TRACE=true DPLP_SETUP_STOP_AFTER=dataset Rscript -e 'devtools::test()'
-              ;;
-            setup-before-fit)
-              DPLP_SETUP_TRACE=true DPLP_SETUP_STOP_AFTER=before-fit Rscript -e 'devtools::test()'
-              ;;
-            setup-after-fit)
-              DPLP_SETUP_TRACE=true DPLP_SETUP_STOP_AFTER=after-fit Rscript -e 'devtools::test()'
-              ;;
-            setup-after-save)
-              DPLP_SETUP_TRACE=true DPLP_SETUP_STOP_AFTER=after-save Rscript -e 'devtools::test()'
-              ;;
-            full-tests)
-              Rscript -e 'devtools::test()'
-              ;;
-            rcmdcheck)
-              Rscript -e 'rcmdcheck::rcmdcheck(".", args = c("--no-manual", "--as-cran"), error_on = "never", check_dir = "check")'
-              ;;
-            setup-after-save-andromeda-1.2.0)
-              DPLP_SETUP_TRACE=true DPLP_SETUP_STOP_AFTER=after-save Rscript -e 'devtools::test()'
-              ;;
-            full-tests-andromeda-1.2.0)
-              Rscript -e 'devtools::test()'
-              ;;
-            rcmdcheck-andromeda-1.2.0)
-              Rscript -e 'rcmdcheck::rcmdcheck(".", args = c("--no-manual", "--as-cran"), error_on = "never", check_dir = "check")'
+            batch-*)
+              R CMD INSTALL --install-tests --no-multiarch --with-keep.source .
+              outfile="/tmp/testthat-${{ matrix.scenario }}.Rout"
+              set +e
+              R CMD BATCH --no-save --no-restore tests/testthat.R "$outfile"
+              status=$?
+              set -e
+              tail -n 160 "$outfile"
+              exit "$status"
               ;;
           esac
