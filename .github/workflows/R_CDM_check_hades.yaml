@@ -22,22 +22,40 @@ jobs:
             filter: ""
             setup_stop: ""
             finalize_python: "false"
-            skip_teardown: "false"
+            skip_teardown: "true"
+          - scenario: rcmdcheck-full-repeat-2
+            andromeda: current
+            filter: ""
+            setup_stop: ""
+            finalize_python: "false"
+            skip_teardown: "true"
+          - scenario: rcmdcheck-full-finalize-python
+            andromeda: current
+            filter: ""
+            setup_stop: ""
+            finalize_python: "true"
+            skip_teardown: "true"
           - scenario: rcmdcheck-estimator
             andromeda: current
             filter: "Estimator|estimator"
             setup_stop: ""
             finalize_python: "false"
-            skip_teardown: "false"
+            skip_teardown: "true"
           - scenario: rcmdcheck-dataset
             andromeda: current
             filter: "Dataset"
             setup_stop: ""
             finalize_python: "false"
-            skip_teardown: "false"
-          - scenario: rcmdcheck-dataset-no-teardown
+            skip_teardown: "true"
+          - scenario: rcmdcheck-transformer
             andromeda: current
-            filter: "Dataset"
+            filter: "Transformer"
+            setup_stop: ""
+            finalize_python: "false"
+            skip_teardown: "true"
+          - scenario: rcmdcheck-realmlp
+            andromeda: current
+            filter: "RealMLP"
             setup_stop: ""
             finalize_python: "false"
             skip_teardown: "true"
@@ -46,43 +64,49 @@ jobs:
             filter: "Dataset"
             setup_stop: ""
             finalize_python: "true"
-            skip_teardown: "false"
+            skip_teardown: "true"
           - scenario: rcmdcheck-estimator-finalize-python
             andromeda: current
             filter: "Estimator|estimator"
             setup_stop: ""
             finalize_python: "true"
-            skip_teardown: "false"
+            skip_teardown: "true"
           - scenario: rcmdcheck-dataset-andromeda-1-2-0
             andromeda: 1.2.0
             filter: "Dataset"
             setup_stop: ""
             finalize_python: "false"
-            skip_teardown: "false"
+            skip_teardown: "true"
+          - scenario: rcmdcheck-full-andromeda-1-2-0
+            andromeda: 1.2.0
+            filter: ""
+            setup_stop: ""
+            finalize_python: "false"
+            skip_teardown: "true"
           - scenario: rcmdcheck-setup-plp-data
             andromeda: current
             filter: "HelperFunctions"
             setup_stop: "plp-data"
             finalize_python: "false"
-            skip_teardown: "false"
+            skip_teardown: "true"
           - scenario: rcmdcheck-setup-dataset
             andromeda: current
             filter: "HelperFunctions"
             setup_stop: "dataset"
             finalize_python: "false"
-            skip_teardown: "false"
+            skip_teardown: "true"
           - scenario: rcmdcheck-setup-after-fit
             andromeda: current
             filter: "HelperFunctions"
             setup_stop: "after-fit"
             finalize_python: "false"
-            skip_teardown: "false"
+            skip_teardown: "true"
           - scenario: rcmdcheck-setup-after-save
             andromeda: current
             filter: "HelperFunctions"
             setup_stop: "after-save"
             finalize_python: "false"
-            skip_teardown: "false"
+            skip_teardown: "true"
 
     env:
       GITHUB_PAT: ${{ secrets.GH_TOKEN }}
