@@ -16,14 +16,23 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        scenario:
-          - package-load
-          - setup-only
-          - setup-through-dataset
-          - setup-before-fit
-          - setup-after-fit
-          - setup-after-save
-          - full-tests
+        include:
+          - scenario: package-load
+            andromeda: current
+          - scenario: setup-through-dataset
+            andromeda: current
+          - scenario: setup-before-fit
+            andromeda: current
+          - scenario: setup-after-fit
+            andromeda: current
+          - scenario: setup-after-save
+            andromeda: current
+          - scenario: full-tests
+            andromeda: current
+          - scenario: setup-after-save-andromeda-1.2.0
+            andromeda: 1.2.0
+          - scenario: full-tests-andromeda-1.2.0
+            andromeda: 1.2.0
 
     env:
       GITHUB_PAT: ${{ secrets.GH_TOKEN }}
@@ -74,6 +83,20 @@ jobs:
           extra-packages: any::rcmdcheck, any::devtools
           needs: check
 
+      - name: Pin Andromeda
+        if: ${{ matrix.andromeda != 'current' }}
+        shell: Rscript {0}
+        run: |
+          if (!requireNamespace("remotes", quietly = TRUE)) {
+            install.packages("remotes")
+          }
+          remotes::install_version(
+            "Andromeda",
+            version = "${{ matrix.andromeda }}",
+            repos = "https://cloud.r-project.org",
+            upgrade = "never"
+          )
+
       - name: setup r-reticulate venv
         shell: bash
         run: |
@@ -92,22 +115,25 @@ jobs:
             package-load)
               Rscript -e 'library(DeepPatientLevelPrediction); reticulate::import("torch"); cat("package-load complete\n"); invisible(gc())'
               ;;
-            setup-only)
-              Rscript -e 'library(DeepPatientLevelPrediction); library(dplyr); source("tests/testthat/setup.R"); cat("setup-only complete\n"); invisible(gc())'
-              ;;
             setup-through-dataset)
-              DPLP_SETUP_TRACE=true DPLP_SETUP_STOP_AFTER=dataset Rscript -e 'library(DeepPatientLevelPrediction); library(dplyr); source("tests/testthat/setup.R")'
+              DPLP_SETUP_TRACE=true DPLP_SETUP_STOP_AFTER=dataset Rscript tests/testthat.R
               ;;
             setup-before-fit)
-              DPLP_SETUP_TRACE=true DPLP_SETUP_STOP_AFTER=before-fit Rscript -e 'library(DeepPatientLevelPrediction); library(dplyr); source("tests/testthat/setup.R")'
+              DPLP_SETUP_TRACE=true DPLP_SETUP_STOP_AFTER=before-fit Rscript tests/testthat.R
               ;;
             setup-after-fit)
-              DPLP_SETUP_TRACE=true DPLP_SETUP_STOP_AFTER=after-fit Rscript -e 'library(DeepPatientLevelPrediction); library(dplyr); source("tests/testthat/setup.R")'
+              DPLP_SETUP_TRACE=true DPLP_SETUP_STOP_AFTER=after-fit Rscript tests/testthat.R
               ;;
             setup-after-save)
-              DPLP_SETUP_TRACE=true DPLP_SETUP_STOP_AFTER=after-save Rscript -e 'library(DeepPatientLevelPrediction); library(dplyr); source("tests/testthat/setup.R")'
+              DPLP_SETUP_TRACE=true DPLP_SETUP_STOP_AFTER=after-save Rscript tests/testthat.R
               ;;
             full-tests)
+              Rscript tests/testthat.R
+              ;;
+            setup-after-save-andromeda-1.2.0)
+              DPLP_SETUP_TRACE=true DPLP_SETUP_STOP_AFTER=after-save Rscript tests/testthat.R
+              ;;
+            full-tests-andromeda-1.2.0)
               Rscript tests/testthat.R
               ;;
           esac
