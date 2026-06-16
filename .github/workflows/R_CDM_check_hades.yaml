@@ -26,18 +26,33 @@ jobs:
           - scenario: rcmdcheck-realmlp
             andromeda: current
             filter: "RealMLP"
-          - scenario: rcmdcheck-transformer
+          - scenario: rcmdcheck-transformer-settings
             andromeda: current
-            filter: "Transformer|transformer"
-          - scenario: rcmdcheck-other-models
+            filter: "Transformer settings work|transformer nn-module works|Errors are produced by settings function|dimHidden ratio works|numerical embedding works"
+          - scenario: rcmdcheck-transformer-fit
             andromeda: current
-            filter: "MultiLayerPerceptron|MLP|ResNet|Poincare|Finetuner"
-          - scenario: rcmdcheck-training-utils
+            filter: "fitEstimator with Transformer works|Default Transformer works|temporal transformer works"
+          - scenario: rcmdcheck-positional-encodings
             andromeda: current
-            filter: "LR finder|LR scheduler|Gradient accumulation|Training cache"
-          - scenario: rcmdcheck-data-utils
+            filter: "NoPositionalEncoding runs|Additive PEs|Standard Attention PEs|Custom Attention PEs|All PE modules|Methods using dropout"
+          - scenario: rcmdcheck-dataset
             andromeda: current
-            filter: "Dataset|dataset|Helper|Positional|PE|encoding"
+            filter: "number of num|length of dataset|\\.getbatch works|Column order is preserved|feature_ids and feature_values"
+          - scenario: rcmdcheck-mlp
+            andromeda: current
+            filter: "setMultiLayerPerceptron works|MLP with runPlp working checks|MLP nn-module works|Can upload results to database"
+          - scenario: rcmdcheck-resnet
+            andromeda: current
+            filter: "setResNet works|ResNet with runPlp working checks|ResNet nn-module works|Default Resnet works|Can upload results to database"
+          - scenario: rcmdcheck-poincare
+            andromeda: current
+            filter: "Poincare Transformer works|ResNet with poincare works|MLP with poincare works"
+          - scenario: rcmdcheck-lr-finder
+            andromeda: current
+            filter: "LR scheduler that changes per batch works|LR finder works"
+          - scenario: rcmdcheck-gradient-accumulation
+            andromeda: current
+            filter: "Gradient accumulation provides same results|Loss is equal without dropout|LR finder works same|Gradient accumulation works when batch is smaller"
 
     env:
       GITHUB_PAT: ${{ secrets.GH_TOKEN }}
