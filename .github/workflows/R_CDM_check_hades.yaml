@@ -116,24 +116,24 @@ jobs:
               Rscript -e 'library(DeepPatientLevelPrediction); reticulate::import("torch"); cat("package-load complete\n"); invisible(gc())'
               ;;
             setup-through-dataset)
-              DPLP_SETUP_TRACE=true DPLP_SETUP_STOP_AFTER=dataset Rscript tests/testthat.R
+              DPLP_SETUP_TRACE=true DPLP_SETUP_STOP_AFTER=dataset Rscript -e 'devtools::test()'
               ;;
             setup-before-fit)
-              DPLP_SETUP_TRACE=true DPLP_SETUP_STOP_AFTER=before-fit Rscript tests/testthat.R
+              DPLP_SETUP_TRACE=true DPLP_SETUP_STOP_AFTER=before-fit Rscript -e 'devtools::test()'
               ;;
             setup-after-fit)
-              DPLP_SETUP_TRACE=true DPLP_SETUP_STOP_AFTER=after-fit Rscript tests/testthat.R
+              DPLP_SETUP_TRACE=true DPLP_SETUP_STOP_AFTER=after-fit Rscript -e 'devtools::test()'
               ;;
             setup-after-save)
-              DPLP_SETUP_TRACE=true DPLP_SETUP_STOP_AFTER=after-save Rscript tests/testthat.R
+              DPLP_SETUP_TRACE=true DPLP_SETUP_STOP_AFTER=after-save Rscript -e 'devtools::test()'
               ;;
             full-tests)
-              Rscript tests/testthat.R
+              Rscript -e 'devtools::test()'
               ;;
             setup-after-save-andromeda-1.2.0)
-              DPLP_SETUP_TRACE=true DPLP_SETUP_STOP_AFTER=after-save Rscript tests/testthat.R
+              DPLP_SETUP_TRACE=true DPLP_SETUP_STOP_AFTER=after-save Rscript -e 'devtools::test()'
               ;;
             full-tests-andromeda-1.2.0)
-              Rscript tests/testthat.R
+              Rscript -e 'devtools::test()'
               ;;
           esac
