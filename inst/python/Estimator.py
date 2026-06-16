@@ -1,3 +1,4 @@
+import gc
 import time
 import pathlib
 import inspect
@@ -539,6 +540,8 @@ class Estimator:
             f"Average time per epoch was: {torch.mean(torch.as_tensor(times)).item()} seconds"
         )
         self.finish_fit(all_scores, model_state_dict, trained_epochs, learning_rates)
+        del train_dataloader, test_dataloader
+        gc.collect()
         return
 
     def fit_epoch(self, dataloader):
@@ -721,6 +724,8 @@ class Estimator:
             for group in self.optimizer.param_groups:
                 group["lr"] = learning_rates[epoch] * group.get("lr_factor", 1.0)
             self.fit_epoch(dataloader)
+        del dataloader
+        gc.collect()
         return
 
     def save(self, path, name):
@@ -758,6 +763,8 @@ class Estimator:
                     pred = self.model(sub_batch[0])
                     predictions.append(self._prediction_proba(pred))
             predictions = torch.concat(predictions).cpu().numpy()
+        del dataloader
+        gc.collect()
         return predictions
 
     def predict(self, dataset, threshold=None):
