@@ -20,39 +20,69 @@ jobs:
           - scenario: rcmdcheck-full
             andromeda: current
             filter: ""
+            setup_stop: ""
+            finalize_python: "false"
+            skip_teardown: "false"
           - scenario: rcmdcheck-estimator
             andromeda: current
             filter: "Estimator|estimator"
-          - scenario: rcmdcheck-realmlp
-            andromeda: current
-            filter: "RealMLP"
-          - scenario: rcmdcheck-transformer
-            andromeda: current
-            filter: "Transformer"
-          - scenario: rcmdcheck-positional-encodings
-            andromeda: current
-            filter: "PositionalEncodings"
+            setup_stop: ""
+            finalize_python: "false"
+            skip_teardown: "false"
           - scenario: rcmdcheck-dataset
             andromeda: current
             filter: "Dataset"
-          - scenario: rcmdcheck-helper-functions
+            setup_stop: ""
+            finalize_python: "false"
+            skip_teardown: "false"
+          - scenario: rcmdcheck-dataset-no-teardown
+            andromeda: current
+            filter: "Dataset"
+            setup_stop: ""
+            finalize_python: "false"
+            skip_teardown: "true"
+          - scenario: rcmdcheck-dataset-finalize-python
+            andromeda: current
+            filter: "Dataset"
+            setup_stop: ""
+            finalize_python: "true"
+            skip_teardown: "false"
+          - scenario: rcmdcheck-estimator-finalize-python
+            andromeda: current
+            filter: "Estimator|estimator"
+            setup_stop: ""
+            finalize_python: "true"
+            skip_teardown: "false"
+          - scenario: rcmdcheck-dataset-andromeda-1-2-0
+            andromeda: 1.2.0
+            filter: "Dataset"
+            setup_stop: ""
+            finalize_python: "false"
+            skip_teardown: "false"
+          - scenario: rcmdcheck-setup-plp-data
             andromeda: current
             filter: "HelperFunctions"
-          - scenario: rcmdcheck-mlp
+            setup_stop: "plp-data"
+            finalize_python: "false"
+            skip_teardown: "false"
+          - scenario: rcmdcheck-setup-dataset
             andromeda: current
-            filter: "MultiLayerPerceptron"
-          - scenario: rcmdcheck-resnet
+            filter: "HelperFunctions"
+            setup_stop: "dataset"
+            finalize_python: "false"
+            skip_teardown: "false"
+          - scenario: rcmdcheck-setup-after-fit
             andromeda: current
-            filter: "ResNet"
-          - scenario: rcmdcheck-poincare
+            filter: "HelperFunctions"
+            setup_stop: "after-fit"
+            finalize_python: "false"
+            skip_teardown: "false"
+          - scenario: rcmdcheck-setup-after-save
             andromeda: current
-            filter: "PoincareEmbeddings"
-          - scenario: rcmdcheck-lr-finder
-            andromeda: current
-            filter: "LRFinder"
-          - scenario: rcmdcheck-gradient-accumulation
-            andromeda: current
-            filter: "GradientAccumulation"
+            filter: "HelperFunctions"
+            setup_stop: "after-save"
+            finalize_python: "false"
+            skip_teardown: "false"
 
     env:
       GITHUB_PAT: ${{ secrets.GH_TOKEN }}
@@ -75,6 +105,9 @@ jobs:
       UV_SYSTEM_PYTHON: 1
       RETICULATE_USE_MANAGED_VENV: "no"
       DPLP_TEST_FILTER: ${{ matrix.filter }}
+      DPLP_SETUP_STOP_AFTER: ${{ matrix.setup_stop }}
+      DPLP_FINALIZE_PYTHON: ${{ matrix.finalize_python }}
+      DPLP_SKIP_TEST_TEARDOWN: ${{ matrix.skip_teardown }}
 
     steps:
       - uses: actions/checkout@v4

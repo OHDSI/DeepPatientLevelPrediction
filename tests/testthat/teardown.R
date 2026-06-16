@@ -1,5 +1,9 @@
 testEnv <- environment()
 
+if (identical(Sys.getenv("DPLP_SKIP_TEST_TEARDOWN"), "true")) {
+  return(invisible())
+}
+
 closeAndromedaObject <- function(x, depth = 0L) {
   if (depth > 3L) {
     return(invisible())

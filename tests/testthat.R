@@ -33,6 +33,24 @@ run_tests <- function() {
     }
     stop(e)
   })
+
+  if (identical(Sys.getenv("DPLP_FINALIZE_PYTHON"), "true") &&
+      requireNamespace("reticulate", quietly = TRUE) &&
+      reticulate::py_available(initialize = FALSE)) {
+    reticulate::py_run_string("
+import gc
+try:
+    import torch
+    if hasattr(torch, 'cuda'):
+        torch.cuda.empty_cache()
+    if hasattr(torch, 'mps') and hasattr(torch.mps, 'empty_cache'):
+        torch.mps.empty_cache()
+except Exception:
+    pass
+gc.collect()
+")
+    reticulate:::py_finalize()
+  }
 }
 
 run_tests()
