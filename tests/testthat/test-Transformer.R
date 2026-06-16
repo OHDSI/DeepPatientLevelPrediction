@@ -217,6 +217,11 @@ test_that("temporal transformer works", {
     population = population,
     splitSettings = PatientLevelPrediction::createDefaultSplitSetting(splitSeed = 42)
   )
+  withr::defer({
+    try(Andromeda::close(trainData$Train$covariateData), silent = TRUE)
+    try(Andromeda::close(trainData$Test$covariateData), silent = TRUE)
+    try(Andromeda::close(plpData$covariateData), silent = TRUE)
+  })
 
   settings <- setTransformer(
     numBlocks = 1,
