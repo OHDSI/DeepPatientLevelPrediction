@@ -7,8 +7,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <title>DeepPatientLevelPrediction Installation Guide • DeepPatientLevelPrediction</title>
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
-<script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
+<link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
+<script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="DeepPatientLevelPrediction Installation Guide">
 <meta name="robots" content="noindex">
@@ -21,7 +21,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">DeepPatientLevelPrediction</a>
 
-    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">2.2.0.9999</small>
+    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">2.3.0.9999</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -65,7 +65,7 @@
                         <h4 data-toc-skip class="author">Egill
 Fridgeirsson</h4>
             
-            <h4 data-toc-skip class="date">2025-09-21</h4>
+            <h4 data-toc-skip class="date">2026-06-16</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/OHDSI/DeepPatientLevelPrediction/blob/develop/vignettes/Installing.Rmd" class="external-link"><code>vignettes/Installing.Rmd</code></a></small>
       <div class="d-none name"><code>Installing.Rmd</code></div>
@@ -95,9 +95,8 @@ package requires installing:</p>
 <ul>
 <li>R (<a href="https://cran.r-project.org/" class="external-link uri">https://cran.r-project.org/</a> ) - (R &gt;= 4.0.0, but
 latest is recommended)</li>
-<li>Python - The package is tested with python 3.10, but &gt;= 3.8
-should work</li>
-<li>Rstudio (<a href="https://www.rstudio.com/" class="external-link uri">https://www.rstudio.com/</a> )</li>
+<li>Python - Recommend Python 3.12. Python &gt;= 3.10 is supported</li>
+<li>RStudio (<a href="https://www.rstudio.com/" class="external-link uri">https://www.rstudio.com/</a> )</li>
 <li>Java (<a href="http://www.java.com" class="external-link uri">http://www.java.com</a> )</li>
 <li>RTools (<a href="https://cran.r-project.org/bin/windows/Rtools/" class="external-link uri">https://cran.r-project.org/bin/windows/Rtools/</a>)</li>
 </ul>
@@ -110,9 +109,8 @@ installing:</p>
 <ul>
 <li>R (<a href="https://cran.r-project.org/" class="external-link uri">https://cran.r-project.org/</a> ) - (R &gt;= 4.0.0, but
 latest is recommended)</li>
-<li>Python - The package is tested with python 3.10, but &gt;= 3.8
-should work</li>
-<li>Rstudio (<a href="https://www.rstudio.com/" class="external-link uri">https://www.rstudio.com/</a> )</li>
+<li>Python - Recommend Python 3.12. Python &gt;= 3.10 is supported</li>
+<li>RStudio (<a href="https://www.rstudio.com/" class="external-link uri">https://www.rstudio.com/</a> )</li>
 <li>Java (<a href="http://www.java.com" class="external-link uri">http://www.java.com</a> )</li>
 <li>Xcode command line tools(run in terminal: xcode-select –install)
 [MAC USERS ONLY]</li>
@@ -130,122 +128,105 @@ bleeding edge version of the package (latest develop branch).</p>
 <p>Note that the latest develop branch could contain bugs, please report
 them to us if you experience problems.</p>
 <div class="section level3">
-<h3 id="installing-python-environment">Installing Python environment<a class="anchor" aria-label="anchor" href="#installing-python-environment"></a>
+<h3 id="python-environment">Python environment<a class="anchor" aria-label="anchor" href="#python-environment"></a>
 </h3>
-<p>Since the package uses <code>pytorch</code> through
-<code>reticulate</code> a working python installation is required. The
-package is tested with python 3.10. To install python an easy way is to
-use miniconda through <code>reticulate</code>:</p>
+<p>Since the package uses PyTorch through <code>reticulate</code>, a
+working Python environment is required. For most users on a computer
+with internet access, no manual Python setup is needed: loading or using
+<code>DeepPatientLevelPrediction</code> should let
+<code>reticulate</code> create a managed environment from the package
+requirements.</p>
+<p>You can verify the active interpreter with:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">'reticulate'</span><span class="op">)</span></span>
-<span><span class="fu">reticulate</span><span class="fu">::</span><span class="fu"><a href="https://rstudio.github.io/reticulate/reference/install_miniconda.html" class="external-link">install_miniconda</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<p>By default <code>install_minconda()</code> creates an environment
-<code>r-reticulate</code> with <code>python 3.9</code>. To use instead
-<code>python 3.10</code> we can do:</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">reticulate</span><span class="fu">::</span><span class="fu"><a href="https://rstudio.github.io/reticulate/reference/conda-tools.html" class="external-link">conda_install</a></span><span class="op">(</span>envname <span class="op">=</span> <span class="st">'r-reticulate'</span>, packages<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">'python=3.10'</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<p>If reticulate is having issues finding the conda installation you can
-use the function <code><a href="https://rstudio.github.io/reticulate/reference/miniconda_path.html" class="external-link">reticulate::miniconda_path()</a></code> to find the
-default installation location for your miniconda installation. Then you
-can force reticulate to use the newly generated environment by setting
-the environment variable <code>RETICULATE_PYTHON</code> to point to the
-python binary in the environment. For example by adding the following to
-the <code>.Renviron</code> file:</p>
-<pre><code><span><span class="va">RETICULATE_PYTHON</span><span class="op">=</span><span class="st">"/path/to/miniconda/envs/r-reticulate/python/bin"</span></span></code></pre>
-<p>Then you need to restart you R session. To verify that
-<code>reticulate</code> finds the correct version. You can call
-<code><a href="https://rstudio.github.io/reticulate/reference/py_config.html" class="external-link">reticulate::py_config()</a></code>.</p>
-<p>Once you have a working python environment that reticulate can locate
-you can install <code>DeepPatientLevelPrediction</code>. If you want to
-use a specific python environment you can set the environment variable
-<code>RETICULATE_PYTHON</code> to point to the python executable of that
-environment in your <code>.Renviron</code> file. You need to do this
-before installing <code>DeepPatientLevelPrediction</code>.</p>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/OHDSI/DeepPatientLevelPrediction" class="external-link">DeepPatientLevelPrediction</a></span><span class="op">)</span></span>
+<span><span class="fu">reticulate</span><span class="fu">::</span><span class="fu"><a href="https://rstudio.github.io/reticulate/reference/py_config.html" class="external-link">py_config</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<p>Advanced users, users with strict reproducibility requirements, or
+users in airgapped environments can manage the Python environment
+themselves and tell <code>reticulate</code> which interpreter to use.
+One option is to create the environment with <code>uv</code> and Python
+3.12:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="ex">uv</span> python install 3.12</span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="ex">uv</span> venv <span class="at">--python</span> 3.12</span>
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a><span class="ex">uv</span> pip install polars tqdm pyarrow duckdb nvidia-ml-py numpy</span>
+<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a><span class="ex">uv</span> pip install <span class="st">"torch==2.10.0"</span> <span class="at">--index</span> https://download.pytorch.org/whl/cpu/</span></code></pre></div>
+<p>The second <code>uv pip install</code> command installs the CPU build
+of PyTorch. If you want to train on a GPU, install the PyTorch build
+that matches your CUDA setup instead.</p>
+<p>To force <code>reticulate</code> to use a manually managed
+interpreter, set <code>RETICULATE_PYTHON</code> in
+<code>.Renviron</code>.</p>
+<p>For Linux/macOS:</p>
+<pre><code><span><span class="va">RETICULATE_PYTHON</span><span class="op">=</span><span class="st">"/path/to/project/.venv/bin/python"</span></span></code></pre>
+<p>For Windows:</p>
+<pre><code><span><span class="va">RETICULATE_PYTHON</span><span class="op">=</span><span class="st">"C:/path/to/project/.venv/Scripts/python.exe"</span></span></code></pre>
+<p>Then restart your R session.</p>
+<p>Python 3.9 is end-of-life and should not be used. Python 3.10 is
+still supported, but Python 3.12 is recommended.</p>
 </div>
 <div class="section level3">
 <h3 id="installing-deeppatientlevelprediction-using-remotes">Installing DeepPatientLevelPrediction using remotes<a class="anchor" aria-label="anchor" href="#installing-deeppatientlevelprediction-using-remotes"></a>
 </h3>
 <p>To install using <code>remotes</code> run:</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"remotes"</span><span class="op">)</span></span>
 <span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"OHDSI/DeepPatientLevelPrediction"</span><span class="op">)</span></span></code></pre></div>
-<p>This should install the required python packages. If that doesn’t
-happen it can be triggered by calling:</p>
-<pre><code><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/OHDSI/DeepPatientLevelPrediction" class="external-link">DeepPatientLevelPrediction</a></span><span class="op">)</span></span>
-<span><span class="va">torch</span><span class="op">$</span><span class="fu">randn</span><span class="op">(</span><span class="fl">10L</span><span class="op">)</span></span></code></pre>
+<p>Loading the package or using the <code>torch</code> helper should
+trigger <code>reticulate</code> to resolve the Python requirements if
+you have not configured <code>RETICULATE_PYTHON</code>.</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/OHDSI/DeepPatientLevelPrediction" class="external-link">DeepPatientLevelPrediction</a></span><span class="op">)</span></span>
+<span><span class="va">torch</span><span class="op">$</span><span class="fu">randn</span><span class="op">(</span><span class="fl">10L</span><span class="op">)</span></span></code></pre></div>
 <p>This should print out a tensor with ten different values.</p>
-<p>When installing make sure to close any other Rstudio sessions that
+<p>When installing make sure to close any other RStudio sessions that
 are using <code>DeepPatientLevelPrediction</code> or any dependency.
-Keeping Rstudio sessions open can cause locks on windows that prevent
+Keeping RStudio sessions open can cause locks on Windows that prevent
 the package installing.</p>
 </div>
 </div>
 <div class="section level2">
 <h2 id="testing-installation">Testing Installation<a class="anchor" aria-label="anchor" href="#testing-installation"></a>
 </h2>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ohdsi.github.io/PatientLevelPrediction/" class="external-link">PatientLevelPrediction</a></span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/OHDSI/DeepPatientLevelPrediction" class="external-link">DeepPatientLevelPrediction</a></span><span class="op">)</span></span>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/OHDSI/DeepPatientLevelPrediction" class="external-link">DeepPatientLevelPrediction</a></span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">plpDataSimulationProfile</span><span class="op">)</span></span>
-<span><span class="va">sampleSize</span> <span class="op">&lt;-</span> <span class="fl">1e3</span></span>
-<span><span class="va">plpData</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/simulatePlpData.html" class="external-link">simulatePlpData</a></span><span class="op">(</span></span>
-<span>  <span class="va">plpDataSimulationProfile</span>,</span>
-<span>  n <span class="op">=</span> <span class="va">sampleSize</span> </span>
+<span><span class="va">torch</span><span class="op">$</span><span class="fu">randn</span><span class="op">(</span><span class="fl">10L</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">modelSettings</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/setResNet.html">setResNet</a></span><span class="op">(</span></span>
+<span>  numLayers <span class="op">=</span> <span class="fl">2L</span>,</span>
+<span>  sizeHidden <span class="op">=</span> <span class="fl">64L</span>,</span>
+<span>  hiddenFactor <span class="op">=</span> <span class="fl">1L</span>,</span>
+<span>  residualDropout <span class="op">=</span> <span class="fl">0</span>,</span>
+<span>  hiddenDropout <span class="op">=</span> <span class="fl">0.2</span>,</span>
+<span>  sizeEmbedding <span class="op">=</span> <span class="fl">64L</span>,</span>
+<span>  estimatorSettings <span class="op">=</span> <span class="fu"><a href="../reference/setEstimator.html">setEstimator</a></span><span class="op">(</span></span>
+<span>    learningRate <span class="op">=</span> <span class="fl">3e-4</span>,</span>
+<span>    weightDecay <span class="op">=</span> <span class="fl">1e-6</span>,</span>
+<span>    device <span class="op">=</span> <span class="st">"cpu"</span>,</span>
+<span>    batchSize <span class="op">=</span> <span class="fl">128L</span>,</span>
+<span>    epochs <span class="op">=</span> <span class="fl">3L</span>,</span>
+<span>    seed <span class="op">=</span> <span class="fl">42L</span></span>
+<span>  <span class="op">)</span>,</span>
+<span>  hyperParamSearch <span class="op">=</span> <span class="st">"random"</span>,</span>
+<span>  randomSample <span class="op">=</span> <span class="fl">1L</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">populationSettings</span> <span class="op">&lt;-</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createStudyPopulationSettings.html" class="external-link">createStudyPopulationSettings</a></span><span class="op">(</span></span>
-<span>                                                          requireTimeAtRisk <span class="op">=</span> <span class="cn">F</span>, </span>
-<span>                                                          riskWindowStart <span class="op">=</span> <span class="fl">1</span>, </span>
-<span>                                                          riskWindowEnd <span class="op">=</span> <span class="fl">365</span><span class="op">)</span></span>
-<span><span class="co"># a very simple resnet</span></span>
-<span><span class="va">modelSettings</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/setResNet.html">setResNet</a></span><span class="op">(</span>numLayers <span class="op">=</span> <span class="fl">2L</span>, </span>
-<span>                           sizeHidden <span class="op">=</span> <span class="fl">64L</span>, </span>
-<span>                           hiddenFactor <span class="op">=</span> <span class="fl">1L</span>,</span>
-<span>                           residualDropout <span class="op">=</span> <span class="fl">0</span>, </span>
-<span>                           hiddenDropout <span class="op">=</span> <span class="fl">0.2</span>, </span>
-<span>                           sizeEmbedding <span class="op">=</span> <span class="fl">64L</span>, </span>
-<span>                           estimatorSettings <span class="op">=</span> <span class="fu"><a href="../reference/setEstimator.html">setEstimator</a></span><span class="op">(</span>learningRate <span class="op">=</span> <span class="fl">3e-4</span>,</span>
-<span>                                                            weightDecay <span class="op">=</span> <span class="fl">1e-6</span>,</span>
-<span>                                                            device<span class="op">=</span><span class="st">'cpu'</span>,</span>
-<span>                                                            batchSize<span class="op">=</span><span class="fl">128L</span>,</span>
-<span>                                                            epochs<span class="op">=</span><span class="fl">3L</span>,</span>
-<span>                                                            seed <span class="op">=</span> <span class="fl">42</span><span class="op">)</span>,</span>
-<span>                           hyperParamSearch <span class="op">=</span> <span class="st">'random'</span>,</span>
-<span>                           randomSample <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">plpResults</span> <span class="op">&lt;-</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/runPlp.html" class="external-link">runPlp</a></span><span class="op">(</span>plpData <span class="op">=</span> <span class="va">plpData</span>,</span>
-<span>               outcomeId <span class="op">=</span> <span class="fl">3</span>,</span>
-<span>               modelSettings <span class="op">=</span> <span class="va">modelSettings</span>,</span>
-<span>               analysisId <span class="op">=</span> <span class="st">'Test'</span>,</span>
-<span>               analysisName <span class="op">=</span> <span class="st">'Testing DeepPlp'</span>,</span>
-<span>               populationSettings <span class="op">=</span> <span class="va">populationSettings</span>,</span>
-<span>               splitSettings <span class="op">=</span> <span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createDefaultSplitSetting.html" class="external-link">createDefaultSplitSetting</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>               sampleSettings <span class="op">=</span> <span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createSampleSettings.html" class="external-link">createSampleSettings</a></span><span class="op">(</span><span class="op">)</span>, </span>
-<span>               featureEngineeringSettings <span class="op">=</span> <span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createFeatureEngineeringSettings.html" class="external-link">createFeatureEngineeringSettings</a></span><span class="op">(</span><span class="op">)</span>, </span>
-<span>               preprocessSettings <span class="op">=</span> <span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createPreprocessSettings.html" class="external-link">createPreprocessSettings</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>               logSettings <span class="op">=</span> <span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createLogSettings.html" class="external-link">createLogSettings</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>               executeSettings <span class="op">=</span> <span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createExecuteSettings.html" class="external-link">createExecuteSettings</a></span><span class="op">(</span>runSplitData <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>                                                      runSampleData <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>                                                      runFeatureEngineering <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>                                                      runPreprocessData <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>                                                      runModelDevelopment <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>                                                      runCovariateSummary <span class="op">=</span> <span class="cn">TRUE</span></span>
-<span>                                                      <span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/class.html" class="external-link">inherits</a></span><span class="op">(</span><span class="va">modelSettings</span>, <span class="st">"modelSettings"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p>To run an end-to-end patient-level prediction example, continue with
+the <a href="FirstModel.html">first-model vignette</a>.</p>
 </div>
 <div class="section level2">
 <h2 id="acknowledgments">Acknowledgments<a class="anchor" aria-label="anchor" href="#acknowledgments"></a>
 </h2>
 <p>Considerable work has been dedicated to provide the
 <code>DeepPatientLevelPrediction</code> package.</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/citation.html" class="external-link">citation</a></span><span class="op">(</span><span class="st">"DeepPatientLevelPrediction"</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## To cite package 'DeepPatientLevelPrediction' in publications use:</span></span>
 <span><span class="co">## </span></span>
-<span><span class="co">##   Fridgeirsson E, Reps J, Chan You S, Kim C, John H (2025).</span></span>
+<span><span class="co">##   Fridgeirsson E, Reps J, Chan You S, Kim C, John H (2026).</span></span>
 <span><span class="co">##   _DeepPatientLevelPrediction: Deep Learning for Patient Level</span></span>
 <span><span class="co">##   Prediction Using Data in the OMOP Common Data Model_. R package</span></span>
-<span><span class="co">##   version 2.2.0.9999,</span></span>
+<span><span class="co">##   version 2.3.0.9999,</span></span>
 <span><span class="co">##   &lt;https://github.com/OHDSI/DeepPatientLevelPrediction&gt;.</span></span>
 <span><span class="co">## </span></span>
 <span><span class="co">## A BibTeX entry for LaTeX users is</span></span>
@@ -254,8 +235,8 @@ the package installing.</p>
 <span><span class="co">##     title = {DeepPatientLevelPrediction: Deep Learning for Patient Level Prediction Using Data in the</span></span>
 <span><span class="co">## OMOP Common Data Model},</span></span>
 <span><span class="co">##     author = {Egill Fridgeirsson and Jenna Reps and Seng {Chan You} and Chungsoo Kim and Henrik John},</span></span>
-<span><span class="co">##     year = {2025},</span></span>
-<span><span class="co">##     note = {R package version 2.2.0.9999},</span></span>
+<span><span class="co">##     year = {2026},</span></span>
+<span><span class="co">##     note = {R package version 2.3.0.9999},</span></span>
 <span><span class="co">##     url = {https://github.com/OHDSI/DeepPatientLevelPrediction},</span></span>
 <span><span class="co">##   }</span></span></code></pre>
 <p><strong>Please reference this paper if you use the PLP Package in
@@ -277,7 +258,7 @@ models using observational healthcare data. J Am Med Inform Assoc.
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.3.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
 </div>
 
     </footer>

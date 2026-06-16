@@ -7,8 +7,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <title>Building Deep Learning Models • DeepPatientLevelPrediction</title>
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
-<script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
+<link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
+<script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Building Deep Learning Models">
 <meta name="robots" content="noindex">
@@ -21,7 +21,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">DeepPatientLevelPrediction</a>
 
-    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">2.2.0.9999</small>
+    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">2.3.0.9999</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -66,7 +66,7 @@
 Egill Fridgeirsson, Chungsoo Kim, Henrik John, Seng Chan You, Xiaoyong
 Pan</h4>
             
-            <h4 data-toc-skip class="date">2025-09-21</h4>
+            <h4 data-toc-skip class="date">2026-06-16</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/OHDSI/DeepPatientLevelPrediction/blob/develop/vignettes/BuildingDeepModels.Rmd" class="external-link"><code>vignettes/BuildingDeepModels.Rmd</code></a></small>
       <div class="d-none name"><code>BuildingDeepModels.Rmd</code></div>
@@ -87,8 +87,8 @@ Pan</h4>
 <p>Patient level prediction aims to use historic data to learn a
 function between an input (a patient’s features such as
 age/gender/comorbidities at index) and an output (whether the patient
-experienced an outcome during some time-at-risk). Deep learning is
-example of the the current state-of-the-art classifiers that can be
+experienced an outcome during some time-at-risk). Deep learning is an
+example of the current state-of-the-art classifiers that can be
 implemented to learn the function between inputs and outputs.</p>
 <p>Deep Learning models are widely used to automatically learn
 high-level feature representations from the data, and have achieved
@@ -109,7 +109,7 @@ Deep Learning methods.</p>
 <div class="section level3">
 <h3 id="background">Background<a class="anchor" aria-label="anchor" href="#background"></a>
 </h3>
-<p>Deep Learning models are build by stacking an often large number of
+<p>Deep Learning models are built by stacking an often large number of
 neural network layers that perform feature engineering steps, e.g
 embedding, and are collapsed in a final linear layer (equivalent to
 logistic regression). These algorithms need a lot of data to converge to
@@ -119,18 +119,18 @@ Deep Learning an interesting approach to test within OHDSI’s <a href="https://
 Prediction Framework</a>. The current implementation allows us to
 perform research at scale on the value and limitations of Deep Learning
 using observational healthcare data.</p>
-<p>In the package we use <code>pytorch</code> through the
-<code>reticulate</code> package.</p>
+<p>In the package we use PyTorch through the <code>reticulate</code>
+package.</p>
 <p>Many network architectures have recently been proposed and we have
 implemented a number of them, however, this list will grow in the near
 future. It is important to understand that some of these architectures
 require a 2D data matrix, i.e. |patient|x|feature|, and others use a 3D
-data matrix |patient|x|feature|x|time|. The <a href="www.github.com%5Cohdsi%5CFeatureExtraction">FeatureExtraction
-Package</a> has been extended to enable the extraction of both data
+data matrix |patient|x|feature|x|time|. The <a href="https://github.com/OHDSI/FeatureExtraction" class="external-link">FeatureExtraction
+package</a> has been extended to enable the extraction of both data
 formats as will be described with examples below.</p>
 <p>Note that training Deep Learning models is computationally intensive,
 our implementation therefore supports both GPU and CPU. A GPU is highly
-recommended and neccesary for most models for Deep Learning!</p>
+recommended for most deep learning model development.</p>
 </div>
 <div class="section level3">
 <h3 id="requirements">Requirements<a class="anchor" aria-label="anchor" href="#requirements"></a>
@@ -148,8 +148,13 @@ additional model settings that can be used within the
 need to pick the deep learning architecture you wish to fit (see below)
 and then you specify this as the modelSettings inside
 <code>runPlp()</code>.</p>
+<p>The model examples below assume you have already loaded both packages
+and created <code>plpData</code> and <code>populationSettings</code> as
+shown in the first-model vignette.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># load the data</span></span>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/OHDSI/DeepPatientLevelPrediction" class="external-link">DeepPatientLevelPrediction</a></span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># load the data</span></span>
 <span><span class="va">plpData</span> <span class="op">&lt;-</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/loadPlpData.html" class="external-link">loadPlpData</a></span><span class="op">(</span><span class="st">'locationOfData'</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># pick the set&lt;Model&gt; from  DeepPatientLevelPrediction</span></span>
@@ -157,10 +162,12 @@ and then you specify this as the modelSettings inside
 <span></span>
 <span><span class="co"># use PatientLevelPrediction to fit model</span></span>
 <span><span class="va">deepLearningResult</span> <span class="op">&lt;-</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/runPlp.html" class="external-link">runPlp</a></span><span class="op">(</span></span>
-<span>    plpData <span class="op">=</span> <span class="va">plpData</span>, </span>
-<span>    outcomeId <span class="op">=</span> <span class="fl">1230</span>, </span>
+<span>    plpData <span class="op">=</span> <span class="va">plpData</span>,</span>
+<span>    outcomeId <span class="op">=</span> <span class="fl">1230</span>,</span>
 <span>    modelSettings <span class="op">=</span> <span class="va">deepLearningModel</span>,</span>
-<span>    analysisId <span class="op">=</span> <span class="st">'resNetTorch'</span>, </span>
+<span>    analysisId <span class="op">=</span> <span class="st">'resNetTorch'</span>,</span>
+<span>    populationSettings <span class="op">=</span> <span class="va">populationSettings</span>,</span>
+<span>    saveDirectory <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/getwd.html" class="external-link">getwd</a></span><span class="op">(</span><span class="op">)</span>, <span class="st">'resNetTorch'</span><span class="op">)</span>,</span>
 <span>    <span class="va">...</span></span>
 <span>  <span class="op">)</span></span></code></pre></div>
 </div>
@@ -182,9 +189,9 @@ takes in the input feature values and feeds these forward through the
 graph to determine the output class. A process known as
 ‘backpropagation’ is used to train the model. Backpropagation requires
 some ground truth and involves automatically calculating the derivative
-of the model parameters with respect to the the error between the
-model’s predictions and ground truth. Then the model learns how to
-adjust the model’s parameters to reduce the error.</p>
+of the model parameters with respect to the error between the model’s
+predictions and ground truth. Then the model learns how to adjust the
+model’s parameters to reduce the error.</p>
 </div>
 <div class="section level4">
 <h4 id="example">Example<a class="anchor" aria-label="anchor" href="#example"></a>
@@ -239,13 +246,13 @@ search unless the network is really small.</p>
 <p>The <code>randomSample</code> chooses how many random samples to
 use.</p>
 <p>The <code>device</code> specifies what device to use. Either
-<code>cpu</code> or <code>cuda</code>. Or if you have many GPU’s
-<code>cuda:x</code> where x is the gpu number as seen in
+<code>cpu</code> or <code>cuda</code>. If you have multiple GPUs, use
+<code>cuda:x</code>, where <code>x</code> is the GPU number as seen in
 <code>nvidia-smi</code>.</p>
 <p>The <code>batchSize</code> corresponds to the number of data points
 (patients) used per iteration to estimate the network error during model
 fitting.</p>
-<p>The <code>epochs</code> corresponds to how many time to run through
+<p>The <code>epochs</code> corresponds to how many times to run through
 the entire training data while fitting the model.</p>
 </div>
 <div class="section level5">
@@ -263,7 +270,7 @@ try 10 of those.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">modelSettings</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/setMultiLayerPerceptron.html">setMultiLayerPerceptron</a></span><span class="op">(</span></span>
 <span>  numLayers <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3L</span>, <span class="fl">5L</span><span class="op">)</span>,</span>
-<span>  sizeHidden <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">64L</span>, <span class="fl">128L</span><span class="op">)</span>, </span>
+<span>  sizeHidden <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">64L</span>, <span class="fl">128L</span><span class="op">)</span>,</span>
 <span>  dropout <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.2</span><span class="op">)</span>,</span>
 <span>  sizeEmbedding <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">32L</span>, <span class="fl">64L</span><span class="op">)</span>,</span>
 <span>  estimatorSettings <span class="op">=</span> <span class="fu"><a href="../reference/setEstimator.html">setEstimator</a></span><span class="op">(</span></span>
@@ -277,23 +284,23 @@ try 10 of those.</p>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">mlpResult</span> <span class="op">&lt;-</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/runPlp.html" class="external-link">runPlp</a></span><span class="op">(</span></span>
-<span>    plpData <span class="op">=</span> <span class="va">plpData</span>, </span>
-<span>    outcomeId <span class="op">=</span> <span class="fl">3</span>, </span>
+<span>    plpData <span class="op">=</span> <span class="va">plpData</span>,</span>
+<span>    outcomeId <span class="op">=</span> <span class="fl">3</span>,</span>
 <span>    modelSettings <span class="op">=</span> <span class="va">modelSettings</span>,</span>
-<span>    analysisId <span class="op">=</span> <span class="st">'MLP'</span>, </span>
-<span>    analysisName <span class="op">=</span> <span class="st">'Testing Deep Learning'</span>, </span>
-<span>    populationSettings <span class="op">=</span> <span class="va">populationSet</span>, </span>
-<span>    splitSettings <span class="op">=</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createDefaultSplitSetting.html" class="external-link">createDefaultSplitSetting</a></span><span class="op">(</span><span class="op">)</span>, </span>
-<span>    preprocessSettings <span class="op">=</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createPreprocessSettings.html" class="external-link">createPreprocessSettings</a></span><span class="op">(</span><span class="op">)</span>, </span>
+<span>    analysisId <span class="op">=</span> <span class="st">'MLP'</span>,</span>
+<span>    analysisName <span class="op">=</span> <span class="st">'Testing Deep Learning'</span>,</span>
+<span>    populationSettings <span class="op">=</span> <span class="va">populationSettings</span>,</span>
+<span>    splitSettings <span class="op">=</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createDefaultSplitSetting.html" class="external-link">createDefaultSplitSetting</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>    preprocessSettings <span class="op">=</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createPreprocessSettings.html" class="external-link">createPreprocessSettings</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>    executeSettings <span class="op">=</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createExecuteSettings.html" class="external-link">createExecuteSettings</a></span><span class="op">(</span></span>
-<span>      runSplitData <span class="op">=</span> <span class="cn">TRUE</span>, </span>
-<span>      runSampleData <span class="op">=</span> <span class="cn">FALSE</span>, </span>
-<span>      runFeatureEngineering <span class="op">=</span> <span class="cn">FALSE</span>, </span>
-<span>      runPreprocessData <span class="op">=</span> <span class="cn">TRUE</span>, </span>
-<span>      runModelDevelopment <span class="op">=</span> <span class="cn">TRUE</span>, </span>
+<span>      runSplitData <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>      runSampleData <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>      runFeatureEngineering <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>      runPreprocessData <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>      runModelDevelopment <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>      runCovariateSummary <span class="op">=</span> <span class="cn">FALSE</span></span>
-<span>    <span class="op">)</span>, </span>
-<span>    saveDirectory <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">testLoc</span>, <span class="st">'DeepNNTorch'</span><span class="op">)</span></span>
+<span>    <span class="op">)</span>,</span>
+<span>    saveDirectory <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/getwd.html" class="external-link">getwd</a></span><span class="op">(</span><span class="op">)</span>, <span class="st">'MLP'</span><span class="op">)</span></span>
 <span>  <span class="op">)</span></span></code></pre></div>
 </div>
 </div>
@@ -374,22 +381,22 @@ reproducible</p>
 each layer has 32 neurons which increases by a factor of two before
 decreasing again (hiddenFactor). 10% of inputs to each layer and
 residual connection within the layer are randomly zeroed during training
-but not testing.The embedding layer has 32 neurons. Learning rate of
+but not testing. The embedding layer has 32 neurons. Learning rate of
 3e-4 with weight decay of 1e-6 is used for the optimizer. No
 hyperparameter search is done since each input only includes one
 option.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">resset</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/setResNet.html">setResNet</a></span><span class="op">(</span></span>
-<span>  numLayers <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2L</span><span class="op">)</span>, </span>
+<span>  numLayers <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2L</span><span class="op">)</span>,</span>
 <span>  sizeHidden <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">32L</span><span class="op">)</span>,</span>
 <span>  hiddenFactor <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2L</span><span class="op">)</span>,</span>
-<span>  residualDropout <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.1</span><span class="op">)</span>, </span>
+<span>  residualDropout <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.1</span><span class="op">)</span>,</span>
 <span>  hiddenDropout <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.1</span><span class="op">)</span>,</span>
 <span>  sizeEmbedding <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">32L</span><span class="op">)</span>,</span>
 <span>  estimatorSettings <span class="op">=</span> <span class="fu"><a href="../reference/setEstimator.html">setEstimator</a></span><span class="op">(</span>learningRate <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3e-4</span><span class="op">)</span>,</span>
 <span>                                   weightDecay <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1e-6</span><span class="op">)</span>,</span>
 <span>                                   <span class="co">#device='cuda:0', # uncomment to use GPU</span></span>
-<span>                                   batchSize <span class="op">=</span> <span class="fl">128L</span>, </span>
+<span>                                   batchSize <span class="op">=</span> <span class="fl">128L</span>,</span>
 <span>                                   epochs <span class="op">=</span> <span class="fl">3L</span>,</span>
 <span>                                   seed <span class="op">=</span> <span class="fl">42L</span><span class="op">)</span>,</span>
 <span>  hyperParamSearch <span class="op">=</span> <span class="st">'random'</span>,</span>
@@ -397,32 +404,82 @@ option.</p>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">resResult</span> <span class="op">&lt;-</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/runPlp.html" class="external-link">runPlp</a></span><span class="op">(</span></span>
-<span>    plpData <span class="op">=</span> <span class="va">plpData</span>, </span>
-<span>    outcomeId <span class="op">=</span> <span class="fl">3</span>, </span>
+<span>    plpData <span class="op">=</span> <span class="va">plpData</span>,</span>
+<span>    outcomeId <span class="op">=</span> <span class="fl">3</span>,</span>
 <span>    modelSettings <span class="op">=</span> <span class="va">resset</span>,</span>
-<span>    analysisId <span class="op">=</span> <span class="st">'ResNet'</span>, </span>
-<span>    analysisName <span class="op">=</span> <span class="st">'Testing ResNet'</span>, </span>
-<span>    populationSettings <span class="op">=</span> <span class="va">populationSet</span>, </span>
-<span>    splitSettings <span class="op">=</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createDefaultSplitSetting.html" class="external-link">createDefaultSplitSetting</a></span><span class="op">(</span><span class="op">)</span>, </span>
-<span>    preprocessSettings <span class="op">=</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createPreprocessSettings.html" class="external-link">createPreprocessSettings</a></span><span class="op">(</span><span class="op">)</span>, </span>
+<span>    analysisId <span class="op">=</span> <span class="st">'ResNet'</span>,</span>
+<span>    analysisName <span class="op">=</span> <span class="st">'Testing ResNet'</span>,</span>
+<span>    populationSettings <span class="op">=</span> <span class="va">populationSettings</span>,</span>
+<span>    splitSettings <span class="op">=</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createDefaultSplitSetting.html" class="external-link">createDefaultSplitSetting</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>    preprocessSettings <span class="op">=</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createPreprocessSettings.html" class="external-link">createPreprocessSettings</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>    executeSettings <span class="op">=</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createExecuteSettings.html" class="external-link">createExecuteSettings</a></span><span class="op">(</span></span>
-<span>      runSplitData <span class="op">=</span> <span class="cn">TRUE</span>, </span>
-<span>      runSampleData <span class="op">=</span> <span class="cn">FALSE</span>, </span>
-<span>      runFeatureEngineering <span class="op">=</span> <span class="cn">FALSE</span>, </span>
-<span>      runPreprocessData <span class="op">=</span> <span class="cn">TRUE</span>, </span>
-<span>      runModelDevelopment <span class="op">=</span> <span class="cn">TRUE</span>, </span>
+<span>      runSplitData <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>      runSampleData <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>      runFeatureEngineering <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>      runPreprocessData <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>      runModelDevelopment <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>      runCovariateSummary <span class="op">=</span> <span class="cn">FALSE</span></span>
-<span>    <span class="op">)</span>, </span>
+<span>    <span class="op">)</span>,</span>
 <span>    saveDirectory <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/getwd.html" class="external-link">getwd</a></span><span class="op">(</span><span class="op">)</span>, <span class="st">'ResNet'</span><span class="op">)</span> <span class="co"># change to save elsewhere</span></span>
 <span>  <span class="op">)</span></span></code></pre></div>
 </div>
 </div>
 </div>
 <div class="section level3">
-<h3 id="transformer">Transformer<a class="anchor" aria-label="anchor" href="#transformer"></a>
+<h3 id="realmlp">RealMLP<a class="anchor" aria-label="anchor" href="#realmlp"></a>
 </h3>
 <div class="section level4">
 <h4 id="overall-concept-2">Overall concept<a class="anchor" aria-label="anchor" href="#overall-concept-2"></a>
+</h4>
+<p>RealMLP is a tabular neural network with paper-aligned defaults for
+optimizer settings, schedules, feature scaling, and data-dependent
+initialization. It is exposed through <code><a href="../reference/setRealMLP.html">setRealMLP()</a></code> and can
+be used as the <code>modelSettings</code> argument in
+<code><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/runPlp.html" class="external-link">PatientLevelPrediction::runPlp()</a></code>.</p>
+<p>Like the other model setting helpers, <code><a href="../reference/setRealMLP.html">setRealMLP()</a></code> can
+be called with one value per argument for a fixed model configuration,
+or with multiple values for tunable parameters such as
+<code>numLayers</code>, <code>sizeHidden</code>, <code>dropout</code>,
+and <code>sizeEmbedding</code> to run a hyperparameter or sensitivity
+search.</p>
+</div>
+<div class="section level4">
+<h4 id="example-code-2">Example Code<a class="anchor" aria-label="anchor" href="#example-code-2"></a>
+</h4>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">modelSettings</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/setRealMLP.html">setRealMLP</a></span><span class="op">(</span></span>
+<span>  numLayers <span class="op">=</span> <span class="fl">3L</span>,</span>
+<span>  sizeHidden <span class="op">=</span> <span class="fl">256L</span>,</span>
+<span>  dropout <span class="op">=</span> <span class="fl">0.15</span>,</span>
+<span>  device <span class="op">=</span> <span class="st">"cpu"</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">realMlpResult</span> <span class="op">&lt;-</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/runPlp.html" class="external-link">runPlp</a></span><span class="op">(</span></span>
+<span>    plpData <span class="op">=</span> <span class="va">plpData</span>,</span>
+<span>    outcomeId <span class="op">=</span> <span class="fl">3</span>,</span>
+<span>    modelSettings <span class="op">=</span> <span class="va">modelSettings</span>,</span>
+<span>    analysisId <span class="op">=</span> <span class="st">'RealMLP'</span>,</span>
+<span>    analysisName <span class="op">=</span> <span class="st">'Testing RealMLP'</span>,</span>
+<span>    populationSettings <span class="op">=</span> <span class="va">populationSettings</span>,</span>
+<span>    splitSettings <span class="op">=</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createDefaultSplitSetting.html" class="external-link">createDefaultSplitSetting</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>    preprocessSettings <span class="op">=</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createPreprocessSettings.html" class="external-link">createPreprocessSettings</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>    executeSettings <span class="op">=</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createExecuteSettings.html" class="external-link">createExecuteSettings</a></span><span class="op">(</span></span>
+<span>      runSplitData <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>      runSampleData <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>      runFeatureEngineering <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>      runPreprocessData <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>      runModelDevelopment <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>      runCovariateSummary <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>    <span class="op">)</span>,</span>
+<span>    saveDirectory <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/getwd.html" class="external-link">getwd</a></span><span class="op">(</span><span class="op">)</span>, <span class="st">'RealMLP'</span><span class="op">)</span> <span class="co"># change to save elsewhere</span></span>
+<span>  <span class="op">)</span></span></code></pre></div>
+</div>
+</div>
+<div class="section level3">
+<h3 id="transformer">Transformer<a class="anchor" aria-label="anchor" href="#transformer"></a>
+</h3>
+<div class="section level4">
+<h4 id="overall-concept-3">Overall concept<a class="anchor" aria-label="anchor" href="#overall-concept-3"></a>
 </h4>
 <p>Recently there has been a surge of models in natural language
 processing and computer vision that utilize attention. This is a
@@ -474,12 +531,12 @@ feedforward block</p>
 </div>
 </div>
 <div class="section level5">
-<h5 id="example-code-2">Example Code<a class="anchor" aria-label="anchor" href="#example-code-2"></a>
+<h5 id="example-code-3">Example Code<a class="anchor" aria-label="anchor" href="#example-code-3"></a>
 </h5>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">modelSettings</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/setTransformer.html">setTransformer</a></span><span class="op">(</span>numBlocks <span class="op">=</span> <span class="fl">3L</span>,</span>
 <span>                                dimToken <span class="op">=</span> <span class="fl">32L</span>,</span>
-<span>                                dimOut <span class="op">=</span> <span class="fl">1</span>, </span>
+<span>                                dimOut <span class="op">=</span> <span class="fl">1</span>,</span>
 <span>                                numHeads <span class="op">=</span> <span class="fl">4L</span>,</span>
 <span>                                attDropout <span class="op">=</span> <span class="fl">0.25</span>,</span>
 <span>                                ffnDropout <span class="op">=</span> <span class="fl">0.25</span>,</span>
@@ -492,26 +549,26 @@ feedforward block</p>
 <span>                                  device <span class="op">=</span> <span class="st">'cpu'</span></span>
 <span>                                <span class="op">)</span>,</span>
 <span>                                randomSample<span class="op">=</span><span class="fl">1L</span><span class="op">)</span></span>
-<span>                              </span>
+<span></span>
 <span></span>
 <span></span>
 <span><span class="va">TransformerResult</span> <span class="op">&lt;-</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/runPlp.html" class="external-link">runPlp</a></span><span class="op">(</span></span>
-<span>    plpData <span class="op">=</span> <span class="va">plpData</span>, </span>
-<span>    outcomeId <span class="op">=</span> <span class="fl">3</span>, </span>
+<span>    plpData <span class="op">=</span> <span class="va">plpData</span>,</span>
+<span>    outcomeId <span class="op">=</span> <span class="fl">3</span>,</span>
 <span>    modelSettings <span class="op">=</span> <span class="va">modelSettings</span>,</span>
-<span>    analysisId <span class="op">=</span> <span class="st">'Transformer'</span>, </span>
-<span>    analysisName <span class="op">=</span> <span class="st">'Testing transformer'</span>, </span>
-<span>    populationSettings <span class="op">=</span> <span class="va">populationSet</span>, </span>
-<span>    splitSettings <span class="op">=</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createDefaultSplitSetting.html" class="external-link">createDefaultSplitSetting</a></span><span class="op">(</span><span class="op">)</span>, </span>
-<span>    preprocessSettings <span class="op">=</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createPreprocessSettings.html" class="external-link">createPreprocessSettings</a></span><span class="op">(</span><span class="op">)</span>, </span>
+<span>    analysisId <span class="op">=</span> <span class="st">'Transformer'</span>,</span>
+<span>    analysisName <span class="op">=</span> <span class="st">'Testing transformer'</span>,</span>
+<span>    populationSettings <span class="op">=</span> <span class="va">populationSettings</span>,</span>
+<span>    splitSettings <span class="op">=</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createDefaultSplitSetting.html" class="external-link">createDefaultSplitSetting</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>    preprocessSettings <span class="op">=</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createPreprocessSettings.html" class="external-link">createPreprocessSettings</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>    executeSettings <span class="op">=</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createExecuteSettings.html" class="external-link">createExecuteSettings</a></span><span class="op">(</span></span>
-<span>      runSplitData <span class="op">=</span> <span class="cn">TRUE</span>, </span>
-<span>      runSampleData <span class="op">=</span> <span class="cn">FALSE</span>, </span>
-<span>      runFeatureEngineering <span class="op">=</span> <span class="cn">FALSE</span>, </span>
-<span>      runPreprocessData <span class="op">=</span> <span class="cn">TRUE</span>, </span>
-<span>      runModelDevelopment <span class="op">=</span> <span class="cn">TRUE</span>, </span>
+<span>      runSplitData <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>      runSampleData <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>      runFeatureEngineering <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>      runPreprocessData <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>      runModelDevelopment <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>      runCovariateSummary <span class="op">=</span> <span class="cn">FALSE</span></span>
-<span>    <span class="op">)</span>, </span>
+<span>    <span class="op">)</span>,</span>
 <span>    saveDirectory <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/getwd.html" class="external-link">getwd</a></span><span class="op">(</span><span class="op">)</span>, <span class="st">'Transformer'</span><span class="op">)</span> <span class="co"># change to save elsewhere</span></span>
 <span>  <span class="op">)</span></span></code></pre></div>
 </div>
@@ -523,14 +580,14 @@ feedforward block</p>
 </h2>
 <p>Considerable work has been dedicated to provide the
 <code>DeepPatientLevelPrediction</code> package.</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/citation.html" class="external-link">citation</a></span><span class="op">(</span><span class="st">"DeepPatientLevelPrediction"</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## To cite package 'DeepPatientLevelPrediction' in publications use:</span></span>
 <span><span class="co">## </span></span>
-<span><span class="co">##   Fridgeirsson E, Reps J, Chan You S, Kim C, John H (2025).</span></span>
+<span><span class="co">##   Fridgeirsson E, Reps J, Chan You S, Kim C, John H (2026).</span></span>
 <span><span class="co">##   _DeepPatientLevelPrediction: Deep Learning for Patient Level</span></span>
 <span><span class="co">##   Prediction Using Data in the OMOP Common Data Model_. R package</span></span>
-<span><span class="co">##   version 2.2.0.9999,</span></span>
+<span><span class="co">##   version 2.3.0.9999,</span></span>
 <span><span class="co">##   &lt;https://github.com/OHDSI/DeepPatientLevelPrediction&gt;.</span></span>
 <span><span class="co">## </span></span>
 <span><span class="co">## A BibTeX entry for LaTeX users is</span></span>
@@ -539,8 +596,8 @@ feedforward block</p>
 <span><span class="co">##     title = {DeepPatientLevelPrediction: Deep Learning for Patient Level Prediction Using Data in the</span></span>
 <span><span class="co">## OMOP Common Data Model},</span></span>
 <span><span class="co">##     author = {Egill Fridgeirsson and Jenna Reps and Seng {Chan You} and Chungsoo Kim and Henrik John},</span></span>
-<span><span class="co">##     year = {2025},</span></span>
-<span><span class="co">##     note = {R package version 2.2.0.9999},</span></span>
+<span><span class="co">##     year = {2026},</span></span>
+<span><span class="co">##     note = {R package version 2.3.0.9999},</span></span>
 <span><span class="co">##     url = {https://github.com/OHDSI/DeepPatientLevelPrediction},</span></span>
 <span><span class="co">##   }</span></span></code></pre>
 <p><strong>Please reference this paper if you use the PLP Package in
@@ -562,7 +619,7 @@ models using observational healthcare data. J Am Med Inform Assoc.
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.3.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
 </div>
 
     </footer>
