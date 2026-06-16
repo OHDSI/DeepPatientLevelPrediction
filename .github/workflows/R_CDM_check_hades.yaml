@@ -17,25 +17,25 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - scenario: batch-full
+          - scenario: rcmdcheck-full
             andromeda: current
             filter: ""
-          - scenario: batch-estimator
+          - scenario: rcmdcheck-estimator
             andromeda: current
             filter: "Estimator|estimator"
-          - scenario: batch-realmlp
+          - scenario: rcmdcheck-realmlp
             andromeda: current
             filter: "RealMLP"
-          - scenario: batch-transformer
+          - scenario: rcmdcheck-transformer
             andromeda: current
             filter: "Transformer|transformer"
-          - scenario: batch-other-models
+          - scenario: rcmdcheck-other-models
             andromeda: current
             filter: "MultiLayerPerceptron|MLP|ResNet|Poincare|Finetuner"
-          - scenario: batch-training-utils
+          - scenario: rcmdcheck-training-utils
             andromeda: current
             filter: "LR finder|LR scheduler|Gradient accumulation|Training cache"
-          - scenario: batch-data-utils
+          - scenario: rcmdcheck-data-utils
             andromeda: current
             filter: "Dataset|dataset|Helper|Positional|PE|encoding"
 
@@ -109,7 +109,7 @@ jobs:
           uv pip install "torch==2.10.0" --index https://download.pytorch.org/whl/cpu/
 
       - name: Install package
-        if: ${{ !startsWith(matrix.scenario, 'rcmdcheck') && !startsWith(matrix.scenario, 'batch') }}
+        if: ${{ !startsWith(matrix.scenario, 'rcmdcheck') }}
         shell: bash
         run: R CMD INSTALL --no-multiarch --with-keep.source .
 
@@ -118,14 +118,7 @@ jobs:
         run: |
           set -euxo pipefail
           case "${{ matrix.scenario }}" in
-            batch-*)
-              R CMD INSTALL --install-tests --no-multiarch --with-keep.source .
-              outfile="/tmp/testthat-${{ matrix.scenario }}.Rout"
-              set +e
-              R CMD BATCH --no-save --no-restore tests/testthat.R "$outfile"
-              status=$?
-              set -e
-              tail -n 160 "$outfile"
-              exit "$status"
+            rcmdcheck-*)
+              Rscript -e 'rcmdcheck::rcmdcheck(".", args = c("--no-manual", "--as-cran"), error_on = "error", check_dir = "check")'
               ;;
           esac
