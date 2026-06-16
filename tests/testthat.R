@@ -14,8 +14,17 @@ run_tests <- function() {
 
   library(DeepPatientLevelPrediction)
 
+  filter <- Sys.getenv("DPLP_TEST_FILTER", unset = "")
+  if (nzchar(filter)) {
+    message("Running testthat filter: ", filter)
+  }
+
   withCallingHandlers({
-    test_check("DeepPatientLevelPrediction")
+    if (nzchar(filter)) {
+      test_check("DeepPatientLevelPrediction", filter = filter)
+    } else {
+      test_check("DeepPatientLevelPrediction")
+    }
   }, error = function(e) {
     traceback()
     message(e)

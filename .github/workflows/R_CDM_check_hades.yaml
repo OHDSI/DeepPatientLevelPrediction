@@ -4,31 +4,29 @@ on:
   push:
     branches:
       - '**'
-  pull_request:
-    branches:
-      - '**'
 
-name: R-CMD-check
+name: macOS segfault isolate
 
 jobs:
-  R-CMD-check:
-    runs-on: ${{ matrix.config.os }}
+  isolate:
+    runs-on: macOS-latest
 
-    name: ${{ matrix.config.os }} (R-${{ matrix.config.r }}, Py-${{ matrix.config.python }}, Torch-${{ matrix.config.torch }})
+    name: ${{ matrix.scenario }}
 
     strategy:
       fail-fast: false
       matrix:
-        config:
-          - {os: windows-latest, r: 'release', python: '3.12', torch: '2.10.0'}
-          - {os: macOS-latest, r: 'release', python: '3.12', torch: '2.10.0'}
-          - {os: ubuntu-24.04, r: 'release', python: '3.12', torch: '2.10.0', rspm: "https://packagemanager.rstudio.com/cran/__linux__/noble/latest"}
-          - {os: ubuntu-24.04, r: 'release', python: '3.10', torch: 'latest', rspm: "https://packagemanager.rstudio.com/cran/__linux__/noble/latest"}
+        scenario:
+          - package-load
+          - setup-only
+          - tests-first-half
+          - tests-second-half
+          - tests-estimator
+          - tests-transformer
 
     env:
       GITHUB_PAT: ${{ secrets.GH_TOKEN }}
       R_REMOTES_NO_ERRORS_FROM_WARNINGS: true
-      RSPM: ${{ matrix.config.rspm }}
       CDM5_ORACLE_CDM_SCHEMA: ${{ secrets.CDM5_ORACLE_CDM_SCHEMA }}
       CDM5_ORACLE_OHDSI_SCHEMA: ${{ secrets.CDM5_ORACLE_OHDSI_SCHEMA }}
       CDM5_ORACLE_PASSWORD: ${{ secrets.CDM5_ORACLE_PASSWORD }}
@@ -46,13 +44,14 @@ jobs:
       CDM5_SQL_SERVER_USER: ${{ secrets.CDM5_SQL_SERVER_USER }}
       UV_SYSTEM_PYTHON: 1
       RETICULATE_USE_MANAGED_VENV: "no"
+      DPLP_TEST_FILTER: ""
 
     steps:
       - uses: actions/checkout@v4
       
       - uses: r-lib/actions/setup-r@v2
         with:
-          r-version: ${{ matrix.config.r }}
+          r-version: release
 
       - uses: r-lib/actions/setup-tinytex@v2
 
@@ -60,153 +59,51 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.config.python }}
+          python-version: '3.12'
 
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@v4
         with:
           version: "latest"
-          python-version: ${{ matrix.config.python }}
-        
-      - name: Install system requirements
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get install -y libssh-dev
-          Rscript -e 'install.packages("remotes")'
-          while read -r cmd
-          do
-            eval sudo $cmd
-          done < <(Rscript -e 'writeLines(remotes::system_requirements("ubuntu", "24.04"))')
+          python-version: '3.12'
           
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           cache: always
-          extra-packages: any::rcmdcheck
+          extra-packages: any::rcmdcheck, any::devtools
           needs: check
 
       - name: setup r-reticulate venv
         shell: bash
         run: |
           uv pip install polars tqdm pyarrow duckdb nvidia-ml-py numpy
-          if [ "${{ matrix.config.torch }}" = "latest" ]; then
-            uv pip install torch --index https://download.pytorch.org/whl/cpu/
-          else
-            uv pip install "torch==${{ matrix.config.torch }}" --index https://download.pytorch.org/whl/cpu/
-          fi
+          uv pip install "torch==2.10.0" --index https://download.pytorch.org/whl/cpu/
 
-      - uses: r-lib/actions/check-r-package@v2
-        with:
-          args: 'c("--no-manual", "--as-cran")'
-          error-on: '"warning"'
-          check-dir: '"check"'
-
-      - name: Install covr
-        if: runner.os == 'Linux'
-        run: |
-          remotes::install_cran("covr")
-        shell: Rscript {0}
-
-      - name: Test coverage
-        if: runner.os == 'Linux'
-        run: covr::codecov(token = "${{ secrets.CODECOV_TOKEN }}")
-        shell: Rscript {0}
-
-      - name: Upload source package
-        if: success() && runner.os == 'macOS' && github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-        uses: actions/upload-artifact@v4
-        with:
-          name: package_tarball
-          path: check/*.tar.gz
-
-  Release:
-    needs: R-CMD-check
-    
-    runs-on: macOS-latest
-
-    env:
-      GH_TOKEN: ${{ secrets.GH_TOKEN }}
-
-    if: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
-
-    steps:
-      
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0    
-
-      - name: Check if version has increased
-        run: |
-          echo "new_version="$(perl compare_versions --tag) >> $GITHUB_ENV
-          
-      - name: Display new version number
-        if: ${{ env.new_version != '' }}
-        run: |
-          echo "${{ env.new_version }}" 
-          
-      - name: Extract release notes
-        if: ${{ env.new_version != '' }}
-        id: extract_release_notes
-        run: |
-          version="${{ env.new_version }}"
-          version="${version#v}"
-          notes=$(awk -v ver=$version '
-          $0=="DeepPatientLevelPrediction "ver {
-            getline
-            printing=1
-            next
-          }
-          printing && /^DeepPatientLevelPrediction / { exit }
-          printing { print }
-          ' NEWS.md)
-          if [ -z "$notes" ]; then
-            echo "ERROR: No release notes found for version $version" >&2
-            exit 1
-          fi
-          echo "notes<<EOF" >> "$GITHUB_OUTPUT"
-          echo "$notes" >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
+      - name: Install package
         shell: bash
+        run: R CMD INSTALL --no-multiarch --with-keep.source .
 
-      - name: Create release
-        if: ${{ env.new_version != '' }}
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }} 
-        with:
-          tag_name: ${{ env.new_version }}
-          release_name: Release ${{ env.new_version }}
-          body: |
-            ${{ steps.extract_release_notes.outputs.notes }}
-          draft: false
-          prerelease: false
-          
-      - uses: r-lib/actions/setup-r@v2
-        if: ${{ env.new_version != '' }}
-        
-      - name: Install drat
-        if: ${{ env.new_version != '' }}
+      - name: Run scenario
+        shell: bash
         run: |
-          install.packages('drat')
-        shell: Rscript {0}
-        
-      - name: Remove any tarballs that already exists
-        if: ${{ env.new_version != '' }}
-        run: |
-          rm -f *.tar.gz
-          
-      - name: Download package tarball
-        if: ${{ env.new_version != '' }}
-        uses: actions/download-artifact@v5
-        with:
-          name: package_tarball    
-          
-      - name: Push to drat
-        if: ${{ env.new_version != '' }}
-        run: |
-          bash deploy.sh
-
-      - name: Push to BroadSea
-        if: ${{ env.new_version != '' }}
-        run: |
-          curl --data "build=true" -X POST https://registry.hub.docker.com/u/ohdsi/broadsea-methodslibrary/trigger/f0b51cec-4027-4781-9383-4b38b42dd4f5/
-          
+          set -euxo pipefail
+          case "${{ matrix.scenario }}" in
+            package-load)
+              Rscript -e 'library(DeepPatientLevelPrediction); reticulate::import("torch"); cat("package-load complete\n"); invisible(gc())'
+              ;;
+            setup-only)
+              Rscript -e 'library(DeepPatientLevelPrediction); source("tests/testthat/setup.R"); cat("setup-only complete\n"); invisible(gc())'
+              ;;
+            tests-first-half)
+              DPLP_TEST_FILTER='Dataset|Estimator|Finetuner|GradientAccumulation|HelperFunctions|LRFinder' Rscript tests/testthat.R
+              ;;
+            tests-second-half)
+              DPLP_TEST_FILTER='MultiLayerPerceptron|PoincareEmbeddings|PositionalEncodings|RealMLP|ResNet|TrainingCache|Transformer' Rscript tests/testthat.R
+              ;;
+            tests-estimator)
+              DPLP_TEST_FILTER='Estimator' Rscript tests/testthat.R
+              ;;
+            tests-transformer)
+              DPLP_TEST_FILTER='Transformer' Rscript tests/testthat.R
+              ;;
+          esac
