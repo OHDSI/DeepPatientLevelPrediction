@@ -37,8 +37,6 @@ Getting Started
 - Python dependencies are managed through `reticulate` when the package is loaded or used. Advanced users can point `RETICULATE_PYTHON` at a prebuilt environment for offline or controlled deployments.
 - Please read the main vignette for the package:
 [Building Deep Learning Models](https://ohdsi.github.io/DeepPatientLevelPrediction/articles/BuildingDeepModels.html)
-- Temporal transformer models are covered in:
-[Building Temporal Transformer Models](https://ohdsi.github.io/DeepPatientLevelPrediction/articles/TemporalTransformer.html)
 
 User Documentation
 ==================
