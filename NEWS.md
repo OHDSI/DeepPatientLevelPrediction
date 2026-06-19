@@ -1,3 +1,10 @@
+DeepPatientLevelPrediction 2.3.0.9999
+======================
+
+Documentation and CI
+- Update CI and installation guidance to validate the recommended Python environment with Python 3.14 and torch 2.12.1.
+- Limit push-triggered R CMD checks to `develop` and `main` while keeping pull request checks enabled for all branches.
+
 DeepPatientLevelPrediction 2.3.0
 ======================
 
