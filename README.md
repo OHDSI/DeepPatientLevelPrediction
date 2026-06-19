@@ -27,7 +27,7 @@ DeepPatientLevelPrediction is an R package. It uses Python [PyTorch](https://pyt
 
 System Requirements
 ===================
-Requires R (version 4.0.0 or higher). Installation on Windows requires [RTools](http://cran.r-project.org/bin/windows/Rtools/). A CPU can be used for small examples and tests; an NVIDIA GPU is recommended for larger deep learning model development.
+Requires R (version 4.1.0 or higher). Installation on Windows requires [RTools](http://cran.r-project.org/bin/windows/Rtools/). A CPU can be used for small examples and tests; an NVIDIA GPU is recommended for larger deep learning model development.
 
 
 Getting Started
@@ -37,6 +37,8 @@ Getting Started
 - Python dependencies are managed through `reticulate` when the package is loaded or used. Advanced users can point `RETICULATE_PYTHON` at a prebuilt environment for offline or controlled deployments.
 - Please read the main vignette for the package:
 [Building Deep Learning Models](https://ohdsi.github.io/DeepPatientLevelPrediction/articles/BuildingDeepModels.html)
+- Temporal transformer models are covered in:
+[Building Temporal Transformer Models](https://ohdsi.github.io/DeepPatientLevelPrediction/articles/TemporalTransformer.html)
 
 User Documentation
 ==================

@@ -1,0 +1,184 @@
+---
+title: "Building Temporal Transformer Models"
+author: "Egill Fridgeirsson"
+date: '`r Sys.Date()`'
+header-includes:
+  - \usepackage{fancyhdr}
+  - \pagestyle{fancy}
+  - \fancyhead{}
+  - \fancyfoot[LE,RO]{\thepage}
+  - \renewcommand{\headrulewidth}{0.4pt}
+  - \renewcommand{\footrulewidth}{0.4pt}
+  - \fancyfoot[CO,CE]{PatientLevelPrediction Package Version `r  utils::packageVersion("PatientLevelPrediction")`}
+  - \fancyfoot[CO,CE]{DeepPatientLevelPrediction Package Version `r  utils::packageVersion("DeepPatientLevelPrediction")`}
+output:
+  html_document:
+    number_sections: yes
+    toc: yes
+editor_options:
+  markdown:
+    wrap: 72
+---
+
+```{=html}
+<!--
+%\VignetteEngine{knitr::rmarkdown}
+%\VignetteIndexEntry{Building Temporal Transformer Models}
+-->
+```
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+
+This vignette shows how to build a temporal transformer model with
+`DeepPatientLevelPrediction`. It assumes you are already familiar with
+building a regular `PatientLevelPrediction` analysis and have read the
+first model vignette.
+
+The temporal transformer uses sequence data instead of the usual
+two-dimensional patient-by-feature matrix. Each covariate record must
+include a `timeId` so the model can receive feature IDs, feature values,
+and the time step for each feature. The temporal sequence is created
+when you extract `plpData`.
+
+# Create Temporal Data
+
+Temporal transformer models need `plpData` built with temporal sequence
+covariate settings. The example below extracts demographic and condition
+features over the one year window before index.
+
+```{r, eval=FALSE}
+temporalCovariateSettings <-
+  FeatureExtraction::createTemporalSequenceCovariateSettings(
+    useDemographicsAge = TRUE,
+    useDemographicsGender = TRUE,
+    useConditionOccurrence = TRUE,
+    sequenceStartDay = -365,
+    sequenceEndDay = -1
+  )
+
+temporalPlpData <- PatientLevelPrediction::getPlpData(
+  databaseDetails = databaseDetails,
+  restrictPlpDataSettings =
+    PatientLevelPrediction::createRestrictPlpDataSettings(),
+  covariateSettings = temporalCovariateSettings
+)
+```
+
+Use the same `databaseDetails`, target and outcome cohort definitions,
+and `populationSettings` that you would use for a regular PLP analysis.
+
+# Configure The Model
+
+Use `setTransformer()` with `temporal = TRUE` to enable the temporal
+path. Temporal behavior is controlled through `temporalSettings`.
+
+The most important settings are:
+
+- `maxSequenceLength`: the maximum number of time-ordered feature
+  records per person. Use an integer for a fixed length or `"max"` to
+  use the maximum sequence length in the data.
+- `truncation`: how to truncate sequences longer than
+  `maxSequenceLength`. Currently only `"tail"` is supported.
+- `timeTokens`: whether to include explicit time tokens in the model
+  input.
+- `positionalEncoding`: the positional encoding used by the transformer.
+  This can be a character value such as `"SinusoidalPE"` or a list with
+  the encoding name and settings.
+
+For reproducible model definitions, set `temporalSettings` explicitly
+instead of relying on defaults.
+
+```{r, eval=FALSE}
+modelSettings <- DeepPatientLevelPrediction::setTransformer(
+  numBlocks = 1L,
+  dimToken = 8L,
+  dimOut = 1L,
+  numHeads = 2L,
+  attDropout = 0.0,
+  ffnDropout = 0.2,
+  dimHidden = 32L,
+  temporal = TRUE,
+  temporalSettings = list(
+    positionalEncoding = list(
+      name = "SinusoidalPE",
+      dropout = 0.1
+    ),
+    maxSequenceLength = 256L,
+    truncation = "tail",
+    timeTokens = FALSE
+  ),
+  estimatorSettings = DeepPatientLevelPrediction::setEstimator(
+    learningRate = 3e-4,
+    weightDecay = 1e-6,
+    batchSize = 64L,
+    epochs = 3L,
+    device = "cpu"
+  ),
+  randomSample = 1L
+)
+```
+
+Use `device = "cuda"` or a specific CUDA device such as `"cuda:0"` when
+you have an NVIDIA GPU available.
+
+# Run The Analysis
+
+The temporal transformer is passed to `PatientLevelPrediction::runPlp()`
+in the same way as other DeepPLP model settings.
+
+```{r, eval=FALSE}
+temporalTransformerResult <- PatientLevelPrediction::runPlp(
+  plpData = temporalPlpData,
+  outcomeId = 3,
+  modelSettings = modelSettings,
+  analysisId = "TemporalTransformer",
+  analysisName = "Testing temporal transformer",
+  populationSettings = populationSettings,
+  splitSettings = PatientLevelPrediction::createDefaultSplitSetting(
+    splitSeed = 42
+  ),
+  preprocessSettings = PatientLevelPrediction::createPreprocessSettings(),
+  executeSettings = PatientLevelPrediction::createExecuteSettings(
+    runSplitData = TRUE,
+    runSampleData = FALSE,
+    runFeatureEngineering = FALSE,
+    runPreprocessData = TRUE,
+    runModelDevelopment = TRUE,
+    runCovariateSummary = FALSE
+  ),
+  saveDirectory = file.path(getwd(), "TemporalTransformer")
+)
+```
+
+# Practical Notes
+
+Temporal transformers are usually more expensive than non-temporal
+models because attention scales with sequence length. Start with a small
+`maxSequenceLength`, a small number of blocks, and a CPU-compatible test
+run. Increase model size and move to CUDA only after the data extraction
+and model wiring are working.
+
+The order and density of the extracted temporal features matter. If the
+model is too slow or uses too much memory, reduce the number of temporal
+covariates in `FeatureExtraction`, shorten the time window, or lower
+`maxSequenceLength`.
+
+# Acknowledgments
+
+Considerable work has been dedicated to provide the
+`DeepPatientLevelPrediction` package.
+
+```{r tidy=TRUE,eval=TRUE}
+citation("DeepPatientLevelPrediction")
+```
+
+**Please reference this paper if you use the PLP Package in your work:**
+
+[Reps JM, Schuemie MJ, Suchard MA, Ryan PB, Rijnbeek PR. Design and
+implementation of a standardized framework to generate and evaluate
+patient-level prediction models using observational healthcare data. J
+Am Med Inform Assoc.
+2018;25(8):969-975.](http://dx.doi.org/10.1093/jamia/ocy032)
