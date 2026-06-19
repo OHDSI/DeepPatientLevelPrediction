@@ -35,7 +35,7 @@ model training and inference.
 
 # System Requirements
 
-Requires R (version 4.0.0 or higher). Installation on Windows requires
+Requires R (version 4.1.0 or higher). Installation on Windows requires
 [RTools](http://cran.r-project.org/bin/windows/Rtools/). A CPU can be
 used for small examples and tests; an NVIDIA GPU is recommended for
 larger deep learning model development.

@@ -40,6 +40,7 @@
 <li><a class="dropdown-item" href="../articles/BuildingDeepModels.html">Building Deep Learning Models</a></li>
     <li><a class="dropdown-item" href="../articles/FirstModel.html">Developing your first DeepPLP model</a></li>
     <li><a class="dropdown-item" href="../articles/Installing.html">DeepPatientLevelPrediction Installation Guide</a></li>
+    <li><a class="dropdown-item" href="../articles/TemporalTransformer.html">Building Temporal Transformer Models</a></li>
     <li><a class="dropdown-item" href="../articles/TransferLearning.html">How to use DeepPatientLevelPrediction for Transfer Learning</a></li>
   </ul>
 </li>
@@ -199,9 +200,9 @@ model’s parameters to reduce the error.</p>
 <div class="section level5">
 <h5 id="set-function">Set Function<a class="anchor" aria-label="anchor" href="#set-function"></a>
 </h5>
-<p>To use the package to fit a MLP model you can use the
+<p>To use the package to fit an MLP model you can use the
 <code><a href="../reference/setMultiLayerPerceptron.html">setMultiLayerPerceptron()</a></code> function to specify the
-hyper-parameter settings for the MLP.</p>
+hyperparameter settings for the MLP.</p>
 </div>
 <div class="section level5">
 <h5 id="inputs">Inputs<a class="anchor" aria-label="anchor" href="#inputs"></a>
@@ -386,7 +387,7 @@ but not testing. The embedding layer has 32 neurons. Learning rate of
 hyperparameter search is done since each input only includes one
 option.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">resset</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/setResNet.html">setResNet</a></span><span class="op">(</span></span>
+<code class="sourceCode R"><span><span class="va">resnetSettings</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/setResNet.html">setResNet</a></span><span class="op">(</span></span>
 <span>  numLayers <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2L</span><span class="op">)</span>,</span>
 <span>  sizeHidden <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">32L</span><span class="op">)</span>,</span>
 <span>  hiddenFactor <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2L</span><span class="op">)</span>,</span>
@@ -406,7 +407,7 @@ option.</p>
 <span><span class="va">resResult</span> <span class="op">&lt;-</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/runPlp.html" class="external-link">runPlp</a></span><span class="op">(</span></span>
 <span>    plpData <span class="op">=</span> <span class="va">plpData</span>,</span>
 <span>    outcomeId <span class="op">=</span> <span class="fl">3</span>,</span>
-<span>    modelSettings <span class="op">=</span> <span class="va">resset</span>,</span>
+<span>    modelSettings <span class="op">=</span> <span class="va">resnetSettings</span>,</span>
 <span>    analysisId <span class="op">=</span> <span class="st">'ResNet'</span>,</span>
 <span>    analysisName <span class="op">=</span> <span class="st">'Testing ResNet'</span>,</span>
 <span>    populationSettings <span class="op">=</span> <span class="va">populationSettings</span>,</span>
@@ -441,7 +442,9 @@ be called with one value per argument for a fixed model configuration,
 or with multiple values for tunable parameters such as
 <code>numLayers</code>, <code>sizeHidden</code>, <code>dropout</code>,
 and <code>sizeEmbedding</code> to run a hyperparameter or sensitivity
-search.</p>
+search. By default, RealMLP uses grid search over the supplied values.
+Set <code>hyperParamSearch = "random"</code> and
+<code>randomSample</code> to sample from the expanded grid instead.</p>
 </div>
 <div class="section level4">
 <h4 id="example-code-2">Example Code<a class="anchor" aria-label="anchor" href="#example-code-2"></a>
@@ -473,6 +476,19 @@ search.</p>
 <span>    <span class="op">)</span>,</span>
 <span>    saveDirectory <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/getwd.html" class="external-link">getwd</a></span><span class="op">(</span><span class="op">)</span>, <span class="st">'RealMLP'</span><span class="op">)</span> <span class="co"># change to save elsewhere</span></span>
 <span>  <span class="op">)</span></span></code></pre></div>
+<p>For example, the following settings sample four RealMLP
+configurations from the expanded grid:</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">modelSettings</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/setRealMLP.html">setRealMLP</a></span><span class="op">(</span></span>
+<span>  numLayers <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2L</span>, <span class="fl">3L</span><span class="op">)</span>,</span>
+<span>  sizeHidden <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">128L</span>, <span class="fl">256L</span><span class="op">)</span>,</span>
+<span>  dropout <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.1</span>, <span class="fl">0.2</span><span class="op">)</span>,</span>
+<span>  numericEmbeddingMode <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"scale"</span>, <span class="st">"pbld"</span><span class="op">)</span>,</span>
+<span>  hyperParamSearch <span class="op">=</span> <span class="st">"random"</span>,</span>
+<span>  randomSample <span class="op">=</span> <span class="fl">4L</span>,</span>
+<span>  randomSampleSeed <span class="op">=</span> <span class="fl">42L</span>,</span>
+<span>  device <span class="op">=</span> <span class="st">"cpu"</span></span>
+<span><span class="op">)</span></span></code></pre></div>
 </div>
 </div>
 <div class="section level3">
@@ -491,10 +507,13 @@ tabular data from this <a href="https://arxiv.org/abs/2106.11959" class="externa
 <p>This architecture is computationally expensive and scales badly with
 longer sequence length. In this case the sequence is the amount of
 features each patient has. Users need to be aware of how many features
-they are feeding to the model since this will effect the computation
+they are feeding to the model since this will affect the computation
 time heavily. This is something you control in
 <code>FeatureExtraction</code> when you create your
 <code>covariateSettings</code>.</p>
+<p>This section describes the non-temporal transformer. For transformer
+models using temporal sequence covariates, see the temporal transformer
+vignette.</p>
 </div>
 <div class="section level4">
 <h4 id="examples">Examples<a class="anchor" aria-label="anchor" href="#examples"></a>
@@ -533,7 +552,7 @@ feedforward block</p>
 <div class="section level5">
 <h5 id="example-code-3">Example Code<a class="anchor" aria-label="anchor" href="#example-code-3"></a>
 </h5>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">modelSettings</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/setTransformer.html">setTransformer</a></span><span class="op">(</span>numBlocks <span class="op">=</span> <span class="fl">3L</span>,</span>
 <span>                                dimToken <span class="op">=</span> <span class="fl">32L</span>,</span>
 <span>                                dimOut <span class="op">=</span> <span class="fl">1</span>,</span>
@@ -580,7 +599,7 @@ feedforward block</p>
 </h2>
 <p>Considerable work has been dedicated to provide the
 <code>DeepPatientLevelPrediction</code> package.</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/citation.html" class="external-link">citation</a></span><span class="op">(</span><span class="st">"DeepPatientLevelPrediction"</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## To cite package 'DeepPatientLevelPrediction' in publications use:</span></span>
 <span><span class="co">## </span></span>

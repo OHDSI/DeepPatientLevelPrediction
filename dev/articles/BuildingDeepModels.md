@@ -124,9 +124,9 @@ model’s parameters to reduce the error.
 
 ##### Set Function
 
-To use the package to fit a MLP model you can use the
+To use the package to fit an MLP model you can use the
 [`setMultiLayerPerceptron()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setMultiLayerPerceptron.md)
-function to specify the hyper-parameter settings for the MLP.
+function to specify the hyperparameter settings for the MLP.
 
 ##### Inputs
 
@@ -316,7 +316,7 @@ hyperparameter search is done since each input only includes one option.
 
 ``` r
 
-resset <- setResNet(
+resnetSettings <- setResNet(
   numLayers = c(2L),
   sizeHidden = c(32L),
   hiddenFactor = c(2L),
@@ -336,7 +336,7 @@ resset <- setResNet(
 resResult <- PatientLevelPrediction::runPlp(
     plpData = plpData,
     outcomeId = 3,
-    modelSettings = resset,
+    modelSettings = resnetSettings,
     analysisId = 'ResNet',
     analysisName = 'Testing ResNet',
     populationSettings = populationSettings,
@@ -370,7 +370,9 @@ Like the other model setting helpers,
 can be called with one value per argument for a fixed model
 configuration, or with multiple values for tunable parameters such as
 `numLayers`, `sizeHidden`, `dropout`, and `sizeEmbedding` to run a
-hyperparameter or sensitivity search.
+hyperparameter or sensitivity search. By default, RealMLP uses grid
+search over the supplied values. Set `hyperParamSearch = "random"` and
+`randomSample` to sample from the expanded grid instead.
 
 #### Example Code
 
@@ -404,6 +406,23 @@ realMlpResult <- PatientLevelPrediction::runPlp(
   )
 ```
 
+For example, the following settings sample four RealMLP configurations
+from the expanded grid:
+
+``` r
+
+modelSettings <- setRealMLP(
+  numLayers = c(2L, 3L),
+  sizeHidden = c(128L, 256L),
+  dropout = c(0.1, 0.2),
+  numericEmbeddingMode = c("scale", "pbld"),
+  hyperParamSearch = "random",
+  randomSample = 4L,
+  randomSampleSeed = 42L,
+  device = "cpu"
+)
+```
+
 ### Transformer
 
 #### Overall concept
@@ -419,9 +438,13 @@ data from this [paper](https://arxiv.org/abs/2106.11959).
 This architecture is computationally expensive and scales badly with
 longer sequence length. In this case the sequence is the amount of
 features each patient has. Users need to be aware of how many features
-they are feeding to the model since this will effect the computation
+they are feeding to the model since this will affect the computation
 time heavily. This is something you control in `FeatureExtraction` when
 you create your `covariateSettings`.
+
+This section describes the non-temporal transformer. For transformer
+models using temporal sequence covariates, see the temporal transformer
+vignette.
 
 #### Examples
 

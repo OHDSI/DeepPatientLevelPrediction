@@ -40,6 +40,7 @@
 <li><a class="dropdown-item" href="../articles/BuildingDeepModels.html">Building Deep Learning Models</a></li>
     <li><a class="dropdown-item" href="../articles/FirstModel.html">Developing your first DeepPLP model</a></li>
     <li><a class="dropdown-item" href="../articles/Installing.html">DeepPatientLevelPrediction Installation Guide</a></li>
+    <li><a class="dropdown-item" href="../articles/TemporalTransformer.html">Building Temporal Transformer Models</a></li>
     <li><a class="dropdown-item" href="../articles/TransferLearning.html">How to use DeepPatientLevelPrediction for Transfer Learning</a></li>
   </ul>
 </li>
@@ -104,22 +105,21 @@ model:</p>
 <span><span class="co"># Get connection details for the Eunomia dataset and create the cohorts</span></span>
 <span><span class="va">connectionDetails</span> <span class="op">&lt;-</span> <span class="fu">Eunomia</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/Eunomia/reference/getEunomiaConnectionDetails.html" class="external-link">getEunomiaConnectionDetails</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="fu">Eunomia</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/Eunomia/reference/createCohorts.html" class="external-link">createCohorts</a></span><span class="op">(</span><span class="va">connectionDetails</span><span class="op">)</span></span></code></pre></div>
-<p>The default Eunomia package includes four cohorts. Gastrointestinal
+<p>The default Eunomia package includes four cohorts: gastrointestinal
 bleeding (<code>GiBleed</code>) and use of three different drugs,
-<code>diclofenac</code>, <code>NSAIDS</code> and <code>celecoxib</code>.
-Usually then we would use one of three drug cohorts as our target cohort
-and then predict the risk of gastrointestinal bleeding. The
-<code>cohort_definition_ids</code> of these are:
-<code>celecoxib: 1</code>, <code>diclofenac: 2</code>,
-<code>GiBleed: 3</code> and <code>NSAIDS: 4</code>.</p>
-<p>After creating the cohorts we can see that there are most patients in
-the <code>NSAIDS</code> cohort. We will use this cohort as our target
-cohort for the initial model. There are least patients in the
-<code>diclofenac</code> cohort (excluding <code>GiBleed</code>), so we
-will use this cohort as our target cohort for the transfer learning
-model.</p>
+<code>diclofenac</code>, <code>NSAIDs</code>, and
+<code>celecoxib</code>. Usually we would use one of the drug cohorts as
+our target cohort and then predict the risk of gastrointestinal
+bleeding. The cohort definition IDs are: <code>celecoxib: 1</code>,
+<code>diclofenac: 2</code>, <code>GiBleed: 3</code>, and
+<code>NSAIDs: 4</code>.</p>
+<p>After creating the cohorts, we can see that the <code>NSAIDs</code>
+cohort has the most patients. We will use this cohort as our target
+cohort for the initial model. The <code>diclofenac</code> cohort has the
+fewest patients, excluding <code>GiBleed</code>, so we will use it as
+our target cohort for the transfer learning model.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># create some simple covariate settings using Sex, Age and Long-term conditions and drug use in the last year.</span></span>
+<code class="sourceCode R"><span><span class="co"># Create some simple covariate settings using sex, age, and long-term conditions and drug use in the last year.</span></span>
 <span><span class="va">covariateSettings</span> <span class="op">&lt;-</span> <span class="fu">FeatureExtraction</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/FeatureExtraction/man/createCovariateSettings.html" class="external-link">createCovariateSettings</a></span><span class="op">(</span></span>
 <span>  useDemographicsGender <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  useDemographicsAge <span class="op">=</span> <span class="cn">TRUE</span>,</span>
@@ -128,7 +128,7 @@ model.</p>
 <span>  endDays <span class="op">=</span> <span class="fl">0</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Information about the database. In Eunomia sqlite there is only one schema, main and the cohorts are in a table named `cohort` which is the default. </span></span>
+<span><span class="co"># Information about the database. In Eunomia SQLite there is only one schema, main, and the cohorts are in the default table named `cohort`.</span></span>
 <span><span class="va">databaseDetails</span> <span class="op">&lt;-</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createDatabaseDetails.html" class="external-link">createDatabaseDetails</a></span><span class="op">(</span></span>
 <span>  connectionDetails <span class="op">=</span> <span class="va">connectionDetails</span>,</span>
 <span>  cdmDatabaseId <span class="op">=</span> <span class="st">"2"</span>, <span class="co"># Eunomia version used</span></span>
@@ -166,11 +166,11 @@ model.</p>
 <span></span>
 <span><span class="va">plpResults</span> <span class="op">&lt;-</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/runPlp.html" class="external-link">runPlp</a></span><span class="op">(</span></span>
 <span>  plpData <span class="op">=</span> <span class="va">plpData</span>,</span>
-<span>  outcomeId <span class="op">=</span> <span class="fl">3</span>, <span class="co"># 4 is the id of GiBleed</span></span>
+<span>  outcomeId <span class="op">=</span> <span class="fl">3</span>, <span class="co"># GiBleed</span></span>
 <span>  modelSettings <span class="op">=</span> <span class="va">modelSettings</span>,</span>
 <span>  analysisName <span class="op">=</span> <span class="st">"Nsaids_GiBleed"</span>,</span>
 <span>  analysisId <span class="op">=</span> <span class="st">"1"</span>,</span>
-<span>  <span class="co"># Let's predict the risk of Gibleed in the year following start of NSAIDs use</span></span>
+<span>  <span class="co"># Predict the risk of GiBleed in the year following start of NSAIDs use</span></span>
 <span>  populationSettings <span class="op">=</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createStudyPopulationSettings.html" class="external-link">createStudyPopulationSettings</a></span><span class="op">(</span></span>
 <span>    requireTimeAtRisk <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>    firstExposureOnly <span class="op">=</span> <span class="cn">TRUE</span>,</span>
@@ -180,8 +180,8 @@ model.</p>
 <span>  splitSettings <span class="op">=</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createDefaultSplitSetting.html" class="external-link">createDefaultSplitSetting</a></span><span class="op">(</span>splitSeed <span class="op">=</span> <span class="fl">42</span><span class="op">)</span>,</span>
 <span>  saveDirectory <span class="op">=</span> <span class="st">"./output"</span> <span class="co"># save in a folder in the current directory</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p>This should take a few minutes on a cpu. Now that we have a model
-developed we can further finetune it on the <code>diclofenac</code>
+<p>This should take a few minutes on a CPU. Now that we have a model
+developed, we can further finetune it on the <code>diclofenac</code>
 cohort. First we need to extract it.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">databaseDetails</span> <span class="op">&lt;-</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createDatabaseDetails.html" class="external-link">createDatabaseDetails</a></span><span class="op">(</span></span>
@@ -217,10 +217,10 @@ the model is: <code>./output/1/plpResult/model</code>.</p>
 <span>                                        seed <span class="op">=</span> <span class="fl">42</span></span>
 <span>                                      <span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p>Currently the basic transfer learning works by loading the previously
-trained model and resetting it’s last layer, often called the prediction
+trained model and resetting its last layer, often called the prediction
 head. Then it will train only the parameters in this last layer. The
-hope is that the other layer’s have learned some generalizable
-representations of our data and by modifying the last layer we can mix
+hope is that the other layers have learned some generalizable
+representations of our data, and by modifying the last layer we can mix
 those representations to suit the new task.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">plpResultsTransfer</span> <span class="op">&lt;-</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/runPlp.html" class="external-link">runPlp</a></span><span class="op">(</span></span>
@@ -238,10 +238,9 @@ those representations to suit the new task.</p>
 <span>  splitSettings <span class="op">=</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createDefaultSplitSetting.html" class="external-link">createDefaultSplitSetting</a></span><span class="op">(</span>splitSeed <span class="op">=</span> <span class="fl">42</span><span class="op">)</span>,</span>
 <span>  saveDirectory <span class="op">=</span> <span class="st">"./outputTransfer"</span> <span class="co"># save in a folder in the current directory</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p>This should be much faster since it’s only training the last layer.
-Unfortunately the results are bad. However this is a toy example on
-synthetic toy data but the process on large observational data is
-exactly the same.</p>
+<p>This should be much faster since it only trains the last layer. The
+results are not expected to be good in this toy example on synthetic
+data, but the process on large observational data is the same.</p>
 </div>
 <div class="section level2">
 <h2 id="conclusion">Conclusion<a class="anchor" aria-label="anchor" href="#conclusion"></a>

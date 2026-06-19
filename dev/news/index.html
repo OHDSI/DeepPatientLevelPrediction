@@ -24,6 +24,7 @@
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/BuildingDeepModels.html">Building Deep Learning Models</a></li>
     <li><a class="dropdown-item" href="../articles/FirstModel.html">Developing your first DeepPLP model</a></li>
     <li><a class="dropdown-item" href="../articles/Installing.html">DeepPatientLevelPrediction Installation Guide</a></li>
+    <li><a class="dropdown-item" href="../articles/TemporalTransformer.html">Building Temporal Transformer Models</a></li>
     <li><a class="dropdown-item" href="../articles/TransferLearning.html">How to use DeepPatientLevelPrediction for Transfer Learning</a></li>
   </ul></li>
 <li class="active nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -41,6 +42,12 @@
       <small>Source: <a href="https://github.com/OHDSI/DeepPatientLevelPrediction/blob/develop/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2.3.0.9999" id="deeppatientlevelprediction-2309999">DeepPatientLevelPrediction 2.3.0.9999<a class="anchor" aria-label="anchor" href="#deeppatientlevelprediction-2309999"></a></h2>
+<p>New features - Add hyperparameter tuning support for RealMLP.</p>
+<p>Bug fixes - Keep temporal dataset <code>feature_ids</code>, <code>feature_values</code>, and <code>time_ids</code> aligned when multiple features share the same time ID.</p>
+<p>Documentation and CI - Refresh RealMLP examples for current grid/random tuning behavior. - Add a dedicated temporal transformer vignette. - Update CI and installation guidance to validate the recommended Python environment with Python 3.14 and torch 2.12.1. - Pin Python duckdb to 1.5.2 on macOS CI to avoid intermittent shutdown segfaults. - Limit push-triggered R CMD checks to <code>develop</code> and <code>main</code> while keeping pull request checks enabled for all branches. - Refresh vignette wording and examples for current runtime guidance.</p>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2.3.0" id="deeppatientlevelprediction-230">DeepPatientLevelPrediction 2.3.0<a class="anchor" aria-label="anchor" href="#deeppatientlevelprediction-230"></a></h2>
 <p>New features - Add core <code>RealMLP</code> support for tabular deep learning, including paper-style numeric embeddings, schedules, and data-dependent initialization (PR <a href="https://github.com/OHDSI/DeepPatientLevelPrediction/issues/171" class="external-link">#171</a>) - Add dropout support to <code>TemporalPE</code> and test coverage for positional-encoding dropout behavior (PR <a href="https://github.com/OHDSI/DeepPatientLevelPrediction/issues/165" class="external-link">#165</a>)</p>

@@ -28,22 +28,22 @@ connectionDetails <- Eunomia::getEunomiaConnectionDetails()
 Eunomia::createCohorts(connectionDetails)
 ```
 
-The default Eunomia package includes four cohorts. Gastrointestinal
+The default Eunomia package includes four cohorts: gastrointestinal
 bleeding (`GiBleed`) and use of three different drugs, `diclofenac`,
-`NSAIDS` and `celecoxib`. Usually then we would use one of three drug
-cohorts as our target cohort and then predict the risk of
-gastrointestinal bleeding. The `cohort_definition_ids` of these are:
-`celecoxib: 1`, `diclofenac: 2`, `GiBleed: 3` and `NSAIDS: 4`.
+`NSAIDs`, and `celecoxib`. Usually we would use one of the drug cohorts
+as our target cohort and then predict the risk of gastrointestinal
+bleeding. The cohort definition IDs are: `celecoxib: 1`,
+`diclofenac: 2`, `GiBleed: 3`, and `NSAIDs: 4`.
 
-After creating the cohorts we can see that there are most patients in
-the `NSAIDS` cohort. We will use this cohort as our target cohort for
-the initial model. There are least patients in the `diclofenac` cohort
-(excluding `GiBleed`), so we will use this cohort as our target cohort
-for the transfer learning model.
+After creating the cohorts, we can see that the `NSAIDs` cohort has the
+most patients. We will use this cohort as our target cohort for the
+initial model. The `diclofenac` cohort has the fewest patients,
+excluding `GiBleed`, so we will use it as our target cohort for the
+transfer learning model.
 
 ``` r
 
-# create some simple covariate settings using Sex, Age and Long-term conditions and drug use in the last year.
+# Create some simple covariate settings using sex, age, and long-term conditions and drug use in the last year.
 covariateSettings <- FeatureExtraction::createCovariateSettings(
   useDemographicsGender = TRUE,
   useDemographicsAge = TRUE,
@@ -52,7 +52,7 @@ covariateSettings <- FeatureExtraction::createCovariateSettings(
   endDays = 0
 )
 
-# Information about the database. In Eunomia sqlite there is only one schema, main and the cohorts are in a table named `cohort` which is the default. 
+# Information about the database. In Eunomia SQLite there is only one schema, main, and the cohorts are in the default table named `cohort`.
 databaseDetails <- PatientLevelPrediction::createDatabaseDetails(
   connectionDetails = connectionDetails,
   cdmDatabaseId = "2", # Eunomia version used
@@ -94,11 +94,11 @@ modelSettings <- setResNet(numLayers = c(2),
 
 plpResults <- PatientLevelPrediction::runPlp(
   plpData = plpData,
-  outcomeId = 3, # 4 is the id of GiBleed
+  outcomeId = 3, # GiBleed
   modelSettings = modelSettings,
   analysisName = "Nsaids_GiBleed",
   analysisId = "1",
-  # Let's predict the risk of Gibleed in the year following start of NSAIDs use
+  # Predict the risk of GiBleed in the year following start of NSAIDs use
   populationSettings = PatientLevelPrediction::createStudyPopulationSettings(
     requireTimeAtRisk = FALSE,
     firstExposureOnly = TRUE,
@@ -110,8 +110,8 @@ plpResults <- PatientLevelPrediction::runPlp(
 )
 ```
 
-This should take a few minutes on a cpu. Now that we have a model
-developed we can further finetune it on the `diclofenac` cohort. First
+This should take a few minutes on a CPU. Now that we have a model
+developed, we can further finetune it on the `diclofenac` cohort. First
 we need to extract it.
 
 ``` r
@@ -154,10 +154,10 @@ modelSettingsTransfer <- setFinetuner(modelPath = './output/1/plpResult/model',
 ```
 
 Currently the basic transfer learning works by loading the previously
-trained model and resetting it’s last layer, often called the prediction
+trained model and resetting its last layer, often called the prediction
 head. Then it will train only the parameters in this last layer. The
-hope is that the other layer’s have learned some generalizable
-representations of our data and by modifying the last layer we can mix
+hope is that the other layers have learned some generalizable
+representations of our data, and by modifying the last layer we can mix
 those representations to suit the new task.
 
 ``` r
@@ -179,10 +179,9 @@ plpResultsTransfer <- PatientLevelPrediction::runPlp(
 )
 ```
 
-This should be much faster since it’s only training the last layer.
-Unfortunately the results are bad. However this is a toy example on
-synthetic toy data but the process on large observational data is
-exactly the same.
+This should be much faster since it only trains the last layer. The
+results are not expected to be good in this toy example on synthetic
+data, but the process on large observational data is the same.
 
 ## Conclusion
 

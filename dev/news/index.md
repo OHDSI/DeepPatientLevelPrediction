@@ -1,5 +1,21 @@
 # Changelog
 
+## DeepPatientLevelPrediction 2.3.0.9999
+
+New features - Add hyperparameter tuning support for RealMLP.
+
+Bug fixes - Keep temporal dataset `feature_ids`, `feature_values`, and
+`time_ids` aligned when multiple features share the same time ID.
+
+Documentation and CI - Refresh RealMLP examples for current grid/random
+tuning behavior. - Add a dedicated temporal transformer vignette. -
+Update CI and installation guidance to validate the recommended Python
+environment with Python 3.14 and torch 2.12.1. - Pin Python duckdb to
+1.5.2 on macOS CI to avoid intermittent shutdown segfaults. - Limit
+push-triggered R CMD checks to `develop` and `main` while keeping pull
+request checks enabled for all branches. - Refresh vignette wording and
+examples for current runtime guidance.
+
 ## DeepPatientLevelPrediction 2.3.0
 
 New features - Add core `RealMLP` support for tabular deep learning,

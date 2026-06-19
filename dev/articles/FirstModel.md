@@ -3,7 +3,7 @@
 ## Introduction
 
 This vignette describes how you can develop your first deep learning
-model using the deepPLP package on OMOP-CDM data.
+model using the DeepPLP package on OMOP-CDM data.
 
 First make sure you have everything installed correctly by following the
 [installation
@@ -11,9 +11,9 @@ guide](https://ohdsi.github.io/DeepPatientLevelPrediction/articles/Installing.ht
 
 ## The data
 
-Since there is no publicly available data we use a nifty little package
-called [Eunomia](https://github.com/OHDSI/Eunomia) which provides us
-with synthetic data in the OMOP-CDM.
+Since there is no publicly available data, we use
+[Eunomia](https://github.com/OHDSI/Eunomia), which provides synthetic
+data in the OMOP CDM.
 
 It can be installed with:
 
@@ -22,11 +22,11 @@ It can be installed with:
 install.packages('Eunomia')
 ```
 
-To start with we have to define our cohorts of interest and extract a so
-called plpData object with the features we want to use.
+To start with, we have to define our cohorts of interest and extract a
+`plpData` object with the features we want to use.
 
-In Eunomia the cohorts have already been defined but we need to create
-them. This we can do by running:
+In Eunomia the cohorts have already been defined, but we need to create
+them. We can do this by running:
 
 ``` r
 
@@ -35,7 +35,7 @@ Eunomia::createCohorts(connectionDetails)
 ```
 
 The first line gets the Eunomia connection details. The Eunomia data is
-stored in a sqlite database. The second line creates the cohorts. You
+stored in a SQLite database. The second line creates the cohorts. You
 should see output confirming that three target cohorts have been
 created, consisting of users of certain medications and one outcome
 cohort of gastrointestinal bleeding.
@@ -43,7 +43,7 @@ cohort of gastrointestinal bleeding.
 ## Our settings
 
 We define our covariate settings using
-[FeatureExtraction](https://github.com/OHDSI/FeatureExtraction)
+[FeatureExtraction](https://github.com/OHDSI/FeatureExtraction).
 
 ``` r
 
@@ -110,10 +110,10 @@ NSAIDs until one year later.
 Now it’s time to define our deep learning model. It can be daunting for
 those not familiar with deep learning to define their first model since
 the models are very flexible and have many hyperparameters to define for
-your model architecture. To help with this `deepPLP` has helper
-functions with a sensible set of hyperparameters for testing. Best
-practice is though to do an extensive hyperparameter tuning step using
-cross validation.
+your model architecture. To help with this, DeepPLP has helper functions
+with a sensible set of hyperparameters for testing. Best practice is
+still to do an extensive hyperparameter tuning step using cross
+validation.
 
 We will use a simple ResNet for our example. ResNets use skip
 connections between layers to support deeper models without overfitting

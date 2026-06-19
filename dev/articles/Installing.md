@@ -13,7 +13,7 @@ Windows, Mac and Linux.
 Under Windows the OHDSI Deep Patient Level Prediction (DeepPLP) package
 requires installing:
 
-- R (<https://cran.r-project.org/> ) - (R \>= 4.0.0, but latest is
+- R (<https://cran.r-project.org/> ) - (R \>= 4.1.0, but latest is
   recommended)
 - Python - Recommend Python 3.14. Python \>= 3.10 is supported
 - RStudio (<https://www.rstudio.com/> )
@@ -24,7 +24,7 @@ requires installing:
 
 Under Mac and Linux the OHDSI DeepPLP package requires installing:
 
-- R (<https://cran.r-project.org/> ) - (R \>= 4.0.0, but latest is
+- R (<https://cran.r-project.org/> ) - (R \>= 4.1.0, but latest is
   recommended)
 - Python - Recommend Python 3.14. Python \>= 3.10 is supported
 - RStudio (<https://www.rstudio.com/> )
