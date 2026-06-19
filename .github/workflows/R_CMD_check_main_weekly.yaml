@@ -31,15 +31,15 @@ jobs:
         with:
           r-version: ${{ matrix.config.r }}
           
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
-          python-version: '3.12'
+          python-version: '3.14'
 
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@v4
         with:
           version: "latest"
-          python-version: "3.12"
+          python-version: "3.14"
       
       - uses: r-lib/actions/setup-tinytex@v2
 
@@ -53,7 +53,7 @@ jobs:
       - name: setup r-reticulate venv
         run: |
           uv pip install polars tqdm pyarrow duckdb nvidia-ml-py numpy
-          uv pip install "torch==2.10.0" --index https://download.pytorch.org/whl/cpu/
+          uv pip install "torch==2.12.1" --index https://download.pytorch.org/whl/cpu/
 
       - uses: r-lib/actions/check-r-package@v2
         with:

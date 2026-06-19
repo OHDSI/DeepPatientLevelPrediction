@@ -3,7 +3,8 @@
 on:
   push:
     branches:
-      - '**'
+      - develop
+      - main
   pull_request:
     branches:
       - '**'
@@ -20,10 +21,10 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - {os: windows-latest, r: 'release', python: '3.12', torch: '2.10.0'}
-          - {os: macOS-latest, r: 'release', python: '3.12', torch: '2.10.0'}
-          - {os: ubuntu-24.04, r: 'release', python: '3.12', torch: '2.10.0', rspm: "https://packagemanager.rstudio.com/cran/__linux__/noble/latest"}
-          - {os: ubuntu-24.04, r: 'release', python: '3.10', torch: 'latest', rspm: "https://packagemanager.rstudio.com/cran/__linux__/noble/latest"}
+          - {os: windows-latest, r: 'release', python: '3.14', torch: '2.12.1'}
+          - {os: macOS-latest, r: 'release', python: '3.14', torch: '2.12.1'}
+          - {os: ubuntu-24.04, r: 'release', python: '3.14', torch: '2.12.1', rspm: "https://packagemanager.rstudio.com/cran/__linux__/noble/latest"}
+          - {os: ubuntu-24.04, r: 'release', python: '3.14', torch: 'latest', rspm: "https://packagemanager.rstudio.com/cran/__linux__/noble/latest"}
 
     env:
       GITHUB_PAT: ${{ secrets.GH_TOKEN }}
@@ -58,7 +59,7 @@ jobs:
 
       - uses: r-lib/actions/setup-pandoc@v2
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.config.python }}
 
