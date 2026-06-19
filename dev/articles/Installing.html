@@ -65,7 +65,7 @@
                         <h4 data-toc-skip class="author">Egill
 Fridgeirsson</h4>
             
-            <h4 data-toc-skip class="date">2026-06-16</h4>
+            <h4 data-toc-skip class="date">2026-06-19</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/OHDSI/DeepPatientLevelPrediction/blob/develop/vignettes/Installing.Rmd" class="external-link"><code>vignettes/Installing.Rmd</code></a></small>
       <div class="d-none name"><code>Installing.Rmd</code></div>
@@ -95,7 +95,7 @@ package requires installing:</p>
 <ul>
 <li>R (<a href="https://cran.r-project.org/" class="external-link uri">https://cran.r-project.org/</a> ) - (R &gt;= 4.0.0, but
 latest is recommended)</li>
-<li>Python - Recommend Python 3.12. Python &gt;= 3.10 is supported</li>
+<li>Python - Recommend Python 3.14. Python &gt;= 3.10 is supported</li>
 <li>RStudio (<a href="https://www.rstudio.com/" class="external-link uri">https://www.rstudio.com/</a> )</li>
 <li>Java (<a href="http://www.java.com" class="external-link uri">http://www.java.com</a> )</li>
 <li>RTools (<a href="https://cran.r-project.org/bin/windows/Rtools/" class="external-link uri">https://cran.r-project.org/bin/windows/Rtools/</a>)</li>
@@ -109,7 +109,7 @@ installing:</p>
 <ul>
 <li>R (<a href="https://cran.r-project.org/" class="external-link uri">https://cran.r-project.org/</a> ) - (R &gt;= 4.0.0, but
 latest is recommended)</li>
-<li>Python - Recommend Python 3.12. Python &gt;= 3.10 is supported</li>
+<li>Python - Recommend Python 3.14. Python &gt;= 3.10 is supported</li>
 <li>RStudio (<a href="https://www.rstudio.com/" class="external-link uri">https://www.rstudio.com/</a> )</li>
 <li>Java (<a href="http://www.java.com" class="external-link uri">http://www.java.com</a> )</li>
 <li>Xcode command line tools(run in terminal: xcode-select –install)
@@ -144,11 +144,11 @@ requirements.</p>
 users in airgapped environments can manage the Python environment
 themselves and tell <code>reticulate</code> which interpreter to use.
 One option is to create the environment with <code>uv</code> and Python
-3.12:</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="ex">uv</span> python install 3.12</span>
-<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="ex">uv</span> venv <span class="at">--python</span> 3.12</span>
+3.14:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="ex">uv</span> python install 3.14</span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="ex">uv</span> venv <span class="at">--python</span> 3.14</span>
 <span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a><span class="ex">uv</span> pip install polars tqdm pyarrow duckdb nvidia-ml-py numpy</span>
-<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a><span class="ex">uv</span> pip install <span class="st">"torch==2.10.0"</span> <span class="at">--index</span> https://download.pytorch.org/whl/cpu/</span></code></pre></div>
+<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a><span class="ex">uv</span> pip install <span class="st">"torch==2.12.1"</span> <span class="at">--index</span> https://download.pytorch.org/whl/cpu/</span></code></pre></div>
 <p>The second <code>uv pip install</code> command installs the CPU build
 of PyTorch. If you want to train on a GPU, install the PyTorch build
 that matches your CUDA setup instead.</p>
@@ -161,7 +161,7 @@ interpreter, set <code>RETICULATE_PYTHON</code> in
 <pre><code><span><span class="va">RETICULATE_PYTHON</span><span class="op">=</span><span class="st">"C:/path/to/project/.venv/Scripts/python.exe"</span></span></code></pre>
 <p>Then restart your R session.</p>
 <p>Python 3.9 is end-of-life and should not be used. Python 3.10 is
-still supported, but Python 3.12 is recommended.</p>
+still supported, but Python 3.14 is recommended.</p>
 </div>
 <div class="section level3">
 <h3 id="installing-deeppatientlevelprediction-using-remotes">Installing DeepPatientLevelPrediction using remotes<a class="anchor" aria-label="anchor" href="#installing-deeppatientlevelprediction-using-remotes"></a>

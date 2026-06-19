@@ -15,7 +15,7 @@ requires installing:
 
 - R (<https://cran.r-project.org/> ) - (R \>= 4.0.0, but latest is
   recommended)
-- Python - Recommend Python 3.12. Python \>= 3.10 is supported
+- Python - Recommend Python 3.14. Python \>= 3.10 is supported
 - RStudio (<https://www.rstudio.com/> )
 - Java (<http://www.java.com> )
 - RTools (<https://cran.r-project.org/bin/windows/Rtools/>)
@@ -26,7 +26,7 @@ Under Mac and Linux the OHDSI DeepPLP package requires installing:
 
 - R (<https://cran.r-project.org/> ) - (R \>= 4.0.0, but latest is
   recommended)
-- Python - Recommend Python 3.12. Python \>= 3.10 is supported
+- Python - Recommend Python 3.14. Python \>= 3.10 is supported
 - RStudio (<https://www.rstudio.com/> )
 - Java (<http://www.java.com> )
 - Xcode command line tools(run in terminal: xcode-select –install) \[MAC
@@ -63,13 +63,13 @@ reticulate::py_config()
 Advanced users, users with strict reproducibility requirements, or users
 in airgapped environments can manage the Python environment themselves
 and tell `reticulate` which interpreter to use. One option is to create
-the environment with `uv` and Python 3.12:
+the environment with `uv` and Python 3.14:
 
 ``` bash
-uv python install 3.12
-uv venv --python 3.12
+uv python install 3.14
+uv venv --python 3.14
 uv pip install polars tqdm pyarrow duckdb nvidia-ml-py numpy
-uv pip install "torch==2.10.0" --index https://download.pytorch.org/whl/cpu/
+uv pip install "torch==2.12.1" --index https://download.pytorch.org/whl/cpu/
 ```
 
 The second `uv pip install` command installs the CPU build of PyTorch.
@@ -90,7 +90,7 @@ For Windows:
 Then restart your R session.
 
 Python 3.9 is end-of-life and should not be used. Python 3.10 is still
-supported, but Python 3.12 is recommended.
+supported, but Python 3.14 is recommended.
 
 ### Installing DeepPatientLevelPrediction using remotes
 
