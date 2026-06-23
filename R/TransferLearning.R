@@ -57,14 +57,20 @@ setFinetuner <- function(modelPath,
   param[[1]] <- list(modelPath = modelPath)
 
   results <- list(
-    fitFunction = "fitEstimator",
+    fitFunction = "DeepPatientLevelPrediction::fitDeepPlpClassifier",
     param = param,
+    paramDefinition = list(modelPath = modelPath),
+    legacyHyperparameterSettings =
+      PatientLevelPrediction::createHyperparameterSettings(search = "grid"),
     estimatorSettings = estimatorSettings,
     saveType = "file",
     modelParamNames = c("modelPath"),
-    modelType = modelType
+    modelType = modelType,
+    legacySearchExplicit = FALSE
   )
+  results$settings <- createDeepModelInterfaceSettings(results)
   attr(results$param, "settings")$modelType <- "Finetuner"
+  attr(results$paramDefinition, "settings")$modelType <- "Finetuner"
 
   class(results) <- "modelSettings"
 

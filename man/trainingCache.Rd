@@ -11,6 +11,22 @@ Grid search results from the training cache
 Boolen
 
 Last grid search index
+
+Whether the cached search identity is identical
+
+Candidate pool
+
+Search results
+
+Boolean
+
+Candidate index
+
+Tuning history
+
+Generator state
+
+Boolean
 }
 \description{
 Parameter caching for training persistence and continuity
@@ -27,6 +43,18 @@ Parameter caching for training persistence and continuity
 \item \href{#method-TrainingCache-getLastGridSearchIndex}{\code{trainingCache$getLastGridSearchIndex()}}
 \item \href{#method-TrainingCache-dropCache}{\code{trainingCache$dropCache()}}
 \item \href{#method-TrainingCache-trimPerformance}{\code{trainingCache$trimPerformance()}}
+\item \href{#method-TrainingCache-isSearchIdentical}{\code{trainingCache$isSearchIdentical()}}
+\item \href{#method-TrainingCache-saveSearchModelParams}{\code{trainingCache$saveSearchModelParams()}}
+\item \href{#method-TrainingCache-saveCandidatePool}{\code{trainingCache$saveCandidatePool()}}
+\item \href{#method-TrainingCache-getCandidatePool}{\code{trainingCache$getCandidatePool()}}
+\item \href{#method-TrainingCache-saveSearchResults}{\code{trainingCache$saveSearchResults()}}
+\item \href{#method-TrainingCache-getSearchResults}{\code{trainingCache$getSearchResults()}}
+\item \href{#method-TrainingCache-isSearchFull}{\code{trainingCache$isSearchFull()}}
+\item \href{#method-TrainingCache-getNextSearchIndex}{\code{trainingCache$getNextSearchIndex()}}
+\item \href{#method-TrainingCache-saveAdaptiveSearchState}{\code{trainingCache$saveAdaptiveSearchState()}}
+\item \href{#method-TrainingCache-getSearchHistory}{\code{trainingCache$getSearchHistory()}}
+\item \href{#method-TrainingCache-getGeneratorState}{\code{trainingCache$getGeneratorState()}}
+\item \href{#method-TrainingCache-isAdaptiveSearchComplete}{\code{trainingCache$isAdaptiveSearchComplete()}}
 \item \href{#method-TrainingCache-clone}{\code{trainingCache$clone()}}
 }
 }
@@ -146,16 +174,184 @@ Remove the training cache from the analysis path
 Trims the performance of the hyperparameter results by removing 
 the predictions from all but the best performing hyperparameter
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{trainingCache$trimPerformance(hyperparameterResults)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{trainingCache$trimPerformance(hyperparameterResults, maximize = TRUE)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
 \item{\code{hyperparameterResults}}{List of hyperparameter results}
+
+\item{\code{maximize}}{Whether higher metric values are better}
 }
 \if{html}{\out{</div>}}
 }
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-TrainingCache-isSearchIdentical"></a>}}
+\if{latex}{\out{\hypertarget{method-TrainingCache-isSearchIdentical}{}}}
+\subsection{Method \code{isSearchIdentical()}}{
+Checks whether a PLP-style hyperparameter search matches the cache.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{trainingCache$isSearchIdentical(inModelParams)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{inModelParams}}{Search identity object}
+}
+\if{html}{\out{</div>}}
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-TrainingCache-saveSearchModelParams"></a>}}
+\if{latex}{\out{\hypertarget{method-TrainingCache-saveSearchModelParams}{}}}
+\subsection{Method \code{saveSearchModelParams()}}{
+Saves the PLP-style hyperparameter search identity.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{trainingCache$saveSearchModelParams(inModelParams)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{inModelParams}}{Search identity object}
+}
+\if{html}{\out{</div>}}
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-TrainingCache-saveCandidatePool"></a>}}
+\if{latex}{\out{\hypertarget{method-TrainingCache-saveCandidatePool}{}}}
+\subsection{Method \code{saveCandidatePool()}}{
+Saves candidate pool for PLP-style tuning.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{trainingCache$saveCandidatePool(candidatePool)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{candidatePool}}{Candidate pool}
+}
+\if{html}{\out{</div>}}
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-TrainingCache-getCandidatePool"></a>}}
+\if{latex}{\out{\hypertarget{method-TrainingCache-getCandidatePool}{}}}
+\subsection{Method \code{getCandidatePool()}}{
+Gets candidate pool for PLP-style tuning.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{trainingCache$getCandidatePool()}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-TrainingCache-saveSearchResults"></a>}}
+\if{latex}{\out{\hypertarget{method-TrainingCache-saveSearchResults}{}}}
+\subsection{Method \code{saveSearchResults()}}{
+Saves PLP-style search results.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{trainingCache$saveSearchResults(inSearchResults)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{inSearchResults}}{Search results}
+}
+\if{html}{\out{</div>}}
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-TrainingCache-getSearchResults"></a>}}
+\if{latex}{\out{\hypertarget{method-TrainingCache-getSearchResults}{}}}
+\subsection{Method \code{getSearchResults()}}{
+Gets PLP-style search results.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{trainingCache$getSearchResults()}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-TrainingCache-isSearchFull"></a>}}
+\if{latex}{\out{\hypertarget{method-TrainingCache-isSearchFull}{}}}
+\subsection{Method \code{isSearchFull()}}{
+Checks whether PLP-style search is complete.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{trainingCache$isSearchFull()}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-TrainingCache-getNextSearchIndex"></a>}}
+\if{latex}{\out{\hypertarget{method-TrainingCache-getNextSearchIndex}{}}}
+\subsection{Method \code{getNextSearchIndex()}}{
+Gets next candidate index for PLP-style search.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{trainingCache$getNextSearchIndex()}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-TrainingCache-saveAdaptiveSearchState"></a>}}
+\if{latex}{\out{\hypertarget{method-TrainingCache-saveAdaptiveSearchState}{}}}
+\subsection{Method \code{saveAdaptiveSearchState()}}{
+Saves PLP-style adaptive search state.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{trainingCache$saveAdaptiveSearchState(
+  inSearchResults,
+  inHistory,
+  inGeneratorState,
+  complete = FALSE
+)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{inSearchResults}}{Search results}
+
+\item{\code{inHistory}}{Tuning history}
+
+\item{\code{inGeneratorState}}{Serialized generator state}
+
+\item{\code{complete}}{Whether the search is complete}
+}
+\if{html}{\out{</div>}}
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-TrainingCache-getSearchHistory"></a>}}
+\if{latex}{\out{\hypertarget{method-TrainingCache-getSearchHistory}{}}}
+\subsection{Method \code{getSearchHistory()}}{
+Gets adaptive search history.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{trainingCache$getSearchHistory()}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-TrainingCache-getGeneratorState"></a>}}
+\if{latex}{\out{\hypertarget{method-TrainingCache-getGeneratorState}{}}}
+\subsection{Method \code{getGeneratorState()}}{
+Gets cached custom generator state.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{trainingCache$getGeneratorState()}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-TrainingCache-isAdaptiveSearchComplete"></a>}}
+\if{latex}{\out{\hypertarget{method-TrainingCache-isAdaptiveSearchComplete}{}}}
+\subsection{Method \code{isAdaptiveSearchComplete()}}{
+Checks whether adaptive search is complete.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{trainingCache$isAdaptiveSearchComplete()}\if{html}{\out{</div>}}
+}
+
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-TrainingCache-clone"></a>}}

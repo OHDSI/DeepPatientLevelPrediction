@@ -164,12 +164,45 @@ setEstimator <- function(
 #' @param modelSettings  modelSettings object
 #' @param analysisId     Id of the analysis
 #' @param analysisPath   Path of the analysis
+#' @param hyperparameterSettings PLP hyperparameter settings
 #' @param ...            Extra inputs
 #'
 #' @export
 fitEstimator <- function(
     trainData,
     modelSettings,
+    analysisId,
+    analysisPath,
+    hyperparameterSettings = NULL,
+    ...) {
+  fitDeepPlpClassifier(
+    trainData = trainData,
+    modelSettings = modelSettings,
+    hyperparameterSettings = hyperparameterSettings,
+    analysisId = analysisId,
+    analysisPath = analysisPath,
+    ...
+  )
+}
+
+#' fitDeepPlpClassifier
+#'
+#' @description
+#' Fits a deep learning estimator using PLP hyperparameter settings and
+#' DeepPLP's cache-aware training loop.
+#'
+#' @param trainData the data to use
+#' @param modelSettings modelSettings object
+#' @param hyperparameterSettings PLP hyperparameter settings
+#' @param analysisId Id of the analysis
+#' @param analysisPath Path of the analysis
+#' @param ... Extra inputs
+#'
+#' @export
+fitDeepPlpClassifier <- function(
+    trainData,
+    modelSettings,
+    hyperparameterSettings = NULL,
     analysisId,
     analysisPath,
     ...) {
@@ -207,6 +240,7 @@ fitEstimator <- function(
       mappedData = mappedCovariateData,
       labels = trainData$labels,
       modelSettings = modelSettings,
+      hyperparameterSettings = hyperparameterSettings,
       modelLocation = outLoc,
       analysisPath = analysisPath
     )
@@ -234,7 +268,8 @@ fitEstimator <- function(
     dplyr::mutate(
       included = incs,
       covariateValue = 0
-    )
+    ) %>%
+    normalizeCovariateReferenceTypes()
 
   comp <- start - Sys.time()
   modelSettings$estimatorSettings$initStrategy <- NULL
@@ -270,6 +305,7 @@ fitEstimator <- function(
         "metaData"
       )$preprocessSettings,
       modelSettings = modelSettings,
+      hyperparameterSettings = cvResult$hyperparameterSettings,
       splitSettings = attr(trainData, "metaData")$splitSettings,
       sampleSettings = attr(trainData, "metaData")$sampleSettings
     ),
@@ -379,6 +415,7 @@ predictDeepEstimator <- function(plpModel, data, cohort) {
 #' @param mappedData    Mapped data with covariates
 #' @param labels        Dataframe with the outcomes
 #' @param modelSettings      Settings of the model
+#' @param hyperparameterSettings PLP hyperparameter settings
 #' @param modelLocation Where to save the model
 #' @param analysisPath  Path of the analysis
 #'
@@ -387,6 +424,7 @@ gridCvDeep <- function(
     mappedData,
     labels,
     modelSettings,
+    hyperparameterSettings = NULL,
     modelLocation,
     analysisPath) {
   ParallelLogger::logInfo(paste0(
@@ -396,39 +434,76 @@ gridCvDeep <- function(
   ))
   ###########################################################################
 
-  paramSearch <- modelSettings$param
+  hyperparameterSettings <- resolveHyperparameterSettings(
+    modelSettings = modelSettings,
+    hyperparameterSettings = hyperparameterSettings
+  )
+  tuningMetric <- hyperparameterSettings$tuningMetric
+  paramDefinition <- modelSettings$paramDefinition %||% modelSettings$param
+  if (isAdaptiveHyperparameterSettings(hyperparameterSettings)) {
+    return(gridCvDeepAdaptive(
+      mappedData = mappedData,
+      labels = labels,
+      modelSettings = modelSettings,
+      hyperparameterSettings = hyperparameterSettings,
+      modelLocation = modelLocation,
+      analysisPath = analysisPath,
+      paramDefinition = paramDefinition
+    ))
+  }
+  paramSearch <- createCandidatePool(
+    paramDefinition = paramDefinition,
+    hyperparameterSettings = hyperparameterSettings
+  )
 
   # setup cache for hyperparameterResults
-  trainCache <- setupCache(analysisPath, paramSearch)
-  hyperparameterResults <- trainCache$getGridSearchPredictions()
+  trainCache <- setupSearchCache(
+    analysisPath = analysisPath,
+    paramDefinition = paramDefinition,
+    hyperparameterSettings = hyperparameterSettings,
+    candidatePool = paramSearch
+  )
+  paramSearch <- trainCache$getCandidatePool() %||% paramSearch
+  hyperparameterResults <- trainCache$getSearchResults()
   dataset <- createDataset(
     data = mappedData,
     labels = labels,
-    temporalSettings = attr(paramSearch, "temporalSettings")
+    temporalSettings = attr(paramDefinition, "temporalSettings")
   )
 
-  if (!trainCache$isFull()) {
-    for (gridId in trainCache$getLastGridSearchIndex():length(paramSearch)) {
+  if (!trainCache$isSearchFull()) {
+    startIndex <- trainCache$getNextSearchIndex()
+    if (startIndex <= length(paramSearch)) {
+      for (gridId in startIndex:length(paramSearch)) {
+        parameters <- postProcessHyperParameters(
+          paramSearch[[gridId]],
+          modelSettings
+        )
       ParallelLogger::logInfo(paste0(
         "Running hyperparameter combination no ",
         gridId
       ))
       ParallelLogger::logInfo(paste0("HyperParameters: "))
       ParallelLogger::logInfo(paste(
-        names(paramSearch[[gridId]]),
-        paramSearch[[gridId]],
+        names(parameters),
+        parameters,
         collapse = " | "
       ))
       hyperparameterResults[[gridId]] <-
         doCrossValidation(
           dataset,
           labels = labels,
-          parameters = paramSearch[[gridId]],
-          modelSettings = modelSettings
+          parameters = parameters,
+          modelSettings = modelSettings,
+          tuningMetric = tuningMetric
         )
       # remove all predictions that are not the max performance
-      hyperparameterResults <- trainCache$trimPerformance(hyperparameterResults)
-      trainCache$saveGridSearchPredictions(hyperparameterResults)
+      hyperparameterResults <- trainCache$trimPerformance(
+        hyperparameterResults,
+        maximize = isTRUE(tuningMetric$maximize)
+      )
+      trainCache$saveSearchResults(hyperparameterResults)
+      }
     }
   }
   paramGridSearch <- lapply(
@@ -437,10 +512,10 @@ gridCvDeep <- function(
   )
   # get best params
   indexOfMax <-
-    which.max(unlist(lapply(
+    selectBestHyperparameterIndex(unlist(lapply(
       hyperparameterResults,
       function(x) x$gridPerformance$cvPerformance
-    )))
+    )), maximize = isTRUE(tuningMetric$maximize))
   if (length(indexOfMax) == 0) {
     stop("No hyperparameter combination has valid results")
   }
@@ -484,8 +559,251 @@ gridCvDeep <- function(
       prediction = prediction,
       finalParam = finalParam,
       paramGridSearch = paramGridSearch,
-      featureInfo = featureInfo
+      featureInfo = featureInfo,
+      hyperparameterSettings = hyperparameterSettings
     )
+  )
+}
+
+resolveHyperparameterSettings <- function(modelSettings, hyperparameterSettings) {
+  if (is.null(hyperparameterSettings) ||
+    isDefaultHyperparameterSettings(hyperparameterSettings)) {
+    return(
+      modelSettings$legacyHyperparameterSettings %||%
+        PatientLevelPrediction::createHyperparameterSettings()
+    )
+  }
+
+  if (isTRUE(modelSettings$legacySearchExplicit)) {
+    warning(
+      paste(
+        "Ignoring deprecated helper-level hyperparameter search settings",
+        "because `hyperparameterSettings` was supplied."
+      ),
+      call. = FALSE
+    )
+  }
+  hyperparameterSettings
+}
+
+isDefaultHyperparameterSettings <- function(hyperparameterSettings) {
+  if (!inherits(hyperparameterSettings, "hyperparameterSettings")) {
+    return(FALSE)
+  }
+  identical(hyperparameterSettings$search, "grid") &&
+    is.null(hyperparameterSettings$sampleSize) &&
+    is.null(hyperparameterSettings$randomSeed) &&
+    is.null(hyperparameterSettings$generator) &&
+    identical(hyperparameterSettings$tuningMetric$name, "AUC") &&
+    isTRUE(hyperparameterSettings$tuningMetric$maximize)
+}
+
+createCandidatePool <- function(paramDefinition, hyperparameterSettings) {
+  if (identical(hyperparameterSettings$search, "custom") &&
+    !is.function(hyperparameterSettings$generator)) {
+    stop(
+      paste(
+        "DeepPLP requires custom hyperparameter generators to return a",
+        "serializable candidate pool for cached training in this release."
+      ),
+      call. = FALSE
+    )
+  }
+  prepareHyperparameterGrid <- utils::getFromNamespace(
+    "prepareHyperparameterGrid",
+    "PatientLevelPrediction"
+  )
+  iterator <- if (!is.null(hyperparameterSettings$randomSeed)) {
+    withr::with_seed(
+      hyperparameterSettings$randomSeed,
+      prepareHyperparameterGrid(paramDefinition, hyperparameterSettings)
+    )
+  } else {
+    prepareHyperparameterGrid(paramDefinition, hyperparameterSettings)
+  }
+  candidatePool <- list()
+  history <- list()
+  repeat {
+    candidate <- iterator$getNext(history)
+    if (is.null(candidate)) {
+      break
+    }
+    candidatePool[[length(candidatePool) + 1L]] <- candidate
+    history[[length(history) + 1L]] <- list(param = candidate)
+  }
+  iterator$finalize(history)
+  candidatePool
+}
+
+isAdaptiveHyperparameterSettings <- function(hyperparameterSettings) {
+  identical(hyperparameterSettings$search, "custom") &&
+    !is.null(hyperparameterSettings$generator) &&
+    !is.function(hyperparameterSettings$generator)
+}
+
+gridCvDeepAdaptive <- function(
+    mappedData,
+    labels,
+    modelSettings,
+    hyperparameterSettings,
+    modelLocation,
+    analysisPath,
+    paramDefinition) {
+  generator <- hyperparameterSettings$generator
+  if (!is.function(generator$saveState) ||
+    !is.function(generator$loadState)) {
+    stop(
+      paste(
+        "DeepPLP requires adaptive custom hyperparameter generators to",
+        "provide saveState() and loadState(state) methods so cached training",
+        "can resume safely."
+      ),
+      call. = FALSE
+    )
+  }
+
+  trainCache <- setupAdaptiveSearchCache(
+    analysisPath = analysisPath,
+    paramDefinition = paramDefinition,
+    hyperparameterSettings = hyperparameterSettings
+  )
+  dataset <- createDataset(
+    data = mappedData,
+    labels = labels,
+    temporalSettings = attr(paramDefinition, "temporalSettings")
+  )
+  history <- trainCache$getSearchHistory()
+  hyperparameterResults <- trainCache$getSearchResults() %||% list()
+  if (!trainCache$isAdaptiveSearchComplete()) {
+    generatorState <- trainCache$getGeneratorState()
+    if (!is.null(generatorState)) {
+      generator$loadState(generatorState)
+    } else if (is.function(generator$initialize)) {
+      generator$initialize(
+        definition = paramDefinition,
+        settings = hyperparameterSettings
+      )
+    }
+    repeat {
+      candidate <- generator$getNext(history)
+      if (is.null(candidate)) {
+        break
+      }
+      gridId <- length(hyperparameterResults) + 1L
+      parameters <- postProcessHyperParameters(candidate, modelSettings)
+      ParallelLogger::logInfo(paste0(
+        "Running adaptive hyperparameter combination no ",
+        gridId
+      ))
+      hyperparameterResults[[gridId]] <- doCrossValidation(
+        dataset,
+        labels = labels,
+        parameters = parameters,
+        modelSettings = modelSettings,
+        tuningMetric = hyperparameterSettings$tuningMetric
+      )
+      history[[gridId]] <- hyperparameterResults[[gridId]]$gridPerformance
+      hyperparameterResults <- trainCache$trimPerformance(
+        hyperparameterResults,
+        maximize = isTRUE(hyperparameterSettings$tuningMetric$maximize)
+      )
+      trainCache$saveAdaptiveSearchState(
+        inSearchResults = hyperparameterResults,
+        inHistory = history,
+        inGeneratorState = generator$saveState(),
+        complete = FALSE
+      )
+    }
+    finalizeFn <- generator$finalize %||% function(...) invisible(NULL)
+    finalizeFn(history)
+    trainCache$saveAdaptiveSearchState(
+      inSearchResults = hyperparameterResults,
+      inHistory = history,
+      inGeneratorState = generator$saveState(),
+      complete = TRUE
+    )
+  }
+  finishGridCvDeep(
+    dataset = dataset,
+    labels = labels,
+    modelSettings = modelSettings,
+    modelLocation = modelLocation,
+    hyperparameterResults = hyperparameterResults,
+    hyperparameterSettings = hyperparameterSettings
+  )
+}
+
+postProcessHyperParameters <- function(parameters, modelSettings) {
+  postProcess <- modelSettings$postProcessHyperParameters
+  if (is.function(postProcess)) {
+    parameters <- postProcess(parameters)
+  }
+  parameters
+}
+
+selectBestHyperparameterIndex <- function(values, maximize = TRUE) {
+  values <- as.numeric(values)
+  if (all(is.na(values))) {
+    return(integer())
+  }
+  if (isTRUE(maximize)) {
+    which.max(values)
+  } else {
+    which.min(values)
+  }
+}
+
+finishGridCvDeep <- function(
+    dataset,
+    labels,
+    modelSettings,
+    modelLocation,
+    hyperparameterResults,
+    hyperparameterSettings) {
+  paramGridSearch <- lapply(
+    hyperparameterResults,
+    function(x) x$gridPerformance
+  )
+  indexOfMax <- selectBestHyperparameterIndex(unlist(lapply(
+    hyperparameterResults,
+    function(x) x$gridPerformance$cvPerformance
+  )), maximize = isTRUE(hyperparameterSettings$tuningMetric$maximize))
+  if (length(indexOfMax) == 0) {
+    stop("No hyperparameter combination has valid results")
+  }
+  finalParam <- hyperparameterResults[[indexOfMax]]$param
+  cvPrediction <- hyperparameterResults[[indexOfMax]]$prediction
+  if (modelSettings$estimatorSettings$trainValidationSplit) {
+    cvPrediction$evaluationType <- "Validation"
+  } else {
+    cvPrediction$evaluationType <- "CV"
+  }
+
+  ParallelLogger::logInfo("Training final model using optimal parameters")
+  trainPrediction <- trainFinalModel(dataset, finalParam, modelSettings, labels)
+  prediction <- rbind(
+    trainPrediction$prediction,
+    cvPrediction
+  )
+  prediction <- prediction %>%
+    dplyr::select(-"index")
+  prediction$cohortStartDate <- as.Date(
+    prediction$cohortStartDate,
+    origin = "1970-01-01"
+  )
+  featureInfo <- dataset$get_feature_info()
+
+  if (!dir.exists(file.path(modelLocation))) {
+    dir.create(file.path(modelLocation), recursive = TRUE)
+  }
+  trainPrediction$estimator$save(modelLocation, "DeepEstimatorModel.pt")
+  list(
+    estimator = modelLocation,
+    prediction = prediction,
+    finalParam = finalParam,
+    paramGridSearch = paramGridSearch,
+    featureInfo = featureInfo,
+    hyperparameterSettings = hyperparameterSettings
   )
 }
 
@@ -542,10 +860,97 @@ createEstimator <- function(parameters) {
   return(estimator)
 }
 
-doCrossValidation <- function(dataset, labels, parameters, modelSettings) {
+#' Train one DeepPLP model candidate
+#'
+#' @description
+#' Callback matching the PLP 6.6 model interface.
+#'
+#' @param dataMatrix Torch dataset or subset
+#' @param labels Cohort labels
+#' @param hyperParameters Candidate hyperparameters
+#' @param settings DeepPLP model settings
+#'
+#' @export
+trainDeepPlpCandidate <- function(
+    dataMatrix,
+    labels,
+    hyperParameters,
+    settings) {
+  fitParams <- names(hyperParameters)[grepl(
+    "^estimator",
+    names(hyperParameters)
+  )]
+  modelParamNames <- setdiff(
+    names(hyperParameters)[!grepl("^estimator", names(hyperParameters))],
+    "learnSchedule"
+  )
+  currentModelParams <- hyperParameters[modelParamNames]
+  currentModelParams$modelType <- settings$deepModelType %||%
+    settings$modelName %||%
+    settings$modelType
+  currentModelParams$feature_info <- getDeepFeatureInfo(dataMatrix)
+  currentEstimatorSettings <- fillEstimatorSettings(
+    settings$estimatorSettings,
+    fitParams,
+    hyperParameters
+  )
+  currentParameters <- list(
+    modelParameters = currentModelParams,
+    estimatorSettings = currentEstimatorSettings
+  )
+  estimator <- createEstimator(currentParameters)
+  path <- system.file("python", package = "DeepPatientLevelPrediction")
+  fit_estimator <- reticulate::import_from_path(
+    "Estimator",
+    path = path
+  )$fit_estimator
+  fit_estimator(estimator, dataMatrix, dataMatrix)
+  estimator
+}
+
+getDeepFeatureInfo <- function(dataMatrix) {
+  if (reticulate::py_has_attr(dataMatrix, "get_feature_info")) {
+    return(dataMatrix$get_feature_info())
+  }
+  if (
+    reticulate::py_has_attr(dataMatrix, "dataset") &&
+      reticulate::py_has_attr(dataMatrix$dataset, "get_feature_info")
+  ) {
+    return(dataMatrix$dataset$get_feature_info())
+  }
+  stop("Unable to get feature information from the data matrix.", call. = FALSE)
+}
+
+#' Get DeepPLP variable importance
+#'
+#' @description
+#' Placeholder callback for the PLP 6.6 model interface. DeepPLP constructs
+#' covariate importance from the mapped feature reference after fitting.
+#'
+#' @param plpModel A fitted PLP model
+#'
+#' @export
+getDeepVariableImportance <- function(plpModel) {
+  plpModel$covariateImportance %||% data.frame()
+}
+
+doCrossValidation <- function(
+    dataset,
+    labels,
+    parameters,
+    modelSettings,
+    tuningMetric = NULL) {
+  tuningMetric <- tuningMetric %||%
+    PatientLevelPrediction::createHyperparameterSettings()$tuningMetric
   crossValidationResults <-
     tryCatch(
-      doCrossValidationImpl(dataset, labels, parameters, modelSettings),
+      doCrossValidationImpl(
+        dataset,
+        labels,
+        parameters,
+        modelSettings,
+        tuningMetric
+      ),
       error = function(e) {
         if (inherits(e, "torch.cuda.OutOfMemoryError")) {
           ParallelLogger::logError(
@@ -567,7 +972,7 @@ doCrossValidation <- function(dataset, labels, parameters, modelSettings) {
           )
           nFolds <- max(labels$index)
           hyperSummary <- data.frame(
-            metric = rep("computeAuc", nFolds + 1),
+            metric = rep(tuningMetric$name, nFolds + 1),
             fold = c("CV", as.character(1:nFolds)),
             value = NA
           )
@@ -575,7 +980,7 @@ doCrossValidation <- function(dataset, labels, parameters, modelSettings) {
           hyperSummary$learnRates <- NA
 
           gridPerformance <- list(
-            metric = "computeAuc",
+            metric = tuningMetric$name,
             cvPerformance = NA,
             cvPerformancePerFold = rep(NA, nFolds),
             param = parameters,
@@ -618,7 +1023,12 @@ doCrossValidation <- function(dataset, labels, parameters, modelSettings) {
   return(gridSearchPredictions)
 }
 
-doCrossValidationImpl <- function(dataset, labels, parameters, modelSettings) {
+doCrossValidationImpl <- function(
+    dataset,
+    labels,
+    parameters,
+    modelSettings,
+    tuningMetric) {
   fitParams <- names(parameters)[grepl(
     "^estimator",
     names(parameters)
@@ -694,9 +1104,10 @@ doCrossValidationImpl <- function(dataset, labels, parameters, modelSettings) {
       bestEpoch = estimator$best_epoch
     )
   }
-  gridPerformance <- PatientLevelPrediction::computeGridPerformance(
+  gridPerformance <- computeDeepGridPerformance(
     prediction,
-    parameters
+    parameters,
+    tuningMetric
   )
   return(
     results = list(
@@ -704,6 +1115,46 @@ doCrossValidationImpl <- function(dataset, labels, parameters, modelSettings) {
       learnRates = learnRates,
       gridPerformance = gridPerformance
     )
+  )
+}
+
+computeDeepGridPerformance <- function(prediction, parameters, tuningMetric) {
+  if (is.null(prediction$index)) {
+    cvPerformance <- tuningMetric$fun(prediction)
+    hyperSummary <- data.frame(
+      metric = tuningMetric$name,
+      fold = "CV",
+      value = cvPerformance
+    )
+    hyperSummary <- cbind(hyperSummary, parameters)
+    return(list(
+      metric = tuningMetric$name,
+      cvPerformance = cvPerformance,
+      cvPerformancePerFold = cvPerformance,
+      param = parameters,
+      hyperSummary = hyperSummary
+    ))
+  }
+
+  folds <- sort(unique(prediction$index))
+  cvPerformancePerFold <- vapply(
+    folds,
+    function(fold) tuningMetric$fun(prediction[prediction$index == fold, ]),
+    numeric(1)
+  )
+  cvPerformance <- mean(cvPerformancePerFold, na.rm = TRUE)
+  hyperSummary <- data.frame(
+    metric = tuningMetric$name,
+    fold = c("CV", as.character(folds)),
+    value = c(cvPerformance, cvPerformancePerFold)
+  )
+  hyperSummary <- cbind(hyperSummary, parameters)
+  list(
+    metric = tuningMetric$name,
+    cvPerformance = cvPerformance,
+    cvPerformancePerFold = cvPerformancePerFold,
+    param = parameters,
+    hyperSummary = hyperSummary
   )
 }
 

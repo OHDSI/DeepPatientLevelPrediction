@@ -7,7 +7,14 @@ trainingCache <- R6::R6Class(
   private = list(
     .paramPersistence = list(
       gridSearchPredictions = NULL,
-      modelParams = NULL
+      modelParams = NULL,
+      cacheVersion = 1L,
+      searchResults = NULL,
+      searchModelParams = NULL,
+      candidatePool = NULL,
+      searchHistory = NULL,
+      generatorState = NULL,
+      searchComplete = FALSE
     ),
     .paramContinuity = list(),
     .saveDir = NULL,
@@ -104,16 +111,21 @@ trainingCache <- R6::R6Class(
     #' Trims the performance of the hyperparameter results by removing 
     #' the predictions from all but the best performing hyperparameter
     #' @param hyperparameterResults List of hyperparameter results 
-    trimPerformance = function(hyperparameterResults) {
-      indexOfMax <-
-        which.max(unlist(
-          lapply(hyperparameterResults,
-                 function(x)
-                   x$gridPerformance$cvPerformance)
-        ))
-      if (length(indexOfMax) != 0) {
+    #' @param maximize Whether higher metric values are better
+    trimPerformance = function(hyperparameterResults, maximize = TRUE) {
+      values <- unlist(
+        lapply(hyperparameterResults,
+               function(x)
+                 x$gridPerformance$cvPerformance)
+      )
+      indexOfBest <- if (isTRUE(maximize)) {
+        which.max(values)
+      } else {
+        which.min(values)
+      }
+      if (length(indexOfBest) != 0) {
         for (i in seq_along(hyperparameterResults)) {
-          if (!is.null(hyperparameterResults[[i]]) && i != indexOfMax) {
+          if (!is.null(hyperparameterResults[[i]]) && i != indexOfBest) {
             hyperparameterResults[[i]]$prediction <- list(NULL)
           }
         }
@@ -121,14 +133,161 @@ trainingCache <- R6::R6Class(
           paste0(
             "Caching all grid search results and
                                      prediction for best combination ",
-            indexOfMax
+            indexOfBest
           )
         )
       }
       return(hyperparameterResults)
+    },
+
+    #' @description
+    #' Checks whether a PLP-style hyperparameter search matches the cache.
+    #' @param inModelParams Search identity object
+    #' @returns Whether the cached search identity is identical
+    isSearchIdentical = function(inModelParams) {
+      return(identical(
+        inModelParams,
+        private$.paramPersistence$searchModelParams
+      ))
+    },
+
+    #' @description
+    #' Saves the PLP-style hyperparameter search identity.
+    #' @param inModelParams Search identity object
+    saveSearchModelParams = function(inModelParams) {
+      private$.paramPersistence$cacheVersion <- 2L
+      private$.paramPersistence$searchModelParams <- inModelParams
+      private$writeToFile()
+    },
+
+    #' @description
+    #' Saves candidate pool for PLP-style tuning.
+    #' @param candidatePool Candidate pool
+    saveCandidatePool = function(candidatePool) {
+      private$.paramPersistence$cacheVersion <- 2L
+      private$.paramPersistence$candidatePool <- candidatePool
+      private$writeToFile()
+    },
+
+    #' @description
+    #' Gets candidate pool for PLP-style tuning.
+    #' @returns Candidate pool
+    getCandidatePool = function() {
+      private$.paramPersistence$candidatePool
+    },
+
+    #' @description
+    #' Saves PLP-style search results.
+    #' @param inSearchResults Search results
+    saveSearchResults = function(inSearchResults) {
+      private$.paramPersistence$cacheVersion <- 2L
+      private$.paramPersistence$searchResults <- inSearchResults
+      private$.paramPersistence$gridSearchPredictions <- inSearchResults
+      private$writeToFile()
+    },
+
+    #' @description
+    #' Gets PLP-style search results.
+    #' @returns Search results
+    getSearchResults = function() {
+      private$.paramPersistence$gridSearchPredictions %||%
+        private$.paramPersistence$searchResults
+    },
+
+    #' @description
+    #' Checks whether PLP-style search is complete.
+    #' @returns Boolean
+    isSearchFull = function() {
+      results <- self$getSearchResults()
+      if (is.null(results) || length(results) == 0) {
+        return(FALSE)
+      }
+      candidatePool <- self$getCandidatePool()
+      if (!is.null(candidatePool) && length(results) < length(candidatePool)) {
+        return(FALSE)
+      }
+      all(unlist(lapply(
+        results,
+        function(x) !is.null(x) && !is.null(x$gridPerformance)
+      )))
+    },
+
+    #' @description
+    #' Gets next candidate index for PLP-style search.
+    #' @returns Candidate index
+    getNextSearchIndex = function() {
+      results <- self$getSearchResults()
+      if (is.null(results) || length(results) == 0) {
+        return(1L)
+      }
+      nextIndex <- which(sapply(results, is.null))[1]
+      if (is.na(nextIndex)) {
+        return(length(results) + 1L)
+      }
+      nextIndex
+    },
+
+    #' @description
+    #' Saves PLP-style adaptive search state.
+    #' @param inSearchResults Search results
+    #' @param inHistory Tuning history
+    #' @param inGeneratorState Serialized generator state
+    #' @param complete Whether the search is complete
+    saveAdaptiveSearchState = function(
+        inSearchResults,
+        inHistory,
+        inGeneratorState,
+        complete = FALSE) {
+      private$.paramPersistence$cacheVersion <- 2L
+      private$.paramPersistence$searchResults <- inSearchResults
+      private$.paramPersistence$gridSearchPredictions <- inSearchResults
+      private$.paramPersistence$searchHistory <- inHistory
+      private$.paramPersistence$generatorState <- inGeneratorState
+      private$.paramPersistence$searchComplete <- isTRUE(complete)
+      private$writeToFile()
+    },
+
+    #' @description
+    #' Gets adaptive search history.
+    #' @returns Tuning history
+    getSearchHistory = function() {
+      private$.paramPersistence$searchHistory %||% list()
+    },
+
+    #' @description
+    #' Gets cached custom generator state.
+    #' @returns Generator state
+    getGeneratorState = function() {
+      private$.paramPersistence$generatorState
+    },
+
+    #' @description
+    #' Checks whether adaptive search is complete.
+    #' @returns Boolean
+    isAdaptiveSearchComplete = function() {
+      isTRUE(private$.paramPersistence$searchComplete)
     }
   )
 )
+
+sanitizeHyperparameterSettings <- function(hyperparameterSettings) {
+  generatorIdentity <- NULL
+  if (!is.null(hyperparameterSettings$generator)) {
+    generatorIdentity <- if (is.function(hyperparameterSettings$generator)) {
+      hyperparameterSettings$generator
+    } else {
+      class(hyperparameterSettings$generator)
+    }
+  }
+  list(
+    search = hyperparameterSettings$search,
+    sampleSize = hyperparameterSettings$sampleSize,
+    randomSeed = hyperparameterSettings$randomSeed,
+    tuningMetricName = hyperparameterSettings$tuningMetric$name,
+    tuningMetricMaximize = hyperparameterSettings$tuningMetric$maximize,
+    generator = generatorIdentity
+  )
+}
 
 setupCache <- function(analysisPath, parameters) {
   trainCache <- trainingCache$new(analysisPath)
@@ -141,4 +300,54 @@ setupCache <- function(analysisPath, parameters) {
     trainCache$saveModelParams(parameters)
   }
   return(trainCache)
+}
+
+setupSearchCache <- function(
+    analysisPath,
+    paramDefinition,
+    hyperparameterSettings,
+    candidatePool) {
+  trainCache <- trainingCache$new(analysisPath)
+  searchIdentity <- list(
+    paramDefinition = paramDefinition,
+    hyperparameterSettings = sanitizeHyperparameterSettings(
+      hyperparameterSettings
+    )
+  )
+  if (trainCache$isSearchIdentical(searchIdentity)) {
+    cachedPool <- trainCache$getCandidatePool()
+    if (!is.null(cachedPool)) {
+      candidatePool <- cachedPool
+    }
+  } else {
+    hyperparameterResults <- list()
+    length(hyperparameterResults) <- length(candidatePool)
+    trainCache$saveSearchResults(hyperparameterResults)
+    trainCache$saveSearchModelParams(searchIdentity)
+    trainCache$saveCandidatePool(candidatePool)
+  }
+  return(trainCache)
+}
+
+setupAdaptiveSearchCache <- function(
+    analysisPath,
+    paramDefinition,
+    hyperparameterSettings) {
+  trainCache <- trainingCache$new(analysisPath)
+  searchIdentity <- list(
+    paramDefinition = paramDefinition,
+    hyperparameterSettings = sanitizeHyperparameterSettings(
+      hyperparameterSettings
+    )
+  )
+  if (!trainCache$isSearchIdentical(searchIdentity)) {
+    trainCache$saveAdaptiveSearchState(
+      inSearchResults = list(),
+      inHistory = list(),
+      inGeneratorState = NULL,
+      complete = FALSE
+    )
+    trainCache$saveSearchModelParams(searchIdentity)
+  }
+  trainCache
 }

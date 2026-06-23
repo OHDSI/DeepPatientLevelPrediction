@@ -37,6 +37,11 @@ setDefaultResNet <- function(estimatorSettings =
                                  epochs = 50,
                                  seed = NULL
                                )) {
+  oldOption <- getOption("DeepPatientLevelPrediction.suppressLegacySearchWarning")
+  options(DeepPatientLevelPrediction.suppressLegacySearchWarning = TRUE)
+  on.exit(options(
+    DeepPatientLevelPrediction.suppressLegacySearchWarning = oldOption
+  ), add = TRUE)
   resnetSettings <- setResNet(
     numLayers = 6,
     sizeHidden = 512,
@@ -74,11 +79,11 @@ setDefaultResNet <- function(estimatorSettings =
 #' @param sizeEmbedding     Size of embedding layer, default: 2^(6:9)
 #' '(64 to 512)
 #' @param estimatorSettings created with ```setEstimator```
-#' @param hyperParamSearch  Which kind of hyperparameter search to use random
-#' sampling or exhaustive grid search. default: 'random'
-#' @param randomSample      How many random samples from hyperparameter space
-#' to use
-#' @param randomSampleSeed  Random seed to sample hyperparameter combinations
+#' @param hyperParamSearch Deprecated. Use PLP `hyperparameterSettings`
+#' instead.
+#' @param randomSample Deprecated. Use PLP `hyperparameterSettings` instead.
+#' @param randomSampleSeed Deprecated. Use PLP `hyperparameterSettings`
+#' instead.
 #' @export
 setResNet <- function(numLayers = c(1:8),
                       sizeHidden = c(2^(6:10)),
@@ -98,6 +103,9 @@ setResNet <- function(numLayers = c(1:8),
                       hyperParamSearch = "random",
                       randomSample = 100,
                       randomSampleSeed = NULL) {
+  legacySearchExplicit <- !missing(hyperParamSearch) ||
+    !missing(randomSample) ||
+    !missing(randomSampleSeed)
   checkIsClass(numLayers, c("integer", "numeric"))
   checkHigherEqual(numLayers, 1)
 
@@ -131,37 +139,19 @@ setResNet <- function(numLayers = c(1:8),
 
   paramGrid <- c(paramGrid, estimatorSettings$paramsToTune)
 
-  param <- PatientLevelPrediction::listCartesian(paramGrid)
-
-  if (hyperParamSearch == "random" && randomSample > length(param)) {
-    stop(paste(
-      "\n Chosen amount of randomSamples is higher than the amount of
-               possible hyperparameter combinations.", "\n randomSample:",
-      randomSample, "\n Possible hyperparameter combinations:",
-      length(param), "\n Please lower the amount of randomSamples"
-    ))
-  }
-
-  if (hyperParamSearch == "random") {
-    suppressWarnings(withr::with_seed(randomSampleSeed, {
-      param <- param[sample(
-        length(param),
-        randomSample
-      )]
-    }))
-  }
-  results <- list(
-    fitFunction = "DeepPatientLevelPrediction::fitEstimator",
-    param = param,
+  results <- createDeepModelSettings(
+    paramDefinition = paramGrid,
     estimatorSettings = estimatorSettings,
-    saveType = "file",
-    modelParamNames = c("numLayers", "sizeHidden", "hiddenFactor",
-                        "residualDropout", "hiddenDropout", "sizeEmbedding"),
-    modelType = "ResNet"
+    modelParamNames = c(
+      "numLayers", "sizeHidden", "hiddenFactor",
+      "residualDropout", "hiddenDropout", "sizeEmbedding"
+    ),
+    modelType = "ResNet",
+    hyperParamSearch = hyperParamSearch,
+    randomSample = randomSample,
+    randomSampleSeed = randomSampleSeed,
+    legacySearchExplicit = legacySearchExplicit
   )
-  attr(results$param, "settings")$modelType <- results$modelType
-
-  class(results) <- "modelSettings"
 
   return(results)
 }

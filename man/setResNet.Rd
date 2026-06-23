@@ -38,13 +38,13 @@ in ResLayer, default: seq(0, 0.3, 0.05)}
 
 \item{estimatorSettings}{created with ```setEstimator```}
 
-\item{hyperParamSearch}{Which kind of hyperparameter search to use random
-sampling or exhaustive grid search. default: 'random'}
+\item{hyperParamSearch}{Deprecated. Use PLP `hyperparameterSettings`
+instead.}
 
-\item{randomSample}{How many random samples from hyperparameter space
-to use}
+\item{randomSample}{Deprecated. Use PLP `hyperparameterSettings` instead.}
 
-\item{randomSampleSeed}{Random seed to sample hyperparameter combinations}
+\item{randomSampleSeed}{Deprecated. Use PLP `hyperparameterSettings`
+instead.}
 }
 \description{
 Creates settings for a ResNet model

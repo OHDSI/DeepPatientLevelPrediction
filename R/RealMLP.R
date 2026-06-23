@@ -28,11 +28,11 @@
 #' @param tokenAggregation token aggregation mode: "auto", "mean", "sum", "sum_len_norm"
 #' @param featureScaleMode feature scale mode: "auto", "scalar", "vector"
 #' @param device     "cpu" or "cuda" (default "cpu")
-#' @param hyperParamSearch Which kind of hyperparameter search to use: random
-#' sampling or exhaustive grid search. Default: "grid"
-#' @param randomSample How many random samples from hyperparameter space to use
-#' when `hyperParamSearch = "random"`
-#' @param randomSampleSeed Random seed to sample hyperparameter combinations
+#' @param hyperParamSearch Deprecated. Use PLP `hyperparameterSettings`
+#' instead.
+#' @param randomSample Deprecated. Use PLP `hyperparameterSettings` instead.
+#' @param randomSampleSeed Deprecated. Use PLP `hyperparameterSettings`
+#' instead.
 #' @export
 setRealMLP <- function(
   numLayers = 3L,
@@ -62,6 +62,9 @@ setRealMLP <- function(
   randomSample = 100,
   randomSampleSeed = NULL
 ) {
+  legacySearchExplicit <- !missing(hyperParamSearch) ||
+    !missing(randomSample) ||
+    !missing(randomSampleSeed)
   checkIsClass(numLayers, c("integer", "numeric"))
   checkHigherEqual(numLayers, 1)
   checkIsClass(sizeHidden, c("integer", "numeric"))
@@ -183,8 +186,7 @@ setRealMLP <- function(
   )
   paramGrid <- c(paramGrid, est$paramsToTune)
 
-  param <- PatientLevelPrediction::listCartesian(paramGrid)
-  param <- lapply(param, function(x) {
+  postProcess <- function(x) {
     if (x$tokenAggregation == "auto") {
       x$tokenAggregation <- if (isTRUE(x$paperMode)) "sum" else "mean"
     }
@@ -192,31 +194,11 @@ setRealMLP <- function(
       x$featureScaleMode <- "scalar"
     }
     x
-  })
-
-  if (hyperParamSearch == "random" && randomSample > length(param)) {
-    stop(paste(
-      "\n Chosen amount of randomSamples is higher than the amount of
-               possible hyperparameter combinations.", "\n randomSample:",
-      randomSample, "\n Possible hyperparameter combinations:",
-      length(param), "\n Please lower the amount of randomSamples"
-    ))
   }
 
-  if (hyperParamSearch == "random") {
-    suppressWarnings(withr::with_seed(randomSampleSeed, {
-      param <- param[sample(
-        length(param),
-        randomSample
-      )]
-    }))
-  }
-
-  results <- list(
-    fitFunction = "DeepPatientLevelPrediction::fitEstimator",
-    param = param,
+  results <- createDeepModelSettings(
+    paramDefinition = paramGrid,
     estimatorSettings = est,
-    saveType = "file",
     modelParamNames = c(
       "numLayers", "sizeHidden", "dropout", "sizeEmbedding",
       "numericEmbeddingMode", "numericNumFrequencies",
@@ -224,9 +206,12 @@ setRealMLP <- function(
       "numericPbldEmbeddingDim", "paperMode", "tokenAggregation",
       "featureScaleMode"
     ),
-    modelType = "RealMLP"
+    modelType = "RealMLP",
+    hyperParamSearch = hyperParamSearch,
+    randomSample = randomSample,
+    randomSampleSeed = randomSampleSeed,
+    postProcess = postProcess,
+    legacySearchExplicit = legacySearchExplicit
   )
-  attr(results$param, "settings")$modelType <- results$modelType
-  class(results) <- "modelSettings"
   results
 }

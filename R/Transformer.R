@@ -33,6 +33,11 @@ setDefaultTransformer <- function(estimatorSettings =
                                       seed = NULL,
                                       device = "cpu"
                                     )) {
+  oldOption <- getOption("DeepPatientLevelPrediction.suppressLegacySearchWarning")
+  options(DeepPatientLevelPrediction.suppressLegacySearchWarning = TRUE)
+  on.exit(options(
+    DeepPatientLevelPrediction.suppressLegacySearchWarning = oldOption
+  ), add = TRUE)
   transformerSettings <- setTransformer(
     numBlocks = 3,
     dimToken = 192,
@@ -73,12 +78,11 @@ setDefaultTransformer <- function(estimatorSettings =
 #'   - `truncation`: Truncation method, only 'tail' is supported
 #'   - `timeTokens`: Whether to use time tokens, default TRUE
 #' @param estimatorSettings       created with `setEstimator`
-#' @param hyperParamSearch        what kind of hyperparameter search to do,
-#' default 'random'
-#' @param randomSample            How many samples to use in hyperparameter
-#' search if random
-#' @param randomSampleSeed        Random seed to sample hyperparameter
-#' combinations
+#' @param hyperParamSearch Deprecated. Use PLP `hyperparameterSettings`
+#' instead.
+#' @param randomSample Deprecated. Use PLP `hyperparameterSettings` instead.
+#' @param randomSampleSeed Deprecated. Use PLP `hyperparameterSettings`
+#' instead.
 #' @return list of settings for the transformer model
 #'
 #' @export
@@ -109,6 +113,9 @@ setTransformer <- function(numBlocks = 3,
                            hyperParamSearch = "random",
                            randomSample = 1,
                            randomSampleSeed = NULL) {
+  legacySearchExplicit <- !missing(hyperParamSearch) ||
+    !missing(randomSample) ||
+    !missing(randomSampleSeed)
   defaultTemporalSettings <- list(
     positionalEncoding = list(
       name = "SinusoidalPE",
@@ -224,51 +231,35 @@ setTransformer <- function(numBlocks = 3,
 
   paramGrid <- c(paramGrid, estimatorSettings$paramsToTune)
 
-  param <- PatientLevelPrediction::listCartesian(paramGrid)
-
+  postProcess <- NULL
   if (!is.null(dimHiddenRatio)) {
-    param <- lapply(param, function(x) {
+    postProcess <- function(x) {
       x$dimHidden <- round(x$dimToken * x$dimHidden, digits = 0)
-      return(x)
-    })
-  }
-
-  if (hyperParamSearch == "random" && randomSample > length(param)) {
-    stop(paste(
-      "\n Chosen amount of randomSamples is higher than the amount of
-               possible hyperparameter combinations.", "\n randomSample:",
-      randomSample, "\n Possible hyperparameter combinations:",
-      length(param), "\n Please lower the amount of randomSample"
-    ))
-  }
-
-  if (hyperParamSearch == "random") {
-    suppressWarnings(withr::with_seed(randomSampleSeed, {
-      param <- param[sample(
-        length(param),
-        randomSample
-      )]
-    }))
-  }
-  results <- list(
-    fitFunction = "DeepPatientLevelPrediction::fitEstimator",
-    param = param,
-    estimatorSettings = estimatorSettings,
-    saveType = "file",
-    modelParamNames = c(
-      "numBlocks", "dimToken", "dimOut", "numHeads",
-      "attDropout", "ffnDropout", "dimHidden"
-    ),
-    modelType = "Transformer"
-  )
-  if (temporal) {
-    attr(results$param, "temporalModel") <- TRUE
-    attr(results$param, "temporalSettings") <- temporalSettings
-    if (!is.null(temporalSettings$positionalEncoding)) {
-      results$modelParamNames <- c(results$modelParamNames, "positionalEncoding")
+      x
     }
   }
-  attr(results$param, "settings")$modelType <- results$modelType
-  class(results) <- "modelSettings"
+
+  modelParamNames <- c(
+      "numBlocks", "dimToken", "dimOut", "numHeads",
+      "attDropout", "ffnDropout", "dimHidden"
+  )
+  if (temporal) {
+    if (!is.null(temporalSettings$positionalEncoding)) {
+      modelParamNames <- c(modelParamNames, "positionalEncoding")
+    }
+  }
+  results <- createDeepModelSettings(
+    paramDefinition = paramGrid,
+    estimatorSettings = estimatorSettings,
+    modelParamNames = modelParamNames,
+    modelType = "Transformer",
+    hyperParamSearch = hyperParamSearch,
+    randomSample = randomSample,
+    randomSampleSeed = randomSampleSeed,
+    temporalSettings = if (temporal) temporalSettings else NULL,
+    temporalModel = temporal,
+    postProcess = postProcess,
+    legacySearchExplicit = legacySearchExplicit
+  )
   return(results)
 }

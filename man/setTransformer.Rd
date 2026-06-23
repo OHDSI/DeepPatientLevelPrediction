@@ -54,14 +54,13 @@ of dimToken (embedding size)}
 
 \item{estimatorSettings}{created with `setEstimator`}
 
-\item{hyperParamSearch}{what kind of hyperparameter search to do,
-default 'random'}
+\item{hyperParamSearch}{Deprecated. Use PLP `hyperparameterSettings`
+instead.}
 
-\item{randomSample}{How many samples to use in hyperparameter
-search if random}
+\item{randomSample}{Deprecated. Use PLP `hyperparameterSettings` instead.}
 
-\item{randomSampleSeed}{Random seed to sample hyperparameter
-combinations}
+\item{randomSampleSeed}{Deprecated. Use PLP `hyperparameterSettings`
+instead.}
 }
 \value{
 list of settings for the transformer model

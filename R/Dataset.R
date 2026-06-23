@@ -47,6 +47,9 @@ createDataset <- function(data, labels,
   }
 
   # testing
+  plpModel$covariateImportance <- normalizeCovariateReferenceTypes(
+    plpModel$covariateImportance
+  )
   args$data_reference <- r_to_py(plpModel$covariateImportance)
   return(do.call(dataset, args))
 }

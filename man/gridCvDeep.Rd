@@ -4,7 +4,14 @@
 \alias{gridCvDeep}
 \title{gridCvDeep}
 \usage{
-gridCvDeep(mappedData, labels, modelSettings, modelLocation, analysisPath)
+gridCvDeep(
+  mappedData,
+  labels,
+  modelSettings,
+  hyperparameterSettings = NULL,
+  modelLocation,
+  analysisPath
+)
 }
 \arguments{
 \item{mappedData}{Mapped data with covariates}
@@ -12,6 +19,8 @@ gridCvDeep(mappedData, labels, modelSettings, modelLocation, analysisPath)
 \item{labels}{Dataframe with the outcomes}
 
 \item{modelSettings}{Settings of the model}
+
+\item{hyperparameterSettings}{PLP hyperparameter settings}
 
 \item{modelLocation}{Where to save the model}
 

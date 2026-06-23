@@ -133,6 +133,150 @@ checkInStringVector <- function(parameter, values) {
 # is included from R4.4.0
 if (!exists("%||%", "package:base")) `%||%` <- function(x, y) if (is.null(x)) y else x
 
+warnLegacyHyperparameterSearch <- function(legacySearchExplicit) {
+  if (!isTRUE(legacySearchExplicit)) {
+    return(invisible(NULL))
+  }
+  if (isTRUE(getOption(
+    "DeepPatientLevelPrediction.suppressLegacySearchWarning",
+    FALSE
+  ))) {
+    return(invisible(NULL))
+  }
+  warning(
+    paste(
+      "`hyperParamSearch`, `randomSample`, and `randomSampleSeed` are",
+      "deprecated. Use PatientLevelPrediction::createHyperparameterSettings()",
+      "when calling PatientLevelPrediction::fitPlp() or runPlp()."
+    ),
+    call. = FALSE
+  )
+}
+
+createLegacyHyperparameterSettings <- function(
+    hyperParamSearch,
+    randomSample,
+    randomSampleSeed) {
+  if (identical(hyperParamSearch, "random")) {
+    PatientLevelPrediction::createHyperparameterSettings(
+      search = "random",
+      sampleSize = randomSample,
+      randomSeed = randomSampleSeed
+    )
+  } else {
+    PatientLevelPrediction::createHyperparameterSettings(
+      search = "grid",
+      randomSeed = randomSampleSeed
+    )
+  }
+}
+
+expandLegacyParameterGrid <- function(
+    paramDefinition,
+    hyperParamSearch,
+    randomSample,
+    randomSampleSeed,
+    legacySearchExplicit = FALSE) {
+  param <- PatientLevelPrediction::listCartesian(paramDefinition)
+  if (identical(hyperParamSearch, "random") && randomSample > length(param)) {
+    if (!isTRUE(legacySearchExplicit)) {
+      randomSample <- length(param)
+    } else {
+      stop(paste(
+        "\n Chosen amount of randomSamples is higher than the amount of",
+        "possible hyperparameter combinations.",
+        "\n randomSample:", randomSample,
+        "\n Possible hyperparameter combinations:", length(param),
+        "\n Please lower the amount of randomSamples"
+      ))
+    }
+  }
+
+  if (identical(hyperParamSearch, "random")) {
+    suppressWarnings(withr::with_seed(randomSampleSeed, {
+      param <- param[sample(length(param), randomSample)]
+    }))
+  }
+  param
+}
+
+createDeepModelInterfaceSettings <- function(modelSettings) {
+  list(
+    modelName = modelSettings$modelType,
+    modelType = "binary",
+    deepModelType = modelSettings$modelType,
+    estimatorSettings = modelSettings$estimatorSettings,
+    prepareData = "DeepPatientLevelPrediction::createDataset",
+    train = "DeepPatientLevelPrediction::trainDeepPlpCandidate",
+    predict = "DeepPatientLevelPrediction::predictDeepEstimator",
+    variableImportance = "DeepPatientLevelPrediction::getDeepVariableImportance",
+    saveType = modelSettings$saveType,
+    requiresDenseMatrix = FALSE,
+    seed = modelSettings$estimatorSettings$seed
+  )
+}
+
+createDeepModelSettings <- function(
+    paramDefinition,
+    estimatorSettings,
+    modelParamNames,
+    modelType,
+    hyperParamSearch,
+    randomSample,
+    randomSampleSeed,
+    temporalSettings = NULL,
+    temporalModel = FALSE,
+    postProcess = NULL,
+    legacySearchExplicit = FALSE) {
+  warnLegacyHyperparameterSearch(legacySearchExplicit)
+  param <- expandLegacyParameterGrid(
+    paramDefinition = paramDefinition,
+    hyperParamSearch = hyperParamSearch,
+    randomSample = randomSample,
+    randomSampleSeed = randomSampleSeed,
+    legacySearchExplicit = legacySearchExplicit
+  )
+  if (!is.null(postProcess)) {
+    param <- lapply(param, postProcess)
+  }
+  results <- list(
+    fitFunction = "DeepPatientLevelPrediction::fitDeepPlpClassifier",
+    param = param,
+    paramDefinition = paramDefinition,
+    legacyHyperparameterSettings = createLegacyHyperparameterSettings(
+      hyperParamSearch = hyperParamSearch,
+      randomSample = randomSample,
+      randomSampleSeed = randomSampleSeed
+    ),
+    estimatorSettings = estimatorSettings,
+    saveType = "file",
+    modelParamNames = modelParamNames,
+    modelType = modelType,
+    postProcessHyperParameters = postProcess,
+    legacySearchExplicit = isTRUE(legacySearchExplicit)
+  )
+  results$settings <- createDeepModelInterfaceSettings(results)
+  if (isTRUE(temporalModel)) {
+    attr(results$param, "temporalModel") <- TRUE
+    attr(results$paramDefinition, "temporalModel") <- TRUE
+  }
+  if (!is.null(temporalSettings)) {
+    attr(results$param, "temporalSettings") <- temporalSettings
+    attr(results$paramDefinition, "temporalSettings") <- temporalSettings
+  }
+  attr(results$param, "settings")$modelType <- results$modelType
+  attr(results$paramDefinition, "settings")$modelType <- results$modelType
+  class(results) <- "modelSettings"
+  results
+}
+
+normalizeCovariateReferenceTypes <- function(covariateRef) {
+  for (column in intersect(c("analysisId", "columnId"), names(covariateRef))) {
+    covariateRef[[column]] <- as.integer(covariateRef[[column]])
+  }
+  covariateRef
+}
+
 #' Use polars instead of pandas for default conversion from R to Python
 #' @exportS3Method reticulate::r_to_py data.frame
 #' @param x A data.frame object in R
@@ -271,4 +415,3 @@ keepDefaults <- function(defaultSettings, userSettings) {
 
   return(defaultSettings)
 }
-
