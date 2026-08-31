@@ -45,6 +45,7 @@ Suggests:
     FeatureExtraction (>= 3.7.0),
     knitr,
     PRROC,
+    ResultModelManager (>= 0.2.0),
     rmarkdown,
     testthat
 Encoding: UTF-8
