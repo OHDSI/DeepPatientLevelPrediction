@@ -30,21 +30,54 @@
 # package level global state
 .globals <- new.env(parent = emptyenv())
 
-#' Pytorch module
+#' PyTorch Module
 #'
 #' The `torch` module object is the equivalent of
-#' `reticulate::import("torch")` and provided mainly as a convenience.
+#' `reticulate::import("torch")` and is provided mainly as a convenience.
+#' Accessing the module initializes Python and requires the Python dependencies
+#' listed in `SystemRequirements` in the package `DESCRIPTION` file.
 #'
-#' @returns the torch Python module
+#' @returns The `torch` Python module.
 #' @export
 #' @usage NULL
 #' @format An object of class `python.builtin.module`
+#' @examples
+#' \dontrun{
+#' # Requires the Python dependencies described in vignette("Installing").
+#' torch$randn(10L)
+#' }
 torch <- NULL
 
+.pythonRequirements <- c(
+  "polars>=1.31.0",
+  "pyarrow",
+  "duckdb",
+  "numpy",
+  "torch>=2.7,<3",
+  "tqdm",
+  "nvidia-ml-py"
+)
+
+.pythonImportError <- function(error) {
+  stop(
+    paste(
+      "DeepPatientLevelPrediction could not initialize its Python environment.",
+      "Install Python 3.10 or newer and the package requirements described in",
+      "vignette('Installing', package = 'DeepPatientLevelPrediction').",
+      "Original error:",
+      conditionMessage(error)
+    ),
+    call. = FALSE
+  )
+}
+
 .onLoad <- function(libname, pkgname) {
-  reticulate::py_require(c(
-    "polars>=1.31.0", "pyarrow", "duckdb", "torch>=2.7,<3", "tqdm",
-    "nvidia-ml-py"
-  ))
-  torch <<- reticulate::import("torch", delay_load = TRUE)
+  reticulate::py_require(
+    .pythonRequirements,
+    python_version = ">=3.10"
+  )
+  torch <<- reticulate::import(
+    "torch",
+    delay_load = list(on_error = .pythonImportError)
+  )
 }

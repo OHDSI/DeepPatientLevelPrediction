@@ -2,17 +2,33 @@
 % Please edit documentation in R/Estimator.R
 \name{predictDeepEstimator}
 \alias{predictDeepEstimator}
-\title{predictDeepEstimator}
+\title{Predict with a Deep Learning Estimator}
 \usage{
 predictDeepEstimator(plpModel, data, cohort)
 }
 \arguments{
-\item{plpModel}{the plpModel}
+\item{plpModel}{A fitted \code{plpModel} or an in-memory Python estimator.}
 
-\item{data}{plp data object or a torch dataset}
+\item{data}{A \code{plpData} object or a compatible PyTorch dataset.}
 
-\item{cohort}{data.frame with the rowIds of the people}
+\item{cohort}{A data frame containing the row identifiers to score.}
+}
+\value{
+A data frame containing the input cohort columns and predicted
+values in the \code{value} column.
 }
 \description{
-the prediction function for the estimator
+Applies a fitted deep learning model to prepared patient-level prediction
+data.
+}
+\examples{
+\dontrun{
+# Requires Python, a fitted model, and prepared prediction data.
+prediction <- predictDeepEstimator(
+  plpModel = model,
+  data = testData,
+  cohort = testData$labels
+)
+}
+
 }

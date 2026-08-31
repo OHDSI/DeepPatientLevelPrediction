@@ -2,15 +2,27 @@
 % Please edit documentation in R/TransferLearning.R
 \name{setFinetuner}
 \alias{setFinetuner}
-\title{setFinetuner}
+\title{Create Fine-Tuning Settings}
 \usage{
 setFinetuner(modelPath, estimatorSettings = setEstimator())
 }
 \arguments{
-\item{modelPath}{path to existing plpModel directory}
+\item{modelPath}{Path to an existing saved \code{plpModel} directory.}
 
-\item{estimatorSettings}{settings created with `setEstimator`}
+\item{estimatorSettings}{Estimator settings created by \code{\link[=setEstimator]{setEstimator()}}.}
+}
+\value{
+A \code{modelSettings} object that initializes from the saved model.
 }
 \description{
-creates settings for using transfer learning to finetune a model
+Creates settings for fine-tuning a previously fitted deep learning model.
+}
+\examples{
+\dontrun{
+# Requires a previously saved DeepPatientLevelPrediction model directory.
+finetuneSettings <- setFinetuner(
+  modelPath = "path/to/savedPlpModel",
+  estimatorSettings = setEstimator(epochs = 5)
+)
+}
 }

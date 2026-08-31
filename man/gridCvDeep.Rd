@@ -2,21 +2,40 @@
 % Please edit documentation in R/Estimator.R
 \name{gridCvDeep}
 \alias{gridCvDeep}
-\title{gridCvDeep}
+\title{Tune a Deep Learning Estimator}
 \usage{
 gridCvDeep(mappedData, labels, modelSettings, modelLocation, analysisPath)
 }
 \arguments{
-\item{mappedData}{Mapped data with covariates}
+\item{mappedData}{Covariate data mapped with
+\code{PatientLevelPrediction::MapIds()}.}
 
-\item{labels}{Dataframe with the outcomes}
+\item{labels}{Data frame containing outcomes and fold assignments.}
 
-\item{modelSettings}{Settings of the model}
+\item{modelSettings}{A \code{modelSettings} object.}
 
-\item{modelLocation}{Where to save the model}
+\item{modelLocation}{Directory in which to save the fitted model.}
 
-\item{analysisPath}{Path of the analysis}
+\item{analysisPath}{Directory used for the resumable training cache.}
+}
+\value{
+A list containing the saved estimator location, predictions, final
+parameters, hyperparameter-search summaries, and feature information.
 }
 \description{
-Performs grid search for a deep learning estimator
+Performs hyperparameter search and cross-validation, then fits a final model
+using the best-performing settings.
+}
+\examples{
+\dontrun{
+# Requires Python and mapped PatientLevelPrediction data.
+result <- gridCvDeep(
+  mappedData = mappedData,
+  labels = labels,
+  modelSettings = setDefaultResNet(),
+  modelLocation = file.path(tempdir(), "model"),
+  analysisPath = tempdir()
+)
+}
+
 }

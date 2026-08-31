@@ -2,21 +2,43 @@
 % Please edit documentation in R/Estimator.R
 \name{fitEstimator}
 \alias{fitEstimator}
-\title{fitEstimator}
+\title{Fit a Deep Learning Estimator}
 \usage{
 fitEstimator(trainData, modelSettings, analysisId, analysisPath, ...)
 }
 \arguments{
-\item{trainData}{the data to use}
+\item{trainData}{A prepared training-data object produced by
+\code{PatientLevelPrediction}.}
 
-\item{modelSettings}{modelSettings object}
+\item{modelSettings}{A \code{modelSettings} object created by one of this
+package's model-setting functions.}
 
-\item{analysisId}{Id of the analysis}
+\item{analysisId}{Identifier for the analysis.}
 
-\item{analysisPath}{Path of the analysis}
+\item{analysisPath}{Directory used for training artifacts and the resumable
+training cache.}
 
-\item{...}{Extra inputs}
+\item{...}{Additional arguments reserved for the
+\code{PatientLevelPrediction} model interface.}
+}
+\value{
+A \code{plpModel} object containing the fitted model, predictions,
+training details, and covariate information.
 }
 \description{
-fits a deep learning estimator to data.
+Fits a configured deep learning model to a prepared
+\code{PatientLevelPrediction} training-data object.
+}
+\examples{
+\dontrun{
+# Requires Python and a prepared PatientLevelPrediction training split.
+modelSettings <- setDefaultResNet()
+model <- fitEstimator(
+  trainData = splitData$Train,
+  modelSettings = modelSettings,
+  analysisId = 1,
+  analysisPath = tempdir()
+)
+}
+
 }

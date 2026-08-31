@@ -1,40 +1,55 @@
 Package: DeepPatientLevelPrediction
 Type: Package
-Title: Deep Learning for Patient Level Prediction Using Data in the OMOP Common Data Model
-Version: 2.3.0.9999
+Title: Deep Learning for Patient-Level Prediction
+Version: 2.4.0
+Date: 2026-08-31
 Authors@R: c(
     person("Egill", "Fridgeirsson", email = "e.fridgeirsson@erasmusmc.nl", role = c("aut", "cre")),
     person("Jenna", "Reps", email = "jreps@its.jnj.com", role = c("aut")), 
     person("Seng", "Chan You", role = c("aut")),
     person("Chungsoo", "Kim", role = c("aut")),
-    person("Henrik", "John", role = c("aut"))
+    person("Henrik", "John", role = c("aut")),
+    person("Observational Health Data Sciences and Informatics", role = "cph")
     )
 Maintainer: Egill Fridgeirsson <e.fridgeirsson@erasmusmc.nl>
-Description: Develop deep learning patient level prediction models following the OHDSI PatientLevelPrediction framework.
+Description: Provides deep learning models for patient-level prediction using
+    observational health data mapped to the Observational Medical Outcomes
+    Partnership Common Data Model. Integrates with the
+    'PatientLevelPrediction' framework and uses 'PyTorch' through 'reticulate'
+    to fit and evaluate multilayer perceptrons, residual networks, transformers,
+    and RealMLP models. The prediction framework is described in Reps et al.
+    (2018) <doi:10.1093/jamia/ocy032>. Python dependencies are required only
+    when fitting or applying these models.
 License: Apache License 2.0
-URL: https://github.com/OHDSI/DeepPatientLevelPrediction
+URL: https://ohdsi.github.io/DeepPatientLevelPrediction/,
+    https://github.com/OHDSI/DeepPatientLevelPrediction
 BugReports: https://github.com/OHDSI/DeepPatientLevelPrediction/issues
+SystemRequirements: Python (>= 3.10) with Python packages duckdb,
+    nvidia-ml-py, numpy, polars (>= 1.31.0), pyarrow, torch (>= 2.7, < 3),
+    and tqdm
 VignetteBuilder: knitr
 Depends:
     R (>= 4.1.0)
 Imports:
+    Andromeda (> 1.0.0),
     dplyr,
     ParallelLogger (>= 2.0.0),
     PatientLevelPrediction (>= 6.5.0),
+    R6,
+    reticulate (>= 1.41),
     rlang,
-    withr,
-    reticulate (>= 1.41)
+    withr
 Suggests:
-    Eunomia,
-    knitr,
-    rmarkdown,
-    testthat,
-    PRROC,
-    FeatureExtraction (>= 3.7.0),
-    ResultModelManager (>= 0.2.0),
     DatabaseConnector (>= 6.3.0),
-    Andromeda (> 1.0.0)
-RoxygenNote: 7.3.2
+    Eunomia,
+    FeatureExtraction (>= 3.7.0),
+    knitr,
+    PRROC,
+    rmarkdown,
+    testthat
 Encoding: UTF-8
+Language: en-US
 Config/testthat/edition: 3
 Config/testthat/parallel: FALSE
+Roxygen: list(markdown = TRUE)
+Config/roxygen2/version: 8.0.0

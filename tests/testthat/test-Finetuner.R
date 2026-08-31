@@ -1,3 +1,5 @@
+skip_if_no_integration()
+
 fineTunerSettings <- setFinetuner(
   modelPath = file.path(fitEstimatorPath, "plpModel"),
   estimatorSettings = setEstimator(device = "cpu",

@@ -1,4 +1,4 @@
-DeepPatientLevelPrediction 2.3.0.9999
+DeepPatientLevelPrediction 2.4.0
 ======================
 
 New features
@@ -52,9 +52,9 @@ DeepPatientLevelPrediction 2.2.0
     - `TUPE`: Transformer with learnable positional encoding (`TUPE`)
     - `ALiBiPE`: Attention with linear biases (`ALiBi`)
 - [Feature] Use `py_require` from reticulate to manage python dependencies and update min requirements (PR #150)
-- [Internal] Refactor transformer/dataset/embedding classes to use same code wether temporal or not (PR #147)
+- [Internal] Refactor transformer/dataset/embedding classes to use the same code whether temporal or not (PR #147)
 - [Feature] Use train/validation split for model selection instead of cross validation (PR #145)
-- [Feature] Temporal transformer added which supports RopE and time tokens (PR #147)
+- [Feature] Temporal transformer added which supports RoPE and time tokens (PR #147)
 - [Feature] Temporal data processing added (PR #147)
 - [CI] Use uv for python in github actions (PR #136)
 - [Feature] Add an option to use torch compile (PR #133)
@@ -85,7 +85,7 @@ DeepPatientLevelPrediction 2.0.2
   - Refactoring: Move cross-validation to a separate function
   - Refactoring: Move paramsToTune to a separate function 
   - linting: Enforcing HADES style
-  - Calculate AUC ourselves with torch, get rid of scikit-learn dependancy
+  - Calculate AUC ourselves with torch, get rid of scikit-learn dependency
   - added Andromeda to dev dependencies
 
 
@@ -103,7 +103,7 @@ DeepPatientLevelPrediction 2.0.1
 
 DeepPatientLevelPrediction 2.0.0
 ======================
-  - New backend which uses pytorch through reticulate instead of torch in R
+  - New backend which uses PyTorch through reticulate instead of torch in R
   - All models ported over to python
   - Dataset class now in python
   - Estimator class in python
@@ -122,7 +122,7 @@ DeepPatientLevelPrediction 1.1.5
 
 DeepPatientLevelPrediction 1.1.4
 ======================
- - Remove torchopt dependancy since adamw is now in torch
+ - Remove torchopt dependency since AdamW is now in torch
  - Update torch dependency to >=0.10.0
  - Allow device to be a function that resolves during Estimator initialization
 
@@ -141,7 +141,7 @@ DeepPatientLevelPrediction 1.1
 - A custom metric can now be defined for earlyStopping and learning rate schedule (#51)
 - Added a setEstimator function to configure the estimator (#51)
 - Seed added for model weight initialization to improve reproducibility (#51)
-- Added a learning rate finder for automatic calculatio of learning rate (#51)
+- Added a learning rate finder for automatic calculation of learning rate (#51)
 - Add seed for sampling hyperparameters (#50)
 - used vectorised torch operations to speed up data conversion in torch dataset
 

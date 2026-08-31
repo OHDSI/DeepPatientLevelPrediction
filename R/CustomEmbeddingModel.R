@@ -15,20 +15,29 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#' Create default settings a model using custom embeddings
+#' Create Model Settings with Custom Embeddings
 #'
-#' @description A model that uses custom embeddings such as Poincare embeddings or 
-#' embeddings form a foundation model
-#' @param embeddingFilePath path to the saved embeddings. The embeddings file 
-#' should be a pytorch file including a dictionary with two two fields: 
-#' `concept_ids`: a pytorch long tensor with the concept ids and `embeddings`: 
-#' a pytorch float tensor with the embeddings
-#' @param modelSettings for the model to use, needs to have an embedding layer 
-#' with a name `embedding` which will be replaced by the custom embeddings
-#' @param embeddingsClass the class of the custom embeddings, e.g. `CustomEmbeddings` 
-#' or `PoincareEmbeddings`
-#' 
-#' @return settings for a model using custom embeddings
+#' Configures a model to use supplied embeddings, such as Poincare embeddings
+#' or embeddings from a foundation model.
+#'
+#' @param embeddingFilePath Path to a PyTorch file containing a dictionary with
+#'   `concept_ids`, a PyTorch long tensor, and `embeddings`, a PyTorch float
+#'   tensor.
+#' @param modelSettings Settings for a model with an embedding layer named
+#'   `embedding`. The supplied embeddings replace that layer.
+#' @param embeddingsClass Embedding implementation, either
+#'   `"CustomEmbeddings"` or `"PoincareEmbeddings"`.
+#'
+#' @return A `modelSettings` object configured to initialize custom embeddings.
+#'
+#' @examples
+#' \dontrun{
+#' # Requires a PyTorch embeddings file created outside this example.
+#' modelSettings <- setCustomEmbeddingModel(
+#'   embeddingFilePath = "path/to/embeddings.pt",
+#'   modelSettings = setDefaultTransformer()
+#' )
+#' }
 #'
 #' @export
 setCustomEmbeddingModel <- function(
@@ -52,9 +61,9 @@ setCustomEmbeddingModel <- function(
     ),
     embeddingsClass = "CustomEmbeddings"
 ) {
-  embeddingFilePath <- normalizePath(embeddingFilePath)
   checkIsClass(embeddingFilePath, "character")
   checkFileExists(embeddingFilePath)
+  embeddingFilePath <- normalizePath(embeddingFilePath, mustWork = TRUE)
   checkIsClass(embeddingsClass, "character")
   checkInStringVector(embeddingsClass, c("CustomEmbeddings", "PoincareEmbeddings"))
   

@@ -1,6 +1,7 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
 ^\.github$
+^\.git$
 ^\.idea$
 ^_pkgdown\.yml$
 ^docs$
@@ -9,6 +10,8 @@
 ^deploy.sh$
 ^compare_versions$
 ^.mypy_cache$
+^cran-comments\.md$
+^CRAN-SUBMISSION$
 ^inst/python/__pycache__
 ^.*\.pt$
 ^doc$

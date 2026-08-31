@@ -10,12 +10,20 @@ setDefaultTransformer(
 )
 }
 \arguments{
-\item{estimatorSettings}{created with `setEstimator`}
+\item{estimatorSettings}{Estimator settings created by \code{\link[=setEstimator]{setEstimator()}}.}
+}
+\value{
+A \code{modelSettings} object for use with \code{PatientLevelPrediction}.
 }
 \description{
-A transformer model with default hyperparameters
+Creates settings for the package's default non-temporal transformer model.
 }
 \details{
-from https://arxiv.org/abs/2106.11959
-Default hyperparameters from paper
+The architecture and default hyperparameters are based on
+\href{https://arxiv.org/abs/2106.11959}{Gorishniy et al. (2021)}.
+}
+\examples{
+transformerSettings <- setDefaultTransformer()
+transformerSettings$param[[1]]$numBlocks
+
 }

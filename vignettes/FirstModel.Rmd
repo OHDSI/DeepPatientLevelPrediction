@@ -31,7 +31,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 This vignette describes how you can develop your first deep learning model using the DeepPLP package on OMOP-CDM data.
 
-First make sure you have everything installed correctly by following the [installation guide](https://ohdsi.github.io/DeepPatientLevelPrediction/articles/Installing.html)
+First make sure you have everything installed correctly by following `vignette("Installing")`.
 
 ## The data
 
@@ -108,7 +108,7 @@ Now it's time to define our deep learning model. It can be daunting for those no
 
 We will use a simple ResNet for our example. ResNets use skip connections between layers to support deeper models without overfitting as quickly. The default ResNet is a 6 layer model with 512 neurons per layer.
 
-```{r, echo = TRUE, message = FALSE, warning = FALSE,tidy=FALSE,eval=FALSE}
+```{r, echo = TRUE, message = FALSE, warning = FALSE, tidy=FALSE}
 library(DeepPatientLevelPrediction)
 modelSettings <- setDefaultResNet(
   estimatorSettings = setEstimator(learningRate=3e-4,
@@ -134,7 +134,7 @@ plpResults <- PatientLevelPrediction::runPlp(plpData = plpData,
                                              analysisId = "ResNet",
                                              analysisName = "Testing DeepPLP",
                                              populationSettings = populationSettings,
-                                             saveDirectory = "ResNet")
+                                             saveDirectory = file.path(tempdir(), "ResNet"))
 ```
 
 On my computer this takes about 20 seconds per epoch. While you probably won't see any kind of good performance using this model and this data, at least the training loss should be decreasing in the printed output.
@@ -151,4 +151,4 @@ citation("DeepPatientLevelPrediction")
 
 **Please reference this paper if you use the PLP Package in your work:**
 
-[Reps JM, Schuemie MJ, Suchard MA, Ryan PB, Rijnbeek PR. Design and implementation of a standardized framework to generate and evaluate patient-level prediction models using observational healthcare data. J Am Med Inform Assoc. 2018;25(8):969-975.](http://dx.doi.org/10.1093/jamia/ocy032)
+Reps JM, Schuemie MJ, Suchard MA, Ryan PB, Rijnbeek PR. Design and implementation of a standardized framework to generate and evaluate patient-level prediction models using observational healthcare data. J Am Med Inform Assoc. 2018;25(8):969-975. doi:10.1093/jamia/ocy032.

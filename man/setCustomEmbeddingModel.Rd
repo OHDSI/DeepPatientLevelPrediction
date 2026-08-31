@@ -2,7 +2,7 @@
 % Please edit documentation in R/CustomEmbeddingModel.R
 \name{setCustomEmbeddingModel}
 \alias{setCustomEmbeddingModel}
-\title{Create default settings a model using custom embeddings}
+\title{Create Model Settings with Custom Embeddings}
 \usage{
 setCustomEmbeddingModel(
   embeddingFilePath,
@@ -14,21 +14,30 @@ setCustomEmbeddingModel(
 )
 }
 \arguments{
-\item{embeddingFilePath}{path to the saved embeddings. The embeddings file 
-should be a pytorch file including a dictionary with two two fields: 
-`concept_ids`: a pytorch long tensor with the concept ids and `embeddings`: 
-a pytorch float tensor with the embeddings}
+\item{embeddingFilePath}{Path to a PyTorch file containing a dictionary with
+\code{concept_ids}, a PyTorch long tensor, and \code{embeddings}, a PyTorch float
+tensor.}
 
-\item{modelSettings}{for the model to use, needs to have an embedding layer 
-with a name `embedding` which will be replaced by the custom embeddings}
+\item{modelSettings}{Settings for a model with an embedding layer named
+\code{embedding}. The supplied embeddings replace that layer.}
 
-\item{embeddingsClass}{the class of the custom embeddings, e.g. `CustomEmbeddings` 
-or `PoincareEmbeddings`}
+\item{embeddingsClass}{Embedding implementation, either
+\code{"CustomEmbeddings"} or \code{"PoincareEmbeddings"}.}
 }
 \value{
-settings for a model using custom embeddings
+A \code{modelSettings} object configured to initialize custom embeddings.
 }
 \description{
-A model that uses custom embeddings such as Poincare embeddings or 
-embeddings form a foundation model
+Configures a model to use supplied embeddings, such as Poincare embeddings
+or embeddings from a foundation model.
+}
+\examples{
+\dontrun{
+# Requires a PyTorch embeddings file created outside this example.
+modelSettings <- setCustomEmbeddingModel(
+  embeddingFilePath = "path/to/embeddings.pt",
+  modelSettings = setDefaultTransformer()
+)
+}
+
 }

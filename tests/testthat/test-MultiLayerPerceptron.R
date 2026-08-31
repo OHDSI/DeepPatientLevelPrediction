@@ -1,3 +1,4 @@
+skip_if_no_integration()
 
 modelSettings <- setMultiLayerPerceptron(
   numLayers = 2,
@@ -167,6 +168,7 @@ test_that("Can upload results to database", {
     server = sqliteFile
   )
   conn <- DatabaseConnector::connect(connectionDetails = connectionDetails)
+  withr::defer(DatabaseConnector::disconnect(conn))
   targetDialect <- "sqlite"
 
   # check the results table is populated

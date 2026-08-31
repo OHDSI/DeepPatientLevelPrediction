@@ -1,3 +1,5 @@
+skip_if_no_integration()
+
 # Copyright 2025 Observational Health Data Sciences and Informatics
 #
 # This file is part of DeepPatientLevelPrediction
