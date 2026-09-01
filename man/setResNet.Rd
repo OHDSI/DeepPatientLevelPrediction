@@ -2,7 +2,7 @@
 % Please edit documentation in R/ResNet.R
 \name{setResNet}
 \alias{setResNet}
-\title{setResNet}
+\title{Create ResNet Settings}
 \usage{
 setResNet(
   numLayers = c(1:8),
@@ -19,36 +19,50 @@ setResNet(
 )
 }
 \arguments{
-\item{numLayers}{Number of layers in network, default: 1:16}
+\item{numLayers}{Number of residual layers.}
 
-\item{sizeHidden}{Amount of neurons in each default layer, default:
-2^(6:10) (64 to 1024)}
+\item{sizeHidden}{Width of the hidden representation.}
 
-\item{hiddenFactor}{How much to grow the amount of neurons in each
-ResLayer, default: 1:4}
+\item{hiddenFactor}{Multiplier controlling the inner width of each residual
+layer.}
 
-\item{residualDropout}{How much dropout to apply after last linear layer
-in ResLayer, default: seq(0, 0.3, 0.05)}
+\item{residualDropout}{Dropout probability after the final linear operation
+in each residual layer.}
 
-\item{hiddenDropout}{How much dropout to apply after first linear layer
-in ResLayer, default: seq(0, 0.3, 0.05)}
+\item{hiddenDropout}{Dropout probability after the first linear operation in
+each residual layer.}
 
-\item{sizeEmbedding}{Size of embedding layer, default: 2^(6:9)
-'(64 to 512)}
+\item{sizeEmbedding}{Embedding dimension.}
 
-\item{estimatorSettings}{created with ```setEstimator```}
+\item{estimatorSettings}{Estimator settings created by \code{\link[=setEstimator]{setEstimator()}}.}
 
-\item{hyperParamSearch}{Which kind of hyperparameter search to use random
-sampling or exhaustive grid search. default: 'random'}
+\item{hyperParamSearch}{Hyperparameter-search strategy, either \code{"random"}
+or \code{"grid"}.}
 
-\item{randomSample}{How many random samples from hyperparameter space
-to use}
+\item{randomSample}{Number of combinations sampled when
+\code{hyperParamSearch = "random"}.}
 
-\item{randomSampleSeed}{Random seed to sample hyperparameter combinations}
+\item{randomSampleSeed}{Random seed used when sampling combinations.}
+}
+\value{
+A \code{modelSettings} object for use with \code{PatientLevelPrediction}.
 }
 \description{
-Creates settings for a ResNet model
+Creates model and hyperparameter-search settings for a residual network.
 }
 \details{
-Model architecture from by https://arxiv.org/abs/2106.11959
+The architecture is based on
+\href{https://arxiv.org/abs/2106.11959}{Gorishniy et al. (2021)}.
+}
+\examples{
+resnetSettings <- setResNet(
+  numLayers = c(2, 4),
+  sizeHidden = 128,
+  hiddenFactor = 2,
+  residualDropout = 0.1,
+  hiddenDropout = 0.1,
+  sizeEmbedding = 64,
+  randomSample = 2,
+  randomSampleSeed = 42
+)
 }

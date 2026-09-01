@@ -78,14 +78,14 @@ plpData <- PatientLevelPrediction::getPlpData(
 
 Now we can set up our initial model development. We will use a simple `ResNet`.
 
-```{r, message=FALSE, eval=FALSE}
-modelSettings <- setResNet(numLayers = c(2),
+```{r, message=FALSE}
+modelSettings <- DeepPatientLevelPrediction::setResNet(numLayers = c(2),
                            sizeHidden = 128,
                            hiddenFactor = 1,
                            residualDropout = 0.1,
                            hiddenDropout = 0.1,
                            sizeEmbedding = 128,
-                           estimatorSettings = setEstimator(
+                           estimatorSettings = DeepPatientLevelPrediction::setEstimator(
                              learningRate = 3e-4,
                              weightDecay = 0,
                              device = "cpu", # use cuda here if you have a gpu
@@ -95,6 +95,10 @@ modelSettings <- setResNet(numLayers = c(2),
                            ),
                            hyperParamSearch = "random",
                            randomSample = 1)
+```
+
+```{r, message=FALSE, eval=FALSE}
+outputDirectory <- file.path(tempdir(), "DeepPLPTransferLearning")
 
 plpResults <- PatientLevelPrediction::runPlp(
   plpData = plpData,
@@ -110,12 +114,12 @@ plpResults <- PatientLevelPrediction::runPlp(
     riskWindowEnd = 365
   ),
   splitSettings = PatientLevelPrediction::createDefaultSplitSetting(splitSeed = 42),
-  saveDirectory = "./output" # save in a folder in the current directory
+  saveDirectory = outputDirectory
 )
 
 ```
 
-This should take a few minutes on a CPU. Now that we have a model developed, we can further finetune it on the `diclofenac` cohort. First we need to extract it.
+This should take a few minutes on a CPU. Now that we have a model developed, we can further fine-tune it on the `diclofenac` cohort. First we need to extract it.
 
 ```{r, message=FALSE, eval=FALSE}
 databaseDetails <- PatientLevelPrediction::createDatabaseDetails(
@@ -138,7 +142,12 @@ plpDataTransfer <- PatientLevelPrediction::getPlpData(
 Now we can set up our transfer learning model development. For this we need to use a different modelSettings function. `setFinetuner`. We also need to know the path to the previously developed model. This should be of the form `outputDir/analysisId/plpResult/model` where outputDir is the directory specified when we develop our model and analysisId is the id we gave the analysis. In this case it is `1` and the path to the model is: `./output/1/plpResult/model`.
 
 ```{r, message=FALSE, eval=FALSE}
-modelSettingsTransfer <- setFinetuner(modelPath = './output/1/plpResult/model',
+modelSettingsTransfer <- setFinetuner(modelPath = file.path(
+                                        outputDirectory,
+                                        "1",
+                                        "plpResult",
+                                        "model"
+                                      ),
                                       estimatorSettings = setEstimator(
                                         learningRate = 3e-4,
                                         weightDecay = 0,
@@ -153,6 +162,8 @@ modelSettingsTransfer <- setFinetuner(modelPath = './output/1/plpResult/model',
 Currently the basic transfer learning works by loading the previously trained model and resetting its last layer, often called the prediction head. Then it will train only the parameters in this last layer. The hope is that the other layers have learned some generalizable representations of our data, and by modifying the last layer we can mix those representations to suit the new task.
 
 ```{r, message=FALSE, eval=FALSE}
+transferOutputDirectory <- file.path(tempdir(), "DeepPLPTransferLearningResult")
+
 plpResultsTransfer <- PatientLevelPrediction::runPlp(
   plpData = plpDataTransfer,
   outcomeId = 3,
@@ -166,14 +177,14 @@ plpResultsTransfer <- PatientLevelPrediction::runPlp(
     riskWindowEnd = 365
   ),
   splitSettings = PatientLevelPrediction::createDefaultSplitSetting(splitSeed = 42),
-  saveDirectory = "./outputTransfer" # save in a folder in the current directory
+  saveDirectory = transferOutputDirectory
 )
 ```
 
 This should be much faster since it only trains the last layer. The results are not expected to be good in this toy example on synthetic data, but the process on large observational data is the same.
 
 # Conclusion
-Now you have finetuned a model on a new cohort using transfer learning. This can be useful when you have a small dataset for the new task, but a large dataset for a related task or from a different database. The DeepPatientLevelPrediction package makes it easy to perform transfer learning on patient-level prediction tasks.
+Now you have fine-tuned a model on a new cohort using transfer learning. This can be useful when you have a small dataset for the new task, but a large dataset for a related task or from a different database. The DeepPatientLevelPrediction package makes it easy to perform transfer learning on patient-level prediction tasks.
 
 # Acknowledgments
 
@@ -186,8 +197,8 @@ citation("DeepPatientLevelPrediction")
 
 **Please reference this paper if you use the PLP Package in your work:**
 
-[Reps JM, Schuemie MJ, Suchard MA, Ryan PB, Rijnbeek PR. Design and
+Reps JM, Schuemie MJ, Suchard MA, Ryan PB, Rijnbeek PR. Design and
 implementation of a standardized framework to generate and evaluate
 patient-level prediction models using observational healthcare data. J
 Am Med Inform Assoc.
-2018;25(8):969-975.](http://dx.doi.org/10.1093/jamia/ocy032)
+2018;25(8):969-975. doi:10.1093/jamia/ocy032.

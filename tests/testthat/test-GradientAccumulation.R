@@ -1,3 +1,5 @@
+skip_if_no_integration()
+
 generateData <- function(observations, features, totalFeatures = 6,
                          numCovs = FALSE) {
   rowId <- rep(1:observations, each = features)

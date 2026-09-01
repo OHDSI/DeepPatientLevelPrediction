@@ -2,7 +2,7 @@
 % Please edit documentation in R/MultiLayerPerceptron.R
 \name{setMultiLayerPerceptron}
 \alias{setMultiLayerPerceptron}
-\title{setMultiLayerPerceptron}
+\title{Create Multilayer Perceptron Settings}
 \usage{
 setMultiLayerPerceptron(
   numLayers = c(1:8),
@@ -17,28 +17,39 @@ setMultiLayerPerceptron(
 )
 }
 \arguments{
-\item{numLayers}{Number of layers in network, default: 1:8}
+\item{numLayers}{Number of hidden layers.}
 
-\item{sizeHidden}{Amount of neurons in each default layer,
-default: 2^(6:9) (64 to 512)}
+\item{sizeHidden}{Number of units in each hidden layer.}
 
-\item{dropout}{How much dropout to apply after first linear,
-default: seq(0, 0.3, 0.05)}
+\item{dropout}{Dropout probability.}
 
-\item{sizeEmbedding}{Size of embedding default: 2^(6:9) (64 to 512)}
+\item{sizeEmbedding}{Embedding dimension.}
 
-\item{estimatorSettings}{settings of Estimator created with `setEstimator`}
+\item{estimatorSettings}{Estimator settings created by \code{\link[=setEstimator]{setEstimator()}}.}
 
-\item{hyperParamSearch}{Which kind of hyperparameter search to use random
-sampling or exhaustive grid search. default: 'random'}
+\item{hyperParamSearch}{Hyperparameter-search strategy, either \code{"random"}
+or \code{"grid"}.}
 
-\item{randomSample}{How many random samples from hyperparameter space to use}
+\item{randomSample}{Number of combinations sampled when
+\code{hyperParamSearch = "random"}.}
 
-\item{randomSampleSeed}{Random seed to sample hyperparameter combinations}
+\item{randomSampleSeed}{Random seed used when sampling combinations.}
+}
+\value{
+A \code{modelSettings} object for use with \code{PatientLevelPrediction}.
 }
 \description{
-Creates settings for a Multilayer perceptron model
+Creates model and hyperparameter-search settings for a multilayer
+perceptron.
 }
-\details{
-Model architecture
+\examples{
+mlpSettings <- setMultiLayerPerceptron(
+  numLayers = c(1, 2),
+  sizeHidden = 64,
+  dropout = 0.1,
+  sizeEmbedding = 32,
+  randomSample = 2,
+  randomSampleSeed = 42
+)
+
 }

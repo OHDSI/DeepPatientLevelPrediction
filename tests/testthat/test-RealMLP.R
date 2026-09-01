@@ -1,3 +1,5 @@
+skip_if_no_integration()
+
 test_that("setRealMLP settings are created correctly", {
   settings <- setRealMLP(
     numLayers = 1L,

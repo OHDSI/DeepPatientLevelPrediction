@@ -16,14 +16,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#' setFinetuner
+#' Create Fine-Tuning Settings
 #'
-#' @description
-#' creates settings for using transfer learning to finetune a model
+#' Creates settings for fine-tuning a previously fitted deep learning model.
 #'
 #' @name setFinetuner
-#' @param modelPath path to existing plpModel directory
-#' @param estimatorSettings settings created with `setEstimator`
+#' @param modelPath Path to an existing saved `plpModel` directory.
+#' @param estimatorSettings Estimator settings created by [setEstimator()].
+#'
+#' @return A `modelSettings` object that initializes from the saved model.
+#'
+#' @examples
+#' \dontrun{
+#' # Requires a previously saved DeepPatientLevelPrediction model directory.
+#' finetuneSettings <- setFinetuner(
+#'   modelPath = "path/to/savedPlpModel",
+#'   estimatorSettings = setEstimator(epochs = 5)
+#' )
+#' }
 #' @export
 setFinetuner <- function(modelPath,
                          estimatorSettings = setEstimator()) {

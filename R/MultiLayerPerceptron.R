@@ -16,26 +16,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#' setMultiLayerPerceptron
+#' Create Multilayer Perceptron Settings
 #'
-#' @description
-#' Creates settings for a Multilayer perceptron model
+#' Creates model and hyperparameter-search settings for a multilayer
+#' perceptron.
 #'
-#' @details
-#' Model architecture
+#' @param numLayers Number of hidden layers.
+#' @param sizeHidden Number of units in each hidden layer.
+#' @param dropout Dropout probability.
+#' @param sizeEmbedding Embedding dimension.
+#' @param estimatorSettings Estimator settings created by [setEstimator()].
+#' @param hyperParamSearch Hyperparameter-search strategy, either `"random"`
+#'   or `"grid"`.
+#' @param randomSample Number of combinations sampled when
+#'   `hyperParamSearch = "random"`.
+#' @param randomSampleSeed Random seed used when sampling combinations.
 #'
+#' @return A `modelSettings` object for use with `PatientLevelPrediction`.
 #'
-#' @param numLayers         Number of layers in network, default: 1:8
-#' @param sizeHidden        Amount of neurons in each default layer,
-#' default: 2^(6:9) (64 to 512)
-#' @param dropout           How much dropout to apply after first linear,
-#' default: seq(0, 0.3, 0.05)
-#' @param sizeEmbedding     Size of embedding default: 2^(6:9) (64 to 512)
-#' @param estimatorSettings settings of Estimator created with `setEstimator`
-#' @param hyperParamSearch  Which kind of hyperparameter search to use random
-#' sampling or exhaustive grid search. default: 'random'
-#' @param randomSample How many random samples from hyperparameter space to use
-#' @param randomSampleSeed  Random seed to sample hyperparameter combinations
+#' @examples
+#' mlpSettings <- setMultiLayerPerceptron(
+#'   numLayers = c(1, 2),
+#'   sizeHidden = 64,
+#'   dropout = 0.1,
+#'   sizeEmbedding = 32,
+#'   randomSample = 2,
+#'   randomSampleSeed = 42
+#' )
 #'
 #' @export
 setMultiLayerPerceptron <- function(numLayers = c(1:8),

@@ -51,9 +51,9 @@ of Deep Learning in this domain.
 
 This vignette describes how you can use the Observational Health Data
 Sciences and Informatics (OHDSI)
-[`PatientLevelPrediction`](http://github.com/OHDSI/PatientLevelPrediction)
+[`PatientLevelPrediction`](https://github.com/OHDSI/PatientLevelPrediction)
 package and
-[`DeepPatientLevelPrediction`](http://github.com/OHDSI/DeepPatientLevelPrediction)
+[`DeepPatientLevelPrediction`](https://github.com/OHDSI/DeepPatientLevelPrediction)
 package to build Deep Learning models. This vignette assumes you have
 read and are comfortable with building patient level prediction models
 as described in the [`BuildingPredictiveModels`
@@ -71,7 +71,7 @@ a good representation, but currently the sizes of the large
 observational healthcare databases are growing fast which would make
 Deep Learning an interesting approach to test within OHDSI's
 [Patient-Level Prediction
-Framework](https://academic.oup.com/jamia/article/25/8/969/4989437). The
+Framework](https://ohdsi.github.io/PatientLevelPrediction/). The
 current implementation allows us to perform research at scale on the
 value and limitations of Deep Learning using observational healthcare
 data.
@@ -94,8 +94,7 @@ is highly recommended for most deep learning model development.
 ## Requirements
 
 Full details about the package requirements and instructions on
-installing the package can be found
-[here](https://ohdsi.github.io/DeepPatientLevelPrediction/articles/Installing.html).
+installing the package can be found in `vignette("Installing")`.
 
 ## Integration with PatientLevelPrediction
 
@@ -109,15 +108,16 @@ The model examples below assume you have already loaded both packages and
 created `plpData` and `populationSettings` as shown in the first-model
 vignette.
 
-```{r, eval=FALSE}
-
+```{r, message=FALSE}
 library(DeepPatientLevelPrediction)
 
+# Pick the model settings from DeepPatientLevelPrediction.
+deepLearningModel <- DeepPatientLevelPrediction::setDefaultResNet()
+```
+
+```{r, eval=FALSE}
 # load the data
 plpData <- PatientLevelPrediction::loadPlpData('locationOfData')
-
-# pick the set<Model> from  DeepPatientLevelPrediction
-deepLearningModel <- DeepPatientLevelPrediction::setDefaultResNet()
 
 # use PatientLevelPrediction to fit model
 deepLearningResult <- PatientLevelPrediction::runPlp(
@@ -126,7 +126,7 @@ deepLearningResult <- PatientLevelPrediction::runPlp(
     modelSettings = deepLearningModel,
     analysisId = 'resNetTorch',
     populationSettings = populationSettings,
-    saveDirectory = file.path(getwd(), 'resNetTorch'),
+    saveDirectory = file.path(tempdir(), 'resNetTorch'),
     ...
   )
 
@@ -224,7 +224,7 @@ along with the performance details and settings. Note that all possible
 combinations are 2*2*2*2 or 16 but specify ```randomSample=10``` to only try
 10 of those.
 
-```{r, eval=FALSE}
+```{r}
 
 modelSettings <- setMultiLayerPerceptron(
   numLayers = c(3L, 5L),
@@ -240,7 +240,9 @@ modelSettings <- setMultiLayerPerceptron(
   ),
   randomSample=10L
 )
+```
 
+```{r, eval=FALSE}
 mlpResult <- PatientLevelPrediction::runPlp(
     plpData = plpData,
     outcomeId = 3,
@@ -258,7 +260,7 @@ mlpResult <- PatientLevelPrediction::runPlp(
       runModelDevelopment = TRUE,
       runCovariateSummary = FALSE
     ),
-    saveDirectory = file.path(getwd(), 'MLP')
+    saveDirectory = file.path(tempdir(), 'MLP')
   )
 
 ```
@@ -343,7 +345,7 @@ not testing. The embedding layer has 32 neurons. Learning rate of 3e-4 with
 weight decay of 1e-6 is used for the optimizer. No hyperparameter search is done
 since each input only includes one option.
 
-```{r, eval=FALSE}
+```{r}
 
 resnetSettings <- setResNet(
   numLayers = c(2L),
@@ -361,7 +363,9 @@ resnetSettings <- setResNet(
   hyperParamSearch = 'random',
   randomSample = 1
 )
+```
 
+```{r, eval=FALSE}
 resResult <- PatientLevelPrediction::runPlp(
     plpData = plpData,
     outcomeId = 3,
@@ -379,7 +383,7 @@ resResult <- PatientLevelPrediction::runPlp(
       runModelDevelopment = TRUE,
       runCovariateSummary = FALSE
     ),
-    saveDirectory = file.path(getwd(), 'ResNet') # change to save elsewhere
+    saveDirectory = file.path(tempdir(), 'ResNet')
   )
 
 ```
@@ -403,7 +407,7 @@ expanded grid instead.
 
 ### Example Code
 
-```{r, eval=FALSE}
+```{r}
 
 modelSettings <- setRealMLP(
   numLayers = 3L,
@@ -411,7 +415,9 @@ modelSettings <- setRealMLP(
   dropout = 0.15,
   device = "cpu"
 )
+```
 
+```{r, eval=FALSE}
 realMlpResult <- PatientLevelPrediction::runPlp(
     plpData = plpData,
     outcomeId = 3,
@@ -429,14 +435,14 @@ realMlpResult <- PatientLevelPrediction::runPlp(
       runModelDevelopment = TRUE,
       runCovariateSummary = FALSE
     ),
-    saveDirectory = file.path(getwd(), 'RealMLP') # change to save elsewhere
+    saveDirectory = file.path(tempdir(), 'RealMLP')
   )
 ```
 
 For example, the following settings sample four RealMLP configurations
 from the expanded grid:
 
-```{r, eval=FALSE}
+```{r}
 
 modelSettings <- setRealMLP(
   numLayers = c(2L, 3L),
@@ -506,7 +512,7 @@ block
 
 #### Example Code
 
-```{r, eval=FALSE}
+```{r}
 
 modelSettings <- setTransformer(numBlocks = 3L,
                                 dimToken = 32L,
@@ -523,9 +529,9 @@ modelSettings <- setTransformer(numBlocks = 3L,
                                   device = 'cpu'
                                 ),
                                 randomSample=1L)
+```
 
-
-
+```{r, eval=FALSE}
 TransformerResult <- PatientLevelPrediction::runPlp(
     plpData = plpData,
     outcomeId = 3,
@@ -543,7 +549,7 @@ TransformerResult <- PatientLevelPrediction::runPlp(
       runModelDevelopment = TRUE,
       runCovariateSummary = FALSE
     ),
-    saveDirectory = file.path(getwd(), 'Transformer') # change to save elsewhere
+    saveDirectory = file.path(tempdir(), 'Transformer')
   )
 ```
 
@@ -558,8 +564,8 @@ citation("DeepPatientLevelPrediction")
 
 **Please reference this paper if you use the PLP Package in your work:**
 
-[Reps JM, Schuemie MJ, Suchard MA, Ryan PB, Rijnbeek PR. Design and
+Reps JM, Schuemie MJ, Suchard MA, Ryan PB, Rijnbeek PR. Design and
 implementation of a standardized framework to generate and evaluate
 patient-level prediction models using observational healthcare data. J
 Am Med Inform Assoc.
-2018;25(8):969-975.](http://dx.doi.org/10.1093/jamia/ocy032)
+2018;25(8):969-975. doi:10.1093/jamia/ocy032.

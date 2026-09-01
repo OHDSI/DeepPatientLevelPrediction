@@ -25,7 +25,7 @@ test_that("Helper functions", {
 })
 
 test_that("r_to_py() converts a data.frame to a polars DataFrame", {
-  skip_on_cran()
+  skip_if_no_integration()
   skip_if_not_installed("reticulate")
   skip_if_not(
     reticulate::py_module_available("polars"),
@@ -53,7 +53,7 @@ test_that("r_to_py() converts a data.frame to a polars DataFrame", {
 })
 
 test_that("py_to_r() S3 method returns a faithful R data.frame", {
-  skip_on_cran()
+  skip_if_no_integration()
   skip_if_not_installed("reticulate")
   skip_if_not(
     reticulate::py_module_available("polars"),

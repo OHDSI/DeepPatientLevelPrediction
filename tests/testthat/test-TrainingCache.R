@@ -1,3 +1,5 @@
+skip_if_no_integration()
+
 resNetSettings <- setResNet(
   numLayers = c(1, 2, 4),
   sizeHidden = 64,

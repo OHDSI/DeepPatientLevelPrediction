@@ -91,7 +91,7 @@ The most important settings are:
 For reproducible model definitions, set `temporalSettings` explicitly
 instead of relying on defaults.
 
-```{r, eval=FALSE}
+```{r}
 modelSettings <- DeepPatientLevelPrediction::setTransformer(
   numBlocks = 1L,
   dimToken = 8L,
@@ -149,7 +149,7 @@ temporalTransformerResult <- PatientLevelPrediction::runPlp(
     runModelDevelopment = TRUE,
     runCovariateSummary = FALSE
   ),
-  saveDirectory = file.path(getwd(), "TemporalTransformer")
+  saveDirectory = file.path(tempdir(), "TemporalTransformer")
 )
 ```
 
@@ -177,8 +177,8 @@ citation("DeepPatientLevelPrediction")
 
 **Please reference this paper if you use the PLP Package in your work:**
 
-[Reps JM, Schuemie MJ, Suchard MA, Ryan PB, Rijnbeek PR. Design and
+Reps JM, Schuemie MJ, Suchard MA, Ryan PB, Rijnbeek PR. Design and
 implementation of a standardized framework to generate and evaluate
 patient-level prediction models using observational healthcare data. J
 Am Med Inform Assoc.
-2018;25(8):969-975.](http://dx.doi.org/10.1093/jamia/ocy032)
+2018;25(8):969-975. doi:10.1093/jamia/ocy032.
