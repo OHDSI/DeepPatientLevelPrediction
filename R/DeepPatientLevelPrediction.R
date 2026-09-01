@@ -71,13 +71,21 @@ torch <- NULL
   )
 }
 
-.onLoad <- function(libname, pkgname) {
-  reticulate::py_require(
+.initializePythonBindings <- function(
+    pyRequire = reticulate::py_require,
+    pyImport = reticulate::import) {
+  pyRequire(
     .pythonRequirements,
     python_version = ">=3.10"
   )
-  torch <<- reticulate::import(
+  pyImport(
     "torch",
     delay_load = list(on_error = .pythonImportError)
   )
 }
+
+# Package hooks run before covr can instrument the namespace. # nocov start
+.onLoad <- function(libname, pkgname) {
+  torch <<- .initializePythonBindings()
+}
+# nocov end

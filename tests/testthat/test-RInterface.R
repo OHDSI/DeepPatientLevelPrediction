@@ -10,6 +10,61 @@ test_that("package loading and settings do not initialize Python", {
   expect_false(reticulate::py_available(initialize = FALSE))
 })
 
+test_that("Python bindings declare requirements and delay the torch import", {
+  calls <- new.env(parent = emptyenv())
+  torchModule <- new.env(parent = emptyenv())
+  initializePythonBindings <- getFromNamespace(
+    ".initializePythonBindings",
+    "DeepPatientLevelPrediction"
+  )
+  pythonImportError <- getFromNamespace(
+    ".pythonImportError",
+    "DeepPatientLevelPrediction"
+  )
+
+  result <- initializePythonBindings(
+    pyRequire = function(packages, python_version) {
+      calls$packages <- packages
+      calls$pythonVersion <- python_version
+    },
+    pyImport = function(module, delay_load) {
+      calls$module <- module
+      calls$delayLoad <- delay_load
+      torchModule
+    }
+  )
+
+  expect_identical(result, torchModule)
+  expect_setequal(
+    calls$packages,
+    c(
+      "polars>=1.31.0",
+      "pyarrow",
+      "duckdb",
+      "numpy",
+      "torch>=2.7,<3",
+      "tqdm",
+      "nvidia-ml-py"
+    )
+  )
+  expect_identical(calls$pythonVersion, ">=3.10")
+  expect_identical(calls$module, "torch")
+  expect_identical(calls$delayLoad$on_error, pythonImportError)
+})
+
+test_that("Python import failures include installation guidance", {
+  pythonImportError <- getFromNamespace(
+    ".pythonImportError",
+    "DeepPatientLevelPrediction"
+  )
+
+  error <- expect_error(
+    pythonImportError(simpleError("No module named torch")),
+    "Original error: No module named torch"
+  )
+  expect_null(error$call)
+})
+
 test_that("estimator settings are created and validated in R", {
   estimator <- setEstimator(
     learningRate = 0.001,
