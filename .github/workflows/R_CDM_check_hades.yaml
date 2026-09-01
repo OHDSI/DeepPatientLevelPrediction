@@ -147,8 +147,8 @@ jobs:
 
       - uses: r-lib/actions/setup-tinytex@v2
 
-      - name: Install LaTeX fonts for the R manual
-        run: tlmgr install courier
+      - name: Install LaTeX dependencies for the R manual
+        run: tlmgr install courier makeindex
 
       - uses: r-lib/actions/setup-pandoc@v2
 
