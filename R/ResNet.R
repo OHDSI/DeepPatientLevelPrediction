@@ -16,17 +16,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#' setDefaultResNet
+#' Create Default ResNet Settings
 #'
-#' @description
-#' Creates settings for a default ResNet model
+#' Creates settings for the package's default residual-network model.
 #'
 #' @details
-#' Model architecture from by https://arxiv.org/abs/2106.11959 .
-#' Hyperparameters chosen by a experience on a few prediction problems.
+#' The architecture is based on
+#' [Gorishniy et al. (2021)](https://arxiv.org/abs/2106.11959). The
+#' hyperparameters are defaults selected for patient-level prediction tasks.
 #'
-#' @param estimatorSettings created with ```setEstimator```
-
+#' @param estimatorSettings Estimator settings created by [setEstimator()].
+#'
+#' @return A `modelSettings` object for use with `PatientLevelPrediction`.
+#'
+#' @examples
+#' resnetSettings <- setDefaultResNet()
+#' resnetSettings$param[[1]]$numLayers
+#'
 #' @export
 setDefaultResNet <- function(estimatorSettings =
                                setEstimator(
@@ -53,32 +59,43 @@ setDefaultResNet <- function(estimatorSettings =
 }
 
 
-#' setResNet
+#' Create ResNet Settings
 #'
-#' @description
-#' Creates settings for a ResNet model
+#' Creates model and hyperparameter-search settings for a residual network.
 #'
 #' @details
-#' Model architecture from by https://arxiv.org/abs/2106.11959
+#' The architecture is based on
+#' [Gorishniy et al. (2021)](https://arxiv.org/abs/2106.11959).
 #'
+#' @param numLayers Number of residual layers.
+#' @param sizeHidden Width of the hidden representation.
+#' @param hiddenFactor Multiplier controlling the inner width of each residual
+#'   layer.
+#' @param residualDropout Dropout probability after the final linear operation
+#'   in each residual layer.
+#' @param hiddenDropout Dropout probability after the first linear operation in
+#'   each residual layer.
+#' @param sizeEmbedding Embedding dimension.
+#' @param estimatorSettings Estimator settings created by [setEstimator()].
+#' @param hyperParamSearch Hyperparameter-search strategy, either `"random"`
+#'   or `"grid"`.
+#' @param randomSample Number of combinations sampled when
+#'   `hyperParamSearch = "random"`.
+#' @param randomSampleSeed Random seed used when sampling combinations.
 #'
-#' @param numLayers         Number of layers in network, default: 1:16
-#' @param sizeHidden        Amount of neurons in each default layer, default:
-#' 2^(6:10) (64 to 1024)
-#' @param hiddenFactor      How much to grow the amount of neurons in each
-#' ResLayer, default: 1:4
-#' @param residualDropout   How much dropout to apply after last linear layer
-#' in ResLayer, default: seq(0, 0.3, 0.05)
-#' @param hiddenDropout     How much dropout to apply after first linear layer
-#' in ResLayer, default: seq(0, 0.3, 0.05)
-#' @param sizeEmbedding     Size of embedding layer, default: 2^(6:9)
-#' '(64 to 512)
-#' @param estimatorSettings created with ```setEstimator```
-#' @param hyperParamSearch  Which kind of hyperparameter search to use random
-#' sampling or exhaustive grid search. default: 'random'
-#' @param randomSample      How many random samples from hyperparameter space
-#' to use
-#' @param randomSampleSeed  Random seed to sample hyperparameter combinations
+#' @return A `modelSettings` object for use with `PatientLevelPrediction`.
+#'
+#' @examples
+#' resnetSettings <- setResNet(
+#'   numLayers = c(2, 4),
+#'   sizeHidden = 128,
+#'   hiddenFactor = 2,
+#'   residualDropout = 0.1,
+#'   hiddenDropout = 0.1,
+#'   sizeEmbedding = 64,
+#'   randomSample = 2,
+#'   randomSampleSeed = 42
+#' )
 #' @export
 setResNet <- function(numLayers = c(1:8),
                       sizeHidden = c(2^(6:10)),

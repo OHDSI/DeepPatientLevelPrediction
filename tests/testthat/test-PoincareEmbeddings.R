@@ -1,3 +1,5 @@
+skip_if_no_integration()
+
 conceptIds <- torch$tensor(plpData$covariateData$covariateRef %>%
   dplyr::filter(analysisId == 210) %>%
   dplyr::pull("conceptId"), dtype = torch$long)

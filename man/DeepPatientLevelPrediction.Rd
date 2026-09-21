@@ -12,6 +12,7 @@ prediction models using data in the OMOP CDM
 \seealso{
 Useful links:
 \itemize{
+  \item \url{https://ohdsi.github.io/DeepPatientLevelPrediction/}
   \item \url{https://github.com/OHDSI/DeepPatientLevelPrediction}
   \item Report bugs at \url{https://github.com/OHDSI/DeepPatientLevelPrediction/issues}
 }
@@ -22,10 +23,16 @@ Useful links:
 
 Authors:
 \itemize{
+  \item Egill Fridgeirsson \email{e.fridgeirsson@erasmusmc.nl}
   \item Jenna Reps \email{jreps@its.jnj.com}
   \item Seng Chan You
   \item Chungsoo Kim
   \item Henrik John
+}
+
+Other contributors:
+\itemize{
+  \item Observational Health Data Sciences and Informatics [copyright holder]
 }
 
 }

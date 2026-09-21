@@ -1,3 +1,6 @@
+# Copyright 2022-2026 Observational Health Data Sciences and Informatics
+# SPDX-License-Identifier: Apache-2.0
+
 from typing import Optional, Type, Callable
 
 import torch

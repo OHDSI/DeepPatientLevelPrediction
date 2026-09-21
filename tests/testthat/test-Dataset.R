@@ -1,3 +1,5 @@
+skip_if_no_integration()
+
 test_that("number of num and cat features sum correctly", {
   featureInfo <- dataset$get_feature_info()
   testthat::expect_equal(

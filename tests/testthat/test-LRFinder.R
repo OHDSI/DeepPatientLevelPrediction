@@ -1,3 +1,5 @@
+skip_if_no_integration()
+
 resNet <- reticulate::import_from_path("ResNet", path)$ResNet
 
 test_that("LR scheduler that changes per batch works", {

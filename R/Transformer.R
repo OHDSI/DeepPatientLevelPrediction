@@ -18,10 +18,18 @@
 
 #' Create default settings for a non-temporal transformer
 #'
-#' @description A transformer model with default hyperparameters
-#' @details from https://arxiv.org/abs/2106.11959
-#' Default hyperparameters from paper
-#' @param estimatorSettings created with `setEstimator`
+#' Creates settings for the package's default non-temporal transformer model.
+#'
+#' @details The architecture and default hyperparameters are based on
+#' [Gorishniy et al. (2021)](https://arxiv.org/abs/2106.11959).
+#'
+#' @param estimatorSettings Estimator settings created by [setEstimator()].
+#'
+#' @return A `modelSettings` object for use with `PatientLevelPrediction`.
+#'
+#' @examples
+#' transformerSettings <- setDefaultTransformer()
+#' transformerSettings$param[[1]]$numBlocks
 #'
 #' @export
 setDefaultTransformer <- function(estimatorSettings =
@@ -49,37 +57,59 @@ setDefaultTransformer <- function(estimatorSettings =
   return(transformerSettings)
 }
 
-#' create settings for training a transformer
+#' Create Transformer Settings
 #'
-#' @description A transformer model
-#' @details The non-temporal transformer is from https://arxiv.org/abs/2106.11959
+#' Creates model and hyperparameter-search settings for either a non-temporal
+#' or temporal transformer.
 #'
-#' @param numBlocks               number of transformer blocks
-#' @param dimToken                dimension of each token (embedding size)
-#' @param dimOut                  dimension of output, usually 1 for binary
-#' problems
-#' @param numHeads                number of attention heads
-#' @param attDropout              dropout to use on attentions
-#' @param ffnDropout              dropout to use in feedforward block
-#' @param dimHidden               dimension of the feedworward block
-#' @param dimHiddenRatio          dimension of the feedforward block as a ratio
-#' of dimToken (embedding size)
-#' @param temporal                Whether to use a transformer with temporal data
-#' @param temporalSettings        settings for the temporal transformer. Which include
-#'   - `positionalEncoding`: Positional encoding to use, either a character
-#'     or a list with name and settings, default 'SinusoidalPE' with dropout 0.1
-#'   - `maxSequenceLength`: Maximum sequence length, sequences longer than This
-#'     will be truncated and/or padded to this length either a number or 'max' for the Maximum
-#'   - `truncation`: Truncation method, only 'tail' is supported
-#'   - `timeTokens`: Whether to use time tokens, default TRUE
-#' @param estimatorSettings       created with `setEstimator`
-#' @param hyperParamSearch        what kind of hyperparameter search to do,
-#' default 'random'
-#' @param randomSample            How many samples to use in hyperparameter
-#' search if random
-#' @param randomSampleSeed        Random seed to sample hyperparameter
-#' combinations
-#' @return list of settings for the transformer model
+#' @details The non-temporal architecture is based on
+#' [Gorishniy et al. (2021)](https://arxiv.org/abs/2106.11959). For temporal
+#' data, positional encoding can be configured through `temporalSettings`.
+#'
+#' @param numBlocks Number of transformer blocks.
+#' @param dimToken Token dimension, which is also the embedding dimension.
+#' @param dimOut Output dimension, usually one for binary prediction.
+#' @param numHeads Number of attention heads.
+#' @param attDropout Attention-dropout probability.
+#' @param ffnDropout Feed-forward-network dropout probability.
+#' @param dimHidden Hidden dimension of the feed-forward network.
+#' @param dimHiddenRatio Feed-forward hidden dimension as a ratio of
+#'   `dimToken`. Exactly one of `dimHidden` and `dimHiddenRatio` must be `NULL`.
+#' @param temporal Whether to configure a transformer for temporal covariates.
+#' @param temporalSettings A list with `positionalEncoding`,
+#'   `maxSequenceLength`, `truncation`, and `timeTokens`. The only supported
+#'   truncation strategy is `"tail"`.
+#' @param estimatorSettings Estimator settings created by [setEstimator()].
+#' @param hyperParamSearch Hyperparameter-search strategy, either `"random"`
+#'   or `"grid"`.
+#' @param randomSample Number of combinations sampled when
+#'   `hyperParamSearch = "random"`.
+#' @param randomSampleSeed Random seed used when sampling combinations.
+#'
+#' @return A `modelSettings` object. Temporal settings are stored as attributes
+#'   on its parameter grid.
+#'
+#' @examples
+#' transformerSettings <- setTransformer(
+#'   numBlocks = 2,
+#'   dimToken = 64,
+#'   numHeads = 4,
+#'   dimHidden = 128
+#' )
+#'
+#' temporalSettings <- setTransformer(
+#'   numBlocks = 1,
+#'   dimToken = 32,
+#'   numHeads = 4,
+#'   dimHidden = 64,
+#'   temporal = TRUE,
+#'   temporalSettings = list(
+#'     positionalEncoding = "SinusoidalPE",
+#'     maxSequenceLength = 128,
+#'     truncation = "tail",
+#'     timeTokens = TRUE
+#'   )
+#' )
 #'
 #' @export
 setTransformer <- function(numBlocks = 3,
