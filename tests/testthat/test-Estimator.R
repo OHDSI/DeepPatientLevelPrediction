@@ -257,6 +257,7 @@ test_that("Early stopper can use loss and stops early", {
 })
 
 test_that("Custom metric in estimator works", {
+  skip_if_not_installed("PRROC")
 
   metricFun <- function(predictions, labels)  {
     pr <- PRROC::pr.curve(scores.class0 = torch$sigmoid(predictions)$numpy(),

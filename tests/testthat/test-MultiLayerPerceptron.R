@@ -147,6 +147,11 @@ test_that("Errors are produced by settings function", {
 })
 
 test_that("Can upload results to database", {
+  skip_if_not_installed("DatabaseConnector")
+  skip_if_not_installed("ResultModelManager")
+  skip_if_not_installed("RSQLite")
+  skip_if_offline()
+
   cohortDefinitions <- data.frame(
     cohortName = c("blank1"),
     cohortId = c(1),

@@ -30,6 +30,7 @@ Fits a configured deep learning model to a prepared
 \code{PatientLevelPrediction} training-data object.
 }
 \examples{
+\dontshow{if (rlang::is_installed("FeatureExtraction")) withAutoprint(\{ # examplesIf}
 \dontrun{
 # Requires FeatureExtraction and the package's Python dependencies,
 # including PyTorch.
@@ -90,5 +91,5 @@ Andromeda::close(plpData$covariateData)
 unlink(analysisPath, recursive = TRUE)
 unlink(model$model, recursive = TRUE)
 }
-
+\dontshow{\}) # examplesIf}
 }

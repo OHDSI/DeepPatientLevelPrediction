@@ -40,6 +40,7 @@ Imports:
     rlang,
     withr
 Suggests:
+    curl,
     DatabaseConnector (>= 6.3.0),
     Eunomia,
     FeatureExtraction (>= 3.7.0),
@@ -47,6 +48,7 @@ Suggests:
     PRROC,
     ResultModelManager (>= 0.2.0),
     rmarkdown,
+    RSQLite,
     testthat
 Encoding: UTF-8
 Language: en-US

@@ -1,4 +1,6 @@
-skip_if_no_integration()
+skip_if_no_python()
+
+path <- system.file("python", package = "DeepPatientLevelPrediction")
 
 generateData <- function(observations, features, totalFeatures = 6,
                          numCovs = FALSE) {

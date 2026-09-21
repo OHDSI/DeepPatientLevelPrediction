@@ -1,4 +1,4 @@
-skip_if_no_integration()
+.cacheTestDir <- withr::local_tempdir()
 
 resNetSettings <- setResNet(
   numLayers = c(1, 2, 4),
@@ -21,12 +21,12 @@ resNetSettings <- setResNet(
   randomSampleSeed = 42
 )
 
-trainCache <- trainingCache$new(testLoc)
+trainCache <- trainingCache$new(.cacheTestDir)
 paramSearch <- resNetSettings$param
 
 test_that("Training cache exists on disk", {
   expect_true(
-    file.exists(file.path(testLoc, "paramPersistence.rds"))
+    file.exists(file.path(.cacheTestDir, "paramPersistence.rds"))
   )
 })
 
@@ -58,6 +58,7 @@ test_that("Param grid predictions can be cached", {
 })
 
 test_that("Estimator can resume training from cache", {
+  skip_if_no_integration()
   trainCache <- readRDS(file.path(fitEstimatorPath, "paramPersistence.rds"))
   newPath <- file.path(testLoc, "resume")
   dir.create(newPath, showWarnings = FALSE)
@@ -82,6 +83,7 @@ test_that("Estimator can resume training from cache", {
 })
 
 test_that("Prediction is cached for optimal parameters", {
+  skip_if_no_integration()
   testCache <- readRDS(file.path(fitEstimatorPath, "paramPersistence.rds"))
   indexOfMax <-
     which.max(unlist(lapply(
