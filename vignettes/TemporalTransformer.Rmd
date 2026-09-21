@@ -168,7 +168,7 @@ covariates in `FeatureExtraction`, shorten the time window, or lower
 
 # Acknowledgments
 
-Considerable work has been dedicated to provide the
+Considerable work has been dedicated to providing the
 `DeepPatientLevelPrediction` package.
 
 ```{r tidy=TRUE,eval=TRUE}

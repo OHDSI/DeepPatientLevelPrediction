@@ -64,7 +64,7 @@ methods.
 ## Background
 
 Deep Learning models are built by stacking an often large number of
-neural network layers that perform feature engineering steps, e.g
+neural network layers that perform feature engineering steps, e.g.,
 embedding, and are collapsed in a final linear layer (equivalent to
 logistic regression). These algorithms need a lot of data to converge to
 a good representation, but currently the sizes of the large
@@ -165,7 +165,7 @@ of layers and neurons in the network's hidden layers.
 
 The `dropout` input specifies the probability that a layer
 randomly sets some inputs to 0 at each step during training time. A
-value of `0.2` means that 20% of the layers inputs will be set to
+value of `0.2` means that 20% of the layer's inputs will be set to
 0. This is used to reduce overfitting.
 
 The `sizeEmbedding` input specifies the size of the embedding used. The first
@@ -272,8 +272,8 @@ mlpResult <- PatientLevelPrediction::runPlp(
 Deep learning models are often trained via a process known as gradient
 descent. During this process the network weights
 are updated based on the gradient of the error function for the current
-weights. However, as the number of layers in the network increase, there
-is a greater chance of experiencing an issue known vanishing or
+weights. However, as the number of layers in the network increases, there
+is a greater chance of experiencing an issue known as vanishing or
 exploding gradients. The vanishing or exploding
 gradient is when the gradient goes to 0 or infinity, which negatively
 impacts the model fitting.
@@ -305,7 +305,7 @@ function to specify the hyperparameter settings for the network.
 
 `hiddenFactor`: How much to increase number of neurons in each layer (see paper)
 
-`residualDropout` and`hiddenDropout` : How much dropout to apply in
+`residualDropout` and `hiddenDropout`: How much dropout to apply in
 hidden layer or residual connection
 
 `sizeEmbedding` : The size of the initial embedding layer
@@ -555,7 +555,7 @@ TransformerResult <- PatientLevelPrediction::runPlp(
 
 # Acknowledgments
 
-Considerable work has been dedicated to provide the
+Considerable work has been dedicated to providing the
 `DeepPatientLevelPrediction` package.
 
 ```{r tidy=TRUE,eval=TRUE}

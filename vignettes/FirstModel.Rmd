@@ -143,7 +143,7 @@ Congratulations you have just developed your first deep learning model!
 
 ## Acknowledgments
 
-Considerable work has been dedicated to provide the `DeepPatientLevelPrediction` package.
+Considerable work has been dedicated to providing the `DeepPatientLevelPrediction` package.
 
 ```{r tidy=TRUE,eval=TRUE}
 citation("DeepPatientLevelPrediction")

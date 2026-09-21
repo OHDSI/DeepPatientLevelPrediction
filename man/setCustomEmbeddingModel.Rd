@@ -33,11 +33,26 @@ or embeddings from a foundation model.
 }
 \examples{
 \dontrun{
-# Requires a PyTorch embeddings file created outside this example.
+# Requires Python and the package's Python dependencies, including PyTorch.
+# See vignette("Installing") for setup instructions.
+embeddingFilePath <- tempfile(fileext = ".pt")
+
+# Toy embeddings: one row per concept ID, with eight values per row.
+conceptIds <- c(1L, 2L, 3L)
+embeddings <- list(
+  concept_ids = torch$tensor(conceptIds, dtype = torch$long),
+  embeddings = torch$randn(length(conceptIds), 8L, dtype = torch$float)
+)
+torch$save(embeddings, embeddingFilePath)
+
 modelSettings <- setCustomEmbeddingModel(
-  embeddingFilePath = "path/to/embeddings.pt",
+  embeddingFilePath = embeddingFilePath,
   modelSettings = setDefaultTransformer()
 )
+
+# Clean up this example's file. In real use, keep it until training finishes:
+# modelSettings stores its path, not the embedding tensors themselves.
+unlink(embeddingFilePath)
 }
 
 }

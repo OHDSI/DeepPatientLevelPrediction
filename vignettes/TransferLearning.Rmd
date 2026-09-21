@@ -188,7 +188,7 @@ Now you have fine-tuned a model on a new cohort using transfer learning. This ca
 
 # Acknowledgments
 
-Considerable work has been dedicated to provide the
+Considerable work has been dedicated to providing the
 `DeepPatientLevelPrediction` package.
 
 ```{r tidy=TRUE,eval=TRUE}

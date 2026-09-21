@@ -16,9 +16,9 @@ Reps JM, Schuemie MJ, Suchard MA, Ryan PB, Rijnbeek PR. Design and implementatio
 Features
 ========
 - Adds deep learning models to use in the OHDSI PatientLevelPrediction framework.
-- Allows to add custom deep learning models.
+- Allows users to add custom deep learning models.
 - Includes MLP, ResNet, Transformer, and RealMLP models.
-- Allows to use all the features of [PatientLevelPrediction](https://github.com/OHDSI/PatientLevelPrediction/) to validate and explore your model performance.
+- Allows users to use all the features of [PatientLevelPrediction](https://github.com/OHDSI/PatientLevelPrediction/) to validate and explore their model performance.
 
 
 Technology
@@ -61,4 +61,4 @@ DeepPatientLevelPrediction is licensed under Apache License 2.0
 
 Development
 ===========
-DeepPatientLevelPrediction is being developed in R Studio.
+DeepPatientLevelPrediction is being developed in RStudio.

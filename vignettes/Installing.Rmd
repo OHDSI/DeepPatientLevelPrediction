@@ -169,7 +169,7 @@ To run an end-to-end patient-level prediction example, continue with the
 
 # Acknowledgments
 
-Considerable work has been dedicated to provide the `DeepPatientLevelPrediction` package.
+Considerable work has been dedicated to providing the `DeepPatientLevelPrediction` package.
 
 ```{r tidy=TRUE,eval=TRUE}
 citation("DeepPatientLevelPrediction")
