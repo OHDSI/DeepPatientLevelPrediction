@@ -766,7 +766,7 @@ class Estimator:
 
 
 class EarlyStopping:
-    def __init__(self, patience=3, delta=0, verbose=True, mode="max"):
+    def __init__(self, patience=3, delta=0, verbose=True, mode="max", min_epochs=0):
         self.patience = patience
         self.counter = 0
         self.verbose = verbose
@@ -776,8 +776,12 @@ class EarlyStopping:
         self.delta = delta
         self.previous_score = 0
         self.mode = mode
+        self.min_epochs = min_epochs
+        self.epochs_seen = 0
 
     def __call__(self, metric):
+        # called once per completed training epoch
+        self.epochs_seen += 1
         if self.mode == "max":
             score = metric
         else:
@@ -792,7 +796,7 @@ class EarlyStopping:
                 print(
                     f"Early stopping counter: {self.counter}" f" out of {self.patience}"
                 )
-            if self.counter >= self.patience:
+            if self.counter >= self.patience and self.epochs_seen >= self.min_epochs:
                 self.early_stop = True
         else:
             self.best_score = score
