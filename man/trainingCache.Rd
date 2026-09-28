@@ -4,174 +4,210 @@
 \alias{trainingCache}
 \title{TrainingCache}
 \value{
-Whether the provided and cached parameter grid is identical
-
-Grid search results from the training cache
-
-Boolen
-
-Last grid search index
+An R6 class generator for persistent training caches.
 }
 \description{
-Parameter caching for training persistence and continuity
+Stores hyperparameter-search progress so interrupted model training can be
+resumed from an analysis directory.
+}
+\examples{
+cacheDirectory <- tempfile("training-cache-")
+dir.create(cacheDirectory)
+cache <- trainingCache$new(cacheDirectory)
+cache$saveModelParams(list(list(sizeHidden = 64)))
+cache$isParamGridIdentical(list(list(sizeHidden = 64)))
+unlink(cacheDirectory, recursive = TRUE)
+
 }
 \section{Methods}{
 \subsection{Public methods}{
-\itemize{
-\item \href{#method-TrainingCache-new}{\code{trainingCache$new()}}
-\item \href{#method-TrainingCache-isParamGridIdentical}{\code{trainingCache$isParamGridIdentical()}}
-\item \href{#method-TrainingCache-saveGridSearchPredictions}{\code{trainingCache$saveGridSearchPredictions()}}
-\item \href{#method-TrainingCache-saveModelParams}{\code{trainingCache$saveModelParams()}}
-\item \href{#method-TrainingCache-getGridSearchPredictions}{\code{trainingCache$getGridSearchPredictions()}}
-\item \href{#method-TrainingCache-isFull}{\code{trainingCache$isFull()}}
-\item \href{#method-TrainingCache-getLastGridSearchIndex}{\code{trainingCache$getLastGridSearchIndex()}}
-\item \href{#method-TrainingCache-dropCache}{\code{trainingCache$dropCache()}}
-\item \href{#method-TrainingCache-trimPerformance}{\code{trainingCache$trimPerformance()}}
-\item \href{#method-TrainingCache-clone}{\code{trainingCache$clone()}}
-}
+  \itemize{
+    \item \href{#method-TrainingCache-initialize}{\code{TrainingCache$new()}}
+    \item \href{#method-TrainingCache-isParamGridIdentical}{\code{TrainingCache$isParamGridIdentical()}}
+    \item \href{#method-TrainingCache-saveGridSearchPredictions}{\code{TrainingCache$saveGridSearchPredictions()}}
+    \item \href{#method-TrainingCache-saveModelParams}{\code{TrainingCache$saveModelParams()}}
+    \item \href{#method-TrainingCache-getGridSearchPredictions}{\code{TrainingCache$getGridSearchPredictions()}}
+    \item \href{#method-TrainingCache-isFull}{\code{TrainingCache$isFull()}}
+    \item \href{#method-TrainingCache-getLastGridSearchIndex}{\code{TrainingCache$getLastGridSearchIndex()}}
+    \item \href{#method-TrainingCache-dropCache}{\code{TrainingCache$dropCache()}}
+    \item \href{#method-TrainingCache-trimPerformance}{\code{TrainingCache$trimPerformance()}}
+    \item \href{#method-TrainingCache-clone}{\code{TrainingCache$clone()}}
+  }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-TrainingCache-new"></a>}}
-\if{latex}{\out{\hypertarget{method-TrainingCache-new}{}}}
-\subsection{Method \code{new()}}{
-Creates a new training cache
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{trainingCache$new(inDir)}\if{html}{\out{</div>}}
+\if{html}{\out{<a id="method-TrainingCache-initialize"></a>}}
+\if{latex}{\out{\hypertarget{method-TrainingCache-initialize}{}}}
+\subsection{\code{TrainingCache$new()}}{
+  Creates a new training cache
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{TrainingCache$new(inDir)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{inDir}}{Path to the analysis directory}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{inDir}}{Path to the analysis directory}
-}
-\if{html}{\out{</div>}}
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-TrainingCache-isParamGridIdentical"></a>}}
 \if{latex}{\out{\hypertarget{method-TrainingCache-isParamGridIdentical}{}}}
-\subsection{Method \code{isParamGridIdentical()}}{
-Checks whether the parameter grid in the model settings is identical to
+\subsection{\code{TrainingCache$isParamGridIdentical()}}{
+  Checks whether the parameter grid in the model settings is identical to
 the cached parameters.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{trainingCache$isParamGridIdentical(inModelParams)}\if{html}{\out{</div>}}
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{TrainingCache$isParamGridIdentical(inModelParams)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{inModelParams}}{Parameter grid from the model settings}
+    }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    Whether the provided and cached parameter grid is identical
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{inModelParams}}{Parameter grid from the model settings}
-}
-\if{html}{\out{</div>}}
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-TrainingCache-saveGridSearchPredictions"></a>}}
 \if{latex}{\out{\hypertarget{method-TrainingCache-saveGridSearchPredictions}{}}}
-\subsection{Method \code{saveGridSearchPredictions()}}{
-Saves the grid search results to the training cache
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{trainingCache$saveGridSearchPredictions(inGridSearchPredictions)}\if{html}{\out{</div>}}
+\subsection{\code{TrainingCache$saveGridSearchPredictions()}}{
+  Saves the grid search results to the training cache
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{TrainingCache$saveGridSearchPredictions(inGridSearchPredictions)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{inGridSearchPredictions}}{Grid search predictions}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{inGridSearchPredictions}}{Grid search predictions}
-}
-\if{html}{\out{</div>}}
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-TrainingCache-saveModelParams"></a>}}
 \if{latex}{\out{\hypertarget{method-TrainingCache-saveModelParams}{}}}
-\subsection{Method \code{saveModelParams()}}{
-Saves the parameter grid to the training cache
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{trainingCache$saveModelParams(inModelParams)}\if{html}{\out{</div>}}
+\subsection{\code{TrainingCache$saveModelParams()}}{
+  Saves the parameter grid to the training cache
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{TrainingCache$saveModelParams(inModelParams)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{inModelParams}}{Parameter grid from the model settings}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{inModelParams}}{Parameter grid from the model settings}
-}
-\if{html}{\out{</div>}}
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-TrainingCache-getGridSearchPredictions"></a>}}
 \if{latex}{\out{\hypertarget{method-TrainingCache-getGridSearchPredictions}{}}}
-\subsection{Method \code{getGridSearchPredictions()}}{
-Gets the grid search results from the training cache
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{trainingCache$getGridSearchPredictions()}\if{html}{\out{</div>}}
+\subsection{\code{TrainingCache$getGridSearchPredictions()}}{
+  Gets the grid search results from the training cache
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{TrainingCache$getGridSearchPredictions()}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    Grid search results from the training cache
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-TrainingCache-isFull"></a>}}
 \if{latex}{\out{\hypertarget{method-TrainingCache-isFull}{}}}
-\subsection{Method \code{isFull()}}{
-Check if cache is full
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{trainingCache$isFull()}\if{html}{\out{</div>}}
+\subsection{\code{TrainingCache$isFull()}}{
+  Check if cache is full
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{TrainingCache$isFull()}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    A logical value.
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-TrainingCache-getLastGridSearchIndex"></a>}}
 \if{latex}{\out{\hypertarget{method-TrainingCache-getLastGridSearchIndex}{}}}
-\subsection{Method \code{getLastGridSearchIndex()}}{
-Gets the last index from the cached grid search
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{trainingCache$getLastGridSearchIndex()}\if{html}{\out{</div>}}
+\subsection{\code{TrainingCache$getLastGridSearchIndex()}}{
+  Gets the last index from the cached grid search
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{TrainingCache$getLastGridSearchIndex()}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    Last grid search index
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-TrainingCache-dropCache"></a>}}
 \if{latex}{\out{\hypertarget{method-TrainingCache-dropCache}{}}}
-\subsection{Method \code{dropCache()}}{
-Remove the training cache from the analysis path
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{trainingCache$dropCache()}\if{html}{\out{</div>}}
+\subsection{\code{TrainingCache$dropCache()}}{
+  Remove the training cache from the analysis path
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{TrainingCache$dropCache()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-TrainingCache-trimPerformance"></a>}}
 \if{latex}{\out{\hypertarget{method-TrainingCache-trimPerformance}{}}}
-\subsection{Method \code{trimPerformance()}}{
-Trims the performance of the hyperparameter results by removing 
+\subsection{\code{TrainingCache$trimPerformance()}}{
+  Trims the performance of the hyperparameter results by removing
 the predictions from all but the best performing hyperparameter
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{trainingCache$trimPerformance(hyperparameterResults)}\if{html}{\out{</div>}}
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{TrainingCache$trimPerformance(hyperparameterResults)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{hyperparameterResults}}{List of hyperparameter results}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{hyperparameterResults}}{List of hyperparameter results}
-}
-\if{html}{\out{</div>}}
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-TrainingCache-clone"></a>}}
 \if{latex}{\out{\hypertarget{method-TrainingCache-clone}{}}}
-\subsection{Method \code{clone()}}{
-The objects of this class are cloneable with this method.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{trainingCache$clone(deep = FALSE)}\if{html}{\out{</div>}}
+\subsection{\code{TrainingCache$clone()}}{
+  The objects of this class are cloneable with this method.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{TrainingCache$clone(deep = FALSE)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{deep}}{Whether to make a deep clone.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{deep}}{Whether to make a deep clone.}
-}
-\if{html}{\out{</div>}}
-}
-}
 }

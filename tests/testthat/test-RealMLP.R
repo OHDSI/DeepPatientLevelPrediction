@@ -1,3 +1,5 @@
+skip_if_no_integration()
+
 test_that("setRealMLP settings are created correctly", {
   settings <- setRealMLP(
     numLayers = 1L,
@@ -43,6 +45,90 @@ test_that("setRealMLP settings are created correctly", {
   expect_equal(settings$param[[1]]$numericPbldEmbeddingDim, 5L)
   expect_equal(settings$param[[1]]$tokenAggregation, "sum")
   expect_equal(settings$param[[1]]$featureScaleMode, "scalar")
+})
+
+test_that("setRealMLP expands vector parameters into grid combinations", {
+  settings <- setRealMLP(
+    numLayers = c(1L, 2L),
+    sizeHidden = c(16L, 32L),
+    dropout = c(0.1, 0.2),
+    sizeEmbedding = 8L,
+    labelSmoothing = c(0, 0.1),
+    numericEmbeddingMode = c("scale", "pbld"),
+    paperMode = c(TRUE, FALSE),
+    tokenAggregation = "auto",
+    featureScaleMode = "auto"
+  )
+
+  expect_equal(length(settings$param), 64L)
+  expect_true(all(vapply(settings$param, function(x) length(x$numLayers), integer(1)) == 1L))
+  expect_true(all(vapply(settings$param, function(x) length(x$sizeHidden), integer(1)) == 1L))
+  expect_true(all(vapply(settings$param, function(x) length(x$dropout), integer(1)) == 1L))
+  expect_true(all(vapply(settings$param, function(x) length(x$numericEmbeddingMode), integer(1)) == 1L))
+  expect_true(all(vapply(settings$param, function(x) length(x$estimator.labelSmoothing), integer(1)) == 1L))
+  expect_setequal(
+    vapply(settings$param, function(x) x$estimator.labelSmoothing, numeric(1)),
+    c(0, 0.1)
+  )
+  expect_false(any(vapply(settings$param, function(x) x$tokenAggregation == "auto", logical(1))))
+  expect_false(any(vapply(settings$param, function(x) x$featureScaleMode == "auto", logical(1))))
+  expect_true(all(
+    vapply(settings$param, function(x) {
+      if (isTRUE(x$paperMode)) {
+        x$tokenAggregation == "sum"
+      } else {
+        x$tokenAggregation == "mean"
+      }
+    }, logical(1))
+  ))
+  expect_true(all(vapply(settings$param, function(x) x$featureScaleMode == "scalar", logical(1))))
+})
+
+test_that("setRealMLP random search samples expanded grid combinations", {
+  settings <- setRealMLP(
+    numLayers = c(1L, 2L),
+    sizeHidden = c(16L, 32L),
+    dropout = c(0.1, 0.2),
+    sizeEmbedding = 8L,
+    hyperParamSearch = "random",
+    randomSample = 3L,
+    randomSampleSeed = 42L
+  )
+
+  expect_equal(length(settings$param), 3L)
+  expect_error(
+    setRealMLP(
+      numLayers = 1L,
+      sizeHidden = 16L,
+      dropout = 0.1,
+      sizeEmbedding = 8L,
+      hyperParamSearch = "random",
+      randomSample = 2L
+    )
+  )
+})
+
+test_that("setRealMLP validates vector-aware RealMLP parameters", {
+  expect_error(
+    setRealMLP(labelSmoothing = 1.1),
+    "labelSmoothing needs to be <= 1"
+  )
+  expect_error(
+    setRealMLP(numericEmbeddingMode = c("scale", "invalid")),
+    "numericEmbeddingMode has incorrect value"
+  )
+  expect_error(
+    setRealMLP(dataDependentInitMode = c("paper_lsuv", "invalid")),
+    "dataDependentInitMode has incorrect value"
+  )
+  expect_error(
+    setRealMLP(tokenAggregation = c("mean", "invalid")),
+    "tokenAggregation has incorrect value"
+  )
+  expect_error(
+    setRealMLP(featureScaleMode = c("scalar", "invalid")),
+    "featureScaleMode has incorrect value"
+  )
 })
 
 test_that("RealMLP supports PL and PBLD numerical embedding modes", {

@@ -1,3 +1,5 @@
+skip_if_no_integration()
+
 featureInfo <- smallDataset$dataset$get_feature_info()
 modelParameters <- list(
   feature_info = featureInfo,
@@ -150,6 +152,11 @@ test_that("early stopping works", {
 
 test_that("Estimator fit function works", {
   expect_true(!is.null(fitEstimatorResults$trainDetails$trainingTime))
+  expect_false(is.null(fitEstimatorResults$trainDetails$developmentDatabase))
+  expect_false(is.null(
+    fitEstimatorResults$trainDetails$developmentDatabaseSchema
+  ))
+  expect_false(fitEstimatorResults$preprocessing$requiresDenseMatrix)
 
   expect_equal(class(fitEstimatorResults), "plpModel")
   expect_equal(attr(fitEstimatorResults, "modelType"), "binary")
@@ -250,6 +257,7 @@ test_that("Early stopper can use loss and stops early", {
 })
 
 test_that("Custom metric in estimator works", {
+  skip_if_not_installed("PRROC")
 
   metricFun <- function(predictions, labels)  {
     pr <- PRROC::pr.curve(scores.class0 = torch$sigmoid(predictions)$numpy(),

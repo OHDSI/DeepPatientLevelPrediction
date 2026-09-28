@@ -16,35 +16,48 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#' setEstimator
+#' Create Estimator Settings
 #'
-#' @description
-#' creates settings for the Estimator, which takes a model and trains it
+#' Creates settings controlling optimization, model fitting, and model
+#' selection for a deep learning estimator.
 #'
 #' @name setEstimator
-#' @param learningRate  what learning rate to use
-#' @param weightDecay what weight_decay to use
-#' @param batchSize batchSize to use
-#' @param epochs  how many epochs to train for
-#' @param device  what device to train on, can be a string or a function to
-#' that evaluates to the device during runtime
-#' @param optimizer which optimizer to use
-#' @param scheduler which learning rate scheduler to use
-#' @param criterion loss function to use
-#' @param earlyStopping If earlyStopping should be used which stops the
-#' training of your metric is not improving
-#' @param compile if the model should be compiled before training, default FALSE
-#' @param metric either `auc` or `loss` or a custom metric to use. This is the
-#' metric used for scheduler and earlyStopping.
-#' Needs to be a list with function `fun`, mode either `min` or `max` and a
-#' `name`,
-#' `fun` needs to be a function that takes in prediction and labels and
-#' outputs a score.
-#' @param accumulationSteps how many steps to accumulate gradients before
-#' updating weights, can also be a function that is evaluated during runtime
-#' @param seed seed to initialize weights of model with
-#' @param trainValidationSplit if TRUE, perform a train-validation split for
-#' model selection instead of cross validation
+#' @param learningRate Learning rate, or `"auto"` to use the learning-rate
+#'   finder.
+#' @param weightDecay Weight-decay value.
+#' @param batchSize Number of observations per batch.
+#' @param epochs Maximum number of training epochs.
+#' @param device Device on which to train. This can be a string or a function
+#'   evaluated when training begins.
+#' @param optimizer PyTorch optimizer constructor. Evaluation is delayed until
+#'   training begins.
+#' @param scheduler A list containing the learning-rate scheduler constructor
+#'   in `fun` and its arguments in `params`. Evaluation is delayed until
+#'   training begins.
+#' @param criterion PyTorch loss constructor. Evaluation is delayed until
+#'   training begins.
+#' @param earlyStopping Early-stopping settings, or `NULL` to disable early
+#'   stopping.
+#' @param compile Whether to compile the PyTorch model before training.
+#' @param metric Either `"auc"`, `"loss"`, or a list defining a custom metric.
+#'   A custom metric list must contain `fun`, `mode`, and `name`.
+#' @param accumulationSteps Number of batches over which to accumulate
+#'   gradients, or a function evaluated when training begins.
+#' @param seed Random seed used to initialize the model. A seed is generated
+#'   when this is `NULL`.
+#' @param trainValidationSplit Whether to use a train-validation split for
+#'   model selection instead of cross-validation.
+#'
+#' @return A list of estimator settings used by the model-setting functions.
+#'
+#' @examples
+#' estimatorSettings <- setEstimator(
+#'   learningRate = 0.001,
+#'   batchSize = 128,
+#'   epochs = 10,
+#'   seed = 42
+#' )
+#' estimatorSettings$batchSize
 #' @export
 setEstimator <- function(
     learningRate = "auto",
@@ -155,16 +168,85 @@ setEstimator <- function(
   return(estimatorSettings)
 }
 
-#' fitEstimator
+#' Fit a Deep Learning Estimator
 #'
-#' @description
-#' fits a deep learning estimator to data.
+#' Fits a configured deep learning model to a prepared
+#' `PatientLevelPrediction` training-data object.
 #'
-#' @param trainData      the data to use
-#' @param modelSettings  modelSettings object
-#' @param analysisId     Id of the analysis
-#' @param analysisPath   Path of the analysis
-#' @param ...            Extra inputs
+#' @param trainData A prepared training-data object produced by
+#'   `PatientLevelPrediction`.
+#' @param modelSettings A `modelSettings` object created by one of this
+#'   package's model-setting functions.
+#' @param analysisId Identifier for the analysis.
+#' @param analysisPath Directory used for training artifacts and the resumable
+#'   training cache.
+#' @param ... Additional arguments reserved for the
+#'   `PatientLevelPrediction` model interface.
+#'
+#' @return A `plpModel` object containing the fitted model, predictions,
+#'   training details, and covariate information.
+#'
+#' @examplesIf rlang::is_installed("FeatureExtraction")
+#' \dontrun{
+#' # Requires FeatureExtraction and the package's Python dependencies,
+#' # including PyTorch.
+#' # See vignette("Installing") for setup instructions.
+#' data("simulationProfile", package = "PatientLevelPrediction")
+#' plpData <- PatientLevelPrediction::simulatePlpData(
+#'   simulationProfile, n = 200, seed = 42
+#' )
+#' # Supply metadata omitted by simulatePlpData() for this bundled profile:
+#' # gender, age, conditions, and drugs. Only age is continuous.
+#' plpData$covariateData$analysisRef <- data.frame(
+#'   analysisId = c(1, 2, 102, 402),
+#'   isBinary = c("Y", "N", "Y", "Y"),
+#'   missingMeansZero = c(NA, "Y", NA, NA)
+#' )
+#' population <- PatientLevelPrediction::createStudyPopulation(
+#'   plpData,
+#'   populationSettings = PatientLevelPrediction::createStudyPopulationSettings(
+#'     riskWindowEnd = 90, minTimeAtRisk = 89
+#'   )
+#' )
+#' splitData <- PatientLevelPrediction::splitData(
+#'   plpData,
+#'   population,
+#'   splitSettings = PatientLevelPrediction::createDefaultSplitSetting(
+#'     testFraction = 0, trainFraction = 1, nfold = 2, splitSeed = 42
+#'   )
+#' )
+#'
+#' # Keep this toy example small: one configuration, two folds, and one epoch.
+#' # These settings demonstrate fitting, not meaningful predictive performance.
+#' modelSettings <- setResNet(
+#'   numLayers = 1,
+#'   sizeHidden = 8,
+#'   hiddenFactor = 1,
+#'   residualDropout = 0,
+#'   hiddenDropout = 0,
+#'   sizeEmbedding = 8,
+#'   hyperParamSearch = "grid",
+#'   estimatorSettings = setEstimator(
+#'     learningRate = 0.001, batchSize = 64, epochs = 1, seed = 42
+#'   )
+#' )
+#' analysisPath <- tempfile("deep-plp-example-")
+#' dir.create(analysisPath)
+#' model <- fitEstimator(
+#'   trainData = splitData$Train,
+#'   modelSettings = modelSettings,
+#'   analysisId = 1,
+#'   analysisPath = analysisPath
+#' )
+#' head(model$prediction)
+#'
+#' # Clean up this example's data, cache, and fitted-model files.
+#' # In real use, retain model$model until you have saved or finished using it.
+#' Andromeda::close(splitData$Train$covariateData)
+#' Andromeda::close(plpData$covariateData)
+#' unlink(analysisPath, recursive = TRUE)
+#' unlink(model$model, recursive = TRUE)
+#' }
 #'
 #' @export
 fitEstimator <- function(
@@ -249,7 +331,7 @@ fitEstimator <- function(
         trainData$covariateData,
         "metaData"
       )$tidyCovariateDataSettings,
-      requireDenseMatrix = FALSE
+      requiresDenseMatrix = FALSE
     ),
     prediction = prediction,
     modelDesign = PatientLevelPrediction::createModelDesign(
@@ -276,7 +358,8 @@ fitEstimator <- function(
     trainDetails = list(
       analysisId = analysisId,
       analysisSource = "",
-      developementDatabase = attr(trainData, "metaData")$cdmDatabaseSchema,
+      developmentDatabase = attr(trainData, "metaData")$cdmDatabaseName,
+      developmentDatabaseSchema = attr(trainData, "metaData")$cdmDatabaseSchema,
       attrition = attr(trainData, "metaData")$attrition,
       trainingTime = paste(as.character(abs(comp)), attr(comp, "units")),
       trainingDate = Sys.Date(),
@@ -296,14 +379,86 @@ fitEstimator <- function(
   return(result)
 }
 
-#' predictDeepEstimator
+#' Predict with a Deep Learning Estimator
 #'
-#' @description
-#' the prediction function for the estimator
+#' Applies a fitted deep learning model to prepared patient-level prediction
+#' data.
 #'
-#' @param plpModel   the plpModel
-#' @param data       plp data object or a torch dataset
-#' @param cohort     data.frame with the rowIds of the people
+#' @param plpModel A fitted `plpModel` or an in-memory Python estimator.
+#' @param data A `plpData` object or a compatible PyTorch dataset.
+#' @param cohort A data frame containing the row identifiers to score.
+#'
+#' @return A data frame containing the input cohort columns and predicted
+#'   values in the `value` column.
+#'
+#' @examplesIf rlang::is_installed("FeatureExtraction")
+#' \dontrun{
+#' # Requires FeatureExtraction and the package's Python dependencies,
+#' # including PyTorch.
+#' # See vignette("Installing") for setup instructions.
+#' data("simulationProfile", package = "PatientLevelPrediction")
+#' plpData <- PatientLevelPrediction::simulatePlpData(
+#'   simulationProfile, n = 200, seed = 42
+#' )
+#' # Supply metadata omitted by simulatePlpData() for this bundled profile:
+#' # gender, age, conditions, and drugs. Only age is continuous.
+#' plpData$covariateData$analysisRef <- data.frame(
+#'   analysisId = c(1, 2, 102, 402),
+#'   isBinary = c("Y", "N", "Y", "Y"),
+#'   missingMeansZero = c(NA, "Y", NA, NA)
+#' )
+#' population <- PatientLevelPrediction::createStudyPopulation(
+#'   plpData,
+#'   populationSettings = PatientLevelPrediction::createStudyPopulationSettings(
+#'     riskWindowEnd = 90, minTimeAtRisk = 89
+#'   )
+#' )
+#' splitData <- PatientLevelPrediction::splitData(
+#'   plpData,
+#'   population,
+#'   splitSettings = PatientLevelPrediction::createDefaultSplitSetting(
+#'     testFraction = 0.25, trainFraction = 0.75, nfold = 2, splitSeed = 42
+#'   )
+#' )
+#'
+#' # Keep this toy example small: one configuration, two folds, and one epoch.
+#' # These settings demonstrate fitting, not meaningful predictive performance.
+#' modelSettings <- setResNet(
+#'   numLayers = 1,
+#'   sizeHidden = 8,
+#'   hiddenFactor = 1,
+#'   residualDropout = 0,
+#'   hiddenDropout = 0,
+#'   sizeEmbedding = 8,
+#'   hyperParamSearch = "grid",
+#'   estimatorSettings = setEstimator(
+#'     learningRate = 0.001, batchSize = 64, epochs = 1, seed = 42
+#'   )
+#' )
+#' analysisPath <- tempfile("deep-plp-example-")
+#' dir.create(analysisPath)
+#' model <- fitEstimator(
+#'   trainData = splitData$Train,
+#'   modelSettings = modelSettings,
+#'   analysisId = 1,
+#'   analysisPath = analysisPath
+#' )
+#'
+#' # Score held-out test patients using only the fitted training model.
+#' prediction <- predictDeepEstimator(
+#'   plpModel = model,
+#'   data = splitData$Test,
+#'   cohort = splitData$Test$labels
+#' )
+#' head(prediction)
+#'
+#' # Clean up after inspecting predictions.
+#' Andromeda::close(splitData$Test$covariateData)
+#' Andromeda::close(splitData$Train$covariateData)
+#' Andromeda::close(plpData$covariateData)
+#' unlink(analysisPath, recursive = TRUE)
+#' unlink(model$model, recursive = TRUE)
+#' }
 #'
 #' @export
 predictDeepEstimator <- function(plpModel, data, cohort) {
@@ -370,17 +525,89 @@ predictDeepEstimator <- function(plpModel, data, cohort) {
   return(prediction)
 }
 
-#' gridCvDeep
+#' Tune a Deep Learning Estimator
 #'
-#' @description
-#' Performs grid search for a deep learning estimator
+#' Performs hyperparameter search and cross-validation, then fits a final model
+#' using the best-performing settings.
 #'
+#' @param mappedData Covariate data mapped with
+#'   `PatientLevelPrediction::MapIds()`.
+#' @param labels Data frame containing outcomes and fold assignments.
+#' @param modelSettings A `modelSettings` object.
+#' @param modelLocation Directory in which to save the fitted model.
+#' @param analysisPath Directory used for the resumable training cache.
 #'
-#' @param mappedData    Mapped data with covariates
-#' @param labels        Dataframe with the outcomes
-#' @param modelSettings      Settings of the model
-#' @param modelLocation Where to save the model
-#' @param analysisPath  Path of the analysis
+#' @return A list containing the saved estimator location, predictions, final
+#'   parameters, hyperparameter-search summaries, and feature information.
+#'
+#' @examplesIf rlang::is_installed("FeatureExtraction")
+#' \dontrun{
+#' # Requires FeatureExtraction and the package's Python dependencies,
+#' # including PyTorch.
+#' # See vignette("Installing") for setup instructions.
+#' data("simulationProfile", package = "PatientLevelPrediction")
+#' plpData <- PatientLevelPrediction::simulatePlpData(
+#'   simulationProfile, n = 200, seed = 42
+#' )
+#' # Supply metadata omitted by simulatePlpData() for this bundled profile:
+#' # gender, age, conditions, and drugs. Only age is continuous.
+#' plpData$covariateData$analysisRef <- data.frame(
+#'   analysisId = c(1, 2, 102, 402),
+#'   isBinary = c("Y", "N", "Y", "Y"),
+#'   missingMeansZero = c(NA, "Y", NA, NA)
+#' )
+#' population <- PatientLevelPrediction::createStudyPopulation(
+#'   plpData,
+#'   populationSettings = PatientLevelPrediction::createStudyPopulationSettings(
+#'     riskWindowEnd = 90, minTimeAtRisk = 89
+#'   )
+#' )
+#' splitData <- PatientLevelPrediction::splitData(
+#'   plpData,
+#'   population,
+#'   splitSettings = PatientLevelPrediction::createDefaultSplitSetting(
+#'     testFraction = 0, trainFraction = 1, nfold = 2, splitSeed = 42
+#'   )
+#' )
+#'
+#' # Keep this toy example small: two configurations, two folds, and one epoch.
+#' # These settings demonstrate fitting, not meaningful predictive performance.
+#' modelSettings <- setResNet(
+#'   numLayers = 1,
+#'   sizeHidden = c(8, 16),
+#'   hiddenFactor = 1,
+#'   residualDropout = 0,
+#'   hiddenDropout = 0,
+#'   sizeEmbedding = 8,
+#'   hyperParamSearch = "grid",
+#'   estimatorSettings = setEstimator(
+#'     learningRate = 0.001, batchSize = 64, epochs = 1, seed = 42
+#'   )
+#' )
+#' analysisPath <- tempfile("deep-plp-example-")
+#' dir.create(analysisPath)
+#'
+#' # The lower-level interface needs mapped IDs and fold assignments in labels.
+#' labels <- merge(splitData$Train$labels, splitData$Train$folds, by = "rowId")
+#' mappedData <- PatientLevelPrediction::MapIds(
+#'   covariateData = splitData$Train$covariateData,
+#'   cohort = labels
+#' )
+#' result <- gridCvDeep(
+#'   mappedData = mappedData,
+#'   labels = labels,
+#'   modelSettings = modelSettings,
+#'   modelLocation = file.path(analysisPath, "model"),
+#'   analysisPath = analysisPath
+#' )
+#' result$finalParam
+#'
+#' # Clean up this example's data, cache, and final model.
+#' Andromeda::close(mappedData)
+#' Andromeda::close(splitData$Train$covariateData)
+#' Andromeda::close(plpData$covariateData)
+#' unlink(analysisPath, recursive = TRUE)
+#' }
 #'
 #' @export
 gridCvDeep <- function(

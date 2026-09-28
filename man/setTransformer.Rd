@@ -2,7 +2,7 @@
 % Please edit documentation in R/Transformer.R
 \name{setTransformer}
 \alias{setTransformer}
-\title{create settings for training a transformer}
+\title{Create Transformer Settings}
 \usage{
 setTransformer(
   numBlocks = 3,
@@ -24,51 +24,72 @@ setTransformer(
 )
 }
 \arguments{
-\item{numBlocks}{number of transformer blocks}
+\item{numBlocks}{Number of transformer blocks.}
 
-\item{dimToken}{dimension of each token (embedding size)}
+\item{dimToken}{Token dimension, which is also the embedding dimension.}
 
-\item{dimOut}{dimension of output, usually 1 for binary
-problems}
+\item{dimOut}{Output dimension, usually one for binary prediction.}
 
-\item{numHeads}{number of attention heads}
+\item{numHeads}{Number of attention heads.}
 
-\item{attDropout}{dropout to use on attentions}
+\item{attDropout}{Attention-dropout probability.}
 
-\item{ffnDropout}{dropout to use in feedforward block}
+\item{ffnDropout}{Feed-forward-network dropout probability.}
 
-\item{dimHidden}{dimension of the feedworward block}
+\item{dimHidden}{Hidden dimension of the feed-forward network.}
 
-\item{dimHiddenRatio}{dimension of the feedforward block as a ratio
-of dimToken (embedding size)}
+\item{dimHiddenRatio}{Feed-forward hidden dimension as a ratio of
+\code{dimToken}. Exactly one of \code{dimHidden} and \code{dimHiddenRatio} must be \code{NULL}.}
 
-\item{temporal}{Whether to use a transformer with temporal data}
+\item{temporal}{Whether to configure a transformer for temporal covariates.}
 
-\item{temporalSettings}{settings for the temporal transformer. Which include
-- `positionalEncoding`: Positional encoding to use, either a character
-  or a list with name and settings, default 'SinusoidalPE' with dropout 0.1
-- `maxSequenceLength`: Maximum sequence length, sequences longer than This
-  will be truncated and/or padded to this length either a number or 'max' for the Maximum
-- `truncation`: Truncation method, only 'tail' is supported
-- `timeTokens`: Whether to use time tokens, default TRUE}
+\item{temporalSettings}{A list with \code{positionalEncoding},
+\code{maxSequenceLength}, \code{truncation}, and \code{timeTokens}. The only supported
+truncation strategy is \code{"tail"}.}
 
-\item{estimatorSettings}{created with `setEstimator`}
+\item{estimatorSettings}{Estimator settings created by \code{\link[=setEstimator]{setEstimator()}}.}
 
-\item{hyperParamSearch}{what kind of hyperparameter search to do,
-default 'random'}
+\item{hyperParamSearch}{Hyperparameter-search strategy, either \code{"random"}
+or \code{"grid"}.}
 
-\item{randomSample}{How many samples to use in hyperparameter
-search if random}
+\item{randomSample}{Number of combinations sampled when
+\code{hyperParamSearch = "random"}.}
 
-\item{randomSampleSeed}{Random seed to sample hyperparameter
-combinations}
+\item{randomSampleSeed}{Random seed used when sampling combinations.}
 }
 \value{
-list of settings for the transformer model
+A \code{modelSettings} object. Temporal settings are stored as attributes
+on its parameter grid.
 }
 \description{
-A transformer model
+Creates model and hyperparameter-search settings for either a non-temporal
+or temporal transformer.
 }
 \details{
-The non-temporal transformer is from https://arxiv.org/abs/2106.11959
+The non-temporal architecture is based on
+\href{https://arxiv.org/abs/2106.11959}{Gorishniy et al. (2021)}. For temporal
+data, positional encoding can be configured through \code{temporalSettings}.
+}
+\examples{
+transformerSettings <- setTransformer(
+  numBlocks = 2,
+  dimToken = 64,
+  numHeads = 4,
+  dimHidden = 128
+)
+
+temporalSettings <- setTransformer(
+  numBlocks = 1,
+  dimToken = 32,
+  numHeads = 4,
+  dimHidden = 64,
+  temporal = TRUE,
+  temporalSettings = list(
+    positionalEncoding = "SinusoidalPE",
+    maxSequenceLength = 128,
+    truncation = "tail",
+    timeTokens = TRUE
+  )
+)
+
 }
