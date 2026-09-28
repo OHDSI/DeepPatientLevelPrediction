@@ -1,3 +1,4 @@
+skip_if_no_python()
 
 path <- system.file("python", package = "DeepPatientLevelPrediction")
 createTestHarness <- function(peModule,

@@ -1,3 +1,4 @@
+skip_if_no_integration()
 
 resSet <- setResNet(
   numLayers = 2,
@@ -182,6 +183,11 @@ test_that("Errors are produced by settings function", {
 
 
 test_that("Can upload results to database", {
+  skip_if_not_installed("DatabaseConnector")
+  skip_if_not_installed("ResultModelManager")
+  skip_if_not_installed("RSQLite")
+  skip_if_offline()
+
   cohortDefinitions <- data.frame(
     cohortName = c("blank1"),
     cohortId = c(1),
@@ -203,6 +209,7 @@ test_that("Can upload results to database", {
     server = sqliteFile
   )
   conn <- DatabaseConnector::connect(connectionDetails = connectionDetails)
+  withr::defer(DatabaseConnector::disconnect(conn))
   targetDialect <- "sqlite"
 
   # check the results table is populated

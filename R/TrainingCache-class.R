@@ -1,8 +1,21 @@
 #' TrainingCache
-#' @description
-#' Parameter caching for training persistence and continuity
+#'
+#' Stores hyperparameter-search progress so interrupted model training can be
+#' resumed from an analysis directory.
+#'
+#' @return An R6 class generator for persistent training caches.
+#'
+#' @examples
+#' cacheDirectory <- tempfile("training-cache-")
+#' dir.create(cacheDirectory)
+#' cache <- trainingCache$new(cacheDirectory)
+#' cache$saveModelParams(list(list(sizeHidden = 64)))
+#' cache$isParamGridIdentical(list(list(sizeHidden = 64)))
+#' unlink(cacheDirectory, recursive = TRUE)
+#'
+#' @importFrom R6 R6Class
 #' @export
-trainingCache <- R6::R6Class(
+trainingCache <- R6Class(
   "TrainingCache",
   private = list(
     .paramPersistence = list(
@@ -67,7 +80,7 @@ trainingCache <- R6::R6Class(
 
     #' @description
     #' Check if cache is full
-    #' @returns Boolen
+    #' @returns A logical value.
     isFull = function() {
       return(all(unlist(lapply(
         private$.paramPersistence$gridSearchPredictions,

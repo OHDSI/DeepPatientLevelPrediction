@@ -84,11 +84,29 @@ setRealMLP(
 sampling or exhaustive grid search. Default: "grid"}
 
 \item{randomSample}{How many random samples from hyperparameter space to use
-when `hyperParamSearch = "random"`}
+when \code{hyperParamSearch = "random"}}
 
 \item{randomSampleSeed}{Random seed to sample hyperparameter combinations}
 }
+\value{
+A \code{modelSettings} object for use with \code{PatientLevelPrediction}.
+}
 \description{
-Create settings for the RealMLP model (binary classification).
-Preprocessing (robust scaling + clipping) is assumed to be handled upstream.
+Creates model and hyperparameter-search settings for RealMLP binary
+classification.
+}
+\details{
+The implementation is based on
+\href{https://arxiv.org/abs/2407.04491}{Holzmuller et al. (2024)}.
+Preprocessing, including robust scaling and clipping, is handled upstream.
+}
+\examples{
+realMlpSettings <- setRealMLP(
+  sizeHidden = c(128, 256),
+  dropout = c(0.1, 0.2),
+  hyperParamSearch = "random",
+  randomSample = 2,
+  randomSampleSeed = 42
+)
+length(realMlpSettings$param)
 }

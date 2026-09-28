@@ -1,3 +1,36 @@
+.integrationRequested <- identical(
+  Sys.getenv("DPLP_RUN_PYTHON_TESTS"),
+  "true"
+)
+.integrationPackages <- c("curl", "DatabaseConnector", "Eunomia", "FeatureExtraction")
+.missingIntegrationPackages <- .integrationPackages[
+  !vapply(.integrationPackages, requireNamespace, logical(1), quietly = TRUE)
+]
+.runIntegrationTests <- .integrationRequested &&
+  length(.missingIntegrationPackages) == 0 && curl::has_internet()
+
+skip_if_no_python <- function() {
+  testthat::skip_if_not(
+    .integrationRequested,
+    "Set DPLP_RUN_PYTHON_TESTS=true to run Python tests"
+  )
+}
+
+skip_if_no_integration <- function() {
+  reason <- if (!.integrationRequested) {
+    "Set DPLP_RUN_PYTHON_TESTS=true to run Python integration tests"
+  } else if (length(.missingIntegrationPackages) > 0) {
+    paste(
+      "Python integration tests require:",
+      paste(.missingIntegrationPackages, collapse = ", ")
+    )
+  } else {
+    "Eunomia integration tests require internet access"
+  }
+  testthat::skip_if_not(.runIntegrationTests, reason)
+}
+
+if (.runIntegrationTests) {
 testLoc <- normalizePath(tempdir())
 path <- system.file("python", package = "DeepPatientLevelPrediction")
 # get connection and data from Eunomia
@@ -136,3 +169,4 @@ fitEstimatorResults <- fitEstimator(trainData$Train,
   analysisPath = fitEstimatorPath
 )
 PatientLevelPrediction::savePlpModel(fitEstimatorResults, file.path(fitEstimatorPath, "plpModel"))
+}

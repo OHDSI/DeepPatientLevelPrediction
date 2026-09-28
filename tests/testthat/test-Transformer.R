@@ -1,3 +1,5 @@
+skip_if_no_integration()
+
 settings <- setTransformer(
   numBlocks = 1,
   dimToken = 8,
