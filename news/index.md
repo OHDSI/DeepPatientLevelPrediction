@@ -1,5 +1,21 @@
 # Changelog
 
+## DeepPatientLevelPrediction 2.4.0
+
+New features - Add hyperparameter tuning support for RealMLP.
+
+Bug fixes - Keep temporal dataset `feature_ids`, `feature_values`, and
+`time_ids` aligned when multiple features share the same time ID.
+
+Documentation and CI - Refresh RealMLP examples for current grid/random
+tuning behavior. - Add a dedicated temporal transformer vignette. -
+Update CI and installation guidance to validate the recommended Python
+environment with Python 3.14 and torch 2.12.1. - Pin Python duckdb to
+1.5.2 on macOS CI to avoid intermittent shutdown segfaults. - Limit
+push-triggered R CMD checks to `develop` and `main` while keeping pull
+request checks enabled for all branches. - Refresh vignette wording and
+examples for current runtime guidance.
+
 ## DeepPatientLevelPrediction 2.3.0
 
 New features - Add core `RealMLP` support for tabular deep learning,
@@ -59,13 +75,13 @@ Update pkgdown link checking for current `lychee` CLI behavior (PR
 - \[Feature\] Use `py_require` from reticulate to manage python
   dependencies and update min requirements (PR
   [\#150](https://github.com/OHDSI/DeepPatientLevelPrediction/issues/150))
-- \[Internal\] Refactor transformer/dataset/embedding classes to use
-  same code wether temporal or not (PR
+- \[Internal\] Refactor transformer/dataset/embedding classes to use the
+  same code whether temporal or not (PR
   [\#147](https://github.com/OHDSI/DeepPatientLevelPrediction/issues/147))
 - \[Feature\] Use train/validation split for model selection instead of
   cross validation (PR
   [\#145](https://github.com/OHDSI/DeepPatientLevelPrediction/issues/145))
-- \[Feature\] Temporal transformer added which supports RopE and time
+- \[Feature\] Temporal transformer added which supports RoPE and time
   tokens (PR
   [\#147](https://github.com/OHDSI/DeepPatientLevelPrediction/issues/147))
 - \[Feature\] Temporal data processing added (PR
@@ -112,7 +128,7 @@ Update pkgdown link checking for current `lychee` CLI behavior (PR
 - Refactoring: Move cross-validation to a separate function
 - Refactoring: Move paramsToTune to a separate function
 - linting: Enforcing HADES style
-- Calculate AUC ourselves with torch, get rid of scikit-learn dependancy
+- Calculate AUC ourselves with torch, get rid of scikit-learn dependency
 - added Andromeda to dev dependencies
 
 ## DeepPatientLevelPrediction 2.0.1
@@ -132,7 +148,7 @@ Update pkgdown link checking for current `lychee` CLI behavior (PR
 
 ## DeepPatientLevelPrediction 2.0.0
 
-- New backend which uses pytorch through reticulate instead of torch in
+- New backend which uses PyTorch through reticulate instead of torch in
   R
 - All models ported over to python
 - Dataset class now in python
@@ -152,7 +168,7 @@ Update pkgdown link checking for current `lychee` CLI behavior (PR
 
 ## DeepPatientLevelPrediction 1.1.4
 
-- Remove torchopt dependancy since adamw is now in torch
+- Remove torchopt dependency since AdamW is now in torch
 - Update torch dependency to \>=0.10.0
 - Allow device to be a function that resolves during Estimator
   initialization
@@ -182,7 +198,8 @@ Update pkgdown link checking for current `lychee` CLI behavior (PR
   ([\#51](https://github.com/OHDSI/DeepPatientLevelPrediction/issues/51))
 - Seed added for model weight initialization to improve reproducibility
   ([\#51](https://github.com/OHDSI/DeepPatientLevelPrediction/issues/51))
-- Added a learning rate finder for automatic calculatio of learning rate
+- Added a learning rate finder for automatic calculation of learning
+  rate
   ([\#51](https://github.com/OHDSI/DeepPatientLevelPrediction/issues/51))
 - Add seed for sampling hyperparameters
   ([\#50](https://github.com/OHDSI/DeepPatientLevelPrediction/issues/50))

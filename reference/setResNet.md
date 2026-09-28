@@ -1,6 +1,6 @@
-# setResNet
+# Create ResNet Settings
 
-Creates settings for a ResNet model
+Creates model and hyperparameter-search settings for a residual network.
 
 ## Usage
 
@@ -24,48 +24,67 @@ setResNet(
 
 - numLayers:
 
-  Number of layers in network, default: 1:16
+  Number of residual layers.
 
 - sizeHidden:
 
-  Amount of neurons in each default layer, default: 2^(6:10) (64 to
-  1024)
+  Width of the hidden representation.
 
 - hiddenFactor:
 
-  How much to grow the amount of neurons in each ResLayer, default: 1:4
+  Multiplier controlling the inner width of each residual layer.
 
 - residualDropout:
 
-  How much dropout to apply after last linear layer in ResLayer,
-  default: seq(0, 0.3, 0.05)
+  Dropout probability after the final linear operation in each residual
+  layer.
 
 - hiddenDropout:
 
-  How much dropout to apply after first linear layer in ResLayer,
-  default: seq(0, 0.3, 0.05)
+  Dropout probability after the first linear operation in each residual
+  layer.
 
 - sizeEmbedding:
 
-  Size of embedding layer, default: 2^(6:9) '(64 to 512)
+  Embedding dimension.
 
 - estimatorSettings:
 
-  created with “\`setEstimator“\`
+  Estimator settings created by
+  [`setEstimator()`](https://ohdsi.github.com/DeepPatientLevelPrediction/reference/setEstimator.md).
 
 - hyperParamSearch:
 
-  Which kind of hyperparameter search to use random sampling or
-  exhaustive grid search. default: 'random'
+  Hyperparameter-search strategy, either `"random"` or `"grid"`.
 
 - randomSample:
 
-  How many random samples from hyperparameter space to use
+  Number of combinations sampled when `hyperParamSearch = "random"`.
 
 - randomSampleSeed:
 
-  Random seed to sample hyperparameter combinations
+  Random seed used when sampling combinations.
+
+## Value
+
+A `modelSettings` object for use with `PatientLevelPrediction`.
 
 ## Details
 
-Model architecture from by https://arxiv.org/abs/2106.11959
+The architecture is based on [Gorishniy et al.
+(2021)](https://arxiv.org/abs/2106.11959).
+
+## Examples
+
+``` r
+resnetSettings <- setResNet(
+  numLayers = c(2, 4),
+  sizeHidden = 128,
+  hiddenFactor = 2,
+  residualDropout = 0.1,
+  hiddenDropout = 0.1,
+  sizeEmbedding = 64,
+  randomSample = 2,
+  randomSampleSeed = 42
+)
+```

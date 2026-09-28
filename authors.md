@@ -12,20 +12,23 @@
 
 - **Henrik John**. Author.
 
+- **Observational Health Data Sciences and Informatics**. Copyright
+  holder.
+
 ## Citation
 
 Source:
 [`DESCRIPTION`](https://github.com/OHDSI/DeepPatientLevelPrediction/blob/develop/DESCRIPTION)
 
 Fridgeirsson E, Reps J, Chan You S, Kim C, John H (2026).
-*DeepPatientLevelPrediction: Deep Learning for Patient Level Prediction
-Using Data in the OMOP Common Data Model*. R package version 2.3.0,
-<https://github.com/OHDSI/DeepPatientLevelPrediction>.
+*DeepPatientLevelPrediction: Deep Learning for Patient-Level
+Prediction*. R package version 2.4.0,
+<https://ohdsi.github.io/DeepPatientLevelPrediction/>.
 
     @Manual{,
-      title = {DeepPatientLevelPrediction: Deep Learning for Patient Level Prediction Using Data in the OMOP Common Data Model},
+      title = {DeepPatientLevelPrediction: Deep Learning for Patient-Level Prediction},
       author = {Egill Fridgeirsson and Jenna Reps and Seng {Chan You} and Chungsoo Kim and Henrik John},
       year = {2026},
-      note = {R package version 2.3.0},
-      url = {https://github.com/OHDSI/DeepPatientLevelPrediction},
+      note = {R package version 2.4.0},
+      url = {https://ohdsi.github.io/DeepPatientLevelPrediction/},
     }

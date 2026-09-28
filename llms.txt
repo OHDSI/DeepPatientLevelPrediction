@@ -2,7 +2,7 @@
 
 [![Build
 Status](https://github.com/OHDSI/DeepPatientLevelPrediction/workflows/R-CMD-check/badge.svg)](https://github.com/OHDSI/DeepPatientLevelPrediction/actions?query=workflow%3AR-CMD-check?branch=main)
-[![codecov.io](https://codecov.io/github/OHDSI/DeepPatientLevelPrediction/coverage.svg?branch=main)](https://codecov.io/github/OHDSI/DeepPatientLevelPrediction?branch=main)
+[![codecov.io](https://codecov.io/github/OHDSI/DeepPatientLevelPrediction/coverage.svg?branch=main)](https://app.codecov.io/github/OHDSI/DeepPatientLevelPrediction?branch=main)
 
 # Introduction
 
@@ -10,21 +10,20 @@ DeepPatientLevelPrediction is an R package for building and validating
 deep learning patient-level predictive models using data in the OMOP
 Common Data Model format and OHDSI PatientLevelPrediction framework.
 
-Reps JM, Schuemie MJ, Suchard MA, Ryan PB, Rijnbeek PR. [Design and
+Reps JM, Schuemie MJ, Suchard MA, Ryan PB, Rijnbeek PR. Design and
 implementation of a standardized framework to generate and evaluate
-patient-level prediction models using observational healthcare
-data.](https://academic.oup.com/jamia/article/25/8/969/4989437) J Am Med
-Inform Assoc. 2018;25(8):969-975.
+patient-level prediction models using observational healthcare data. J
+Am Med Inform Assoc. 2018;25(8):969-975. <doi:10.1093/jamia/ocy032>.
 
 # Features
 
 - Adds deep learning models to use in the OHDSI PatientLevelPrediction
   framework.
-- Allows to add custom deep learning models.
+- Allows users to add custom deep learning models.
 - Includes MLP, ResNet, Transformer, and RealMLP models.
-- Allows to use all the features of
+- Allows users to use all the features of
   [PatientLevelPrediction](https://github.com/OHDSI/PatientLevelPrediction/)
-  to validate and explore your model performance.
+  to validate and explore their model performance.
 
 # Technology
 
@@ -35,25 +34,28 @@ model training and inference.
 
 # System Requirements
 
-Requires R (version 4.0.0 or higher). Installation on Windows requires
-[RTools](http://cran.r-project.org/bin/windows/Rtools/). A CPU can be
-used for small examples and tests; an NVIDIA GPU is recommended for
-larger deep learning model development.
+Requires R (version 4.1.0 or higher). Installation from source on
+Windows may require
+[Rtools](https://cran.r-project.org/bin/windows/Rtools/). Python 3.10 or
+newer is required for model training and inference. A CPU can be used
+for small models; an NVIDIA GPU is recommended for larger deep learning
+model development.
 
 # Getting Started
 
-- To install the package please read the [Package installation
-  guide](https://ohdsi.github.io/DeepPatientLevelPrediction/articles/Installing.html)
-- Python dependencies are managed through `reticulate` when the package
-  is loaded or used. Advanced users can point `RETICULATE_PYTHON` at a
-  prebuilt environment for offline or controlled deployments.
+- To install the package, read the [package installation
+  guide](https://ohdsi.github.com/DeepPatientLevelPrediction/vignettes/Installing.Rmd).
+- Python requirements are declared to `reticulate` when the package
+  loads and resolved on first Python use. Advanced users can point
+  `RETICULATE_PYTHON` at a prebuilt environment for offline or
+  controlled deployments.
 - Please read the main vignette for the package: [Building Deep Learning
-  Models](https://ohdsi.github.io/DeepPatientLevelPrediction/articles/BuildingDeepModels.html)
+  Models](https://ohdsi.github.com/DeepPatientLevelPrediction/vignettes/BuildingDeepModels.Rmd)
 
 # User Documentation
 
 Documentation can be found on the [package
-website](https://ohdsi.github.io/DeepPatientLevelPrediction).
+website](https://ohdsi.github.io/DeepPatientLevelPrediction/).
 
 PDF versions of the documentation are also available, as mentioned
 above.
@@ -61,7 +63,7 @@ above.
 # Support
 
 - Developer questions/comments/feedback: [OHDSI
-  Forum](http://forums.ohdsi.org/c/developers)
+  Forum](https://forums.ohdsi.org/c/developers/7)
 - We use the [GitHub issue
   tracker](https://github.com/OHDSI/DeepPatientLevelPrediction/issues)
   for all bugs/issues/enhancements
@@ -77,7 +79,7 @@ DeepPatientLevelPrediction is licensed under Apache License 2.0
 
 # Development
 
-DeepPatientLevelPrediction is being developed in R Studio.
+DeepPatientLevelPrediction is being developed in RStudio.
 
 # Package index
 
@@ -102,39 +104,39 @@ DeepPatientLevelPrediction is being developed in R Studio.
 - [`expandComponentGrid()`](https://ohdsi.github.com/DeepPatientLevelPrediction/reference/expandComponentGrid.md)
   : Expand a Component's Hyperparameter Grid
 - [`fitEstimator()`](https://ohdsi.github.com/DeepPatientLevelPrediction/reference/fitEstimator.md)
-  : fitEstimator
+  : Fit a Deep Learning Estimator
 - [`gridCvDeep()`](https://ohdsi.github.com/DeepPatientLevelPrediction/reference/gridCvDeep.md)
-  : gridCvDeep
+  : Tune a Deep Learning Estimator
 - [`predictDeepEstimator()`](https://ohdsi.github.com/DeepPatientLevelPrediction/reference/predictDeepEstimator.md)
-  : predictDeepEstimator
+  : Predict with a Deep Learning Estimator
 - [`py_to_r(`*`<polars.dataframe.frame.DataFrame>`*`)`](https://ohdsi.github.com/DeepPatientLevelPrediction/reference/py_to_r.polars.dataframe.frame.DataFrame.md)
   : Use polars instead of pandas for default conversion from python to R
 - [`r_to_py(`*`<data.frame>`*`)`](https://ohdsi.github.com/DeepPatientLevelPrediction/reference/r_to_py.data.frame.md)
   : Use polars instead of pandas for default conversion from R to Python
 - [`setCustomEmbeddingModel()`](https://ohdsi.github.com/DeepPatientLevelPrediction/reference/setCustomEmbeddingModel.md)
-  : Create default settings a model using custom embeddings
+  : Create Model Settings with Custom Embeddings
 - [`setDefaultResNet()`](https://ohdsi.github.com/DeepPatientLevelPrediction/reference/setDefaultResNet.md)
-  : setDefaultResNet
+  : Create Default ResNet Settings
 - [`setDefaultTransformer()`](https://ohdsi.github.com/DeepPatientLevelPrediction/reference/setDefaultTransformer.md)
   : Create default settings for a non-temporal transformer
 - [`setEstimator()`](https://ohdsi.github.com/DeepPatientLevelPrediction/reference/setEstimator.md)
-  : setEstimator
+  : Create Estimator Settings
 - [`setFinetuner()`](https://ohdsi.github.com/DeepPatientLevelPrediction/reference/setFinetuner.md)
-  : setFinetuner
+  : Create Fine-Tuning Settings
 - [`setMultiLayerPerceptron()`](https://ohdsi.github.com/DeepPatientLevelPrediction/reference/setMultiLayerPerceptron.md)
-  : setMultiLayerPerceptron
+  : Create Multilayer Perceptron Settings
 - [`setRealMLP()`](https://ohdsi.github.com/DeepPatientLevelPrediction/reference/setRealMLP.md)
   : Create RealMLP Settings
 - [`setResNet()`](https://ohdsi.github.com/DeepPatientLevelPrediction/reference/setResNet.md)
-  : setResNet
+  : Create ResNet Settings
 - [`setTransformer()`](https://ohdsi.github.com/DeepPatientLevelPrediction/reference/setTransformer.md)
-  : create settings for training a transformer
+  : Create Transformer Settings
 - [`snakeCaseToCamelCase()`](https://ohdsi.github.com/DeepPatientLevelPrediction/reference/snakeCaseToCamelCase.md)
   : Convert a camel case string to snake case
 - [`snakeCaseToCamelCaseNames()`](https://ohdsi.github.com/DeepPatientLevelPrediction/reference/snakeCaseToCamelCaseNames.md)
   : Convert the names of an object from snake case to camel case
 - [`torch`](https://ohdsi.github.com/DeepPatientLevelPrediction/reference/torch.md)
-  : Pytorch module
+  : PyTorch Module
 - [`trainingCache`](https://ohdsi.github.com/DeepPatientLevelPrediction/reference/trainingCache.md)
   : TrainingCache
 
@@ -148,5 +150,7 @@ DeepPatientLevelPrediction is being developed in R Studio.
   model](https://ohdsi.github.com/DeepPatientLevelPrediction/articles/FirstModel.md):
 - [DeepPatientLevelPrediction Installation
   Guide](https://ohdsi.github.com/DeepPatientLevelPrediction/articles/Installing.md):
+- [Building Temporal Transformer
+  Models](https://ohdsi.github.com/DeepPatientLevelPrediction/articles/TemporalTransformer.md):
 - [How to use DeepPatientLevelPrediction for Transfer
   Learning](https://ohdsi.github.com/DeepPatientLevelPrediction/articles/TransferLearning.md):

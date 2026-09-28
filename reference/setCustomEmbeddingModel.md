@@ -1,7 +1,7 @@
-# Create default settings a model using custom embeddings
+# Create Model Settings with Custom Embeddings
 
-A model that uses custom embeddings such as Poincare embeddings or
-embeddings form a foundation model
+Configures a model to use supplied embeddings, such as Poincare
+embeddings or embeddings from a foundation model.
 
 ## Usage
 
@@ -20,21 +20,46 @@ setCustomEmbeddingModel(
 
 - embeddingFilePath:
 
-  path to the saved embeddings. The embeddings file should be a pytorch
-  file including a dictionary with two two fields: \`concept_ids\`: a
-  pytorch long tensor with the concept ids and \`embeddings\`: a pytorch
-  float tensor with the embeddings
+  Path to a PyTorch file containing a dictionary with `concept_ids`, a
+  PyTorch long tensor, and `embeddings`, a PyTorch float tensor.
 
 - modelSettings:
 
-  for the model to use, needs to have an embedding layer with a name
-  \`embedding\` which will be replaced by the custom embeddings
+  Settings for a model with an embedding layer named `embedding`. The
+  supplied embeddings replace that layer.
 
 - embeddingsClass:
 
-  the class of the custom embeddings, e.g. \`CustomEmbeddings\` or
-  \`PoincareEmbeddings\`
+  Embedding implementation, either `"CustomEmbeddings"` or
+  `"PoincareEmbeddings"`.
 
 ## Value
 
-settings for a model using custom embeddings
+A `modelSettings` object configured to initialize custom embeddings.
+
+## Examples
+
+``` r
+if (FALSE) { # \dontrun{
+# Requires Python and the package's Python dependencies, including PyTorch.
+# See vignette("Installing") for setup instructions.
+embeddingFilePath <- tempfile(fileext = ".pt")
+
+# Toy embeddings: one row per concept ID, with eight values per row.
+conceptIds <- c(1L, 2L, 3L)
+embeddings <- list(
+  concept_ids = torch$tensor(conceptIds, dtype = torch$long),
+  embeddings = torch$randn(length(conceptIds), 8L, dtype = torch$float)
+)
+torch$save(embeddings, embeddingFilePath)
+
+modelSettings <- setCustomEmbeddingModel(
+  embeddingFilePath = embeddingFilePath,
+  modelSettings = setDefaultTransformer()
+)
+
+# Clean up this example's file. In real use, keep it until training finishes:
+# modelSettings stores its path, not the embedding tensors themselves.
+unlink(embeddingFilePath)
+} # }
+```

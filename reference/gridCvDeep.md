@@ -1,6 +1,7 @@
-# gridCvDeep
+# Tune a Deep Learning Estimator
 
-Performs grid search for a deep learning estimator
+Performs hyperparameter search and cross-validation, then fits a final
+model using the best-performing settings.
 
 ## Usage
 
@@ -12,20 +13,98 @@ gridCvDeep(mappedData, labels, modelSettings, modelLocation, analysisPath)
 
 - mappedData:
 
-  Mapped data with covariates
+  Covariate data mapped with
+  [`PatientLevelPrediction::MapIds()`](https://ohdsi.github.io/PatientLevelPrediction/reference/MapIds.html).
 
 - labels:
 
-  Dataframe with the outcomes
+  Data frame containing outcomes and fold assignments.
 
 - modelSettings:
 
-  Settings of the model
+  A `modelSettings` object.
 
 - modelLocation:
 
-  Where to save the model
+  Directory in which to save the fitted model.
 
 - analysisPath:
 
-  Path of the analysis
+  Directory used for the resumable training cache.
+
+## Value
+
+A list containing the saved estimator location, predictions, final
+parameters, hyperparameter-search summaries, and feature information.
+
+## Examples
+
+``` r
+if (FALSE) { # \dontrun{
+# Requires FeatureExtraction and the package's Python dependencies,
+# including PyTorch.
+# See vignette("Installing") for setup instructions.
+data("simulationProfile", package = "PatientLevelPrediction")
+plpData <- PatientLevelPrediction::simulatePlpData(
+  simulationProfile, n = 200, seed = 42
+)
+# Supply metadata omitted by simulatePlpData() for this bundled profile:
+# gender, age, conditions, and drugs. Only age is continuous.
+plpData$covariateData$analysisRef <- data.frame(
+  analysisId = c(1, 2, 102, 402),
+  isBinary = c("Y", "N", "Y", "Y"),
+  missingMeansZero = c(NA, "Y", NA, NA)
+)
+population <- PatientLevelPrediction::createStudyPopulation(
+  plpData,
+  populationSettings = PatientLevelPrediction::createStudyPopulationSettings(
+    riskWindowEnd = 90, minTimeAtRisk = 89
+  )
+)
+splitData <- PatientLevelPrediction::splitData(
+  plpData,
+  population,
+  splitSettings = PatientLevelPrediction::createDefaultSplitSetting(
+    testFraction = 0, trainFraction = 1, nfold = 2, splitSeed = 42
+  )
+)
+
+# Keep this toy example small: two configurations, two folds, and one epoch.
+# These settings demonstrate fitting, not meaningful predictive performance.
+modelSettings <- setResNet(
+  numLayers = 1,
+  sizeHidden = c(8, 16),
+  hiddenFactor = 1,
+  residualDropout = 0,
+  hiddenDropout = 0,
+  sizeEmbedding = 8,
+  hyperParamSearch = "grid",
+  estimatorSettings = setEstimator(
+    learningRate = 0.001, batchSize = 64, epochs = 1, seed = 42
+  )
+)
+analysisPath <- tempfile("deep-plp-example-")
+dir.create(analysisPath)
+
+# The lower-level interface needs mapped IDs and fold assignments in labels.
+labels <- merge(splitData$Train$labels, splitData$Train$folds, by = "rowId")
+mappedData <- PatientLevelPrediction::MapIds(
+  covariateData = splitData$Train$covariateData,
+  cohort = labels
+)
+result <- gridCvDeep(
+  mappedData = mappedData,
+  labels = labels,
+  modelSettings = modelSettings,
+  modelLocation = file.path(analysisPath, "model"),
+  analysisPath = analysisPath
+)
+result$finalParam
+
+# Clean up this example's data, cache, and final model.
+Andromeda::close(mappedData)
+Andromeda::close(splitData$Train$covariateData)
+Andromeda::close(plpData$covariateData)
+unlink(analysisPath, recursive = TRUE)
+} # }
+```

@@ -2,55 +2,61 @@
 
 ## Introduction
 
-This vignette describes how you need to install the Observational Health
-Data Science and Informatics (OHDSI) DeepPatientLevelPrediction under
-Windows, Mac and Linux.
+This vignette describes how to install the Observational Health Data
+Sciences and Informatics (OHDSI) DeepPatientLevelPrediction package on
+Windows, macOS, and Linux.
 
 ## Software Prerequisites
 
 ### Windows Users
 
-Under Windows the OHDSI Deep Patient Level Prediction (DeepPLP) package
-requires installing:
+Under Windows, install:
 
-- R (<https://cran.r-project.org/> ) - (R \>= 4.0.0, but latest is
-  recommended)
-- Python - Recommend Python 3.12. Python \>= 3.10 is supported
-- RStudio (<https://www.rstudio.com/> )
-- Java (<http://www.java.com> )
-- RTools (<https://cran.r-project.org/bin/windows/Rtools/>)
+- R (<https://cran.r-project.org/>) - R \>= 4.1.0; the latest release is
+  recommended
+- Python - Python 3.14 is recommended; Python \>= 3.10 is supported
+- An R development environment, if desired
+- Java when using a JDBC-based database connection
+- [Rtools](https://cran.r-project.org/bin/windows/Rtools/) when
+  installing packages from source
 
 ### Mac/Linux Users
 
-Under Mac and Linux the OHDSI DeepPLP package requires installing:
+Under macOS and Linux, install:
 
-- R (<https://cran.r-project.org/> ) - (R \>= 4.0.0, but latest is
-  recommended)
-- Python - Recommend Python 3.12. Python \>= 3.10 is supported
-- RStudio (<https://www.rstudio.com/> )
-- Java (<http://www.java.com> )
-- Xcode command line tools(run in terminal: xcode-select –install) \[MAC
-  USERS ONLY\]
+- R (<https://cran.r-project.org/>) - R \>= 4.1.0; the latest release is
+  recommended
+- Python - Python 3.14 is recommended; Python \>= 3.10 is supported
+- An R development environment, if desired
+- Java when using a JDBC-based database connection
+- Xcode command line tools on macOS when installing packages from source
+  (`xcode-select --install`)
 
 ## Installing the Package
 
-The preferred way to install the package is by using `remotes`, which
-will automatically install the latest release and all the latest
-dependencies.
+Install the released package from CRAN:
 
-If you do not want the official release you could install the bleeding
-edge version of the package (latest develop branch).
+``` r
 
-Note that the latest develop branch could contain bugs, please report
-them to us if you experience problems.
+install.packages("DeepPatientLevelPrediction")
+```
+
+The development version can instead be installed from GitHub.
+Development versions may contain changes that have not yet been
+released.
+
+``` r
+
+install.packages("remotes")
+remotes::install_github("OHDSI/DeepPatientLevelPrediction@develop")
+```
 
 ### Python environment
 
-Since the package uses PyTorch through `reticulate`, a working Python
-environment is required. For most users on a computer with internet
-access, no manual Python setup is needed: loading or using
-`DeepPatientLevelPrediction` should let `reticulate` create a managed
-environment from the package requirements.
+Model training and inference use PyTorch through `reticulate`. Python is
+not required to install or load the R package. When Python functionality
+is first used, `reticulate` can create a managed environment from the
+package requirements on systems with internet access.
 
 You can verify the active interpreter with:
 
@@ -61,15 +67,15 @@ reticulate::py_config()
 ```
 
 Advanced users, users with strict reproducibility requirements, or users
-in airgapped environments can manage the Python environment themselves
+in air-gapped environments can manage the Python environment themselves
 and tell `reticulate` which interpreter to use. One option is to create
-the environment with `uv` and Python 3.12:
+the environment with `uv` and Python 3.14:
 
 ``` bash
-uv python install 3.12
-uv venv --python 3.12
+uv python install 3.14
+uv venv --python 3.14
 uv pip install polars tqdm pyarrow duckdb nvidia-ml-py numpy
-uv pip install "torch==2.10.0" --index https://download.pytorch.org/whl/cpu/
+uv pip install "torch==2.12.1" --index https://download.pytorch.org/whl/cpu/
 ```
 
 The second `uv pip install` command installs the CPU build of PyTorch.
@@ -90,21 +96,11 @@ For Windows:
 Then restart your R session.
 
 Python 3.9 is end-of-life and should not be used. Python 3.10 is still
-supported, but Python 3.12 is recommended.
+supported, but Python 3.14 is recommended.
 
-### Installing DeepPatientLevelPrediction using remotes
-
-To install using `remotes` run:
-
-``` r
-
-install.packages("remotes")
-remotes::install_github("OHDSI/DeepPatientLevelPrediction")
-```
-
-Loading the package or using the `torch` helper should trigger
-`reticulate` to resolve the Python requirements if you have not
-configured `RETICULATE_PYTHON`.
+Accessing the `torch` helper or starting model training triggers
+`reticulate` to resolve the Python requirements if `RETICULATE_PYTHON`
+is not configured.
 
 ``` r
 
@@ -114,10 +110,9 @@ torch$randn(10L)
 
 This should print out a tensor with ten different values.
 
-When installing make sure to close any other RStudio sessions that are
-using `DeepPatientLevelPrediction` or any dependency. Keeping RStudio
-sessions open can cause locks on Windows that prevent the package
-installing.
+On Windows, close other R sessions that are using
+`DeepPatientLevelPrediction` or its dependencies before updating the
+package; open sessions can lock installed files.
 
 ## Testing Installation
 
@@ -126,15 +121,20 @@ installing.
 library(DeepPatientLevelPrediction)
 
 torch$randn(10L)
+```
 
-modelSettings <- setResNet(
+The R-side model settings can be created without initializing Python:
+
+``` r
+
+modelSettings <- DeepPatientLevelPrediction::setResNet(
   numLayers = 2L,
   sizeHidden = 64L,
   hiddenFactor = 1L,
   residualDropout = 0,
   hiddenDropout = 0.2,
   sizeEmbedding = 64L,
-  estimatorSettings = setEstimator(
+  estimatorSettings = DeepPatientLevelPrediction::setEstimator(
     learningRate = 3e-4,
     weightDecay = 1e-6,
     device = "cpu",
@@ -155,7 +155,7 @@ vignette](https://ohdsi.github.com/DeepPatientLevelPrediction/articles/FirstMode
 
 ## Acknowledgments
 
-Considerable work has been dedicated to provide the
+Considerable work has been dedicated to providing the
 `DeepPatientLevelPrediction` package.
 
 ``` r
@@ -166,25 +166,23 @@ citation("DeepPatientLevelPrediction")
     ## To cite package 'DeepPatientLevelPrediction' in publications use:
     ## 
     ##   Fridgeirsson E, Reps J, Chan You S, Kim C, John H (2026).
-    ##   _DeepPatientLevelPrediction: Deep Learning for Patient Level
-    ##   Prediction Using Data in the OMOP Common Data Model_. R package
-    ##   version 2.3.0, <https://github.com/OHDSI/DeepPatientLevelPrediction>.
+    ##   _DeepPatientLevelPrediction: Deep Learning for Patient-Level
+    ##   Prediction_. R package version 2.4.0,
+    ##   <https://ohdsi.github.io/DeepPatientLevelPrediction/>.
     ## 
     ## A BibTeX entry for LaTeX users is
     ## 
     ##   @Manual{,
-    ##     title = {DeepPatientLevelPrediction: Deep Learning for Patient Level Prediction Using Data in the
-    ## OMOP Common Data Model},
+    ##     title = {DeepPatientLevelPrediction: Deep Learning for Patient-Level Prediction},
     ##     author = {Egill Fridgeirsson and Jenna Reps and Seng {Chan You} and Chungsoo Kim and Henrik John},
     ##     year = {2026},
-    ##     note = {R package version 2.3.0},
-    ##     url = {https://github.com/OHDSI/DeepPatientLevelPrediction},
+    ##     note = {R package version 2.4.0},
+    ##     url = {https://ohdsi.github.io/DeepPatientLevelPrediction/},
     ##   }
 
 **Please reference this paper if you use the PLP Package in your work:**
 
-[Reps JM, Schuemie MJ, Suchard MA, Ryan PB, Rijnbeek PR. Design and
+Reps JM, Schuemie MJ, Suchard MA, Ryan PB, Rijnbeek PR. Design and
 implementation of a standardized framework to generate and evaluate
 patient-level prediction models using observational healthcare data. J
-Am Med Inform Assoc.
-2018;25(8):969-975.](http://dx.doi.org/10.1093/jamia/ocy032)
+Am Med Inform Assoc. 2018;25(8):969-975. <doi:10.1093/jamia/ocy032>.

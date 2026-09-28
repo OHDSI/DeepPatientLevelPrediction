@@ -1,50 +1,45 @@
 # TrainingCache
 
-Parameter caching for training persistence and continuity
+Stores hyperparameter-search progress so interrupted model training can
+be resumed from an analysis directory.
 
 ## Value
 
-Whether the provided and cached parameter grid is identical
-
-Grid search results from the training cache
-
-Boolen
-
-Last grid search index
+An R6 class generator for persistent training caches.
 
 ## Methods
 
 ### Public methods
 
-- [`trainingCache$new()`](#method-TrainingCache-new)
+- [`TrainingCache$new()`](#method-TrainingCache-initialize)
 
-- [`trainingCache$isParamGridIdentical()`](#method-TrainingCache-isParamGridIdentical)
+- [`TrainingCache$isParamGridIdentical()`](#method-TrainingCache-isParamGridIdentical)
 
-- [`trainingCache$saveGridSearchPredictions()`](#method-TrainingCache-saveGridSearchPredictions)
+- [`TrainingCache$saveGridSearchPredictions()`](#method-TrainingCache-saveGridSearchPredictions)
 
-- [`trainingCache$saveModelParams()`](#method-TrainingCache-saveModelParams)
+- [`TrainingCache$saveModelParams()`](#method-TrainingCache-saveModelParams)
 
-- [`trainingCache$getGridSearchPredictions()`](#method-TrainingCache-getGridSearchPredictions)
+- [`TrainingCache$getGridSearchPredictions()`](#method-TrainingCache-getGridSearchPredictions)
 
-- [`trainingCache$isFull()`](#method-TrainingCache-isFull)
+- [`TrainingCache$isFull()`](#method-TrainingCache-isFull)
 
-- [`trainingCache$getLastGridSearchIndex()`](#method-TrainingCache-getLastGridSearchIndex)
+- [`TrainingCache$getLastGridSearchIndex()`](#method-TrainingCache-getLastGridSearchIndex)
 
-- [`trainingCache$dropCache()`](#method-TrainingCache-dropCache)
+- [`TrainingCache$dropCache()`](#method-TrainingCache-dropCache)
 
-- [`trainingCache$trimPerformance()`](#method-TrainingCache-trimPerformance)
+- [`TrainingCache$trimPerformance()`](#method-TrainingCache-trimPerformance)
 
-- [`trainingCache$clone()`](#method-TrainingCache-clone)
+- [`TrainingCache$clone()`](#method-TrainingCache-clone)
 
 ------------------------------------------------------------------------
 
-### Method `new()`
+### `TrainingCache$new()`
 
 Creates a new training cache
 
 #### Usage
 
-    trainingCache$new(inDir)
+    TrainingCache$new(inDir)
 
 #### Arguments
 
@@ -54,14 +49,14 @@ Creates a new training cache
 
 ------------------------------------------------------------------------
 
-### Method `isParamGridIdentical()`
+### `TrainingCache$isParamGridIdentical()`
 
 Checks whether the parameter grid in the model settings is identical to
 the cached parameters.
 
 #### Usage
 
-    trainingCache$isParamGridIdentical(inModelParams)
+    TrainingCache$isParamGridIdentical(inModelParams)
 
 #### Arguments
 
@@ -69,15 +64,19 @@ the cached parameters.
 
   Parameter grid from the model settings
 
+#### Returns
+
+Whether the provided and cached parameter grid is identical
+
 ------------------------------------------------------------------------
 
-### Method `saveGridSearchPredictions()`
+### `TrainingCache$saveGridSearchPredictions()`
 
 Saves the grid search results to the training cache
 
 #### Usage
 
-    trainingCache$saveGridSearchPredictions(inGridSearchPredictions)
+    TrainingCache$saveGridSearchPredictions(inGridSearchPredictions)
 
 #### Arguments
 
@@ -87,13 +86,13 @@ Saves the grid search results to the training cache
 
 ------------------------------------------------------------------------
 
-### Method `saveModelParams()`
+### `TrainingCache$saveModelParams()`
 
 Saves the parameter grid to the training cache
 
 #### Usage
 
-    trainingCache$saveModelParams(inModelParams)
+    TrainingCache$saveModelParams(inModelParams)
 
 #### Arguments
 
@@ -103,54 +102,66 @@ Saves the parameter grid to the training cache
 
 ------------------------------------------------------------------------
 
-### Method `getGridSearchPredictions()`
+### `TrainingCache$getGridSearchPredictions()`
 
 Gets the grid search results from the training cache
 
 #### Usage
 
-    trainingCache$getGridSearchPredictions()
+    TrainingCache$getGridSearchPredictions()
+
+#### Returns
+
+Grid search results from the training cache
 
 ------------------------------------------------------------------------
 
-### Method `isFull()`
+### `TrainingCache$isFull()`
 
 Check if cache is full
 
 #### Usage
 
-    trainingCache$isFull()
+    TrainingCache$isFull()
+
+#### Returns
+
+A logical value.
 
 ------------------------------------------------------------------------
 
-### Method `getLastGridSearchIndex()`
+### `TrainingCache$getLastGridSearchIndex()`
 
 Gets the last index from the cached grid search
 
 #### Usage
 
-    trainingCache$getLastGridSearchIndex()
+    TrainingCache$getLastGridSearchIndex()
+
+#### Returns
+
+Last grid search index
 
 ------------------------------------------------------------------------
 
-### Method `dropCache()`
+### `TrainingCache$dropCache()`
 
 Remove the training cache from the analysis path
 
 #### Usage
 
-    trainingCache$dropCache()
+    TrainingCache$dropCache()
 
 ------------------------------------------------------------------------
 
-### Method `trimPerformance()`
+### `TrainingCache$trimPerformance()`
 
 Trims the performance of the hyperparameter results by removing the
 predictions from all but the best performing hyperparameter
 
 #### Usage
 
-    trainingCache$trimPerformance(hyperparameterResults)
+    TrainingCache$trimPerformance(hyperparameterResults)
 
 #### Arguments
 
@@ -160,16 +171,28 @@ predictions from all but the best performing hyperparameter
 
 ------------------------------------------------------------------------
 
-### Method `clone()`
+### `TrainingCache$clone()`
 
 The objects of this class are cloneable with this method.
 
 #### Usage
 
-    trainingCache$clone(deep = FALSE)
+    TrainingCache$clone(deep = FALSE)
 
 #### Arguments
 
 - `deep`:
 
   Whether to make a deep clone.
+
+## Examples
+
+``` r
+cacheDirectory <- tempfile("training-cache-")
+dir.create(cacheDirectory)
+cache <- trainingCache$new(cacheDirectory)
+cache$saveModelParams(list(list(sizeHidden = 64)))
+cache$isParamGridIdentical(list(list(sizeHidden = 64)))
+#> [1] TRUE
+unlink(cacheDirectory, recursive = TRUE)
+```

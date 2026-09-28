@@ -1,6 +1,7 @@
-# setMultiLayerPerceptron
+# Create Multilayer Perceptron Settings
 
-Creates settings for a Multilayer perceptron model
+Creates model and hyperparameter-search settings for a multilayer
+perceptron.
 
 ## Usage
 
@@ -22,38 +23,50 @@ setMultiLayerPerceptron(
 
 - numLayers:
 
-  Number of layers in network, default: 1:8
+  Number of hidden layers.
 
 - sizeHidden:
 
-  Amount of neurons in each default layer, default: 2^(6:9) (64 to 512)
+  Number of units in each hidden layer.
 
 - dropout:
 
-  How much dropout to apply after first linear, default: seq(0, 0.3,
-  0.05)
+  Dropout probability.
 
 - sizeEmbedding:
 
-  Size of embedding default: 2^(6:9) (64 to 512)
+  Embedding dimension.
 
 - estimatorSettings:
 
-  settings of Estimator created with \`setEstimator\`
+  Estimator settings created by
+  [`setEstimator()`](https://ohdsi.github.com/DeepPatientLevelPrediction/reference/setEstimator.md).
 
 - hyperParamSearch:
 
-  Which kind of hyperparameter search to use random sampling or
-  exhaustive grid search. default: 'random'
+  Hyperparameter-search strategy, either `"random"` or `"grid"`.
 
 - randomSample:
 
-  How many random samples from hyperparameter space to use
+  Number of combinations sampled when `hyperParamSearch = "random"`.
 
 - randomSampleSeed:
 
-  Random seed to sample hyperparameter combinations
+  Random seed used when sampling combinations.
 
-## Details
+## Value
 
-Model architecture
+A `modelSettings` object for use with `PatientLevelPrediction`.
+
+## Examples
+
+``` r
+mlpSettings <- setMultiLayerPerceptron(
+  numLayers = c(1, 2),
+  sizeHidden = 64,
+  dropout = 0.1,
+  sizeEmbedding = 32,
+  randomSample = 2,
+  randomSampleSeed = 42
+)
+```

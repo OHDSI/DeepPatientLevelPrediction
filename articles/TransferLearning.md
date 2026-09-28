@@ -28,22 +28,22 @@ connectionDetails <- Eunomia::getEunomiaConnectionDetails()
 Eunomia::createCohorts(connectionDetails)
 ```
 
-The default Eunomia package includes four cohorts. Gastrointestinal
+The default Eunomia package includes four cohorts: gastrointestinal
 bleeding (`GiBleed`) and use of three different drugs, `diclofenac`,
-`NSAIDS` and `celecoxib`. Usually then we would use one of three drug
-cohorts as our target cohort and then predict the risk of
-gastrointestinal bleeding. The `cohort_definition_ids` of these are:
-`celecoxib: 1`, `diclofenac: 2`, `GiBleed: 3` and `NSAIDS: 4`.
+`NSAIDs`, and `celecoxib`. Usually we would use one of the drug cohorts
+as our target cohort and then predict the risk of gastrointestinal
+bleeding. The cohort definition IDs are: `celecoxib: 1`,
+`diclofenac: 2`, `GiBleed: 3`, and `NSAIDs: 4`.
 
-After creating the cohorts we can see that there are most patients in
-the `NSAIDS` cohort. We will use this cohort as our target cohort for
-the initial model. There are least patients in the `diclofenac` cohort
-(excluding `GiBleed`), so we will use this cohort as our target cohort
-for the transfer learning model.
+After creating the cohorts, we can see that the `NSAIDs` cohort has the
+most patients. We will use this cohort as our target cohort for the
+initial model. The `diclofenac` cohort has the fewest patients,
+excluding `GiBleed`, so we will use it as our target cohort for the
+transfer learning model.
 
 ``` r
 
-# create some simple covariate settings using Sex, Age and Long-term conditions and drug use in the last year.
+# Create some simple covariate settings using sex, age, and long-term conditions and drug use in the last year.
 covariateSettings <- FeatureExtraction::createCovariateSettings(
   useDemographicsGender = TRUE,
   useDemographicsAge = TRUE,
@@ -52,7 +52,7 @@ covariateSettings <- FeatureExtraction::createCovariateSettings(
   endDays = 0
 )
 
-# Information about the database. In Eunomia sqlite there is only one schema, main and the cohorts are in a table named `cohort` which is the default. 
+# Information about the database. In Eunomia SQLite there is only one schema, main, and the cohorts are in the default table named `cohort`.
 databaseDetails <- PatientLevelPrediction::createDatabaseDetails(
   connectionDetails = connectionDetails,
   cdmDatabaseId = "2", # Eunomia version used
@@ -75,13 +75,13 @@ Now we can set up our initial model development. We will use a simple
 
 ``` r
 
-modelSettings <- setResNet(numLayers = c(2),
+modelSettings <- DeepPatientLevelPrediction::setResNet(numLayers = c(2),
                            sizeHidden = 128,
                            hiddenFactor = 1,
                            residualDropout = 0.1,
                            hiddenDropout = 0.1,
                            sizeEmbedding = 128,
-                           estimatorSettings = setEstimator(
+                           estimatorSettings = DeepPatientLevelPrediction::setEstimator(
                              learningRate = 3e-4,
                              weightDecay = 0,
                              device = "cpu", # use cuda here if you have a gpu
@@ -91,14 +91,19 @@ modelSettings <- setResNet(numLayers = c(2),
                            ),
                            hyperParamSearch = "random",
                            randomSample = 1)
+```
+
+``` r
+
+outputDirectory <- file.path(tempdir(), "DeepPLPTransferLearning")
 
 plpResults <- PatientLevelPrediction::runPlp(
   plpData = plpData,
-  outcomeId = 3, # 4 is the id of GiBleed
+  outcomeId = 3, # GiBleed
   modelSettings = modelSettings,
   analysisName = "Nsaids_GiBleed",
   analysisId = "1",
-  # Let's predict the risk of Gibleed in the year following start of NSAIDs use
+  # Predict the risk of GiBleed in the year following start of NSAIDs use
   populationSettings = PatientLevelPrediction::createStudyPopulationSettings(
     requireTimeAtRisk = FALSE,
     firstExposureOnly = TRUE,
@@ -106,12 +111,12 @@ plpResults <- PatientLevelPrediction::runPlp(
     riskWindowEnd = 365
   ),
   splitSettings = PatientLevelPrediction::createDefaultSplitSetting(splitSeed = 42),
-  saveDirectory = "./output" # save in a folder in the current directory
+  saveDirectory = outputDirectory
 )
 ```
 
-This should take a few minutes on a cpu. Now that we have a model
-developed we can further finetune it on the `diclofenac` cohort. First
+This should take a few minutes on a CPU. Now that we have a model
+developed, we can further fine-tune it on the `diclofenac` cohort. First
 we need to extract it.
 
 ``` r
@@ -142,7 +147,12 @@ model is: `./output/1/plpResult/model`.
 
 ``` r
 
-modelSettingsTransfer <- setFinetuner(modelPath = './output/1/plpResult/model',
+modelSettingsTransfer <- setFinetuner(modelPath = file.path(
+                                        outputDirectory,
+                                        "1",
+                                        "plpResult",
+                                        "model"
+                                      ),
                                       estimatorSettings = setEstimator(
                                         learningRate = 3e-4,
                                         weightDecay = 0,
@@ -154,13 +164,15 @@ modelSettingsTransfer <- setFinetuner(modelPath = './output/1/plpResult/model',
 ```
 
 Currently the basic transfer learning works by loading the previously
-trained model and resetting it’s last layer, often called the prediction
+trained model and resetting its last layer, often called the prediction
 head. Then it will train only the parameters in this last layer. The
-hope is that the other layer’s have learned some generalizable
-representations of our data and by modifying the last layer we can mix
+hope is that the other layers have learned some generalizable
+representations of our data, and by modifying the last layer we can mix
 those representations to suit the new task.
 
 ``` r
+
+transferOutputDirectory <- file.path(tempdir(), "DeepPLPTransferLearningResult")
 
 plpResultsTransfer <- PatientLevelPrediction::runPlp(
   plpData = plpDataTransfer,
@@ -175,18 +187,17 @@ plpResultsTransfer <- PatientLevelPrediction::runPlp(
     riskWindowEnd = 365
   ),
   splitSettings = PatientLevelPrediction::createDefaultSplitSetting(splitSeed = 42),
-  saveDirectory = "./outputTransfer" # save in a folder in the current directory
+  saveDirectory = transferOutputDirectory
 )
 ```
 
-This should be much faster since it’s only training the last layer.
-Unfortunately the results are bad. However this is a toy example on
-synthetic toy data but the process on large observational data is
-exactly the same.
+This should be much faster since it only trains the last layer. The
+results are not expected to be good in this toy example on synthetic
+data, but the process on large observational data is the same.
 
 ## Conclusion
 
-Now you have finetuned a model on a new cohort using transfer learning.
+Now you have fine-tuned a model on a new cohort using transfer learning.
 This can be useful when you have a small dataset for the new task, but a
 large dataset for a related task or from a different database. The
 DeepPatientLevelPrediction package makes it easy to perform transfer
@@ -194,7 +205,7 @@ learning on patient-level prediction tasks.
 
 ## Acknowledgments
 
-Considerable work has been dedicated to provide the
+Considerable work has been dedicated to providing the
 `DeepPatientLevelPrediction` package.
 
 ``` r
@@ -205,25 +216,23 @@ citation("DeepPatientLevelPrediction")
     ## To cite package 'DeepPatientLevelPrediction' in publications use:
     ## 
     ##   Fridgeirsson E, Reps J, Chan You S, Kim C, John H (2026).
-    ##   _DeepPatientLevelPrediction: Deep Learning for Patient Level
-    ##   Prediction Using Data in the OMOP Common Data Model_. R package
-    ##   version 2.3.0, <https://github.com/OHDSI/DeepPatientLevelPrediction>.
+    ##   _DeepPatientLevelPrediction: Deep Learning for Patient-Level
+    ##   Prediction_. R package version 2.4.0,
+    ##   <https://ohdsi.github.io/DeepPatientLevelPrediction/>.
     ## 
     ## A BibTeX entry for LaTeX users is
     ## 
     ##   @Manual{,
-    ##     title = {DeepPatientLevelPrediction: Deep Learning for Patient Level Prediction Using Data in the
-    ## OMOP Common Data Model},
+    ##     title = {DeepPatientLevelPrediction: Deep Learning for Patient-Level Prediction},
     ##     author = {Egill Fridgeirsson and Jenna Reps and Seng {Chan You} and Chungsoo Kim and Henrik John},
     ##     year = {2026},
-    ##     note = {R package version 2.3.0},
-    ##     url = {https://github.com/OHDSI/DeepPatientLevelPrediction},
+    ##     note = {R package version 2.4.0},
+    ##     url = {https://ohdsi.github.io/DeepPatientLevelPrediction/},
     ##   }
 
 **Please reference this paper if you use the PLP Package in your work:**
 
-[Reps JM, Schuemie MJ, Suchard MA, Ryan PB, Rijnbeek PR. Design and
+Reps JM, Schuemie MJ, Suchard MA, Ryan PB, Rijnbeek PR. Design and
 implementation of a standardized framework to generate and evaluate
 patient-level prediction models using observational healthcare data. J
-Am Med Inform Assoc.
-2018;25(8):969-975.](http://dx.doi.org/10.1093/jamia/ocy032)
+Am Med Inform Assoc. 2018;25(8):969-975. <doi:10.1093/jamia/ocy032>.

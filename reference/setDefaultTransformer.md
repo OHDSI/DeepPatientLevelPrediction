@@ -1,6 +1,7 @@
 # Create default settings for a non-temporal transformer
 
-A transformer model with default hyperparameters
+Creates settings for the package's default non-temporal transformer
+model.
 
 ## Usage
 
@@ -15,8 +16,22 @@ setDefaultTransformer(
 
 - estimatorSettings:
 
-  created with \`setEstimator\`
+  Estimator settings created by
+  [`setEstimator()`](https://ohdsi.github.com/DeepPatientLevelPrediction/reference/setEstimator.md).
+
+## Value
+
+A `modelSettings` object for use with `PatientLevelPrediction`.
 
 ## Details
 
-from https://arxiv.org/abs/2106.11959 Default hyperparameters from paper
+The architecture and default hyperparameters are based on [Gorishniy et
+al. (2021)](https://arxiv.org/abs/2106.11959).
+
+## Examples
+
+``` r
+transformerSettings <- setDefaultTransformer()
+transformerSettings$param[[1]]$numBlocks
+#> [1] 3
+```

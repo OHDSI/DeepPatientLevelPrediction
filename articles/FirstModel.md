@@ -3,17 +3,16 @@
 ## Introduction
 
 This vignette describes how you can develop your first deep learning
-model using the deepPLP package on OMOP-CDM data.
+model using the DeepPLP package on OMOP-CDM data.
 
-First make sure you have everything installed correctly by following the
-[installation
-guide](https://ohdsi.github.io/DeepPatientLevelPrediction/articles/Installing.html)
+First make sure you have everything installed correctly by following
+[`vignette("Installing")`](https://ohdsi.github.com/DeepPatientLevelPrediction/articles/Installing.md).
 
 ## The data
 
-Since there is no publicly available data we use a nifty little package
-called [Eunomia](https://github.com/OHDSI/Eunomia) which provides us
-with synthetic data in the OMOP-CDM.
+Since there is no publicly available data, we use
+[Eunomia](https://github.com/OHDSI/Eunomia), which provides synthetic
+data in the OMOP CDM.
 
 It can be installed with:
 
@@ -22,11 +21,11 @@ It can be installed with:
 install.packages('Eunomia')
 ```
 
-To start with we have to define our cohorts of interest and extract a so
-called plpData object with the features we want to use.
+To start with, we have to define our cohorts of interest and extract a
+`plpData` object with the features we want to use.
 
-In Eunomia the cohorts have already been defined but we need to create
-them. This we can do by running:
+In Eunomia the cohorts have already been defined, but we need to create
+them. We can do this by running:
 
 ``` r
 
@@ -35,7 +34,7 @@ Eunomia::createCohorts(connectionDetails)
 ```
 
 The first line gets the Eunomia connection details. The Eunomia data is
-stored in a sqlite database. The second line creates the cohorts. You
+stored in a SQLite database. The second line creates the cohorts. You
 should see output confirming that three target cohorts have been
 created, consisting of users of certain medications and one outcome
 cohort of gastrointestinal bleeding.
@@ -43,7 +42,7 @@ cohort of gastrointestinal bleeding.
 ## Our settings
 
 We define our covariate settings using
-[FeatureExtraction](https://github.com/OHDSI/FeatureExtraction)
+[FeatureExtraction](https://github.com/OHDSI/FeatureExtraction).
 
 ``` r
 
@@ -110,10 +109,10 @@ NSAIDs until one year later.
 Now it’s time to define our deep learning model. It can be daunting for
 those not familiar with deep learning to define their first model since
 the models are very flexible and have many hyperparameters to define for
-your model architecture. To help with this `deepPLP` has helper
-functions with a sensible set of hyperparameters for testing. Best
-practice is though to do an extensive hyperparameter tuning step using
-cross validation.
+your model architecture. To help with this, DeepPLP has helper functions
+with a sensible set of hyperparameters for testing. Best practice is
+still to do an extensive hyperparameter tuning step using cross
+validation.
 
 We will use a simple ResNet for our example. ResNets use skip
 connections between layers to support deeper models without overfitting
@@ -157,7 +156,7 @@ plpResults <- PatientLevelPrediction::runPlp(plpData = plpData,
                                              analysisId = "ResNet",
                                              analysisName = "Testing DeepPLP",
                                              populationSettings = populationSettings,
-                                             saveDirectory = "ResNet")
+                                             saveDirectory = file.path(tempdir(), "ResNet"))
 ```
 
 On my computer this takes about 20 seconds per epoch. While you probably
@@ -168,7 +167,7 @@ Congratulations you have just developed your first deep learning model!
 
 ## Acknowledgments
 
-Considerable work has been dedicated to provide the
+Considerable work has been dedicated to providing the
 `DeepPatientLevelPrediction` package.
 
 ``` r
@@ -179,25 +178,23 @@ citation("DeepPatientLevelPrediction")
     ## To cite package 'DeepPatientLevelPrediction' in publications use:
     ## 
     ##   Fridgeirsson E, Reps J, Chan You S, Kim C, John H (2026).
-    ##   _DeepPatientLevelPrediction: Deep Learning for Patient Level
-    ##   Prediction Using Data in the OMOP Common Data Model_. R package
-    ##   version 2.3.0, <https://github.com/OHDSI/DeepPatientLevelPrediction>.
+    ##   _DeepPatientLevelPrediction: Deep Learning for Patient-Level
+    ##   Prediction_. R package version 2.4.0,
+    ##   <https://ohdsi.github.io/DeepPatientLevelPrediction/>.
     ## 
     ## A BibTeX entry for LaTeX users is
     ## 
     ##   @Manual{,
-    ##     title = {DeepPatientLevelPrediction: Deep Learning for Patient Level Prediction Using Data in the
-    ## OMOP Common Data Model},
+    ##     title = {DeepPatientLevelPrediction: Deep Learning for Patient-Level Prediction},
     ##     author = {Egill Fridgeirsson and Jenna Reps and Seng {Chan You} and Chungsoo Kim and Henrik John},
     ##     year = {2026},
-    ##     note = {R package version 2.3.0},
-    ##     url = {https://github.com/OHDSI/DeepPatientLevelPrediction},
+    ##     note = {R package version 2.4.0},
+    ##     url = {https://ohdsi.github.io/DeepPatientLevelPrediction/},
     ##   }
 
 **Please reference this paper if you use the PLP Package in your work:**
 
-[Reps JM, Schuemie MJ, Suchard MA, Ryan PB, Rijnbeek PR. Design and
+Reps JM, Schuemie MJ, Suchard MA, Ryan PB, Rijnbeek PR. Design and
 implementation of a standardized framework to generate and evaluate
 patient-level prediction models using observational healthcare data. J
-Am Med Inform Assoc.
-2018;25(8):969-975.](http://dx.doi.org/10.1093/jamia/ocy032)
+Am Med Inform Assoc. 2018;25(8):969-975. <doi:10.1093/jamia/ocy032>.

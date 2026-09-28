@@ -1,6 +1,6 @@
-# setDefaultResNet
+# Create Default ResNet Settings
 
-Creates settings for a default ResNet model
+Creates settings for the package's default residual-network model.
 
 ## Usage
 
@@ -15,9 +15,23 @@ setDefaultResNet(
 
 - estimatorSettings:
 
-  created with “\`setEstimator“\`
+  Estimator settings created by
+  [`setEstimator()`](https://ohdsi.github.com/DeepPatientLevelPrediction/reference/setEstimator.md).
+
+## Value
+
+A `modelSettings` object for use with `PatientLevelPrediction`.
 
 ## Details
 
-Model architecture from by https://arxiv.org/abs/2106.11959 .
-Hyperparameters chosen by a experience on a few prediction problems.
+The architecture is based on [Gorishniy et al.
+(2021)](https://arxiv.org/abs/2106.11959). The hyperparameters are
+defaults selected for patient-level prediction tasks.
+
+## Examples
+
+``` r
+resnetSettings <- setDefaultResNet()
+resnetSettings$param[[1]]$numLayers
+#> [1] 6
+```

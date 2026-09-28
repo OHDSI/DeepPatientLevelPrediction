@@ -21,9 +21,9 @@ of Deep Learning in this domain.
 
 This vignette describes how you can use the Observational Health Data
 Sciences and Informatics (OHDSI)
-[`PatientLevelPrediction`](http://github.com/OHDSI/PatientLevelPrediction)
+[`PatientLevelPrediction`](https://github.com/OHDSI/PatientLevelPrediction)
 package and
-[`DeepPatientLevelPrediction`](http://github.com/OHDSI/DeepPatientLevelPrediction)
+[`DeepPatientLevelPrediction`](https://github.com/OHDSI/DeepPatientLevelPrediction)
 package to build Deep Learning models. This vignette assumes you have
 read and are comfortable with building patient level prediction models
 as described in the [`BuildingPredictiveModels`
@@ -34,17 +34,16 @@ methods.
 ### Background
 
 Deep Learning models are built by stacking an often large number of
-neural network layers that perform feature engineering steps, e.g
+neural network layers that perform feature engineering steps, e.g.,
 embedding, and are collapsed in a final linear layer (equivalent to
 logistic regression). These algorithms need a lot of data to converge to
 a good representation, but currently the sizes of the large
 observational healthcare databases are growing fast which would make
 Deep Learning an interesting approach to test within OHDSI’s
 [Patient-Level Prediction
-Framework](https://academic.oup.com/jamia/article/25/8/969/4989437). The
-current implementation allows us to perform research at scale on the
-value and limitations of Deep Learning using observational healthcare
-data.
+Framework](https://ohdsi.github.io/PatientLevelPrediction/). The current
+implementation allows us to perform research at scale on the value and
+limitations of Deep Learning using observational healthcare data.
 
 In the package we use PyTorch through the `reticulate` package.
 
@@ -64,8 +63,8 @@ recommended for most deep learning model development.
 ### Requirements
 
 Full details about the package requirements and instructions on
-installing the package can be found
-[here](https://ohdsi.github.io/DeepPatientLevelPrediction/articles/Installing.html).
+installing the package can be found in
+[`vignette("Installing")`](https://ohdsi.github.com/DeepPatientLevelPrediction/articles/Installing.md).
 
 ### Integration with PatientLevelPrediction
 
@@ -83,11 +82,14 @@ first-model vignette.
 
 library(DeepPatientLevelPrediction)
 
+# Pick the model settings from DeepPatientLevelPrediction.
+deepLearningModel <- DeepPatientLevelPrediction::setDefaultResNet()
+```
+
+``` r
+
 # load the data
 plpData <- PatientLevelPrediction::loadPlpData('locationOfData')
-
-# pick the set<Model> from  DeepPatientLevelPrediction
-deepLearningModel <- DeepPatientLevelPrediction::setDefaultResNet()
 
 # use PatientLevelPrediction to fit model
 deepLearningResult <- PatientLevelPrediction::runPlp(
@@ -96,7 +98,7 @@ deepLearningResult <- PatientLevelPrediction::runPlp(
     modelSettings = deepLearningModel,
     analysisId = 'resNetTorch',
     populationSettings = populationSettings,
-    saveDirectory = file.path(getwd(), 'resNetTorch'),
+    saveDirectory = file.path(tempdir(), 'resNetTorch'),
     ...
   )
 ```
@@ -124,9 +126,9 @@ model’s parameters to reduce the error.
 
 ##### Set Function
 
-To use the package to fit a MLP model you can use the
+To use the package to fit an MLP model you can use the
 [`setMultiLayerPerceptron()`](https://ohdsi.github.com/DeepPatientLevelPrediction/reference/setMultiLayerPerceptron.md)
-function to specify the hyper-parameter settings for the MLP.
+function to specify the hyperparameter settings for the MLP.
 
 ##### Inputs
 
@@ -135,7 +137,7 @@ the number of layers and neurons in the network’s hidden layers.
 
 The `dropout` input specifies the probability that a layer randomly sets
 some inputs to 0 at each step during training time. A value of `0.2`
-means that 20% of the layers inputs will be set to 0. This is used to
+means that 20% of the layer’s inputs will be set to 0. This is used to
 reduce overfitting.
 
 The `sizeEmbedding` input specifies the size of the embedding used. The
@@ -211,6 +213,9 @@ modelSettings <- setMultiLayerPerceptron(
   ),
   randomSample=10L
 )
+```
+
+``` r
 
 mlpResult <- PatientLevelPrediction::runPlp(
     plpData = plpData,
@@ -229,7 +234,7 @@ mlpResult <- PatientLevelPrediction::runPlp(
       runModelDevelopment = TRUE,
       runCovariateSummary = FALSE
     ),
-    saveDirectory = file.path(getwd(), 'MLP')
+    saveDirectory = file.path(tempdir(), 'MLP')
   )
 ```
 
@@ -240,8 +245,8 @@ mlpResult <- PatientLevelPrediction::runPlp(
 Deep learning models are often trained via a process known as gradient
 descent. During this process the network weights are updated based on
 the gradient of the error function for the current weights. However, as
-the number of layers in the network increase, there is a greater chance
-of experiencing an issue known vanishing or exploding gradients. The
+the number of layers in the network increases, there is a greater chance
+of experiencing an issue known as vanishing or exploding gradients. The
 vanishing or exploding gradient is when the gradient goes to 0 or
 infinity, which negatively impacts the model fitting.
 
@@ -274,7 +279,7 @@ function to specify the hyperparameter settings for the network.
 `hiddenFactor`: How much to increase number of neurons in each layer
 (see paper)
 
-`residualDropout` and`hiddenDropout` : How much dropout to apply in
+`residualDropout` and `hiddenDropout`: How much dropout to apply in
 hidden layer or residual connection
 
 `sizeEmbedding` : The size of the initial embedding layer
@@ -316,7 +321,7 @@ hyperparameter search is done since each input only includes one option.
 
 ``` r
 
-resset <- setResNet(
+resnetSettings <- setResNet(
   numLayers = c(2L),
   sizeHidden = c(32L),
   hiddenFactor = c(2L),
@@ -332,11 +337,14 @@ resset <- setResNet(
   hyperParamSearch = 'random',
   randomSample = 1
 )
+```
+
+``` r
 
 resResult <- PatientLevelPrediction::runPlp(
     plpData = plpData,
     outcomeId = 3,
-    modelSettings = resset,
+    modelSettings = resnetSettings,
     analysisId = 'ResNet',
     analysisName = 'Testing ResNet',
     populationSettings = populationSettings,
@@ -350,7 +358,7 @@ resResult <- PatientLevelPrediction::runPlp(
       runModelDevelopment = TRUE,
       runCovariateSummary = FALSE
     ),
-    saveDirectory = file.path(getwd(), 'ResNet') # change to save elsewhere
+    saveDirectory = file.path(tempdir(), 'ResNet')
   )
 ```
 
@@ -370,7 +378,9 @@ Like the other model setting helpers,
 can be called with one value per argument for a fixed model
 configuration, or with multiple values for tunable parameters such as
 `numLayers`, `sizeHidden`, `dropout`, and `sizeEmbedding` to run a
-hyperparameter or sensitivity search.
+hyperparameter or sensitivity search. By default, RealMLP uses grid
+search over the supplied values. Set `hyperParamSearch = "random"` and
+`randomSample` to sample from the expanded grid instead.
 
 #### Example Code
 
@@ -382,6 +392,9 @@ modelSettings <- setRealMLP(
   dropout = 0.15,
   device = "cpu"
 )
+```
+
+``` r
 
 realMlpResult <- PatientLevelPrediction::runPlp(
     plpData = plpData,
@@ -400,8 +413,25 @@ realMlpResult <- PatientLevelPrediction::runPlp(
       runModelDevelopment = TRUE,
       runCovariateSummary = FALSE
     ),
-    saveDirectory = file.path(getwd(), 'RealMLP') # change to save elsewhere
+    saveDirectory = file.path(tempdir(), 'RealMLP')
   )
+```
+
+For example, the following settings sample four RealMLP configurations
+from the expanded grid:
+
+``` r
+
+modelSettings <- setRealMLP(
+  numLayers = c(2L, 3L),
+  sizeHidden = c(128L, 256L),
+  dropout = c(0.1, 0.2),
+  numericEmbeddingMode = c("scale", "pbld"),
+  hyperParamSearch = "random",
+  randomSample = 4L,
+  randomSampleSeed = 42L,
+  device = "cpu"
+)
 ```
 
 ### Transformer
@@ -419,9 +449,13 @@ data from this [paper](https://arxiv.org/abs/2106.11959).
 This architecture is computationally expensive and scales badly with
 longer sequence length. In this case the sequence is the amount of
 features each patient has. Users need to be aware of how many features
-they are feeding to the model since this will effect the computation
+they are feeding to the model since this will affect the computation
 time heavily. This is something you control in `FeatureExtraction` when
 you create your `covariateSettings`.
+
+This section describes the non-temporal transformer. For transformer
+models using temporal sequence covariates, see the temporal transformer
+vignette.
 
 #### Examples
 
@@ -473,8 +507,9 @@ modelSettings <- setTransformer(numBlocks = 3L,
                                   device = 'cpu'
                                 ),
                                 randomSample=1L)
+```
 
-
+``` r
 
 TransformerResult <- PatientLevelPrediction::runPlp(
     plpData = plpData,
@@ -493,13 +528,13 @@ TransformerResult <- PatientLevelPrediction::runPlp(
       runModelDevelopment = TRUE,
       runCovariateSummary = FALSE
     ),
-    saveDirectory = file.path(getwd(), 'Transformer') # change to save elsewhere
+    saveDirectory = file.path(tempdir(), 'Transformer')
   )
 ```
 
 ## Acknowledgments
 
-Considerable work has been dedicated to provide the
+Considerable work has been dedicated to providing the
 `DeepPatientLevelPrediction` package.
 
 ``` r
@@ -510,25 +545,23 @@ citation("DeepPatientLevelPrediction")
     ## To cite package 'DeepPatientLevelPrediction' in publications use:
     ## 
     ##   Fridgeirsson E, Reps J, Chan You S, Kim C, John H (2026).
-    ##   _DeepPatientLevelPrediction: Deep Learning for Patient Level
-    ##   Prediction Using Data in the OMOP Common Data Model_. R package
-    ##   version 2.3.0, <https://github.com/OHDSI/DeepPatientLevelPrediction>.
+    ##   _DeepPatientLevelPrediction: Deep Learning for Patient-Level
+    ##   Prediction_. R package version 2.4.0,
+    ##   <https://ohdsi.github.io/DeepPatientLevelPrediction/>.
     ## 
     ## A BibTeX entry for LaTeX users is
     ## 
     ##   @Manual{,
-    ##     title = {DeepPatientLevelPrediction: Deep Learning for Patient Level Prediction Using Data in the
-    ## OMOP Common Data Model},
+    ##     title = {DeepPatientLevelPrediction: Deep Learning for Patient-Level Prediction},
     ##     author = {Egill Fridgeirsson and Jenna Reps and Seng {Chan You} and Chungsoo Kim and Henrik John},
     ##     year = {2026},
-    ##     note = {R package version 2.3.0},
-    ##     url = {https://github.com/OHDSI/DeepPatientLevelPrediction},
+    ##     note = {R package version 2.4.0},
+    ##     url = {https://ohdsi.github.io/DeepPatientLevelPrediction/},
     ##   }
 
 **Please reference this paper if you use the PLP Package in your work:**
 
-[Reps JM, Schuemie MJ, Suchard MA, Ryan PB, Rijnbeek PR. Design and
+Reps JM, Schuemie MJ, Suchard MA, Ryan PB, Rijnbeek PR. Design and
 implementation of a standardized framework to generate and evaluate
 patient-level prediction models using observational healthcare data. J
-Am Med Inform Assoc.
-2018;25(8):969-975.](http://dx.doi.org/10.1093/jamia/ocy032)
+Am Med Inform Assoc. 2018;25(8):969-975. <doi:10.1093/jamia/ocy032>.

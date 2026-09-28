@@ -1,8 +1,7 @@
 # Create RealMLP Settings
 
-Create settings for the RealMLP model (binary classification).
-Preprocessing (robust scaling + clipping) is assumed to be handled
-upstream.
+Creates model and hyperparameter-search settings for RealMLP binary
+classification.
 
 ## Usage
 
@@ -139,8 +138,32 @@ setRealMLP(
 - randomSample:
 
   How many random samples from hyperparameter space to use when
-  \`hyperParamSearch = "random"\`
+  `hyperParamSearch = "random"`
 
 - randomSampleSeed:
 
   Random seed to sample hyperparameter combinations
+
+## Value
+
+A `modelSettings` object for use with `PatientLevelPrediction`.
+
+## Details
+
+The implementation is based on [Holzmuller et al.
+(2024)](https://arxiv.org/abs/2407.04491). Preprocessing, including
+robust scaling and clipping, is handled upstream.
+
+## Examples
+
+``` r
+realMlpSettings <- setRealMLP(
+  sizeHidden = c(128, 256),
+  dropout = c(0.1, 0.2),
+  hyperParamSearch = "random",
+  randomSample = 2,
+  randomSampleSeed = 42
+)
+length(realMlpSettings$param)
+#> [1] 2
+```
