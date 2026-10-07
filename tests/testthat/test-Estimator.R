@@ -150,6 +150,39 @@ test_that("early stopping works", {
   testthat::expect_true(earlyStop$early_stop)
 })
 
+test_that("early stopping respects min_epochs", {
+  earlyStopping <-
+    reticulate::import_from_path("Estimator", path = path)$EarlyStopping
+
+  # patience exhausted before min_epochs: no stop yet
+  earlyStop <- earlyStopping(patience = 1, min_epochs = 3, verbose = FALSE)
+  earlyStop(0.8) # epoch 1 sets the best score
+  testthat::expect_false(earlyStop$early_stop)
+  earlyStop(0.7) # epoch 2: patience exhausted but grace period holds
+  testthat::expect_equal(earlyStop$counter, 1)
+  testthat::expect_false(earlyStop$early_stop)
+  earlyStop(0.6) # epoch 3: grace period over, stop fires
+  testthat::expect_true(earlyStop$early_stop)
+
+  # default behavior unchanged when min_epochs is not set
+  earlyStopDefault <- earlyStopping(patience = 2, verbose = FALSE)
+  earlyStopDefault(0.8)
+  earlyStopDefault(0.7)
+  testthat::expect_false(earlyStopDefault$early_stop)
+  earlyStopDefault(0.6)
+  testthat::expect_true(earlyStopDefault$early_stop)
+
+  # improvement during the grace period resets the counter
+  earlyStopRecovery <-
+    earlyStopping(patience = 1, min_epochs = 5, verbose = FALSE)
+  earlyStopRecovery(0.8)
+  earlyStopRecovery(0.7)
+  testthat::expect_false(earlyStopRecovery$early_stop)
+  earlyStopRecovery(0.9)
+  testthat::expect_equal(earlyStopRecovery$counter, 0)
+  testthat::expect_false(earlyStopRecovery$early_stop)
+})
+
 test_that("Estimator fit function works", {
   expect_true(!is.null(fitEstimatorResults$trainDetails$trainingTime))
   expect_false(is.null(fitEstimatorResults$trainDetails$developmentDatabase))
