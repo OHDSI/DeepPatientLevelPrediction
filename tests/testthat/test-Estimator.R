@@ -179,8 +179,53 @@ test_that("early stopping respects min_epochs", {
   earlyStopRecovery(0.7)
   testthat::expect_false(earlyStopRecovery$early_stop)
   earlyStopRecovery(0.9)
+  testthat::expect_true(earlyStopRecovery$improved)
   testthat::expect_equal(earlyStopRecovery$counter, 0)
   testthat::expect_false(earlyStopRecovery$early_stop)
+  earlyStopRecovery(0.8)
+  testthat::expect_false(earlyStopRecovery$early_stop)
+  earlyStopRecovery(0.7)
+  testthat::expect_true(earlyStopRecovery$early_stop)
+})
+
+test_that("early stopping trains through the full minimum epoch period", {
+  earlyStopping <-
+    reticulate::import_from_path("Estimator", path = path)$EarlyStopping
+  earlyStop <- earlyStopping(patience = 1, min_epochs = 4, verbose = FALSE)
+
+  for (metric in c(0.8, 0.7, 0.6)) {
+    earlyStop(metric)
+    testthat::expect_false(earlyStop$early_stop)
+  }
+  earlyStop(0.5)
+  testthat::expect_true(earlyStop$early_stop)
+})
+
+test_that("early stopping with zero minimum epochs preserves default behavior", {
+  earlyStopping <-
+    reticulate::import_from_path("Estimator", path = path)$EarlyStopping
+  earlyStop <- earlyStopping(patience = 2, min_epochs = 0, verbose = FALSE)
+
+  earlyStop(0.8)
+  earlyStop(0.7)
+  testthat::expect_false(earlyStop$early_stop)
+  earlyStop(0.6)
+  testthat::expect_true(earlyStop$early_stop)
+})
+
+test_that("early stopping respects minimum epochs when minimizing a metric", {
+  earlyStopping <-
+    reticulate::import_from_path("Estimator", path = path)$EarlyStopping
+  earlyStop <- earlyStopping(
+    patience = 1, min_epochs = 3, verbose = FALSE, mode = "min"
+  )
+
+  earlyStop(0.2)
+  testthat::expect_false(earlyStop$early_stop)
+  earlyStop(0.3)
+  testthat::expect_false(earlyStop$early_stop)
+  earlyStop(0.4)
+  testthat::expect_true(earlyStop$early_stop)
 })
 
 test_that("Estimator fit function works", {
