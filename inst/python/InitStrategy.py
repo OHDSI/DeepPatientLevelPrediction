@@ -53,7 +53,10 @@ class CustomEmbeddingInitStrategy(InitStrategy):
 
     def initialize(self, model, parameters):
         file_path = pathlib.Path(self.embedding_file)
-        data_reference = parameters["model_parameters"]["feature_info"].data_reference
+        data_reference = (
+            parameters["model_parameters"]["feature_info"].data_reference
+            .with_columns(pl.col("conceptId").cast(pl.Int64))
+        )
 
         model = DefaultInitStrategy().initialize(model, parameters) 
         embeddings = torch.load(file_path, weights_only=True)
