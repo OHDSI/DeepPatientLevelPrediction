@@ -40,7 +40,7 @@ and Linux.
 Under Windows, install:
 
 -   R (<https://cran.r-project.org/>) - R \>= 4.1.0; the latest release is recommended
--   Python - Python 3.14 is recommended; Python \>= 3.10 is supported
+-   Python - Python 3.14 is recommended; Python \>= 3.11 is supported
 -   An R development environment, if desired
 -   Java when using a JDBC-based database connection
 -   [Rtools](https://cran.r-project.org/bin/windows/Rtools/) when installing packages from source
@@ -50,7 +50,7 @@ Under Windows, install:
 Under macOS and Linux, install:
 
 -   R (<https://cran.r-project.org/>) - R \>= 4.1.0; the latest release is recommended
--   Python - Python 3.14 is recommended; Python \>= 3.10 is supported
+-   Python - Python 3.14 is recommended; Python \>= 3.11 is supported
 -   An R development environment, if desired
 -   Java when using a JDBC-based database connection
 -   Xcode command line tools on macOS when installing packages from source (`xcode-select --install`)
@@ -115,7 +115,7 @@ RETICULATE_PYTHON="C:/path/to/project/.venv/Scripts/python.exe"
 
 Then restart your R session.
 
-Python 3.9 is end-of-life and should not be used. Python 3.10 is still supported, but Python 3.14 is recommended.
+Python 3.10 and older are end-of-life and should not be used. Python 3.14 is recommended.
 
 Accessing the `torch` helper or starting model training triggers `reticulate`
 to resolve the Python requirements if `RETICULATE_PYTHON` is not configured.

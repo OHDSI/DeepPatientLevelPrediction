@@ -47,7 +47,7 @@ test_that("Python bindings declare requirements and delay the torch import", {
       "nvidia-ml-py"
     )
   )
-  expect_identical(calls$pythonVersion, ">=3.10")
+  expect_identical(calls$pythonVersion, ">=3.11")
   expect_identical(calls$module, "torch")
   expect_identical(calls$delayLoad$on_error, pythonImportError)
 })

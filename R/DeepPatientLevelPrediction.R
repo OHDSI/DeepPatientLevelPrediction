@@ -62,7 +62,7 @@ torch <- NULL
   stop(
     paste(
       "DeepPatientLevelPrediction could not initialize its Python environment.",
-      "Install Python 3.10 or newer and the package requirements described in",
+      "Install Python 3.11 or newer and the package requirements described in",
       "vignette('Installing', package = 'DeepPatientLevelPrediction').",
       "Original error:",
       conditionMessage(error)
@@ -76,7 +76,7 @@ torch <- NULL
     pyImport = reticulate::import) {
   pyRequire(
     .pythonRequirements,
-    python_version = ">=3.10"
+    python_version = ">=3.11"
   )
   pyImport(
     "torch",
