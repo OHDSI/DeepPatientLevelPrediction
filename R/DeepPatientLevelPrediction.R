@@ -84,10 +84,12 @@ torch <- NULL
   )
 }
 
-# torch and the system OpenBLAS both export cblas_sgemm_batch. R has already
-# loaded OpenBLAS, so without RTLD_DEEPBIND torch calls that copy and crashes
-# (#191). Import failures are ignored here so that they are reported by the
-# delayed torch import instead.
+# Temporary workaround for #191. cblas_sgemm_batch crashes on small matrices in
+# DYNAMIC_ARCH builds of OpenBLAS without the fix from OpenBLAS PR #5980, such
+# as 0.3.32 in Ubuntu 26.04. torch also exports this symbol, but R has already
+# loaded OpenBLAS, so torch calls that copy unless imported with RTLD_DEEPBIND.
+# Remove this once supported distributions ship the fix. Import failures are
+# ignored here so that they are reported by the delayed torch import instead.
 .importTorchWithDeepBind <- function(...) {
   reticulate::py_run_string(
     "
