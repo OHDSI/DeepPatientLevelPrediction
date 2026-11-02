@@ -188,3 +188,18 @@ test_that("batched matrix multiplication does not crash (#191)", {
   expect_equal(result$shape[1], 16L)
   expect_equal(result$shape[2], 16L)
 })
+
+test_that("a message reports when torch was imported without RTLD_DEEPBIND", {
+  skip_if_no_python()
+  skip_if_not(reticulate::py_has_attr(reticulate::import("os"), "RTLD_DEEPBIND"))
+
+  importedTorch <- reticulate::import("torch")
+  marker <- "_dplp_deepbind"
+  expect_true(reticulate::py_has_attr(importedTorch, marker))
+  expect_no_message(.importTorchWithDeepBind())
+
+  builtins <- reticulate::import_builtins()
+  builtins$delattr(importedTorch, marker)
+  on.exit(builtins$setattr(importedTorch, marker, TRUE), add = TRUE)
+  expect_message(.importTorchWithDeepBind(), "could not be applied")
+})

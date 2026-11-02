@@ -91,22 +91,36 @@ torch <- NULL
 # Remove this once supported distributions ship the fix. Import failures are
 # ignored here so that they are reported by the delayed torch import instead.
 .importTorchWithDeepBind <- function(...) {
-  reticulate::py_run_string(
+  result <- reticulate::py_run_string(
     "
 import os, sys
-if hasattr(os, 'RTLD_DEEPBIND') and 'torch' not in sys.modules:
-    flags = sys.getdlopenflags()
-    sys.setdlopenflags(flags | os.RTLD_DEEPBIND)
-    try:
-        import torch
-    except Exception:
-        pass
-    finally:
-        sys.setdlopenflags(flags)
+imported_without_deepbind = False
+if hasattr(os, 'RTLD_DEEPBIND'):
+    if 'torch' in sys.modules:
+        imported_without_deepbind = not hasattr(sys.modules['torch'], '_dplp_deepbind')
+    else:
+        flags = sys.getdlopenflags()
+        sys.setdlopenflags(flags | os.RTLD_DEEPBIND)
+        try:
+            import torch
+            torch._dplp_deepbind = True
+        except Exception:
+            pass
+        finally:
+            sys.setdlopenflags(flags)
 ",
     local = TRUE,
     convert = FALSE
   )
+  if (reticulate::py_to_r(result["imported_without_deepbind"])) {
+    packageStartupMessage(
+      "torch was imported before DeepPatientLevelPrediction was loaded, so a ",
+      "workaround for a crash with the system OpenBLAS could not be applied. ",
+      "If torch crashes in batched matrix multiplication, restart R and load ",
+      "DeepPatientLevelPrediction first. See ",
+      "https://github.com/OHDSI/DeepPatientLevelPrediction/issues/191"
+    )
+  }
   invisible()
 }
 
