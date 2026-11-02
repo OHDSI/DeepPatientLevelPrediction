@@ -178,3 +178,13 @@ test_that("Python-backed settings reject missing model files before import", {
   expect_error(setFinetuner(missingPath), "does not exist")
   expect_error(setCustomEmbeddingModel(missingPath), "does not exist")
 })
+
+test_that("batched matrix multiplication does not crash (#191)", {
+  skip_if_no_python()
+
+  result <- torch$bmm(torch$randn(4L, 16L, 32L), torch$randn(4L, 32L, 16L))
+
+  expect_equal(result$shape[0], 4L)
+  expect_equal(result$shape[1], 16L)
+  expect_equal(result$shape[2], 16L)
+})
