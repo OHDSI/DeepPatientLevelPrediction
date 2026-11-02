@@ -1,3 +1,21 @@
+DeepPatientLevelPrediction 2.4.0.9999
+======================
+
+New features
+- Add a `min_epochs` parameter to early stopping, so that training runs for at least that many epochs before it can stop early (#36).
+
+Bug fixes
+- Avoid a segfault in batched matrix multiplication on Ubuntu 26.04. On Linux, torch is now imported with `RTLD_DEEPBIND` so that it does not call the system OpenBLAS, which has a crash in `cblas_sgemm_batch`. This is a temporary workaround until distributions ship the OpenBLAS fix (#191).
+- Normalize custom embedding concept IDs for Polars 2 (#189).
+
+Runtime and compatibility
+- Require Python 3.11 or newer. Python 3.10 reached end-of-life in October 2026, and duckdb 2.0.0 requires Python 3.11.
+
+Documentation and CI
+- Add an Ubuntu 26.04 CI job and a regression test for batched matrix multiplication.
+- Stop pinning Python duckdb on macOS CI, because version 1.5.2 cannot read files written by R duckdb 2.0.0.
+- Update `tlmgr` before installing LaTeX packages in the R-devel CI job.
+
 DeepPatientLevelPrediction 2.4.0
 ======================
 
