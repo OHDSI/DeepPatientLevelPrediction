@@ -84,8 +84,39 @@ torch <- NULL
   )
 }
 
+# torch and the system OpenBLAS both export cblas_sgemm_batch. R has already
+# loaded OpenBLAS, so without RTLD_DEEPBIND torch calls that copy and crashes
+# (#191). Import failures are ignored here so that they are reported by the
+# delayed torch import instead.
+.importTorchWithDeepBind <- function(...) {
+  reticulate::py_run_string(
+    "
+import os, sys
+if hasattr(os, 'RTLD_DEEPBIND') and 'torch' not in sys.modules:
+    flags = sys.getdlopenflags()
+    sys.setdlopenflags(flags | os.RTLD_DEEPBIND)
+    try:
+        import torch
+    except Exception:
+        pass
+    finally:
+        sys.setdlopenflags(flags)
+",
+    local = TRUE,
+    convert = FALSE
+  )
+  invisible()
+}
+
 # Package hooks run before covr can instrument the namespace. # nocov start
 .onLoad <- function(libname, pkgname) {
   torch <<- .initializePythonBindings()
+  # The Python modules in inst/python import torch themselves, so this has to
+  # run before any of them, not when the delayed torch module is first used.
+  if (reticulate::py_available(initialize = FALSE)) {
+    .importTorchWithDeepBind()
+  } else {
+    setHook("reticulate.onPyInit", .importTorchWithDeepBind)
+  }
 }
 # nocov end
