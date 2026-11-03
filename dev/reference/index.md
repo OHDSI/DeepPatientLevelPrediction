@@ -21,38 +21,38 @@
 - [`expandComponentGrid()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/expandComponentGrid.md)
   : Expand a Component's Hyperparameter Grid
 - [`fitEstimator()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/fitEstimator.md)
-  : fitEstimator
+  : Fit a Deep Learning Estimator
 - [`gridCvDeep()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/gridCvDeep.md)
-  : gridCvDeep
+  : Tune a Deep Learning Estimator
 - [`predictDeepEstimator()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/predictDeepEstimator.md)
-  : predictDeepEstimator
+  : Predict with a Deep Learning Estimator
 - [`py_to_r(`*`<polars.dataframe.frame.DataFrame>`*`)`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/py_to_r.polars.dataframe.frame.DataFrame.md)
   : Use polars instead of pandas for default conversion from python to R
 - [`r_to_py(`*`<data.frame>`*`)`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/r_to_py.data.frame.md)
   : Use polars instead of pandas for default conversion from R to Python
 - [`setCustomEmbeddingModel()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setCustomEmbeddingModel.md)
-  : Create default settings a model using custom embeddings
+  : Create Model Settings with Custom Embeddings
 - [`setDefaultResNet()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setDefaultResNet.md)
-  : setDefaultResNet
+  : Create Default ResNet Settings
 - [`setDefaultTransformer()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setDefaultTransformer.md)
   : Create default settings for a non-temporal transformer
 - [`setEstimator()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setEstimator.md)
-  : setEstimator
+  : Create Estimator Settings
 - [`setFinetuner()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setFinetuner.md)
-  : setFinetuner
+  : Create Fine-Tuning Settings
 - [`setMultiLayerPerceptron()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setMultiLayerPerceptron.md)
-  : setMultiLayerPerceptron
+  : Create Multilayer Perceptron Settings
 - [`setRealMLP()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setRealMLP.md)
   : Create RealMLP Settings
 - [`setResNet()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setResNet.md)
-  : setResNet
+  : Create ResNet Settings
 - [`setTransformer()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setTransformer.md)
-  : create settings for training a transformer
+  : Create Transformer Settings
 - [`snakeCaseToCamelCase()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/snakeCaseToCamelCase.md)
   : Convert a camel case string to snake case
 - [`snakeCaseToCamelCaseNames()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/snakeCaseToCamelCaseNames.md)
   : Convert the names of an object from snake case to camel case
 - [`torch`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/torch.md)
-  : Pytorch module
+  : PyTorch Module
 - [`trainingCache`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/trainingCache.md)
   : TrainingCache

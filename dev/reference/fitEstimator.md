@@ -1,6 +1,7 @@
-# fitEstimator
+# Fit a Deep Learning Estimator
 
-fits a deep learning estimator to data.
+Fits a configured deep learning model to a prepared
+`PatientLevelPrediction` training-data object.
 
 ## Usage
 
@@ -12,20 +13,93 @@ fitEstimator(trainData, modelSettings, analysisId, analysisPath, ...)
 
 - trainData:
 
-  the data to use
+  A prepared training-data object produced by `PatientLevelPrediction`.
 
 - modelSettings:
 
-  modelSettings object
+  A `modelSettings` object created by one of this package's
+  model-setting functions.
 
 - analysisId:
 
-  Id of the analysis
+  Identifier for the analysis.
 
 - analysisPath:
 
-  Path of the analysis
+  Directory used for training artifacts and the resumable training
+  cache.
 
 - ...:
 
-  Extra inputs
+  Additional arguments reserved for the `PatientLevelPrediction` model
+  interface.
+
+## Value
+
+A `plpModel` object containing the fitted model, predictions, training
+details, and covariate information.
+
+## Examples
+
+``` r
+if (FALSE) { # \dontrun{
+# Requires FeatureExtraction and the package's Python dependencies,
+# including PyTorch.
+# See vignette("Installing") for setup instructions.
+data("simulationProfile", package = "PatientLevelPrediction")
+plpData <- PatientLevelPrediction::simulatePlpData(
+  simulationProfile, n = 200, seed = 42
+)
+# Supply metadata omitted by simulatePlpData() for this bundled profile:
+# gender, age, conditions, and drugs. Only age is continuous.
+plpData$covariateData$analysisRef <- data.frame(
+  analysisId = c(1, 2, 102, 402),
+  isBinary = c("Y", "N", "Y", "Y"),
+  missingMeansZero = c(NA, "Y", NA, NA)
+)
+population <- PatientLevelPrediction::createStudyPopulation(
+  plpData,
+  populationSettings = PatientLevelPrediction::createStudyPopulationSettings(
+    riskWindowEnd = 90, minTimeAtRisk = 89
+  )
+)
+splitData <- PatientLevelPrediction::splitData(
+  plpData,
+  population,
+  splitSettings = PatientLevelPrediction::createDefaultSplitSetting(
+    testFraction = 0, trainFraction = 1, nfold = 2, splitSeed = 42
+  )
+)
+
+# Keep this toy example small: one configuration, two folds, and one epoch.
+# These settings demonstrate fitting, not meaningful predictive performance.
+modelSettings <- setResNet(
+  numLayers = 1,
+  sizeHidden = 8,
+  hiddenFactor = 1,
+  residualDropout = 0,
+  hiddenDropout = 0,
+  sizeEmbedding = 8,
+  hyperParamSearch = "grid",
+  estimatorSettings = setEstimator(
+    learningRate = 0.001, batchSize = 64, epochs = 1, seed = 42
+  )
+)
+analysisPath <- tempfile("deep-plp-example-")
+dir.create(analysisPath)
+model <- fitEstimator(
+  trainData = splitData$Train,
+  modelSettings = modelSettings,
+  analysisId = 1,
+  analysisPath = analysisPath
+)
+head(model$prediction)
+
+# Clean up this example's data, cache, and fitted-model files.
+# In real use, retain model$model until you have saved or finished using it.
+Andromeda::close(splitData$Train$covariateData)
+Andromeda::close(plpData$covariateData)
+unlink(analysisPath, recursive = TRUE)
+unlink(model$model, recursive = TRUE)
+} # }
+```

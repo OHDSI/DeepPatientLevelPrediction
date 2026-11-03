@@ -3,7 +3,8 @@
 This function takes a user-defined setting for a configurable component
 (like a positional encoding) and expands it into a flat list of all
 possible configurations. This list can then be used directly within a
-\`paramGrid\` for \`PatientLevelPrediction::listCartesian\`.
+`paramGrid` for
+[`PatientLevelPrediction::listCartesian`](https://ohdsi.github.io/PatientLevelPrediction/reference/listCartesian.html).
 
 ## Usage
 
@@ -15,11 +16,16 @@ expandComponentGrid(componentSetting)
 
 - componentSetting:
 
-  The user's setting for the component. This can be: - A single string
-  (e.g., "AdamW"). - A single named list representing one configuration
-  (e.g., \`list(name = "AdamW", lr = 0.001)\`). - A list of named lists,
-  where each list is a template for configurations. Vectors within these
-  templates will be expanded (e.g., \`lr = c(0.001, 0.0001)\`).
+  The user's setting for the component. This can be:
+
+  - A single string (e.g., "AdamW").
+
+  - A single named list representing one configuration (e.g.,
+    `list(name = "AdamW", lr = 0.001)`).
+
+  - A list of named lists, where each list is a template for
+    configurations. Vectors within these templates will be expanded
+    (e.g., `lr = c(0.001, 0.0001)`).
 
 ## Value
 

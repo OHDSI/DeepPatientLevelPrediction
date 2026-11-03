@@ -5,9 +5,8 @@
 This vignette describes how you can develop your first deep learning
 model using the DeepPLP package on OMOP-CDM data.
 
-First make sure you have everything installed correctly by following the
-[installation
-guide](https://ohdsi.github.io/DeepPatientLevelPrediction/articles/Installing.html)
+First make sure you have everything installed correctly by following
+[`vignette("Installing")`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/articles/Installing.md).
 
 ## The data
 
@@ -157,7 +156,7 @@ plpResults <- PatientLevelPrediction::runPlp(plpData = plpData,
                                              analysisId = "ResNet",
                                              analysisName = "Testing DeepPLP",
                                              populationSettings = populationSettings,
-                                             saveDirectory = "ResNet")
+                                             saveDirectory = file.path(tempdir(), "ResNet"))
 ```
 
 On my computer this takes about 20 seconds per epoch. While you probably
@@ -168,7 +167,7 @@ Congratulations you have just developed your first deep learning model!
 
 ## Acknowledgments
 
-Considerable work has been dedicated to provide the
+Considerable work has been dedicated to providing the
 `DeepPatientLevelPrediction` package.
 
 ``` r
@@ -179,26 +178,23 @@ citation("DeepPatientLevelPrediction")
     ## To cite package 'DeepPatientLevelPrediction' in publications use:
     ## 
     ##   Fridgeirsson E, Reps J, Chan You S, Kim C, John H (2026).
-    ##   _DeepPatientLevelPrediction: Deep Learning for Patient Level
-    ##   Prediction Using Data in the OMOP Common Data Model_. R package
-    ##   version 2.3.0.9999,
-    ##   <https://github.com/OHDSI/DeepPatientLevelPrediction>.
+    ##   _DeepPatientLevelPrediction: Deep Learning for Patient-Level
+    ##   Prediction_. R package version 2.4.0.9999,
+    ##   <https://ohdsi.github.io/DeepPatientLevelPrediction/>.
     ## 
     ## A BibTeX entry for LaTeX users is
     ## 
     ##   @Manual{,
-    ##     title = {DeepPatientLevelPrediction: Deep Learning for Patient Level Prediction Using Data in the
-    ## OMOP Common Data Model},
+    ##     title = {DeepPatientLevelPrediction: Deep Learning for Patient-Level Prediction},
     ##     author = {Egill Fridgeirsson and Jenna Reps and Seng {Chan You} and Chungsoo Kim and Henrik John},
     ##     year = {2026},
-    ##     note = {R package version 2.3.0.9999},
-    ##     url = {https://github.com/OHDSI/DeepPatientLevelPrediction},
+    ##     note = {R package version 2.4.0.9999},
+    ##     url = {https://ohdsi.github.io/DeepPatientLevelPrediction/},
     ##   }
 
 **Please reference this paper if you use the PLP Package in your work:**
 
-[Reps JM, Schuemie MJ, Suchard MA, Ryan PB, Rijnbeek PR. Design and
+Reps JM, Schuemie MJ, Suchard MA, Ryan PB, Rijnbeek PR. Design and
 implementation of a standardized framework to generate and evaluate
 patient-level prediction models using observational healthcare data. J
-Am Med Inform Assoc.
-2018;25(8):969-975.](http://dx.doi.org/10.1093/jamia/ocy032)
+Am Med Inform Assoc. 2018;25(8):969-975. <doi:10.1093/jamia/ocy032>.

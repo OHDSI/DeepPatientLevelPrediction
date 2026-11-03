@@ -1,6 +1,31 @@
 # Changelog
 
-## DeepPatientLevelPrediction 2.3.0.9999
+## DeepPatientLevelPrediction 2.4.0.9999
+
+New features - Add a `min_epochs` parameter to early stopping, so that
+training runs for at least that many epochs before it can stop early
+([\#36](https://github.com/OHDSI/DeepPatientLevelPrediction/issues/36)).
+
+Bug fixes - Avoid a segfault in batched matrix multiplication on Ubuntu
+26.04. On Linux, torch is now imported with `RTLD_DEEPBIND` so that it
+does not call the system OpenBLAS, which has a crash in
+`cblas_sgemm_batch`. This is a temporary workaround until distributions
+ship the OpenBLAS fix. A startup message explains the risk if torch was
+already imported before the package loaded
+([\#191](https://github.com/OHDSI/DeepPatientLevelPrediction/issues/191)). -
+Normalize custom embedding concept IDs for Polars 2
+([\#189](https://github.com/OHDSI/DeepPatientLevelPrediction/issues/189)).
+
+Runtime and compatibility - Require Python 3.11 or newer. Python 3.10
+reached end-of-life in October 2026, and duckdb 2.0.0 requires Python
+3.11.
+
+Documentation and CI - Add an Ubuntu 26.04 CI job and a regression test
+for batched matrix multiplication. - Stop pinning Python duckdb on macOS
+CI, because version 1.5.2 cannot read files written by R duckdb 2.0.0. -
+Update `tlmgr` before installing LaTeX packages in the R-devel CI job.
+
+## DeepPatientLevelPrediction 2.4.0
 
 New features - Add hyperparameter tuning support for RealMLP.
 
@@ -75,13 +100,13 @@ Update pkgdown link checking for current `lychee` CLI behavior (PR
 - \[Feature\] Use `py_require` from reticulate to manage python
   dependencies and update min requirements (PR
   [\#150](https://github.com/OHDSI/DeepPatientLevelPrediction/issues/150))
-- \[Internal\] Refactor transformer/dataset/embedding classes to use
-  same code wether temporal or not (PR
+- \[Internal\] Refactor transformer/dataset/embedding classes to use the
+  same code whether temporal or not (PR
   [\#147](https://github.com/OHDSI/DeepPatientLevelPrediction/issues/147))
 - \[Feature\] Use train/validation split for model selection instead of
   cross validation (PR
   [\#145](https://github.com/OHDSI/DeepPatientLevelPrediction/issues/145))
-- \[Feature\] Temporal transformer added which supports RopE and time
+- \[Feature\] Temporal transformer added which supports RoPE and time
   tokens (PR
   [\#147](https://github.com/OHDSI/DeepPatientLevelPrediction/issues/147))
 - \[Feature\] Temporal data processing added (PR
@@ -128,7 +153,7 @@ Update pkgdown link checking for current `lychee` CLI behavior (PR
 - Refactoring: Move cross-validation to a separate function
 - Refactoring: Move paramsToTune to a separate function
 - linting: Enforcing HADES style
-- Calculate AUC ourselves with torch, get rid of scikit-learn dependancy
+- Calculate AUC ourselves with torch, get rid of scikit-learn dependency
 - added Andromeda to dev dependencies
 
 ## DeepPatientLevelPrediction 2.0.1
@@ -148,7 +173,7 @@ Update pkgdown link checking for current `lychee` CLI behavior (PR
 
 ## DeepPatientLevelPrediction 2.0.0
 
-- New backend which uses pytorch through reticulate instead of torch in
+- New backend which uses PyTorch through reticulate instead of torch in
   R
 - All models ported over to python
 - Dataset class now in python
@@ -168,7 +193,7 @@ Update pkgdown link checking for current `lychee` CLI behavior (PR
 
 ## DeepPatientLevelPrediction 1.1.4
 
-- Remove torchopt dependancy since adamw is now in torch
+- Remove torchopt dependency since AdamW is now in torch
 - Update torch dependency to \>=0.10.0
 - Allow device to be a function that resolves during Estimator
   initialization
@@ -198,7 +223,8 @@ Update pkgdown link checking for current `lychee` CLI behavior (PR
   ([\#51](https://github.com/OHDSI/DeepPatientLevelPrediction/issues/51))
 - Seed added for model weight initialization to improve reproducibility
   ([\#51](https://github.com/OHDSI/DeepPatientLevelPrediction/issues/51))
-- Added a learning rate finder for automatic calculatio of learning rate
+- Added a learning rate finder for automatic calculation of learning
+  rate
   ([\#51](https://github.com/OHDSI/DeepPatientLevelPrediction/issues/51))
 - Add seed for sampling hyperparameters
   ([\#50](https://github.com/OHDSI/DeepPatientLevelPrediction/issues/50))

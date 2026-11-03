@@ -125,7 +125,7 @@ temporalTransformerResult <- PatientLevelPrediction::runPlp(
     runModelDevelopment = TRUE,
     runCovariateSummary = FALSE
   ),
-  saveDirectory = file.path(getwd(), "TemporalTransformer")
+  saveDirectory = file.path(tempdir(), "TemporalTransformer")
 )
 ```
 
@@ -144,7 +144,7 @@ covariates in `FeatureExtraction`, shorten the time window, or lower
 
 ## Acknowledgments
 
-Considerable work has been dedicated to provide the
+Considerable work has been dedicated to providing the
 `DeepPatientLevelPrediction` package.
 
 ``` r
@@ -155,26 +155,23 @@ citation("DeepPatientLevelPrediction")
     ## To cite package 'DeepPatientLevelPrediction' in publications use:
     ## 
     ##   Fridgeirsson E, Reps J, Chan You S, Kim C, John H (2026).
-    ##   _DeepPatientLevelPrediction: Deep Learning for Patient Level
-    ##   Prediction Using Data in the OMOP Common Data Model_. R package
-    ##   version 2.3.0.9999,
-    ##   <https://github.com/OHDSI/DeepPatientLevelPrediction>.
+    ##   _DeepPatientLevelPrediction: Deep Learning for Patient-Level
+    ##   Prediction_. R package version 2.4.0.9999,
+    ##   <https://ohdsi.github.io/DeepPatientLevelPrediction/>.
     ## 
     ## A BibTeX entry for LaTeX users is
     ## 
     ##   @Manual{,
-    ##     title = {DeepPatientLevelPrediction: Deep Learning for Patient Level Prediction Using Data in the
-    ## OMOP Common Data Model},
+    ##     title = {DeepPatientLevelPrediction: Deep Learning for Patient-Level Prediction},
     ##     author = {Egill Fridgeirsson and Jenna Reps and Seng {Chan You} and Chungsoo Kim and Henrik John},
     ##     year = {2026},
-    ##     note = {R package version 2.3.0.9999},
-    ##     url = {https://github.com/OHDSI/DeepPatientLevelPrediction},
+    ##     note = {R package version 2.4.0.9999},
+    ##     url = {https://ohdsi.github.io/DeepPatientLevelPrediction/},
     ##   }
 
 **Please reference this paper if you use the PLP Package in your work:**
 
-[Reps JM, Schuemie MJ, Suchard MA, Ryan PB, Rijnbeek PR. Design and
+Reps JM, Schuemie MJ, Suchard MA, Ryan PB, Rijnbeek PR. Design and
 implementation of a standardized framework to generate and evaluate
 patient-level prediction models using observational healthcare data. J
-Am Med Inform Assoc.
-2018;25(8):969-975.](http://dx.doi.org/10.1093/jamia/ocy032)
+Am Med Inform Assoc. 2018;25(8):969-975. <doi:10.1093/jamia/ocy032>.

@@ -7,6 +7,8 @@ models using data in the OMOP CDM
 
 Useful links:
 
+- <https://ohdsi.github.io/DeepPatientLevelPrediction/>
+
 - <https://github.com/OHDSI/DeepPatientLevelPrediction>
 
 - Report bugs at
@@ -18,6 +20,8 @@ Useful links:
 
 Authors:
 
+- Egill Fridgeirsson <e.fridgeirsson@erasmusmc.nl>
+
 - Jenna Reps <jreps@its.jnj.com>
 
 - Seng Chan You
@@ -25,3 +29,8 @@ Authors:
 - Chungsoo Kim
 
 - Henrik John
+
+Other contributors:
+
+- Observational Health Data Sciences and Informatics \[copyright
+  holder\]
