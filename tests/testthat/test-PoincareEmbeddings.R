@@ -4,9 +4,11 @@ conceptIds <- torch$tensor(plpData$covariateData$covariateRef %>%
   dplyr::filter(analysisId == 210) %>%
   dplyr::pull("conceptId"), dtype = torch$long)
 
+# points of the Poincare ball: each coordinate is below 0.5 in absolute value,
+# so every norm is below sqrt(3) / 2
 customEmbeddings <- list(
   "concept_ids" = conceptIds,
-  "embeddings" = torch$randn(conceptIds$shape[0], 3L)
+  "embeddings" = torch$rand(conceptIds$shape[0], 3L) - 0.5
 )
 torch$save(customEmbeddings, file.path(testLoc, "custom_embeddings.pt"))
 
