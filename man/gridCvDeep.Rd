@@ -4,7 +4,14 @@
 \alias{gridCvDeep}
 \title{Tune a Deep Learning Estimator}
 \usage{
-gridCvDeep(mappedData, labels, modelSettings, modelLocation, analysisPath)
+gridCvDeep(
+  mappedData,
+  labels,
+  modelSettings,
+  modelLocation,
+  analysisPath,
+  tuningMetric = NULL
+)
 }
 \arguments{
 \item{mappedData}{Covariate data mapped with
@@ -17,6 +24,10 @@ gridCvDeep(mappedData, labels, modelSettings, modelLocation, analysisPath)
 \item{modelLocation}{Directory in which to save the fitted model.}
 
 \item{analysisPath}{Directory used for the resumable training cache.}
+
+\item{tuningMetric}{A tuning metric from
+\code{PatientLevelPrediction::createTuningMetric()} used to select the best
+hyperparameter combination. The default \code{NULL} uses the AUC.}
 }
 \value{
 A list containing the saved estimator location, predictions, final

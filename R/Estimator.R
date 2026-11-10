@@ -180,6 +180,11 @@ setEstimator <- function(
 #' @param analysisId Identifier for the analysis.
 #' @param analysisPath Directory used for training artifacts and the resumable
 #'   training cache.
+#' @param hyperparameterSettings Hyperparameter settings from
+#'   `PatientLevelPrediction::createHyperparameterSettings()`. Its tuning metric
+#'   selects the best hyperparameter combination. Its search settings are
+#'   ignored with a warning, because the search is defined in the model
+#'   settings.
 #' @param ... Additional arguments reserved for the
 #'   `PatientLevelPrediction` model interface.
 #'
@@ -254,8 +259,10 @@ fitEstimator <- function(
     modelSettings,
     analysisId,
     analysisPath,
+    hyperparameterSettings = NULL,
     ...) {
   start <- Sys.time()
+  warnIgnoredSearchSettings(hyperparameterSettings)
   if (!is.null(trainData$folds)) {
     trainData$labels <- merge(trainData$labels, trainData$fold, by = "rowId")
   }
@@ -290,7 +297,8 @@ fitEstimator <- function(
       labels = trainData$labels,
       modelSettings = modelSettings,
       modelLocation = outLoc,
-      analysisPath = analysisPath
+      analysisPath = analysisPath,
+      tuningMetric = hyperparameterSettings$tuningMetric
     )
   )
 
@@ -536,6 +544,9 @@ predictDeepEstimator <- function(plpModel, data, cohort) {
 #' @param modelSettings A `modelSettings` object.
 #' @param modelLocation Directory in which to save the fitted model.
 #' @param analysisPath Directory used for the resumable training cache.
+#' @param tuningMetric A tuning metric from
+#'   `PatientLevelPrediction::createTuningMetric()` used to select the best
+#'   hyperparameter combination. The default `NULL` uses the AUC.
 #'
 #' @return A list containing the saved estimator location, predictions, final
 #'   parameters, hyperparameter-search summaries, and feature information.
@@ -615,7 +626,8 @@ gridCvDeep <- function(
     labels,
     modelSettings,
     modelLocation,
-    analysisPath) {
+    analysisPath,
+    tuningMetric = NULL) {
   ParallelLogger::logInfo(paste0(
     "Running hyperparameter search for ",
     modelSettings$modelType,
@@ -633,6 +645,7 @@ gridCvDeep <- function(
     labels = labels,
     temporalSettings = attr(paramSearch, "temporalSettings")
   )
+  maximize <- tuningMetric$maximize %||% TRUE
 
   if (!trainCache$isFull()) {
     for (gridId in trainCache$getLastGridSearchIndex():length(paramSearch)) {
@@ -651,10 +664,14 @@ gridCvDeep <- function(
           dataset,
           labels = labels,
           parameters = paramSearch[[gridId]],
-          modelSettings = modelSettings
+          modelSettings = modelSettings,
+          tuningMetric = tuningMetric
         )
-      # remove all predictions that are not the max performance
-      hyperparameterResults <- trainCache$trimPerformance(hyperparameterResults)
+      # remove all predictions that are not the best performance
+      hyperparameterResults <- trainCache$trimPerformance(
+        hyperparameterResults,
+        maximize = maximize
+      )
       trainCache$saveGridSearchPredictions(hyperparameterResults)
     }
   }
@@ -663,22 +680,18 @@ gridCvDeep <- function(
     function(x) x$gridPerformance
   )
   # get best params
-  indexOfMax <-
-    which.max(unlist(lapply(
-      hyperparameterResults,
-      function(x) x$gridPerformance$cvPerformance
-    )))
-  if (length(indexOfMax) == 0) {
+  indexOfBest <- getBestGridIndex(hyperparameterResults, maximize)
+  if (length(indexOfBest) == 0) {
     stop("No hyperparameter combination has valid results")
   }
-  finalParam <- hyperparameterResults[[indexOfMax]]$param
+  finalParam <- hyperparameterResults[[indexOfBest]]$param
 
   paramGridSearch <- lapply(
     hyperparameterResults,
     function(x) x$gridPerformance
   )
   # get best CV prediction
-  cvPrediction <- hyperparameterResults[[indexOfMax]]$prediction
+  cvPrediction <- hyperparameterResults[[indexOfBest]]$prediction
   if (modelSettings$estimatorSettings$trainValidationSplit) {
     cvPrediction$evaluationType <- "Validation"
   } else {
@@ -769,10 +782,22 @@ createEstimator <- function(parameters) {
   return(estimator)
 }
 
-doCrossValidation <- function(dataset, labels, parameters, modelSettings) {
+doCrossValidation <- function(
+    dataset,
+    labels,
+    parameters,
+    modelSettings,
+    tuningMetric = NULL) {
+  metricName <- tuningMetric$name %||% "computeAuc"
   crossValidationResults <-
     tryCatch(
-      doCrossValidationImpl(dataset, labels, parameters, modelSettings),
+      doCrossValidationImpl(
+        dataset,
+        labels,
+        parameters,
+        modelSettings,
+        tuningMetric
+      ),
       error = function(e) {
         if (inherits(e, "torch.cuda.OutOfMemoryError")) {
           ParallelLogger::logError(
@@ -794,7 +819,7 @@ doCrossValidation <- function(dataset, labels, parameters, modelSettings) {
           )
           nFolds <- max(labels$index)
           hyperSummary <- data.frame(
-            metric = rep("computeAuc", nFolds + 1),
+            metric = rep(metricName, nFolds + 1),
             fold = c("CV", as.character(1:nFolds)),
             value = NA
           )
@@ -802,7 +827,7 @@ doCrossValidation <- function(dataset, labels, parameters, modelSettings) {
           hyperSummary$learnRates <- NA
 
           gridPerformance <- list(
-            metric = "computeAuc",
+            metric = metricName,
             cvPerformance = NA,
             cvPerformancePerFold = rep(NA, nFolds),
             param = parameters,
@@ -845,7 +870,12 @@ doCrossValidation <- function(dataset, labels, parameters, modelSettings) {
   return(gridSearchPredictions)
 }
 
-doCrossValidationImpl <- function(dataset, labels, parameters, modelSettings) {
+doCrossValidationImpl <- function(
+    dataset,
+    labels,
+    parameters,
+    modelSettings,
+    tuningMetric = NULL) {
   fitParams <- names(parameters)[grepl(
     "^estimator",
     names(parameters)
@@ -921,9 +951,10 @@ doCrossValidationImpl <- function(dataset, labels, parameters, modelSettings) {
       bestEpoch = estimator$best_epoch
     )
   }
-  gridPerformance <- PatientLevelPrediction::computeGridPerformance(
+  gridPerformance <- computeTuningPerformance(
     prediction,
-    parameters
+    parameters,
+    tuningMetric
   )
   return(
     results = list(
@@ -934,6 +965,58 @@ doCrossValidationImpl <- function(dataset, labels, parameters, modelSettings) {
   )
 }
 
+
+computeTuningPerformance <- function(prediction, parameters, tuningMetric = NULL) {
+  if (is.null(tuningMetric)) {
+    return(PatientLevelPrediction::computeGridPerformance(prediction, parameters))
+  }
+  gridPerformance <- PatientLevelPrediction::computeGridPerformance(
+    prediction,
+    parameters,
+    performanceFunct = tuningMetric$fun
+  )
+  gridPerformance$metric <- tuningMetric$name
+  gridPerformance$hyperSummary$metric <- tuningMetric$name
+  return(gridPerformance)
+}
+
+# position of the best combination, ignoring combinations without results
+getBestGridIndex <- function(hyperparameterResults, maximize = TRUE) {
+  performance <- vapply(
+    hyperparameterResults,
+    function(x) as.numeric(x$gridPerformance$cvPerformance %||% NA_real_),
+    numeric(1)
+  )
+  if (maximize) {
+    return(which.max(performance))
+  }
+  return(which.min(performance))
+}
+
+# Only the tuning metric of PatientLevelPrediction's hyperparameter settings is used.
+warnIgnoredSearchSettings <- function(hyperparameterSettings) {
+  if (is.null(hyperparameterSettings)) {
+    return(invisible(NULL))
+  }
+  defaults <- PatientLevelPrediction::createHyperparameterSettings()
+  searchSettings <- c("search", "sampleSize", "randomSeed", "generator")
+  ignored <- searchSettings[!vapply(
+    searchSettings,
+    function(name) identical(hyperparameterSettings[[name]], defaults[[name]]),
+    logical(1)
+  )]
+  if (length(ignored) > 0) {
+    warning(
+      "DeepPatientLevelPrediction ignores ",
+      paste0("`", ignored, "`", collapse = ", "),
+      " in hyperparameterSettings and uses only its tuning metric. Set the ",
+      "search with `hyperParamSearch` and `randomSample` in the model settings, ",
+      "for example in setResNet().",
+      call. = FALSE
+    )
+  }
+  return(invisible(ignored))
+}
 
 extractParamsToTune <- function(estimatorSettings) {
   paramsToTune <- list()
