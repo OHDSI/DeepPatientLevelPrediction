@@ -793,3 +793,15 @@ test_that("time tokens reject time references without a usable unit", {
     Andromeda::close(data)
   }
 })
+
+test_that("RealMLP mean aggregation ignores padding", {
+  skip_if_no_python()
+  model <- importModule("RealMLP")$RealMLP(
+    feature_info = mappedFeatureInfo(), size_embedding = 2L, size_hidden = 4L,
+    num_layers = 1L, dropout = 0, paper_mode = FALSE
+  )
+  expect_equal(model$token_aggregation, "mean")
+  tokens <- torch$tensor(array(c(1, 3, 0, 0, 1, 3, 0, 0), dim = c(1, 4, 2)), dtype = torch$float)
+  ids <- torch$tensor(matrix(c(1L, 2L, 0L, 0L), nrow = 1), dtype = torch$long)
+  expect_equal(asNumeric(model$`_aggregate_tokens`(tokens, ids)), c(2, 2))
+})
