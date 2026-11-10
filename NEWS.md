@@ -4,6 +4,7 @@ DeepPatientLevelPrediction 2.4.0.9999
 New features
 - Add a `min_epochs` parameter to early stopping, so that training runs for at least that many epochs before it can stop early (#36).
 - Start the bias of the output layer at the log-odds of the outcome rate in the training data, controlled by `initOutputBias` in `setEstimator()` and on by default. Models with rare outcomes no longer spend their first epochs lowering all predictions to the outcome rate, which with few batches per epoch let early stopping end training before the model ranked patients. This removes most of the instability in ResNet learning curves. It applies to models with a single-logit linear `head`, and not to the learning rate search.
+- Add a `curvature` argument to `setCustomEmbeddingModel()` for Poincare embeddings trained in a ball whose curvature is not -1. HypLL, which OHDSI/context uses, applies softplus to its curvature parameter, so its default of 1 is a curvature of about -1.313.
 
 Bug fixes
 - Avoid a segfault in batched matrix multiplication on Ubuntu 26.04. On Linux, torch is now imported with `RTLD_DEEPBIND` so that it does not call the system OpenBLAS, which has a crash in `cblas_sgemm_batch`. This is a temporary workaround until distributions ship the OpenBLAS fix. A startup message explains the risk if torch was already imported before the package loaded (#191).
@@ -26,11 +27,17 @@ Bug fixes
 - Keep column and covariate IDs apart when loading RealMLP wide coefficients. A row's covariateId is used when it has one, so coefficients exported from another model, such as a covariateImportance file, load correctly.
 - Leave frozen RealMLP layers unchanged during data-dependent initialization.
 - Use the requested `sigma` in `TemporalPE` when it is not learnable. It was applied as exp(sigma), so the default of 1 acted as 2.72.
+- Add the trainable offsets of `PoincareEmbeddings` in the tangent space at the origin. For the Transformer they were combined with the mapped vectors by Mobius addition, which is defined for points inside the ball, not for tangent vectors.
+- Check that Poincare embeddings are finite and inside the ball. Vectors on or outside its boundary passed through without being mapped.
+- Apply the projection of custom embeddings, used when the embeddings file has another dimension than the model, to custom features only. Its bias was added once per patient for ResNet and MLP, and to every padding and regular feature for the Transformer.
+- After running out of GPU memory, free only memory that is no longer referenced. When more than 3 GB stayed allocated, the cleanup emptied the storage of every CUDA tensor, including those of models still in use, while the hyperparameter search went on.
 
 Runtime and compatibility
 - Require Python 3.11 or newer. Python 3.10 reached end-of-life in October 2026, and duckdb 2.0.0 requires Python 3.11.
 - Require PatientLevelPrediction 6.6.0 or newer, which added tuning metrics.
 - Models trained with custom embeddings, RealMLP mean aggregation, time tokens, convolutional positional encodings or a fixed `TemporalPE` sigma compute their inputs differently now. Predictions from such saved models change, so retrain them.
+- Poincare embeddings with vectors outside the ball are now an error.
+- Drop the `nvidia-ml-py` Python dependency.
 
 Documentation and CI
 - Add an Ubuntu 26.04 CI job and a regression test for batched matrix multiplication.
