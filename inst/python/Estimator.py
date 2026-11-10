@@ -869,6 +869,7 @@ def batch_to_device(batch, device="cpu"):
 def compute_auc(y_true, y_pred):
     """
     Computes the AUC score for binary classification predictions with a fast algorithm.
+    Positive-negative pairs with tied scores get half credit.
     Args:
     y_true (torch.Tensor): True binary labels.
     y_pred (torch.Tensor): Predicted scores.
@@ -876,18 +877,25 @@ def compute_auc(y_true, y_pred):
     float: Computed AUC score.
     """
     # Ensure inputs are sorted by predicted score
-    _, sorted_indices = torch.sort(y_pred, descending=True)
-    y_true_sorted = y_true[sorted_indices]
+    sorted_scores, sorted_indices = torch.sort(y_pred, descending=True)
+    y_true_sorted = y_true[sorted_indices].to(dtype=torch.double)
 
-    # Get the number of positive and negative examples
-    n_pos = y_true_sorted.sum()
-    n_neg = (1 - y_true_sorted).sum()
+    # Count the positive and negative examples within each group of equal scores
+    _, group_index, group_sizes = torch.unique_consecutive(
+        sorted_scores, return_inverse=True, return_counts=True
+    )
+    positives = torch.zeros_like(group_sizes, dtype=torch.double).index_add_(
+        0, group_index, y_true_sorted
+    )
+    negatives = group_sizes.to(dtype=torch.double) - positives
 
-    # for every negative label, count preceding positive labels in sorted labels
-    num_crossings = torch.cumsum(y_true_sorted, 0)[y_true_sorted == 0].sum()
+    # a negative ranks below the positives in earlier groups and ties with the
+    # positives in its own group
+    preceding_positives = torch.cumsum(positives, 0) - positives
+    num_crossings = (negatives * (preceding_positives + 0.5 * positives)).sum()
 
     # Compute AUC
-    auc = num_crossings / (n_pos * n_neg)
+    auc = num_crossings / (positives.sum() * negatives.sum())
     return auc
 
 

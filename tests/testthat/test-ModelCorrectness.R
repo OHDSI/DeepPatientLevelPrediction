@@ -402,6 +402,33 @@ test_that("the learning rate finder clears gradients between trials", {
   expect_null(estimator$model$weight$grad)
 })
 
+test_that("AUC gives half credit to tied scores", {
+  skip_if_no_python()
+  computeAuc <- importModule("Estimator")$compute_auc
+  auc <- function(labels, scores) {
+    computeAuc(
+      torch$tensor(labels, dtype = torch$float32),
+      torch$tensor(scores, dtype = torch$float32)
+    )$item()
+  }
+  expect_equal(auc(c(1, 0), c(0, 0)), 0.5)
+  expect_equal(auc(c(0, 1), c(0, 0)), 0.5)
+  expect_equal(auc(c(1, 0), c(1, 0)), 1)
+  expect_equal(auc(c(1, 0), c(0, 1)), 0)
+  # pairs: (0.9>0.5), (0.9>0.1), (0.5=0.5 tie), (0.5>0.1)
+  expect_equal(auc(c(1, 1, 0, 0), c(0.9, 0.5, 0.5, 0.1)), 3.5 / 4)
+
+  set.seed(1)
+  labels <- rep(c(0, 1), 50)
+  scores <- sample(c(0.1, 0.2, 0.3), 100, replace = TRUE)
+  prediction <- data.frame(outcomeCount = labels, value = scores)
+  expect_equal(
+    auc(labels, scores),
+    PatientLevelPrediction::computeAuc(prediction),
+    tolerance = 1e-6
+  )
+})
+
 test_that("final fitting trains when the data is smaller than one batch", {
   skip_if_no_python()
   toy <- toyPython()
