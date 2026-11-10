@@ -1218,33 +1218,38 @@ test_that("setCustomEmbeddingModel passes the curvature to Poincare embeddings",
 
 test_that("the projection of custom embeddings only applies to custom features", {
   skip_if_no_python()
-  # custom embeddings with two dimensions projected to three
+  # two custom embeddings with two dimensions, projected to three
+  vectors <- rbind(c(1, 2), c(3, 4))
   customEmbedding <- function(aggregate) {
     importModule("CustomEmbeddings")$CustomEmbeddings(
-      custom_embedding_weights = torch$tensor(rbind(c(1, 2)), dtype = torch$float),
+      custom_embedding_weights = torch$tensor(vectors, dtype = torch$float),
       embedding_dim = 3L,
       feature_info = mappedFeatureInfo(),
-      custom_indices = torch$tensor(array(1L), dtype = torch$long),
+      custom_indices = torch$tensor(c(1L, 3L), dtype = torch$long),
       aggregate = aggregate
     )
   }
   position <- function(tokens, i) asNumeric(tokens$select(1L, i)$reshape(-1L))
+  project <- function(embedding, row) {
+    asNumeric(embedding$linear_transform(torch$tensor(vectors[row, , drop = FALSE], dtype = torch$float)))
+  }
   torch$manual_seed(42L)
 
   perToken <- customEmbedding("none")
-  projected <- asNumeric(perToken$linear_transform(torch$tensor(rbind(c(1, 2)), dtype = torch$float)))
   regular <- embedTokens(perToken$regular_embeddings, c(0, 2, 0))
   tokens <- embedTokens(perToken, c(1, 2, 0))
-  expect_equal(position(tokens, 0L), projected, tolerance = 1e-6)
+  expect_equal(position(tokens, 0L), project(perToken, 1), tolerance = 1e-6)
   expect_equal(position(tokens, 1L), position(regular, 1L), tolerance = 1e-6)
   expect_equal(position(tokens, 2L), c(0, 0, 0))
 
   pooled <- customEmbedding("sum")
   regularOnly <- asNumeric(embedTokens(pooled$regular_embeddings, c(2, 0)))
   expect_equal(asNumeric(embedTokens(pooled, c(2, 0))), regularOnly, tolerance = 1e-6)
-  projected <- asNumeric(pooled$linear_transform(torch$tensor(rbind(c(1, 2)), dtype = torch$float)))
+  # each custom feature gets the bias once
   expect_equal(
-    asNumeric(embedTokens(pooled, c(1, 2))), (projected + regularOnly) / 2, tolerance = 1e-6
+    asNumeric(embedTokens(pooled, c(1, 3, 2, 0))),
+    (project(pooled, 1) + project(pooled, 2) + regularOnly) / 3,
+    tolerance = 1e-6
   )
 })
 
