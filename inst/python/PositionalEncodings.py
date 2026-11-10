@@ -530,6 +530,19 @@ class TemporalPE(PositionalEncoding):
         return similarity_matrix.unsqueeze(1)
 
 
+def convolve_noise(
+    conv: nn.Conv1d, noise_buffer: torch.Tensor, length: int, batch_size: int
+) -> torch.Tensor:
+    """
+    Convolves positional noise and returns the first `length` positions, shape
+    (B, length, D). The noise extends past `length` by the convolution's reach,
+    so that the encoding of a position does not depend on the padded width.
+    """
+    reach = (conv.kernel_size[0] - 1) // 2
+    noise = noise_buffer[:, : length + reach, :].expand(batch_size, -1, -1)
+    return conv(noise.permute(0, 2, 1)).permute(0, 2, 1)[:, :length, :]
+
+
 class StochasticConvPE(PositionalEncoding):
     """
     Implementation of  'convSPE' from Liutkus et al. (2021).
@@ -582,15 +595,8 @@ class StochasticConvPE(PositionalEncoding):
         batch_size, num_heads, q_len, head_dim = q.shape
         k_len = k.shape[2]
 
-        noise_for_q = self.noise_buffer[:, :q_len, :].expand(batch_size, -1, -1)
-        noise_for_k = self.noise_buffer[:, :k_len, :].expand(batch_size, -1, -1)
-
-        q_pos_conv = self.query_conv(noise_for_q.permute(0, 2, 1)).permute(
-            0, 2, 1
-        )  # -> (B, L, D)
-        k_pos_conv = self.key_conv(noise_for_k.permute(0, 2, 1)).permute(
-            0, 2, 1
-        )  # -> (B, L, D)
+        q_pos_conv = convolve_noise(self.query_conv, self.noise_buffer, q_len, batch_size)
+        k_pos_conv = convolve_noise(self.key_conv, self.noise_buffer, k_len, batch_size)
 
         q_pos = q_pos_conv.view(batch_size, q_len, num_heads, head_dim).permute(
             0, 2, 1, 3
@@ -672,15 +678,8 @@ class HybridRoPEConvPE(PositionalEncoding):
         batch_size, num_heads, q_len, head_dim = q.shape
         k_len = k.shape[2]
 
-        noise_for_q = self.noise_buffer[:, :q_len, :].expand(batch_size, -1, -1)
-        noise_for_k = self.noise_buffer[:, :k_len, :].expand(batch_size, -1, -1)
-
-        q_pos_conv = self.query_conv(noise_for_q.permute(0, 2, 1)).permute(
-            0, 2, 1
-        )  # -> (B, L, D)
-        k_pos_conv = self.key_conv(noise_for_k.permute(0, 2, 1)).permute(
-            0, 2, 1
-        )  # -> (B, L, D)
+        q_pos_conv = convolve_noise(self.query_conv, self.noise_buffer, q_len, batch_size)
+        k_pos_conv = convolve_noise(self.key_conv, self.noise_buffer, k_len, batch_size)
 
         q_pos = q_pos_conv.view(batch_size, q_len, num_heads, head_dim).permute(
             0, 2, 1, 3
