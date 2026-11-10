@@ -27,9 +27,11 @@ Bug fixes
 - Keep column and covariate IDs apart when loading RealMLP wide coefficients. A row's covariateId is used when it has one, so coefficients exported from another model, such as a covariateImportance file, load correctly.
 - Leave frozen RealMLP layers unchanged during data-dependent initialization.
 - Use the requested `sigma` in `TemporalPE` when it is not learnable. It was applied as exp(sigma), so the default of 1 acted as 2.72.
-- Add the trainable offsets of `PoincareEmbeddings` in the tangent space at the origin. For the Transformer they were combined with the mapped vectors by Mobius addition, which is defined for points inside the ball, not for tangent vectors.
+- Add the trainable offsets of `PoincareEmbeddings` in the tangent space at the origin. For the Transformer and RealMLP they were combined with the mapped vectors by Mobius addition, which is defined for points inside the ball, not for tangent vectors.
 - Check that Poincare embeddings are finite and inside the ball. Vectors outside it passed through without being mapped, and vectors on its boundary became infinite. Compute the log map accurately near the boundary and for small curvatures, and reject trainable ball coordinates, which a Euclidean optimizer can move outside the ball.
-- Apply the projection of custom embeddings, used when the embeddings file has another dimension than the model, to custom features only. Its bias was added once per patient for ResNet and MLP, and to every padding and regular feature for the Transformer.
+- Apply the projection of custom embeddings, used when the embeddings file has another dimension than the model, to custom features only. Its bias was added once per patient for ResNet and MLP, and to every padding and regular feature for the Transformer and RealMLP.
+- Leave the batch given to custom embeddings unchanged. Its custom features were set to zero, so RealMLP lost them in its wide branch and in data-dependent initialization.
+- Load custom embedding files saved from GPU tensors, and reject Poincare embeddings too close to the boundary of the ball to be mapped in their precision.
 - Continue the hyperparameter search after a combination runs out of GPU memory, and free that combination's memory first. Since torch 2.5 the error was not recognized, so the search stopped. The cleanup could not free memory that the error's traceback still referred to, and instead, when more than 3 GB stayed allocated, emptied the storage of every CUDA tensor, including those still in use.
 
 Runtime and compatibility
