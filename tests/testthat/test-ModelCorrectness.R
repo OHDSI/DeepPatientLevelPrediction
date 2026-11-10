@@ -921,6 +921,19 @@ test_that("time tokens use the units of the time reference", {
   }
 })
 
+test_that("time tokens use the start days of explicit time windows", {
+  skip_if_no_python()
+  # createTemporalCovariateSettings() gives a timeRef of windows with start and end days
+  windows <- data.frame(
+    timeId = c(0, 1, 2), startDay = c(-400, -60, -30), endDay = c(-61, -31, -1)
+  )
+  for (case in list(list(ids = c(1, 2), expected = "M1"), list(ids = c(0, 2), expected = "LT"))) {
+    data <- temporalData(windows, case$ids)
+    expect_equal(timeTokenNames(data), case$expected, info = paste(case$ids, collapse = " "))
+    Andromeda::close(data)
+  }
+})
+
 test_that("time tokens reject time references without a usable unit", {
   skip_if_no_python()
   for (timeRef in list(
