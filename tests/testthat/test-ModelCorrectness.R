@@ -1190,3 +1190,35 @@ test_that("setCustomEmbeddingModel passes the curvature to Poincare embeddings",
     "only applies to"
   )
 })
+
+test_that("the projection of custom embeddings only applies to custom features", {
+  skip_if_no_python()
+  # custom embeddings with two dimensions projected to three
+  customEmbedding <- function(aggregate) {
+    importModule("CustomEmbeddings")$CustomEmbeddings(
+      custom_embedding_weights = torch$tensor(rbind(c(1, 2)), dtype = torch$float),
+      embedding_dim = 3L,
+      feature_info = mappedFeatureInfo(),
+      custom_indices = torch$tensor(array(1L), dtype = torch$long),
+      aggregate = aggregate
+    )
+  }
+  position <- function(tokens, i) asNumeric(tokens$select(1L, i)$reshape(-1L))
+  torch$manual_seed(42L)
+
+  perToken <- customEmbedding("none")
+  projected <- asNumeric(perToken$linear_transform(torch$tensor(rbind(c(1, 2)), dtype = torch$float)))
+  regular <- embedTokens(perToken$regular_embeddings, c(0, 2, 0))
+  tokens <- embedTokens(perToken, c(1, 2, 0))
+  expect_equal(position(tokens, 0L), projected, tolerance = 1e-6)
+  expect_equal(position(tokens, 1L), position(regular, 1L), tolerance = 1e-6)
+  expect_equal(position(tokens, 2L), c(0, 0, 0))
+
+  pooled <- customEmbedding("sum")
+  regularOnly <- asNumeric(embedTokens(pooled$regular_embeddings, c(2, 0)))
+  expect_equal(asNumeric(embedTokens(pooled, c(2, 0))), regularOnly, tolerance = 1e-6)
+  projected <- asNumeric(pooled$linear_transform(torch$tensor(rbind(c(1, 2)), dtype = torch$float)))
+  expect_equal(
+    asNumeric(embedTokens(pooled, c(1, 2))), (projected + regularOnly) / 2, tolerance = 1e-6
+  )
+})
