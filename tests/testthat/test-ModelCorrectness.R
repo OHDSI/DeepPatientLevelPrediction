@@ -682,6 +682,19 @@ test_that("custom embedding covariates sharing a concept each get its vector", {
   expect_equal(embedRow(estimator, 3), c(7, 70))
 })
 
+test_that("a concept with several vectors in the embeddings file is an error", {
+  skip_if_no_python()
+  expect_error(
+    customEmbeddingEstimator(concepts = c(1002, 1003, 1002), weights = rbind(c(1, 2), c(3, 4), c(5, 6))),
+    "more than one vector for concept IDs 1002"
+  )
+  # a repeat that is not in the training data is dropped like other unused concepts
+  estimator <- customEmbeddingEstimator(
+    concepts = c(1002, 9999, 9999), weights = rbind(c(1, 2), c(3, 4), c(5, 6))
+  )
+  expect_equal(unlist(estimator$model$embedding$custom_indices$tolist()), 2L)
+})
+
 test_that("aggregated custom embeddings do not depend on padding", {
   skip_if_no_python()
   estimator <- customEmbeddingEstimator(concepts = 1001, weights = rbind(c(1, 10)))

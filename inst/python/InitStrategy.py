@@ -100,6 +100,20 @@ class CustomEmbeddingInitStrategy(InitStrategy):
             .join(embedding_rows, on="conceptId", how="inner")
             .sort("embeddingRow", "columnId")
         )
+        # with several vectors for one concept there is no right one to choose
+        repeated = (
+            matches.group_by("conceptId")
+            .agg(pl.col("embeddingRow").n_unique().alias("vectors"))
+            .filter(pl.col("vectors") > 1)
+            .sort("conceptId")
+        )
+        if repeated.height > 0:
+            shown = ", ".join(str(concept) for concept in repeated["conceptId"].head(10).to_list())
+            more = " and more" if repeated.height > 10 else ""
+            raise ValueError(
+                "The embeddings file has more than one vector for concept IDs "
+                f"{shown}{more}. Keep one vector per concept."
+            )
         custom_indices = torch.as_tensor(matches["columnId"].to_list(), dtype=torch.long)
         custom_weights = embeddings["embeddings"][matches["embeddingRow"].to_list()]
         if model.name == "ResNet" or model.name == "MultiLayerPerceptron":
