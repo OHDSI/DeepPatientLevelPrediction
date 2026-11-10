@@ -62,6 +62,8 @@ resumed from an analysis directory.</p>
 <h3 id="public-methods">Public methods<a class="anchor" aria-label="anchor" href="#public-methods"></a></h3>
 <p></p><ul><li><p><a href="#method-TrainingCache-initialize"><code>TrainingCache$new()</code></a></p></li>
 <li><p><a href="#method-TrainingCache-isParamGridIdentical"><code>TrainingCache$isParamGridIdentical()</code></a></p></li>
+<li><p><a href="#method-TrainingCache-isFingerprintIdentical"><code>TrainingCache$isFingerprintIdentical()</code></a></p></li>
+<li><p><a href="#method-TrainingCache-saveFingerprint"><code>TrainingCache$saveFingerprint()</code></a></p></li>
 <li><p><a href="#method-TrainingCache-saveGridSearchPredictions"><code>TrainingCache$saveGridSearchPredictions()</code></a></p></li>
 <li><p><a href="#method-TrainingCache-saveModelParams"><code>TrainingCache$saveModelParams()</code></a></p></li>
 <li><p><a href="#method-TrainingCache-getGridSearchPredictions"><code>TrainingCache$getGridSearchPredictions()</code></a></p></li>
@@ -106,13 +108,49 @@ the cached parameters.</p><div class="section">
 
 </div>
 
+<p></p><hr><a id="method-TrainingCache-isFingerprintIdentical"></a><div class="section">
+<h3 id="trainingcache-isfingerprintidentical-"><code>TrainingCache$isFingerprintIdentical()</code><a class="anchor" aria-label="anchor" href="#trainingcache-isfingerprintidentical-"></a></h3>
+<p>Checks whether the cached results were produced with the same data and
+training configuration.</p><div class="section">
+<h4 id="usage-2">Usage<a class="anchor" aria-label="anchor" href="#usage-2"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">TrainingCache</span><span class="op">$</span><span class="fu">isFingerprintIdentical</span><span class="op">(</span><span class="va">inFingerprint</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div><p></p><div class="section">
+<h4 id="arguments-2">Arguments<a class="anchor" aria-label="anchor" href="#arguments-2"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>inFingerprint</code></dt>
+<dd><p>Fingerprint of the current data and configuration</p></dd>
+
+
+</dl><p></p></div>
+</div><p></p><div class="section">
+<h4 id="returns-1">Returns<a class="anchor" aria-label="anchor" href="#returns-1"></a></h4>
+<p>Whether the provided and cached fingerprint are identical</p>
+</div>
+
+</div>
+
+<p></p><hr><a id="method-TrainingCache-saveFingerprint"></a><div class="section">
+<h3 id="trainingcache-savefingerprint-"><code>TrainingCache$saveFingerprint()</code><a class="anchor" aria-label="anchor" href="#trainingcache-savefingerprint-"></a></h3>
+<p>Saves the fingerprint of the data and configuration to the training cache</p><div class="section">
+<h4 id="usage-3">Usage<a class="anchor" aria-label="anchor" href="#usage-3"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">TrainingCache</span><span class="op">$</span><span class="fu">saveFingerprint</span><span class="op">(</span><span class="va">inFingerprint</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div><p></p><div class="section">
+<h4 id="arguments-3">Arguments<a class="anchor" aria-label="anchor" href="#arguments-3"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>inFingerprint</code></dt>
+<dd><p>Fingerprint of the current data and configuration</p></dd>
+
+
+</dl><p></p></div>
+</div>
+
+</div>
+
 <p></p><hr><a id="method-TrainingCache-saveGridSearchPredictions"></a><div class="section">
 <h3 id="trainingcache-savegridsearchpredictions-"><code>TrainingCache$saveGridSearchPredictions()</code><a class="anchor" aria-label="anchor" href="#trainingcache-savegridsearchpredictions-"></a></h3>
 <p>Saves the grid search results to the training cache</p><div class="section">
-<h4 id="usage-2">Usage<a class="anchor" aria-label="anchor" href="#usage-2"></a></h4>
+<h4 id="usage-4">Usage<a class="anchor" aria-label="anchor" href="#usage-4"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">TrainingCache</span><span class="op">$</span><span class="fu">saveGridSearchPredictions</span><span class="op">(</span><span class="va">inGridSearchPredictions</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-2">Arguments<a class="anchor" aria-label="anchor" href="#arguments-2"></a></h4>
+<h4 id="arguments-4">Arguments<a class="anchor" aria-label="anchor" href="#arguments-4"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>inGridSearchPredictions</code></dt>
 <dd><p>Grid search predictions</p></dd>
 
@@ -125,10 +163,10 @@ the cached parameters.</p><div class="section">
 <p></p><hr><a id="method-TrainingCache-saveModelParams"></a><div class="section">
 <h3 id="trainingcache-savemodelparams-"><code>TrainingCache$saveModelParams()</code><a class="anchor" aria-label="anchor" href="#trainingcache-savemodelparams-"></a></h3>
 <p>Saves the parameter grid to the training cache</p><div class="section">
-<h4 id="usage-3">Usage<a class="anchor" aria-label="anchor" href="#usage-3"></a></h4>
+<h4 id="usage-5">Usage<a class="anchor" aria-label="anchor" href="#usage-5"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">TrainingCache</span><span class="op">$</span><span class="fu">saveModelParams</span><span class="op">(</span><span class="va">inModelParams</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-3">Arguments<a class="anchor" aria-label="anchor" href="#arguments-3"></a></h4>
+<h4 id="arguments-5">Arguments<a class="anchor" aria-label="anchor" href="#arguments-5"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>inModelParams</code></dt>
 <dd><p>Parameter grid from the model settings</p></dd>
 
@@ -141,10 +179,10 @@ the cached parameters.</p><div class="section">
 <p></p><hr><a id="method-TrainingCache-getGridSearchPredictions"></a><div class="section">
 <h3 id="trainingcache-getgridsearchpredictions-"><code>TrainingCache$getGridSearchPredictions()</code><a class="anchor" aria-label="anchor" href="#trainingcache-getgridsearchpredictions-"></a></h3>
 <p>Gets the grid search results from the training cache</p><div class="section">
-<h4 id="usage-4">Usage<a class="anchor" aria-label="anchor" href="#usage-4"></a></h4>
+<h4 id="usage-6">Usage<a class="anchor" aria-label="anchor" href="#usage-6"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">TrainingCache</span><span class="op">$</span><span class="fu">getGridSearchPredictions</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="returns-1">Returns<a class="anchor" aria-label="anchor" href="#returns-1"></a></h4>
+<h4 id="returns-2">Returns<a class="anchor" aria-label="anchor" href="#returns-2"></a></h4>
 <p>Grid search results from the training cache</p>
 </div>
 
@@ -153,10 +191,10 @@ the cached parameters.</p><div class="section">
 <p></p><hr><a id="method-TrainingCache-isFull"></a><div class="section">
 <h3 id="trainingcache-isfull-"><code>TrainingCache$isFull()</code><a class="anchor" aria-label="anchor" href="#trainingcache-isfull-"></a></h3>
 <p>Check if cache is full</p><div class="section">
-<h4 id="usage-5">Usage<a class="anchor" aria-label="anchor" href="#usage-5"></a></h4>
+<h4 id="usage-7">Usage<a class="anchor" aria-label="anchor" href="#usage-7"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">TrainingCache</span><span class="op">$</span><span class="fu">isFull</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="returns-2">Returns<a class="anchor" aria-label="anchor" href="#returns-2"></a></h4>
+<h4 id="returns-3">Returns<a class="anchor" aria-label="anchor" href="#returns-3"></a></h4>
 <p>A logical value.</p>
 </div>
 
@@ -165,10 +203,10 @@ the cached parameters.</p><div class="section">
 <p></p><hr><a id="method-TrainingCache-getLastGridSearchIndex"></a><div class="section">
 <h3 id="trainingcache-getlastgridsearchindex-"><code>TrainingCache$getLastGridSearchIndex()</code><a class="anchor" aria-label="anchor" href="#trainingcache-getlastgridsearchindex-"></a></h3>
 <p>Gets the last index from the cached grid search</p><div class="section">
-<h4 id="usage-6">Usage<a class="anchor" aria-label="anchor" href="#usage-6"></a></h4>
+<h4 id="usage-8">Usage<a class="anchor" aria-label="anchor" href="#usage-8"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">TrainingCache</span><span class="op">$</span><span class="fu">getLastGridSearchIndex</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="returns-3">Returns<a class="anchor" aria-label="anchor" href="#returns-3"></a></h4>
+<h4 id="returns-4">Returns<a class="anchor" aria-label="anchor" href="#returns-4"></a></h4>
 <p>Last grid search index</p>
 </div>
 
@@ -177,7 +215,7 @@ the cached parameters.</p><div class="section">
 <p></p><hr><a id="method-TrainingCache-dropCache"></a><div class="section">
 <h3 id="trainingcache-dropcache-"><code>TrainingCache$dropCache()</code><a class="anchor" aria-label="anchor" href="#trainingcache-dropcache-"></a></h3>
 <p>Remove the training cache from the analysis path</p><div class="section">
-<h4 id="usage-7">Usage<a class="anchor" aria-label="anchor" href="#usage-7"></a></h4>
+<h4 id="usage-9">Usage<a class="anchor" aria-label="anchor" href="#usage-9"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">TrainingCache</span><span class="op">$</span><span class="fu">dropCache</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -187,12 +225,15 @@ the cached parameters.</p><div class="section">
 <h3 id="trainingcache-trimperformance-"><code>TrainingCache$trimPerformance()</code><a class="anchor" aria-label="anchor" href="#trainingcache-trimperformance-"></a></h3>
 <p>Trims the performance of the hyperparameter results by removing
 the predictions from all but the best performing hyperparameter</p><div class="section">
-<h4 id="usage-8">Usage<a class="anchor" aria-label="anchor" href="#usage-8"></a></h4>
-<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">TrainingCache</span><span class="op">$</span><span class="fu">trimPerformance</span><span class="op">(</span><span class="va">hyperparameterResults</span><span class="op">)</span></span></code></pre></div><p></p></div>
+<h4 id="usage-10">Usage<a class="anchor" aria-label="anchor" href="#usage-10"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">TrainingCache</span><span class="op">$</span><span class="fu">trimPerformance</span><span class="op">(</span><span class="va">hyperparameterResults</span>, maximize <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-4">Arguments<a class="anchor" aria-label="anchor" href="#arguments-4"></a></h4>
+<h4 id="arguments-6">Arguments<a class="anchor" aria-label="anchor" href="#arguments-6"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>hyperparameterResults</code></dt>
 <dd><p>List of hyperparameter results</p></dd>
+
+      <dt><code>maximize</code></dt>
+<dd><p>Whether higher performance values are better</p></dd>
 
 
 </dl><p></p></div>
@@ -203,10 +244,10 @@ the predictions from all but the best performing hyperparameter</p><div class="s
 <p></p><hr><a id="method-TrainingCache-clone"></a><div class="section">
 <h3 id="trainingcache-clone-"><code>TrainingCache$clone()</code><a class="anchor" aria-label="anchor" href="#trainingcache-clone-"></a></h3>
 <p>The objects of this class are cloneable with this method.</p><div class="section">
-<h4 id="usage-9">Usage<a class="anchor" aria-label="anchor" href="#usage-9"></a></h4>
+<h4 id="usage-11">Usage<a class="anchor" aria-label="anchor" href="#usage-11"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">TrainingCache</span><span class="op">$</span><span class="fu">clone</span><span class="op">(</span>deep <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-5">Arguments<a class="anchor" aria-label="anchor" href="#arguments-5"></a></h4>
+<h4 id="arguments-7">Arguments<a class="anchor" aria-label="anchor" href="#arguments-7"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>deep</code></dt>
 <dd><p>Whether to make a deep clone.</p></dd>
 

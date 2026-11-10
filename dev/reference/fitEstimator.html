@@ -52,7 +52,14 @@ PatientLevelPrediction training-data object."><meta name="robots" content="noind
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">fitEstimator</span><span class="op">(</span><span class="va">trainData</span>, <span class="va">modelSettings</span>, <span class="va">analysisId</span>, <span class="va">analysisPath</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">fitEstimator</span><span class="op">(</span></span>
+<span>  <span class="va">trainData</span>,</span>
+<span>  <span class="va">modelSettings</span>,</span>
+<span>  <span class="va">analysisId</span>,</span>
+<span>  <span class="va">analysisPath</span>,</span>
+<span>  hyperparameterSettings <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  <span class="va">...</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -76,6 +83,14 @@ package's model-setting functions.</p></dd>
 <dt id="arg-analysispath">analysisPath<a class="anchor" aria-label="anchor" href="#arg-analysispath"></a></dt>
 <dd><p>Directory used for training artifacts and the resumable
 training cache.</p></dd>
+
+
+<dt id="arg-hyperparametersettings">hyperparameterSettings<a class="anchor" aria-label="anchor" href="#arg-hyperparametersettings"></a></dt>
+<dd><p>Hyperparameter settings from
+<code><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/createHyperparameterSettings.html" class="external-link">PatientLevelPrediction::createHyperparameterSettings()</a></code>. Its tuning metric
+selects the best hyperparameter combination. Its search settings are
+ignored with a warning, because the search is defined in the model
+settings.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>

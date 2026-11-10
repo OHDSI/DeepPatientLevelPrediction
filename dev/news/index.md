@@ -4,7 +4,16 @@
 
 New features - Add a `min_epochs` parameter to early stopping, so that
 training runs for at least that many epochs before it can stop early
-([\#36](https://github.com/OHDSI/DeepPatientLevelPrediction/issues/36)).
+([\#36](https://github.com/OHDSI/DeepPatientLevelPrediction/issues/36)). -
+Start the bias of the output layer at the log-odds of the outcome rate
+in the training data, controlled by `initOutputBias` in
+[`setEstimator()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setEstimator.md)
+and on by default. Models with rare outcomes no longer spend their first
+epochs lowering all predictions to the outcome rate, which with few
+batches per epoch let early stopping end training before the model
+ranked patients. This removes most of the instability in ResNet learning
+curves. It applies to models with a single-logit linear `head`, and not
+to the learning rate search.
 
 Bug fixes - Avoid a segfault in batched matrix multiplication on Ubuntu
 26.04. On Linux, torch is now imported with `RTLD_DEEPBIND` so that it
@@ -14,11 +23,56 @@ ship the OpenBLAS fix. A startup message explains the risk if torch was
 already imported before the package loaded
 ([\#191](https://github.com/OHDSI/DeepPatientLevelPrediction/issues/191)). -
 Normalize custom embedding concept IDs for Polars 2
-([\#189](https://github.com/OHDSI/DeepPatientLevelPrediction/issues/189)).
+([\#189](https://github.com/OHDSI/DeepPatientLevelPrediction/issues/189)). -
+Restore the weights of the best epoch after training. Checkpoints shared
+storage with the live model, so cross-validation predictions came from
+the last epoch. - Select the automatic learning rate within each fold on
+training data only, so that held-out outcomes no longer influence it. -
+Invalidate the training cache when the data, outcomes, folds, feature
+mapping, estimator settings, tuning metric, or the contents of
+finetuning and custom embedding files change, not only the parameter
+grid. Caches from earlier versions are recomputed. - Use the tuning
+metric and direction requested through `hyperparameterSettings` when
+selecting hyperparameters and trimming the cache. Its `search`,
+`sampleSize`, `randomSeed` and `generator` settings are not used, and a
+warning now says so; the search is set in the model settings. - Give
+tied positive and negative predictions half credit in the AUC used for
+early stopping and epoch selection. - Clear gradients between learning
+rate finder trials. - Handle a loss minimum within the first few
+learning rate finder steps. It failed with an `argmin` error, or picked
+a rate from beyond the minimum. - Train the final model when the data is
+smaller than one batch, instead of silently returning an untrained
+model. - Score validation data whose last batch holds a single patient,
+which failed with a zero-dimensional tensor error. - Report training and
+validation loss per observation when the last batch is incomplete. -
+Keep patients without any retained covariates when training and
+predicting, and raise an error if predictions do not match the cohort. -
+Pass the `beta2` setting of RealMLP to the optimizer. AdamW used its
+default of 0.999 instead of RealMLP’s 0.95, so RealMLP results change. -
+Assign custom embeddings to the right covariates. Vectors were shifted
+to the preceding column, and depended on the order of the embeddings
+file. A concept with more than one vector in the file is now an error. -
+Make predictions independent of the padded sequence width for custom
+embedding models, RealMLP with mean aggregation and convolutional
+positional encodings. - Compute time token gaps in days from the time
+reference: its `timePart` and `timeInterval` for temporal sequence
+covariates, or the start day of each time window for covariates with
+explicit windows. Raise an error if neither is available. - Keep column
+and covariate IDs apart when loading RealMLP wide coefficients. A row’s
+covariateId is used when it has one, so coefficients exported from
+another model, such as a covariateImportance file, load correctly. -
+Leave frozen RealMLP layers unchanged during data-dependent
+initialization. - Use the requested `sigma` in `TemporalPE` when it is
+not learnable. It was applied as exp(sigma), so the default of 1 acted
+as 2.72.
 
 Runtime and compatibility - Require Python 3.11 or newer. Python 3.10
 reached end-of-life in October 2026, and duckdb 2.0.0 requires Python
-3.11.
+3.11. - Require PatientLevelPrediction 6.6.0 or newer, which added
+tuning metrics. - Models trained with custom embeddings, RealMLP mean
+aggregation, time tokens, convolutional positional encodings or a fixed
+`TemporalPE` sigma compute their inputs differently now. Predictions
+from such saved models change, so retrain them.
 
 Documentation and CI - Add an Ubuntu 26.04 CI job and a regression test
 for batched matrix multiplication. - Stop pinning Python duckdb on macOS

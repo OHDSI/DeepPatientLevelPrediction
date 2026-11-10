@@ -6,7 +6,14 @@ Fits a configured deep learning model to a prepared
 ## Usage
 
 ``` r
-fitEstimator(trainData, modelSettings, analysisId, analysisPath, ...)
+fitEstimator(
+  trainData,
+  modelSettings,
+  analysisId,
+  analysisPath,
+  hyperparameterSettings = NULL,
+  ...
+)
 ```
 
 ## Arguments
@@ -28,6 +35,14 @@ fitEstimator(trainData, modelSettings, analysisId, analysisPath, ...)
 
   Directory used for training artifacts and the resumable training
   cache.
+
+- hyperparameterSettings:
+
+  Hyperparameter settings from
+  [`PatientLevelPrediction::createHyperparameterSettings()`](https://ohdsi.github.io/PatientLevelPrediction/reference/createHyperparameterSettings.html).
+  Its tuning metric selects the best hyperparameter combination. Its
+  search settings are ignored with a warning, because the search is
+  defined in the model settings.
 
 - ...:
 

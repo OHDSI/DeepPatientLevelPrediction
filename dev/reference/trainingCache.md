@@ -15,6 +15,10 @@ An R6 class generator for persistent training caches.
 
 - [`TrainingCache$isParamGridIdentical()`](#method-TrainingCache-isParamGridIdentical)
 
+- [`TrainingCache$isFingerprintIdentical()`](#method-TrainingCache-isFingerprintIdentical)
+
+- [`TrainingCache$saveFingerprint()`](#method-TrainingCache-saveFingerprint)
+
 - [`TrainingCache$saveGridSearchPredictions()`](#method-TrainingCache-saveGridSearchPredictions)
 
 - [`TrainingCache$saveModelParams()`](#method-TrainingCache-saveModelParams)
@@ -67,6 +71,44 @@ the cached parameters.
 #### Returns
 
 Whether the provided and cached parameter grid is identical
+
+------------------------------------------------------------------------
+
+### `TrainingCache$isFingerprintIdentical()`
+
+Checks whether the cached results were produced with the same data and
+training configuration.
+
+#### Usage
+
+    TrainingCache$isFingerprintIdentical(inFingerprint)
+
+#### Arguments
+
+- `inFingerprint`:
+
+  Fingerprint of the current data and configuration
+
+#### Returns
+
+Whether the provided and cached fingerprint are identical
+
+------------------------------------------------------------------------
+
+### `TrainingCache$saveFingerprint()`
+
+Saves the fingerprint of the data and configuration to the training
+cache
+
+#### Usage
+
+    TrainingCache$saveFingerprint(inFingerprint)
+
+#### Arguments
+
+- `inFingerprint`:
+
+  Fingerprint of the current data and configuration
 
 ------------------------------------------------------------------------
 
@@ -161,13 +203,17 @@ predictions from all but the best performing hyperparameter
 
 #### Usage
 
-    TrainingCache$trimPerformance(hyperparameterResults)
+    TrainingCache$trimPerformance(hyperparameterResults, maximize = TRUE)
 
 #### Arguments
 
 - `hyperparameterResults`:
 
   List of hyperparameter results
+
+- `maximize`:
+
+  Whether higher performance values are better
 
 ------------------------------------------------------------------------
 

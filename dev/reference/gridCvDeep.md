@@ -6,7 +6,14 @@ model using the best-performing settings.
 ## Usage
 
 ``` r
-gridCvDeep(mappedData, labels, modelSettings, modelLocation, analysisPath)
+gridCvDeep(
+  mappedData,
+  labels,
+  modelSettings,
+  modelLocation,
+  analysisPath,
+  tuningMetric = NULL
+)
 ```
 
 ## Arguments
@@ -31,6 +38,13 @@ gridCvDeep(mappedData, labels, modelSettings, modelLocation, analysisPath)
 - analysisPath:
 
   Directory used for the resumable training cache.
+
+- tuningMetric:
+
+  A tuning metric from
+  [`PatientLevelPrediction::createTuningMetric()`](https://ohdsi.github.io/PatientLevelPrediction/reference/createTuningMetric.html)
+  used to select the best hyperparameter combination. The default `NULL`
+  uses the AUC.
 
 ## Value
 
