@@ -426,6 +426,102 @@ test_that("the learning rate finder handles an early loss minimum", {
   expect_equal(suggest(torch$tensor(c(1, 2, 3)), 5L), 0L)
 })
 
+biasPython <- function() {
+  toyPython()
+  reticulate::py_run_string("
+class HeadModel(nn.Module):
+    name = 'HeadModel'
+    def __init__(self):
+        super().__init__()
+        self.head = nn.Linear(1, 1)
+    def forward(self, x):
+        return self.head(x['feature_values']).squeeze(-1)
+
+class WrappedHeadModel(nn.Module):
+    name = 'WrappedHeadModel'
+    def __init__(self):
+        super().__init__()
+        self.head = nn.Module()
+        self.head.linear = nn.Linear(1, 1)
+    def forward(self, x):
+        return self.head.linear(x['feature_values']).squeeze(-1)
+
+class CustomLossModel(HeadModel):
+    def compute_loss(self, predictions, targets, criterion, label_smoothing=0.0):
+        return criterion(predictions.squeeze(), targets.float())
+
+class LabelledData(ToyData):
+    def __init__(self, x, y):
+        super().__init__(x, y)
+        self.target = self.y
+
+def bias_estimator(estimator_class, model, **settings):
+    # a learning rate of zero keeps the initial bias through training
+    defaults = dict(device='cpu', find_l_r=False, learning_rate=0.0, weight_decay=0.0,
+                    batch_size=4, epochs=1, optimizer=torch.optim.SGD,
+                    criterion=torch.nn.BCEWithLogitsLoss, metric='loss',
+                    init_output_bias=True)
+    return estimator_class(model, {'model_parameters': {},
+                                   'estimator_settings': {**defaults, **settings}})
+")
+}
+
+test_that("the output bias starts at the outcome rate of the training data", {
+  skip_if_no_python()
+  py <- biasPython()
+  Estimator <- importModule("Estimator")$Estimator
+  y <- c(1, 0, 0, 0, 0, 0, 0, 1)
+  data <- py$LabelledData(seq_along(y), y)
+
+  estimator <- py$bias_estimator(Estimator, py$HeadModel)
+  estimator$fit_whole_training_set(data, list(0))
+  expect_equal(asNumeric(estimator$model$head$bias), qlogis(2 / 8), tolerance = 1e-6)
+
+  # a cross-validation fit uses the outcome rate of its training fold only
+  estimator <- py$bias_estimator(Estimator, py$HeadModel)
+  estimator$fit(
+    torch$utils$data$Subset(data, indices = 0:3),
+    torch$utils$data$Subset(data, indices = 4:7)
+  )
+  expect_equal(asNumeric(estimator$model$head$bias), qlogis(1 / 4), tolerance = 1e-6)
+
+  # the loss sees smoothed labels, so their rate is used
+  estimator <- py$bias_estimator(Estimator, py$HeadModel, label_smoothing = 0.1)
+  estimator$fit_whole_training_set(data, list(0))
+  expect_equal(asNumeric(estimator$model$head$bias), qlogis(2 / 8 * 0.9 + 0.05), tolerance = 1e-6)
+
+  # transformer heads keep their linear layer in head.linear
+  estimator <- py$bias_estimator(Estimator, py$WrappedHeadModel)
+  estimator$fit_whole_training_set(data, list(0))
+  expect_equal(asNumeric(estimator$model$head$linear$bias), qlogis(2 / 8), tolerance = 1e-6)
+})
+
+test_that("the output bias is left alone when switched off or the model has its own loss", {
+  skip_if_no_python()
+  py <- biasPython()
+  Estimator <- importModule("Estimator")$Estimator
+  y <- c(1, 0, 0, 0, 0, 0, 0, 1)
+  data <- py$LabelledData(seq_along(y), y)
+  cases <- list(
+    list(model = py$HeadModel, init = FALSE),
+    list(model = py$CustomLossModel, init = TRUE)
+  )
+  for (case in cases) {
+    estimator <- py$bias_estimator(Estimator, case$model, init_output_bias = case$init)
+    before <- asNumeric(estimator$model$head$bias)
+    estimator$fit_whole_training_set(data, list(0))
+    expect_equal(asNumeric(estimator$model$head$bias), before)
+  }
+})
+
+test_that("setEstimator turns on the output bias initialization by default", {
+  settings <- setEstimator(seed = 1)
+  expect_true(settings$initOutputBias)
+  expect_false(setEstimator(seed = 1, initOutputBias = FALSE)$initOutputBias)
+  expect_error(setEstimator(seed = 1, initOutputBias = "yes"))
+  expect_named(camelCaseToSnakeCaseNames(list(initOutputBias = TRUE)), "init_output_bias")
+})
+
 test_that("AUC gives half credit to tied scores", {
   skip_if_no_python()
   computeAuc <- importModule("Estimator")$compute_auc

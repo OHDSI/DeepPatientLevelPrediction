@@ -19,7 +19,8 @@ setEstimator(
   metric = "auc",
   accumulationSteps = NULL,
   seed = NULL,
-  trainValidationSplit = FALSE
+  trainValidationSplit = FALSE,
+  initOutputBias = TRUE
 )
 }
 \arguments{
@@ -61,6 +62,14 @@ when this is \code{NULL}.}
 
 \item{trainValidationSplit}{Whether to use a train-validation split for
 model selection instead of cross-validation.}
+
+\item{initOutputBias}{Whether to start the bias of the output layer at the
+log-odds of the outcome rate in the training data, so that the first
+predictions match the outcome rate instead of 50\%. Without it, models for
+rare outcomes spend their first epochs lowering all predictions, and early
+stopping can end training before they learn to rank patients. It applies to
+models whose output is a single logit from a linear \code{head} layer and is
+not used during the learning-rate search.}
 }
 \value{
 A list of estimator settings used by the model-setting functions.

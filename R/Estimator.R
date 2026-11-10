@@ -47,6 +47,13 @@
 #'   when this is `NULL`.
 #' @param trainValidationSplit Whether to use a train-validation split for
 #'   model selection instead of cross-validation.
+#' @param initOutputBias Whether to start the bias of the output layer at the
+#'   log-odds of the outcome rate in the training data, so that the first
+#'   predictions match the outcome rate instead of 50%. Without it, models for
+#'   rare outcomes spend their first epochs lowering all predictions, and early
+#'   stopping can end training before they learn to rank patients. It applies to
+#'   models whose output is a single logit from a linear `head` layer and is
+#'   not used during the learning-rate search.
 #'
 #' @return A list of estimator settings used by the model-setting functions.
 #'
@@ -79,7 +86,8 @@ setEstimator <- function(
     metric = "auc",
     accumulationSteps = NULL,
     seed = NULL,
-    trainValidationSplit = FALSE) {
+    trainValidationSplit = FALSE,
+    initOutputBias = TRUE) {
   checkIsClass(learningRate, c("numeric", "character"))
   if (inherits(learningRate, "character") && learningRate != "auto") {
     stop(paste0(
@@ -98,6 +106,7 @@ setEstimator <- function(
   checkIsClass(metric, c("character", "list"))
   checkIsClass(seed, c("numeric", "integer", "NULL"))
   checkIsClass(trainValidationSplit, "logical")
+  checkIsClass(initOutputBias, "logical")
   if (!is.null(accumulationSteps) && !is.function(accumulationSteps)) {
     checkHigher(accumulationSteps, 0)
     checkIsClass(accumulationSteps, c("numeric", "integer"))
@@ -127,7 +136,8 @@ setEstimator <- function(
     findLR = findLR,
     metric = metric,
     accumulationSteps = accumulationSteps,
-    seed = seed[1]
+    seed = seed[1],
+    initOutputBias = initOutputBias
   )
   if (!is.null(trainValidationSplit)) {
     estimatorSettings$trainValidationSplit <- trainValidationSplit
