@@ -117,16 +117,12 @@ trainingCache <- R6Class(
     #' Trims the performance of the hyperparameter results by removing 
     #' the predictions from all but the best performing hyperparameter
     #' @param hyperparameterResults List of hyperparameter results 
-    trimPerformance = function(hyperparameterResults) {
-      indexOfMax <-
-        which.max(unlist(
-          lapply(hyperparameterResults,
-                 function(x)
-                   x$gridPerformance$cvPerformance)
-        ))
-      if (length(indexOfMax) != 0) {
+    #' @param maximize Whether higher performance values are better
+    trimPerformance = function(hyperparameterResults, maximize = TRUE) {
+      indexOfBest <- getBestGridIndex(hyperparameterResults, maximize)
+      if (length(indexOfBest) != 0) {
         for (i in seq_along(hyperparameterResults)) {
-          if (!is.null(hyperparameterResults[[i]]) && i != indexOfMax) {
+          if (!is.null(hyperparameterResults[[i]]) && i != indexOfBest) {
             hyperparameterResults[[i]]$prediction <- list(NULL)
           }
         }
@@ -134,7 +130,7 @@ trainingCache <- R6Class(
           paste0(
             "Caching all grid search results and
                                      prediction for best combination ",
-            indexOfMax
+            indexOfBest
           )
         )
       }

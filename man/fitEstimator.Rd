@@ -4,7 +4,14 @@
 \alias{fitEstimator}
 \title{Fit a Deep Learning Estimator}
 \usage{
-fitEstimator(trainData, modelSettings, analysisId, analysisPath, ...)
+fitEstimator(
+  trainData,
+  modelSettings,
+  analysisId,
+  analysisPath,
+  hyperparameterSettings = NULL,
+  ...
+)
 }
 \arguments{
 \item{trainData}{A prepared training-data object produced by
@@ -17,6 +24,12 @@ package's model-setting functions.}
 
 \item{analysisPath}{Directory used for training artifacts and the resumable
 training cache.}
+
+\item{hyperparameterSettings}{Hyperparameter settings from
+\code{PatientLevelPrediction::createHyperparameterSettings()}. Its tuning metric
+selects the best hyperparameter combination. Its search settings are
+ignored with a warning, because the search is defined in the model
+settings.}
 
 \item{...}{Additional arguments reserved for the
 \code{PatientLevelPrediction} model interface.}

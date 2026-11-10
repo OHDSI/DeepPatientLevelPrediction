@@ -34,7 +34,7 @@ Imports:
     Andromeda (> 1.0.0),
     dplyr,
     ParallelLogger (>= 2.0.0),
-    PatientLevelPrediction (>= 6.5.0),
+    PatientLevelPrediction (>= 6.6.0),
     R6,
     reticulate (>= 1.41),
     rlang,

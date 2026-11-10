@@ -179,13 +179,14 @@ the cached parameters.
 the predictions from all but the best performing hyperparameter
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{TrainingCache$trimPerformance(hyperparameterResults)}
+    \preformatted{TrainingCache$trimPerformance(hyperparameterResults, maximize = TRUE)}
     \if{html}{\out{</div>}}
   }
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
       \item{\code{hyperparameterResults}}{List of hyperparameter results}
+      \item{\code{maximize}}{Whether higher performance values are better}
     }
     \if{html}{\out{</div>}}
   }
