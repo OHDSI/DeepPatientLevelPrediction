@@ -323,6 +323,25 @@ test_that("gridCvDeep retrains when the outcomes change and resumes when they do
   expect_equal(cvOutcomes(run(flipped)), flipped$outcomeCount)
 })
 
+test_that("an automatic learning rate only sees the training folds", {
+  skip_if_no_python()
+  data <- createMockData()
+  withr::defer(Andromeda::close(data))
+  labels <- createMockLabels()
+  settings <- createMockSettings(learningRate = "auto")
+  dataset <- createDataset(data, labels)
+  parameters <- settings$param[[1]]
+  searched <- list()
+  testthat::with_mocked_bindings(
+    doCrossValidationImpl(dataset, labels, parameters, settings),
+    getLR = function(parameters, dataset, lrSettings = NULL) {
+      searched[[length(searched) + 1]] <<- sort(unlist(dataset$indices))
+      0.01
+    }
+  )
+  expect_equal(searched, list(c(2L, 3L, 6L, 7L), c(0L, 1L, 4L, 5L)))
+})
+
 test_that("the tuning metric picks the best hyperparameters", {
   results <- list(
     list(gridPerformance = list(cvPerformance = 0.2), prediction = "a"),

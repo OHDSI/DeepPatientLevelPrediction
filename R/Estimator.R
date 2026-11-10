@@ -905,12 +905,6 @@ doCrossValidationImpl <- function(
     modelParameters = currentModelParams,
     estimatorSettings = currentEstimatorSettings
   )
-  if (currentEstimatorSettings$findLR) {
-    lr <- getLR(currentParameters, dataset)
-    ParallelLogger::logInfo(paste0("Auto learning rate selected as: ", lr))
-    currentParameters$estimatorSettings$learningRate <- lr
-    currentParameters$estimatorSettings$findLR <- FALSE
-  }
 
   fold <- labels$index
   ParallelLogger::logInfo(paste0("Max fold: ", max(fold)))
@@ -941,7 +935,15 @@ doCrossValidationImpl <- function(
       dataset,
       indices = as.integer(which(fold == i) - 1)
     )
-    estimator <- createEstimator(currentParameters)
+    foldParameters <- currentParameters
+    if (currentEstimatorSettings$findLR) {
+      # search on the training part only so the held-out outcomes stay unused
+      lr <- getLR(foldParameters, trainDataset)
+      ParallelLogger::logInfo(paste0("Auto learning rate selected as: ", lr))
+      foldParameters$estimatorSettings$learningRate <- lr
+      foldParameters$estimatorSettings$findLR <- FALSE
+    }
+    estimator <- createEstimator(foldParameters)
     fit_estimator(estimator, trainDataset, testDataset)
 
     ParallelLogger::logInfo("Calculating predictions on left out fold set...")
