@@ -95,14 +95,6 @@ class CustomEmbeddings(nn.Module):
     def process_custom_embeddings(embeddings: torch.Tensor) -> torch.Tensor:
         return embeddings  # default is identity for Euclidian embeddings
 
-    def combine_embeddings(
-        self, fixed_embeddings: torch.Tensor, trainable_embeddings: torch.Tensor
-    ) -> torch.Tensor:
-        if self.aggregate == "sum":
-            return torch.sum(fixed_embeddings + trainable_embeddings, dim=1)
-        else:
-            return fixed_embeddings + trainable_embeddings
-
     def forward(self, x):
         # count before the feature ids are split into custom and regular below
         sequence_lengths = (x["feature_ids"] != 0).sum(dim=1, keepdim=True).clamp_min(1)
@@ -114,16 +106,19 @@ class CustomEmbeddings(nn.Module):
         custom_mapped_features = self.vocab_to_custom[custom_features]
         custom_embeddings = self.custom_embeddings(custom_mapped_features)
         custom_embeddings = self.process_custom_embeddings(custom_embeddings)
-        custom_trainable_embeddings = self.custom_embeddings_trainable(
+        custom_embeddings = custom_embeddings + self.custom_embeddings_trainable(
             custom_mapped_features
         )
-        custom_embeddings = self.combine_embeddings(
-            custom_embeddings, custom_trainable_embeddings
-        )
-        # custom_embeddings = self.process_custom_embeddings(custom_embeddings)
-        regular_embeddings = self.regular_embeddings(x)
+        # project each custom feature on its own and zero the other positions,
+        # so the bias of the projection is not added for padding or regular
+        # features
         custom_embeddings = self.linear_transform(custom_embeddings)
+        custom_embeddings = custom_embeddings * custom_embeddings_mask.unsqueeze(-1).to(
+            dtype=custom_embeddings.dtype
+        )
+        regular_embeddings = self.regular_embeddings(x)
         if self.aggregate == "sum":
+            custom_embeddings = custom_embeddings.sum(dim=1)
             sequence_lengths = sequence_lengths.to(dtype=custom_embeddings.dtype)
             return (custom_embeddings + regular_embeddings) / sequence_lengths
         else:
