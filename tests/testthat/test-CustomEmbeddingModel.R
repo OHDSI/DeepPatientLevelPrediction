@@ -40,7 +40,7 @@ test_that("custom embeddings match float and integer concept IDs", {
       ))
 
       expect_equal(
-        unlist(estimator$model$embedding$custom_indices$tolist()), c(1L, 2L)
+        unlist(estimator$model$embedding$custom_indices$tolist()), c(2L, 3L)
       )
       expect_true(torch$allclose(
         estimator$model$embedding$custom_embeddings$weight,

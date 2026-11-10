@@ -85,26 +85,23 @@ class CustomEmbeddingInitStrategy(InitStrategy):
                 f"required for custom embeddings"
             )
 
-        # get indices of the custom embeddings from embeddings["concept_ids"]
-        # I need to select the rows from data_reference where embeddings["concept_ids"] is in data_reference["conceptId"]
-        # data reference is a polars lazyframe. Note at this point data_reference only contains concepts in the training set
-        custom_indices = (
-            data_reference.filter(
-                pl.col("conceptId").is_in(embeddings["concept_ids"].tolist())
-            ).select("columnId")
-            - 1
+        # Match each covariate column to its row in the embeddings file. Columns
+        # are one-based because zero is the padding index. Concepts in the file
+        # that are not in the training data are out of vocabulary and dropped.
+        embedding_rows = pl.DataFrame(
+            {
+                "conceptId": embeddings["concept_ids"].tolist(),
+                "embeddingRow": list(range(embeddings["concept_ids"].shape[0])),
+            },
+            schema_overrides={"conceptId": pl.Int64},
         )
-        custom_indices = custom_indices.to_torch().squeeze()
-        # filter embeddings to concepts in training data, rest is OOV (out of vocabulary)
-        concepts_in_data = data_reference.select("conceptId")
-        embeddings = {
-            k: v[
-                torch.isin(
-                    embeddings["concept_ids"], concepts_in_data["conceptId"].to_torch()
-                )
-            ]
-            for k, v in embeddings.items()
-        }
+        matches = (
+            data_reference.select("conceptId", "columnId")
+            .join(embedding_rows, on="conceptId", how="inner")
+            .sort("embeddingRow", "columnId")
+        )
+        custom_indices = torch.as_tensor(matches["columnId"].to_list(), dtype=torch.long)
+        custom_weights = embeddings["embeddings"][matches["embeddingRow"].to_list()]
         if model.name == "ResNet" or model.name == "MultiLayerPerceptron":
             aggregate = "sum"
         else:
@@ -112,7 +109,7 @@ class CustomEmbeddingInitStrategy(InitStrategy):
 
         embedding_class = self.class_names_to_class[self.embedding_class]
         model.embedding = embedding_class(
-            custom_embedding_weights=embeddings["embeddings"],
+            custom_embedding_weights=custom_weights,
             embedding_dim=model.embedding.embedding_dim,
             feature_info=parameters["model_parameters"]["feature_info"],
             custom_indices=custom_indices,
