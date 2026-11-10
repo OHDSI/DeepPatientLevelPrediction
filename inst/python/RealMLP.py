@@ -745,13 +745,13 @@ class RealMLP(nn.Module):
                 self.train()
 
     def _aggregate_tokens(self, scaled_tokens, feature_ids):
-        if self.token_aggregation == "mean":
-            return scaled_tokens.mean(dim=1)
         if self.token_aggregation == "sum":
             return scaled_tokens.sum(dim=1)
-        # sum_len_norm / sum_sqrt_len
         lengths = (feature_ids != 0).sum(dim=1, keepdim=True).clamp_min(1)
         lengths = lengths.to(dtype=scaled_tokens.dtype)
+        if self.token_aggregation == "mean":
+            return scaled_tokens.sum(dim=1) / lengths
+        # sum_len_norm / sum_sqrt_len
         return scaled_tokens.sum(dim=1) / torch.sqrt(lengths)
 
     def _wide_logit(self, feature_ids, feature_values, dtype):
