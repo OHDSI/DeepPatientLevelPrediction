@@ -23,7 +23,7 @@ Bug fixes
 - Assign custom embeddings to the right covariates. Vectors were shifted to the preceding column, and depended on the order of the embeddings file.
 - Make predictions independent of the padded sequence width for custom embedding models, RealMLP with mean aggregation and convolutional positional encodings.
 - Compute time token gaps in days from the time reference: its `timePart` and `timeInterval` for temporal sequence covariates, or the start day of each time window for covariates with explicit windows. Raise an error if neither is available.
-- Keep column and covariate IDs apart when loading RealMLP wide coefficients.
+- Keep column and covariate IDs apart when loading RealMLP wide coefficients. A row's covariateId is used when it has one, so coefficients exported from another model, such as a covariateImportance file, load correctly.
 - Leave frozen RealMLP layers unchanged during data-dependent initialization.
 - Use the requested `sigma` in `TemporalPE` when it is not learnable. It was applied as exp(sigma), so the default of 1 acted as 2.72.
 

@@ -979,7 +979,16 @@ test_that("wide coefficients keep column and covariate IDs apart", {
   expect_equal(loadWide(c("covariateId,columnId,weight", "3,1,2")), c(2, 0, 0, 0))
   # not in the vocabulary, so it can not be used as a column ID either
   expect_error(loadWide(c("covariateId,weight", "2,2")), "Failed to map")
-  expect_error(loadWide(c("covariateId,columnId,weight", "3,2,2")), "maps to column")
+  # a file's columnId comes from the model that wrote it, so covariateId decides
+  expect_equal(loadWide(c("covariateId,columnId,weight", "3,2,2")), c(2, 0, 0, 0))
+  # a covariateImportance export from another model
+  expect_equal(
+    loadWide(c(
+      "covariateId,covariateName,columnId,covariateValue",
+      "9,second,5,1.5", "8,fourth,1,0.5", "99,unknown,2,4"
+    )),
+    c(0, 1.5, 0, 0.5)
+  )
 })
 
 test_that("data-dependent initialization leaves frozen RealMLP weights alone", {
