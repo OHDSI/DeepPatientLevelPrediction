@@ -85,7 +85,7 @@ class Data(Dataset):
                 data,
                 data_ref=data_ref,
                 strategy="coarse",
-                days_per_time_id=get_days_per_time_id(time_ref),
+                time_id_days=get_time_id_days(time_ref),
             )
         sequence_data = aggregate_sequences(
             data, with_time=self.use_time, num_rows=num_rows
@@ -496,16 +496,26 @@ DAYS_PER_TIME_PART = {
 }
 
 
-def get_days_per_time_id(time_ref: Optional[pl.LazyFrame]) -> float:
+def get_time_id_days(time_ref: Optional[pl.LazyFrame]) -> float | pl.LazyFrame:
     """
-    Gets the length in days of one timeId step from the time reference, which is
-    what time tokens need to bucket the gaps between events.
+    Gets how timeIds translate to days, which is what time tokens need to bucket
+    the gaps between events.
+
+    Temporal sequence covariates have a timeRef with a fixed timePart and
+    timeInterval, giving the length in days of one timeId step. Temporal
+    covariates with explicit time windows have a timeRef with the startDay of
+    each timeId, returned as a frame with columns timeId and _day.
     """
     columns = [] if time_ref is None else time_ref.collect_schema().names()
     if "timePart" not in columns or "timeInterval" not in columns:
+        if "timeId" in columns and "startDay" in columns:
+            return time_ref.select(
+                pl.col("timeId"), pl.col("startDay").cast(pl.Float64).alias("_day")
+            )
         raise ValueError(
-            "Time tokens require a timeRef table with timePart and timeInterval. "
-            "Set timeTokens = FALSE for covariates without a fixed time unit."
+            "Time tokens require a timeRef table with either timePart and "
+            "timeInterval, or timeId and startDay. Set timeTokens = FALSE for "
+            "covariates without a usable time unit."
         )
     units = time_ref.select("timePart", "timeInterval").unique().collect()
     if units.height != 1:
@@ -524,7 +534,7 @@ def insert_time_tokens(
     data: pl.LazyFrame,
     data_ref: pl.LazyFrame,
     strategy: str,
-    days_per_time_id: float = 1.0,
+    time_id_days: float | pl.LazyFrame = 1.0,
 ) -> tuple[LazyFrame, LazyFrame]:
     if strategy not in ["coarse", "fine"]:
         raise ValueError(
@@ -533,15 +543,21 @@ def insert_time_tokens(
         )
 
     offset = get_offset(data_ref)
+    if isinstance(time_id_days, (pl.LazyFrame, pl.DataFrame)):
+        # the start day of each time window
+        time_id_type = data.collect_schema()["timeId"]
+        data = data.join(
+            time_id_days.lazy().with_columns(pl.col("timeId").cast(time_id_type)),
+            on="timeId",
+            how="left",
+        )
+        day = pl.col("_day")
+    else:
+        day = pl.col("timeId").cast(pl.Float64) * float(time_id_days)
     data = data.sort(["rowId", "timeId"]).with_columns(
         [
             pl.cum_count("rowId").cast(pl.Float64).alias("_pos"),  # 0,1,2…
-            (
-                (pl.col("timeId") - pl.col("timeId").shift(1).over("rowId"))
-                .fill_null(0)
-                .cast(pl.Float64)
-                * days_per_time_id  # δt (days)
-            ).alias("_delta"),
+            (day - day.shift(1).over("rowId")).fill_null(0).alias("_delta"),  # δt (days)
         ]
     )
     delta = pl.col("_delta")
