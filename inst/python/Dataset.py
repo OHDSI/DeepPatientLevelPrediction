@@ -335,14 +335,19 @@ def read_data(
     return {"data": data, "data_ref": data_ref, "time_ref": time_ref if time else None}
 
 
-def get_all_rows(data: pl.LazyFrame, num_rows: Optional[int] = None) -> pl.LazyFrame:
+def get_all_rows(
+    data: pl.LazyFrame, num_rows: Optional[int] = None, check: bool = True
+) -> pl.LazyFrame:
     """
     Gets the zero-indexed rowIds of all patients, which are also the patients
     without any covariates if the total number of patients is known.
+
+    With check, covariates that refer to rows beyond num_rows are an error. The
+    check collects data, so it is done once, on the covariates as read.
     """
     if num_rows is None:
         return data.select("rowId").unique()
-    largest_row = data.select(pl.col("rowId").max()).collect().item()
+    largest_row = data.select(pl.col("rowId").max()).collect().item() if check else None
     if largest_row is not None and largest_row >= num_rows:
         raise ValueError(
             f"Covariates refer to row {largest_row + 1} but there are only "
@@ -413,7 +418,8 @@ def aggregate_sequences(
         data = data.with_columns(pl.col("timeId").fill_null(0).cast(pl.Int32))
         aggs.append(pl.col("timeId").sort_by(["timeId", "columnId"]).alias("time_ids"))
     grouped = data.group_by("rowId").agg(*aggs)
-    all_rows = get_all_rows(data, num_rows)
+    # fill_missing_means_zero has already checked the rows
+    all_rows = get_all_rows(data, num_rows, check=False)
     return all_rows.join(grouped, on="rowId", how="left").with_columns(
         pl.col("feature_ids").fill_null(pl.lit([0], dtype=pl.List(pl.Int32))),
         pl.col("feature_values").fill_null(pl.lit([], dtype=pl.List(pl.Float32))),
