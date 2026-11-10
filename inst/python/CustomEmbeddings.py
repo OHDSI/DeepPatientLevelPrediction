@@ -190,6 +190,14 @@ class PoincareEmbeddings(CustomEmbeddings):
                  curvature: float = 1.0, **kwargs):
         check_poincare_points(custom_embedding_weights, float(curvature))
         super().__init__(custom_embedding_weights, *args, **kwargs)
+        if self.custom_embeddings.weight.requires_grad:
+            # an optimizer step on the coordinates themselves can move them out
+            # of the ball, which needs a Riemannian optimizer to prevent
+            raise ValueError(
+                "PoincareEmbeddings needs frozen embeddings. Training the points "
+                "of the ball with a Euclidean optimizer can move them outside it. "
+                "The trainable offsets adapt the embeddings in the tangent space."
+            )
         self.curvature = float(curvature)
 
     def process_custom_embeddings(self, embeddings: torch.Tensor) -> torch.Tensor:
