@@ -364,24 +364,50 @@ class RealMLP(nn.Module):
         return covariate_ids, betas
 
     def _parse_wide_init_csv(self, path: Path):
-        covariate_ids = []
+        identifiers = []
         betas = []
         with path.open("r", encoding="utf-8") as handle:
             reader = csv.DictReader(handle)
             for row in reader:
                 covariate_id = self._pick_first_existing(
                     row,
-                    ("covariateId", "covariate_id", "columnId", "column_id"),
+                    ("covariateId", "covariate_id"),
                 )
+                column_id = self._pick_first_existing(row, ("columnId", "column_id"))
                 beta = self._pick_first_existing(
                     row,
                     ("weight", "coefficient", "beta", "covariateValue"),
                 )
-                if covariate_id is None or beta is None:
+                if (covariate_id is None and column_id is None) or beta is None:
                     continue
-                covariate_ids.append(covariate_id)
+                identifiers.append((covariate_id, column_id))
                 betas.append(float(beta))
-        return covariate_ids, betas
+        return identifiers, betas
+
+    @staticmethod
+    def _parse_integer_id(value):
+        try:
+            return int(float(str(value)))
+        except ValueError:
+            return None
+
+    def _resolve_wide_column(self, covariate_id, column_id, covariate_to_column):
+        """Find the model column of a coefficient, keeping the two ID types apart."""
+        if covariate_id is None:
+            return self._parse_integer_id(column_id)
+        if not covariate_to_column:
+            # without a feature map there is nothing to translate covariate IDs with
+            return self._parse_integer_id(
+                covariate_id if column_id is None else column_id
+            )
+        mapped = covariate_to_column.get(self._normalize_covariate_key(covariate_id))
+        if column_id is not None and mapped is not None:
+            if mapped != self._parse_integer_id(column_id):
+                raise ValueError(
+                    f"covariateId {covariate_id} maps to column {mapped}, "
+                    f"but the file gives column {column_id}"
+                )
+        return mapped
 
     def load_wide_from_file(self, path: str, strict: bool = True):
         if not self.wide_enabled:
@@ -392,8 +418,9 @@ class RealMLP(nn.Module):
 
         if init_path.suffix.lower() == ".json":
             covariate_ids, betas = self._parse_wide_init_json(init_path)
+            identifiers = [(covariate_id, None) for covariate_id in covariate_ids]
         else:
-            covariate_ids, betas = self._parse_wide_init_csv(init_path)
+            identifiers, betas = self._parse_wide_init_csv(init_path)
 
         covariate_to_column = self._feature_map_covariate_to_column()
         vocabulary_size = self.wide_embedding.weight.shape[0] - 1
@@ -405,20 +432,15 @@ class RealMLP(nn.Module):
             self.wide_embedding.weight.zero_()
             self.wide_embedding.weight[0].zero_()
             self.wide_bias.zero_()
-            for covariate_id, beta in zip(covariate_ids, betas):
-                covariate_str = self._normalize_covariate_key(covariate_id)
-                if covariate_str == "(Intercept)":
+            for (covariate_id, file_column_id), beta in zip(identifiers, betas):
+                label = covariate_id if covariate_id is not None else file_column_id
+                if self._normalize_covariate_key(label) == "(Intercept)":
                     intercept = float(beta)
                     continue
 
-                column_id = covariate_to_column.get(covariate_str)
-                if column_id is None:
-                    try:
-                        parsed = int(float(covariate_str))
-                    except ValueError:
-                        parsed = None
-                    if parsed is not None and 1 <= parsed <= vocabulary_size:
-                        column_id = parsed
+                column_id = self._resolve_wide_column(
+                    covariate_id, file_column_id, covariate_to_column
+                )
 
                 if column_id is None or not (1 <= int(column_id) <= vocabulary_size):
                     missing += 1

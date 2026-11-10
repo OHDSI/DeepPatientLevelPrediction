@@ -805,3 +805,26 @@ test_that("RealMLP mean aggregation ignores padding", {
   ids <- torch$tensor(matrix(c(1L, 2L, 0L, 0L), nrow = 1), dtype = torch$long)
   expect_equal(asNumeric(model$`_aggregate_tokens`(tokens, ids)), c(2, 2))
 })
+
+test_that("wide coefficients keep column and covariate IDs apart", {
+  skip_if_no_python()
+  realMlp <- importModule("RealMLP")$RealMLP
+  # column 1 has covariateId 3, so column ID 3 must not be read as covariateId 3
+  featureInfo <- mappedFeatureInfo(covariateIds = c(3, 9, 7, 8))
+  loadWide <- function(lines) {
+    file <- withr::local_tempfile(fileext = ".csv", .local_envir = parent.frame(2))
+    writeLines(lines, file)
+    model <- realMlp(
+      feature_info = featureInfo, size_embedding = 2L, size_hidden = 4L,
+      num_layers = 1L, dropout = 0, paper_mode = FALSE,
+      wide_enabled = TRUE, wide_init_path = file
+    )
+    as.numeric(model$wide_embedding$weight$detach()$numpy())[2:5]
+  }
+  expect_equal(loadWide(c("columnId,weight", "3,2")), c(0, 0, 2, 0))
+  expect_equal(loadWide(c("covariateId,weight", "3,2")), c(2, 0, 0, 0))
+  expect_equal(loadWide(c("covariateId,columnId,weight", "3,1,2")), c(2, 0, 0, 0))
+  # not in the vocabulary, so it can not be used as a column ID either
+  expect_error(loadWide(c("covariateId,weight", "2,2")), "Failed to map")
+  expect_error(loadWide(c("covariateId,columnId,weight", "3,2,2")), "maps to column")
+})
