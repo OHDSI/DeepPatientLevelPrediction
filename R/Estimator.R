@@ -826,55 +826,22 @@ doCrossValidation <- function(
         tuningMetric
       ),
       error = function(e) {
-        if (inherits(e, "torch.cuda.OutOfMemoryError")) {
-          ParallelLogger::logError(
-            "Out of memory error during cross validation, trying to continue
-            with next hyperparameter combination"
-          )
-          crossValidationResults <- list()
-          crossValidationResults$prediction <- labels
-          crossValidationResults$prediction <-
-            cbind(crossValidationResults$prediction, value = NA)
-          attr(
-            crossValidationResults$prediction,
-            "metaData"
-          )$modelType <- "binary"
-          crossValidationResults$param <- parameters
-          crossValidationResults$param$learnSchedule <- list(
-            LRs = NA,
-            bestEpoch = NA
-          )
-          nFolds <- max(labels$index)
-          hyperSummary <- data.frame(
-            metric = rep(metricName, nFolds + 1),
-            fold = c("CV", as.character(1:nFolds)),
-            value = NA
-          )
-          hyperSummary <- cbind(hyperSummary, parameters)
-          hyperSummary$learnRates <- NA
-
-          gridPerformance <- list(
-            metric = metricName,
-            cvPerformance = NA,
-            cvPerformancePerFold = rep(NA, nFolds),
-            param = parameters,
-            hyperSummary = hyperSummary
-          )
-          crossValidationResults$gridPerformance <- gridPerformance
-          learnRates <- list()
-          for (i in 1:nFolds) {
-            learnRates[[i]] <- list(
-              LRs = NA,
-              bestEpoch = NA
-            )
-          }
-          crossValidationResults$learnRates <- learnRates
-          return(crossValidationResults)
-        } else {
+        if (!isOutOfMemoryError(e)) {
           stop(e)
         }
+        ParallelLogger::logError(
+          "Out of memory error during cross validation, trying to continue
+          with next hyperparameter combination"
+        )
+        return(NULL)
       }
     )
+  if (is.null(crossValidationResults)) {
+    # outside the handler nothing refers to the error any more, so the
+    # failed combination's model, optimizer and batch can be freed
+    releaseFailedTrial()
+    crossValidationResults <- outOfMemoryResults(labels, parameters, metricName)
+  }
   gridSearchPredictions <- list(
     prediction = crossValidationResults$prediction,
     param = parameters,
@@ -895,6 +862,65 @@ doCrossValidation <- function(
       crossValidationResults$learnRates[[maxIndex]]
   }
   return(gridSearchPredictions)
+}
+
+# torch 2.5 made torch.cuda.OutOfMemoryError an alias of torch.OutOfMemoryError,
+# which is the class name that reticulate gives the R condition.
+isOutOfMemoryError <- function(e) {
+  inherits(e, c("torch.OutOfMemoryError", "torch.cuda.OutOfMemoryError"))
+}
+
+# The traceback of a Python error refers to the frames of the failed fit, and
+# with them to its model, optimizer and batch. reticulate keeps the last error,
+# so clear it before collecting garbage and emptying the CUDA cache.
+releaseFailedTrial <- function() {
+  reticulate::py_clear_last_error()
+  invisible(gc())
+  path <- system.file("python", package = "DeepPatientLevelPrediction")
+  reticulate::import_from_path("gpu_memory_cleanup", path = path)$memory_cleanup()
+  invisible(NULL)
+}
+
+outOfMemoryResults <- function(labels, parameters, metricName) {
+  crossValidationResults <- list()
+  crossValidationResults$prediction <- labels
+  crossValidationResults$prediction <-
+    cbind(crossValidationResults$prediction, value = NA)
+  attr(
+    crossValidationResults$prediction,
+    "metaData"
+  )$modelType <- "binary"
+  crossValidationResults$param <- parameters
+  crossValidationResults$param$learnSchedule <- list(
+    LRs = NA,
+    bestEpoch = NA
+  )
+  nFolds <- max(labels$index)
+  hyperSummary <- data.frame(
+    metric = rep(metricName, nFolds + 1),
+    fold = c("CV", as.character(1:nFolds)),
+    value = NA
+  )
+  hyperSummary <- cbind(hyperSummary, parameters)
+  hyperSummary$learnRates <- NA
+
+  gridPerformance <- list(
+    metric = metricName,
+    cvPerformance = NA,
+    cvPerformancePerFold = rep(NA, nFolds),
+    param = parameters,
+    hyperSummary = hyperSummary
+  )
+  crossValidationResults$gridPerformance <- gridPerformance
+  learnRates <- list()
+  for (i in 1:nFolds) {
+    learnRates[[i]] <- list(
+      LRs = NA,
+      bestEpoch = NA
+    )
+  }
+  crossValidationResults$learnRates <- learnRates
+  return(crossValidationResults)
 }
 
 doCrossValidationImpl <- function(
