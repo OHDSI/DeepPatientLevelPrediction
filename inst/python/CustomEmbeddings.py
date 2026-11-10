@@ -96,13 +96,17 @@ class CustomEmbeddings(nn.Module):
         return embeddings  # default is identity for Euclidian embeddings
 
     def forward(self, x):
+        # split a copy, so that the caller's batch keeps its custom features,
+        # which RealMLP uses again after the embedding
+        x = dict(x)
+        feature_ids = x["feature_ids"]
         # count before the feature ids are split into custom and regular below
-        sequence_lengths = (x["feature_ids"] != 0).sum(dim=1, keepdim=True).clamp_min(1)
-        custom_embeddings_mask = torch.isin(x["feature_ids"],
-                                            self.custom_indices.to(x["feature_ids"].device))
-        custom_features = torch.where(custom_embeddings_mask, x["feature_ids"], torch.tensor(0))
-        x["feature_ids"] = torch.where(~custom_embeddings_mask, x["feature_ids"], torch.tensor(0))
-        x["feature_values"] = torch.where(~custom_embeddings_mask, x["feature_values"], torch.tensor(0.0))
+        sequence_lengths = (feature_ids != 0).sum(dim=1, keepdim=True).clamp_min(1)
+        custom_embeddings_mask = torch.isin(feature_ids,
+                                            self.custom_indices.to(feature_ids.device))
+        custom_features = torch.where(custom_embeddings_mask, feature_ids, 0)
+        x["feature_ids"] = torch.where(custom_embeddings_mask, 0, feature_ids)
+        x["feature_values"] = torch.where(custom_embeddings_mask, 0.0, x["feature_values"])
         custom_mapped_features = self.vocab_to_custom[custom_features]
         custom_embeddings = self.custom_embeddings(custom_mapped_features)
         custom_embeddings = self.process_custom_embeddings(custom_embeddings)
