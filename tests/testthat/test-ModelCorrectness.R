@@ -828,3 +828,28 @@ test_that("wide coefficients keep column and covariate IDs apart", {
   expect_error(loadWide(c("covariateId,weight", "2,2")), "Failed to map")
   expect_error(loadWide(c("covariateId,columnId,weight", "3,2,2")), "maps to column")
 })
+
+test_that("data-dependent initialization leaves frozen RealMLP weights alone", {
+  skip_if_no_python()
+  realMlp <- importModule("RealMLP")$RealMLP
+  batch <- list(
+    feature_ids = torch$tensor(matrix(c(1L, 2L, 3L, 4L), nrow = 2), dtype = torch$long),
+    feature_values = torch$ones(2L, 2L, dtype = torch$float)
+  )
+  layerWeights <- function(freeze) {
+    torch$manual_seed(42L)
+    model <- realMlp(
+      feature_info = mappedFeatureInfo(), size_embedding = 2L, size_hidden = 4L,
+      num_layers = 1L, dropout = 0, paper_mode = FALSE,
+      wide_enabled = TRUE, freeze_deep = freeze
+    )
+    layer <- model$`_linear_layers`[[1]]
+    before <- c(asNumeric(layer$weight), asNumeric(layer$bias))
+    model$data_dependent_init(list(batch))
+    list(before = before, after = c(asNumeric(layer$weight), asNumeric(layer$bias)))
+  }
+  frozen <- layerWeights(TRUE)
+  expect_equal(frozen$after, frozen$before)
+  trainable <- layerWeights(FALSE)
+  expect_false(isTRUE(all.equal(trainable$after, trainable$before)))
+})

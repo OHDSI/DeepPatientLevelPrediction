@@ -713,11 +713,18 @@ class RealMLP(nn.Module):
         if len(batches) == 0:
             return
 
+        # frozen weights, e.g. from a pretrained deep branch, must stay unchanged
+        trainable_layers = [
+            layer for layer in self._linear_layers if layer.weight.requires_grad
+        ]
+        if len(trainable_layers) == 0:
+            return
+
         was_training = self.training
         self.eval()
         try:
             with torch.no_grad():
-                for layer in self._linear_layers:
+                for layer in trainable_layers:
                     layer_outputs = self._collect_layer_outputs(layer, batches)
 
                     if len(layer_outputs) == 0:
@@ -740,7 +747,7 @@ class RealMLP(nn.Module):
                             f"pre_var_mean={variances.mean().item():.6f} | "
                             f"post_var_mean={post_var.mean().item():.6f}"
                         )
-                    if layer.bias is not None:
+                    if layer.bias is not None and layer.bias.requires_grad:
                         target_value = self._resolve_bias_target(
                             in_features=layer.in_features,
                             bias_mode=bias_mode,
