@@ -402,6 +402,68 @@ test_that("final fitting trains when the data is smaller than one batch", {
   )
 })
 
+customEmbeddingEstimator <- function(concepts, weights, conceptIds = 1:4 + 1000) {
+  embeddingFile <- withr::local_tempfile(fileext = ".pt", .local_envir = parent.frame())
+  torch$save(list(
+    concept_ids = torch$tensor(as.array(as.integer(concepts)), dtype = torch$long),
+    embeddings = torch$tensor(weights, dtype = torch$float)
+  ), embeddingFile)
+  settings <- setCustomEmbeddingModel(
+    embeddingFilePath = embeddingFile,
+    modelSettings = setMultiLayerPerceptron(
+      numLayers = 1, sizeHidden = 4, dropout = 0, sizeEmbedding = 2,
+      estimatorSettings = setEstimator(learningRate = 0.001, device = "cpu", seed = 42),
+      randomSample = 1
+    )
+  )
+  parameters <- settings$param[[1]]
+  parameters$modelType <- settings$modelType
+  parameters$feature_info <- mappedFeatureInfo(conceptIds = conceptIds)
+  createEstimator(list(
+    modelParameters = parameters,
+    estimatorSettings = settings$estimatorSettings
+  ))
+}
+
+embedRow <- function(estimator, ids) {
+  ids <- matrix(as.integer(ids), nrow = 1)
+  asNumeric(estimator$model$embedding(list(
+    feature_ids = torch$tensor(ids, dtype = torch$long),
+    feature_values = torch$ones(dim(ids), dtype = torch$float)
+  )))
+}
+
+test_that("custom embeddings are assigned to their own covariates", {
+  skip_if_no_python()
+  # concepts in the file are in the opposite order of their columns
+  estimator <- customEmbeddingEstimator(
+    concepts = c(1003, 1001),
+    weights = rbind(c(3, 30), c(1, 10))
+  )
+  expect_equal(unlist(estimator$model$embedding$custom_indices$tolist()), c(3L, 1L))
+  expect_equal(embedRow(estimator, 1), c(1, 10))
+  expect_equal(embedRow(estimator, 3), c(3, 30))
+})
+
+test_that("custom embeddings work for a single matching concept", {
+  skip_if_no_python()
+  estimator <- customEmbeddingEstimator(concepts = 1002, weights = rbind(c(5, 50)))
+  expect_equal(unlist(estimator$model$embedding$custom_indices$tolist()), 2L)
+  expect_equal(embedRow(estimator, 2), c(5, 50))
+})
+
+test_that("custom embedding covariates sharing a concept each get its vector", {
+  skip_if_no_python()
+  estimator <- customEmbeddingEstimator(
+    concepts = 1001,
+    weights = rbind(c(7, 70)),
+    conceptIds = c(1001, 1002, 1001, 1003)
+  )
+  expect_equal(unlist(estimator$model$embedding$custom_indices$tolist()), c(1L, 3L))
+  expect_equal(embedRow(estimator, 1), c(7, 70))
+  expect_equal(embedRow(estimator, 3), c(7, 70))
+})
+
 test_that("the tuning metric picks the best hyperparameters", {
   results <- list(
     list(gridPerformance = list(cvPerformance = 0.2), prediction = "a"),
