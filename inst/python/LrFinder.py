@@ -84,6 +84,7 @@ class LrFinder:
             lrs[i] = self.estimator.optimizer.param_groups[0]["lr"]
 
             self.estimator.optimizer.step()
+            self.estimator.optimizer.zero_grad()
             self.estimator.scheduler.step()
 
             if losses[i] < best_loss:

@@ -386,6 +386,22 @@ test_that("checkpoints do not accumulate over the epochs", {
   expect_false(is.null(checkpoints$get(2L)))
 })
 
+test_that("the learning rate finder clears gradients between trials", {
+  skip_if_no_python()
+  toy <- toyPython()
+  estimator <- toy$toy_estimator(
+    importModule("Estimator")$Estimator, optimizer = torch$optim$AdamW,
+    weight_decay = 0
+  )
+  finder <- importModule("LrFinder")$LrFinder(
+    estimator, lr_settings = list(num_lr = 2L, min_lr = 0.01, max_lr = 0.1)
+  )
+  dataset <- toy$ToyData(c(1, 1), c(1, 1))
+  finder$get_lr(dataset)
+  # after the last trial the gradient has been cleared
+  expect_null(estimator$model$weight$grad)
+})
+
 test_that("final fitting trains when the data is smaller than one batch", {
   skip_if_no_python()
   toy <- toyPython()
