@@ -392,7 +392,13 @@ class RealMLP(nn.Module):
             return None
 
     def _resolve_wide_column(self, covariate_id, column_id, covariate_to_column):
-        """Find the model column of a coefficient, keeping the two ID types apart."""
+        """Find the model column of a coefficient, keeping the two ID types apart.
+
+        A covariateId is translated with the current feature map. The columnId in
+        a file belongs to the model the file came from, for example a
+        covariateImportance export, so it is only used when the row has no
+        covariateId or there is no feature map to translate with.
+        """
         if covariate_id is None:
             return self._parse_integer_id(column_id)
         if not covariate_to_column:
@@ -400,14 +406,7 @@ class RealMLP(nn.Module):
             return self._parse_integer_id(
                 covariate_id if column_id is None else column_id
             )
-        mapped = covariate_to_column.get(self._normalize_covariate_key(covariate_id))
-        if column_id is not None and mapped is not None:
-            if mapped != self._parse_integer_id(column_id):
-                raise ValueError(
-                    f"covariateId {covariate_id} maps to column {mapped}, "
-                    f"but the file gives column {column_id}"
-                )
-        return mapped
+        return covariate_to_column.get(self._normalize_covariate_key(covariate_id))
 
     def load_wide_from_file(self, path: str, strict: bool = True):
         if not self.wide_enabled:
