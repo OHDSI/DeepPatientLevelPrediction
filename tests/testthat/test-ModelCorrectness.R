@@ -342,6 +342,50 @@ test_that("an automatic learning rate only sees the training folds", {
   expect_equal(searched, list(c(2L, 3L, 6L, 7L), c(0L, 1L, 4L, 5L)))
 })
 
+test_that("the restored checkpoint holds the weights of the best epoch", {
+  skip_if_no_python()
+  toy <- toyPython()
+  estimatorClass <- importModule("Estimator")$Estimator
+  dataset <- toy$ToyData(c(-1, 1), c(1, 0))
+
+  # the weight moves away from the optimum, so the first epoch is the best one
+  earlyStopping <- list(fun = NULL, params = list(patience = 1L, mode = "min"))
+  for (settings in list(list(early_stopping = NULL), list(early_stopping = earlyStopping))) {
+    estimator <- do.call(toy$toy_estimator, c(
+      list(estimatorClass, epochs = 4L, learning_rate = 0.5, batch_size = 2L),
+      settings
+    ))
+    epochScores <- c(1, 2, 3, 4)
+    epoch <- 0L
+    weightsPerEpoch <- numeric()
+    reticulate::py_set_attr(estimator, "score", function(dataloader) {
+      epoch <<- epoch + 1L
+      weightsPerEpoch[epoch] <<- estimator$model$weight$item()
+      list(metric = epochScores[epoch], auc = 0.5, loss = epochScores[epoch])
+    })
+    estimator$fit(dataset, dataset)
+
+    expect_equal(estimator$best_epoch, 0L)
+    expect_equal(estimator$model$weight$item(), weightsPerEpoch[1], tolerance = 1e-6)
+    expect_false(isTRUE(all.equal(weightsPerEpoch[1], weightsPerEpoch[2])))
+  }
+})
+
+test_that("checkpoints do not accumulate over the epochs", {
+  skip_if_no_python()
+  toy <- toyPython()
+  estimator <- toy$toy_estimator(
+    importModule("Estimator")$Estimator, early_stopping = NULL
+  )
+  checkpoints <- reticulate::dict()
+  scores <- list(list(metric = 3), list(metric = 2), list(metric = 1))
+  for (epoch in 0:2) {
+    estimator$`_keep_best_checkpoint`(checkpoints, scores, epoch)
+  }
+  expect_equal(reticulate::py_len(checkpoints), 1L)
+  expect_false(is.null(checkpoints$get(2L)))
+})
+
 test_that("final fitting trains when the data is smaller than one batch", {
   skip_if_no_python()
   toy <- toyPython()
