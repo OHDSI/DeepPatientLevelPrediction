@@ -20,7 +20,7 @@ Bug fixes
 - Report training and validation loss per observation when the last batch is incomplete.
 - Keep patients without any retained covariates when training and predicting, and raise an error if predictions do not match the cohort.
 - Pass the `beta2` setting of RealMLP to the optimizer. AdamW used its default of 0.999 instead of RealMLP's 0.95, so RealMLP results change.
-- Assign custom embeddings to the right covariates. Vectors were shifted to the preceding column, and depended on the order of the embeddings file.
+- Assign custom embeddings to the right covariates. Vectors were shifted to the preceding column, and depended on the order of the embeddings file. A concept with more than one vector in the file is now an error.
 - Make predictions independent of the padded sequence width for custom embedding models, RealMLP with mean aggregation and convolutional positional encodings.
 - Compute time token gaps in days from the time reference: its `timePart` and `timeInterval` for temporal sequence covariates, or the start day of each time window for covariates with explicit windows. Raise an error if neither is available.
 - Keep column and covariate IDs apart when loading RealMLP wide coefficients. A row's covariateId is used when it has one, so coefficients exported from another model, such as a covariateImportance file, load correctly.
