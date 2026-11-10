@@ -342,6 +342,22 @@ test_that("an automatic learning rate only sees the training folds", {
   expect_equal(searched, list(c(2L, 3L, 6L, 7L), c(0L, 1L, 4L, 5L)))
 })
 
+test_that("final fitting trains when the data is smaller than one batch", {
+  skip_if_no_python()
+  toy <- toyPython()
+  estimator <- toy$toy_estimator(
+    importModule("Estimator")$Estimator, batch_size = 512L, epochs = 1L
+  )
+  estimator$fit_whole_training_set(toy$ToyData(c(-1, 1), c(0, 1)))
+  expect_false(estimator$model$weight$item() == 0)
+
+  emptyEstimator <- toy$toy_estimator(importModule("Estimator")$Estimator)
+  expect_error(
+    emptyEstimator$fit_whole_training_set(toy$ToyData(numeric(), numeric())),
+    "empty dataset"
+  )
+})
+
 test_that("the tuning metric picks the best hyperparameters", {
   results <- list(
     list(gridPerformance = list(cvPerformance = 0.2), prediction = "a"),
