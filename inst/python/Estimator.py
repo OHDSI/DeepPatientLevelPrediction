@@ -1,6 +1,7 @@
 # Copyright 2022-2026 Observational Health Data Sciences and Informatics
 # SPDX-License-Identifier: Apache-2.0
 
+import copy
 import time
 import pathlib
 import inspect
@@ -482,6 +483,26 @@ class Estimator:
             worker_init_fn=self._seed_worker if self.num_workers > 0 else None,
         )
 
+    def _keep_best_checkpoint(self, checkpoints, all_scores, epoch):
+        """Copy the current weights if this epoch is the best one so far.
+
+        state_dict() shares storage with the live parameters, so a checkpoint
+        has to be a copy to survive later optimizer steps. Only the best
+        checkpoint is retained to avoid holding one model per epoch in memory.
+        """
+        candidates = [*checkpoints, epoch]
+        metric_values = [all_scores[i]["metric"] for i in candidates]
+        best = candidates[select_best_epoch(metric_values, self.metric["mode"])]
+        if best != epoch:
+            return
+        checkpoints.clear()
+        checkpoints[epoch] = {
+            name: value.detach().cpu().clone()
+            if torch.is_tensor(value)
+            else copy.deepcopy(value)
+            for name, value in self.model.state_dict().items()
+        }
+
     def fit(self, dataset, test_dataset):
         self._maybe_log_input_fingerprint(dataset, stage="fit")
         train_dataloader = self._train_dataloader(dataset)
@@ -525,7 +546,7 @@ class Estimator:
             if self.early_stopper:
                 self.early_stopper(scores["metric"])
                 if self.early_stopper.improved:
-                    model_state_dict[epoch] = self.model.state_dict()
+                    self._keep_best_checkpoint(model_state_dict, all_scores, epoch)
                     trained_epochs[epoch] = current_epoch
                 if self.early_stopper.early_stop:
                     print("Early stopping, validation metric stopped improving")
@@ -537,7 +558,7 @@ class Estimator:
                     )
                     return
             else:
-                model_state_dict[epoch] = self.model.state_dict()
+                self._keep_best_checkpoint(model_state_dict, all_scores, epoch)
                 trained_epochs[epoch] = current_epoch
         print(
             f"Average time per epoch was: {torch.mean(torch.as_tensor(times)).item()} seconds"
@@ -616,9 +637,15 @@ class Estimator:
             return scores
 
     def finish_fit(self, scores, model_state_dict, epoch, learning_rates):
-        metric_values = [x["metric"] for x in scores]
+        if not isinstance(model_state_dict, dict):
+            model_state_dict = dict(enumerate(model_state_dict))
+        # only epochs with a retained checkpoint can be restored
+        checkpointed_epochs = sorted(model_state_dict)
+        metric_values = [scores[i]["metric"] for i in checkpointed_epochs]
         if self.metric["mode"] in ("max", "min"):
-            best_epoch_index = select_best_epoch(metric_values, self.metric["mode"])
+            best_epoch_index = checkpointed_epochs[
+                select_best_epoch(metric_values, self.metric["mode"])
+            ]
         else:
             raise ValueError(f"Unknown metric mode: {self.metric['mode']}")
 
