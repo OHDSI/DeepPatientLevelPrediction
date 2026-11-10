@@ -1160,6 +1160,30 @@ test_that("the Poincare log map uses the curvature and is finite at the origin",
   expect_equal(asNumeric(origin$grad), c(1, 1))
 })
 
+test_that("the Poincare log map is accurate near the boundary and for small curvatures", {
+  skip_if_no_python()
+  logmap0 <- importModule("CustomEmbeddings")$logmap0
+  mapOne <- function(x, curvature, dtype) {
+    point <- torch$tensor(matrix(x), dtype = dtype, requires_grad = TRUE)
+    mapped <- logmap0(point, curvature)
+    mapped$sum()$backward()
+    c(value = mapped$item(), gradient = point$grad$item())
+  }
+  # the largest float32 below 1 is inside the ball with curvature -1
+  x <- 1 - 2^-24
+  nearBoundary <- mapOne(x, 1, torch$float32)
+  expect_equal(nearBoundary[["value"]], atanh(x), tolerance = 1e-5)
+  expect_true(is.finite(nearBoundary[["gradient"]]))
+  # 500 squared overflows float16, but with curvature -1e-6 the point is inside
+  smallCurvature <- mapOne(500, 1e-6, torch$float16)
+  expect_equal(smallCurvature[["value"]], atanh(0.5) / 0.5 * 500, tolerance = 1e-3)
+  expect_true(is.finite(smallCurvature[["gradient"]]))
+  # either side of where the series takes over
+  for (x in c(0.0099, 0.0101)) {
+    expect_equal(mapOne(x, 1, torch$float64)[["value"]], atanh(x), tolerance = 1e-12)
+  }
+})
+
 test_that("setCustomEmbeddingModel passes the curvature to Poincare embeddings", {
   skip_if_no_python()
   embeddingFile <- withr::local_tempfile(fileext = ".pt")
