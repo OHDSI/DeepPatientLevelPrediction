@@ -402,6 +402,22 @@ test_that("final fitting trains when the data is smaller than one batch", {
   )
 })
 
+test_that("RealMLP passes its beta2 setting to the optimizer", {
+  skip_if_no_python()
+  settings <- setRealMLP(sizeHidden = 4L, numLayers = 1L, sizeEmbedding = 4L)
+  parameters <- settings$param[[1]]
+  parameters$modelType <- settings$modelType
+  parameters$feature_info <- mappedFeatureInfo()
+  estimator <- createEstimator(list(
+    modelParameters = parameters,
+    estimatorSettings = settings$estimatorSettings
+  ))
+  expect_equal(estimator$beta2, settings$estimatorSettings$beta2)
+  for (group in estimator$optimizer$param_groups) {
+    expect_equal(group$betas[[2]], settings$estimatorSettings$beta2)
+  }
+})
+
 customEmbeddingEstimator <- function(concepts, weights, conceptIds = 1:4 + 1000) {
   embeddingFile <- withr::local_tempfile(fileext = ".pt", .local_envir = parent.frame())
   torch$save(list(

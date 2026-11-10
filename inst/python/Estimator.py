@@ -109,7 +109,20 @@ class Estimator:
         self.has_data_dependent_init = hasattr(self.model, "data_dependent_init")
         self.has_batch_diagnostics = hasattr(self.model, "collect_batch_diagnostics")
 
-        self.beta2 = float(parameters["estimator_settings"].get("beta2", 0.999))
+        # R converts beta2 to beta_2, while Python callers may pass beta2 directly.
+        self.beta2_key = next(
+            (
+                key
+                for key in ("beta_2", "beta2")
+                if key in parameters["estimator_settings"]
+            ),
+            None,
+        )
+        self.beta2 = float(
+            parameters["estimator_settings"][self.beta2_key]
+            if self.beta2_key is not None
+            else 0.999
+        )
         self.eps = float(parameters["estimator_settings"].get("eps", 1e-8))
         self.label_smoothing = float(parameters["estimator_settings"].get("label_smoothing", 0.0))
         self.base_dropout = float(parameters["model_parameters"].get("dropout", 0.0))
@@ -344,7 +357,7 @@ class Estimator:
             "lr": self.learning_rate,
             "weight_decay": self.weight_decay,
         }
-        if "beta2" in self.estimator_settings:
+        if self.beta2_key is not None:
             kwargs["betas"] = (0.9, self.beta2)
         if "eps" in self.estimator_settings:
             kwargs["eps"] = self.eps
