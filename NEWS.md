@@ -7,9 +7,27 @@ New features
 Bug fixes
 - Avoid a segfault in batched matrix multiplication on Ubuntu 26.04. On Linux, torch is now imported with `RTLD_DEEPBIND` so that it does not call the system OpenBLAS, which has a crash in `cblas_sgemm_batch`. This is a temporary workaround until distributions ship the OpenBLAS fix. A startup message explains the risk if torch was already imported before the package loaded (#191).
 - Normalize custom embedding concept IDs for Polars 2 (#189).
+- Restore the weights of the best epoch after training. Checkpoints shared storage with the live model, so cross-validation predictions came from the last epoch.
+- Select the automatic learning rate within each fold on training data only, so that held-out outcomes no longer influence it.
+- Invalidate the training cache when the data, outcomes, folds, feature mapping, estimator settings, tuning metric, or the contents of finetuning and custom embedding files change, not only the parameter grid. Caches from earlier versions are recomputed.
+- Use the tuning metric and direction requested through `hyperparameterSettings` when selecting hyperparameters and trimming the cache. Its `search`, `sampleSize`, `randomSeed` and `generator` settings are not used, and a warning now says so; the search is set in the model settings.
+- Give tied positive and negative predictions half credit in the AUC used for early stopping and epoch selection.
+- Clear gradients between learning rate finder trials.
+- Train the final model when the data is smaller than one batch, instead of silently returning an untrained model.
+- Report training and validation loss per observation when the last batch is incomplete.
+- Keep patients without any retained covariates when training and predicting, and raise an error if predictions do not match the cohort.
+- Pass the `beta2` setting of RealMLP to the optimizer. AdamW used its default of 0.999 instead of RealMLP's 0.95, so RealMLP results change.
+- Assign custom embeddings to the right covariates. Vectors were shifted to the preceding column, and depended on the order of the embeddings file.
+- Make predictions independent of the padded sequence width for custom embedding models, RealMLP with mean aggregation and convolutional positional encodings.
+- Compute time token gaps using the `timePart` and `timeInterval` of the time reference, and raise an error if these are unavailable.
+- Keep column and covariate IDs apart when loading RealMLP wide coefficients.
+- Leave frozen RealMLP layers unchanged during data-dependent initialization.
+- Use the requested `sigma` in `TemporalPE` when it is not learnable. It was applied as exp(sigma), so the default of 1 acted as 2.72.
 
 Runtime and compatibility
 - Require Python 3.11 or newer. Python 3.10 reached end-of-life in October 2026, and duckdb 2.0.0 requires Python 3.11.
+- Require PatientLevelPrediction 6.6.0 or newer, which added tuning metrics.
+- Models trained with custom embeddings, RealMLP mean aggregation, time tokens, convolutional positional encodings or a fixed `TemporalPE` sigma compute their inputs differently now. Predictions from such saved models change, so retrain them.
 
 Documentation and CI
 - Add an Ubuntu 26.04 CI job and a regression test for batched matrix multiplication.
