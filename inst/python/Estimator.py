@@ -464,21 +464,27 @@ class Estimator:
     def _maybe_run_realmlp_data_dependent_init(self, dataloader):
         self._maybe_run_data_dependent_init(dataloader)
 
-    def fit(self, dataset, test_dataset):
-        self._maybe_log_input_fingerprint(dataset, stage="fit")
-        train_dataloader = DataLoader(
+    def _train_dataloader(self, dataset):
+        if len(dataset) == 0:
+            raise ValueError("Cannot train on an empty dataset")
+        return DataLoader(
             dataset=dataset,
             batch_size=None,
             sampler=BatchSampler(
                 sampler=RandomSampler(dataset, generator=self.train_generator),
                 batch_size=self.batch_size,
-                drop_last=True if len(dataset) > self.batch_size else False,
+                # keep the only batch when the data is smaller than one batch
+                drop_last=len(dataset) > self.batch_size,
             ),
             num_workers=self.num_workers,
             persistent_workers=self.persistent_workers,
             pin_memory=True,
             worker_init_fn=self._seed_worker if self.num_workers > 0 else None,
         )
+
+    def fit(self, dataset, test_dataset):
+        self._maybe_log_input_fingerprint(dataset, stage="fit")
+        train_dataloader = self._train_dataloader(dataset)
         test_dataloader = DataLoader(
             dataset=test_dataset,
             batch_size=None,
@@ -679,19 +685,7 @@ class Estimator:
 
     def fit_whole_training_set(self, dataset, learning_rates=None):
         self._maybe_log_input_fingerprint(dataset, stage="fit_whole_training_set")
-        dataloader = DataLoader(
-            dataset=dataset,
-            batch_size=None,
-            sampler=BatchSampler(
-                sampler=RandomSampler(dataset, generator=self.train_generator),
-                batch_size=self.batch_size,
-                drop_last=True,
-            ),
-            num_workers=self.num_workers,
-            persistent_workers=self.persistent_workers,
-            pin_memory=True,
-            worker_init_fn=self._seed_worker if self.num_workers > 0 else None,
-        )
+        dataloader = self._train_dataloader(dataset)
         self._maybe_run_data_dependent_init(dataloader)
         if self.apply_dynamic_schedule:
             if isinstance(learning_rates, list):
