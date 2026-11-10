@@ -184,10 +184,7 @@ class Embedding(nn.Module):
         categorical_embeddings = self.embedding(categorical_mapped_features)
 
         if self.numerical_embedding is None:
-            if self.aggregate == "none":
-                return categorical_embeddings
-            else:
-                return categorical_embeddings / numerical_mask.shape[1]
+            return categorical_embeddings
         numerical_embeddings = self.numerical_embedding(
             numerical_mapped_features, numerical_values
         )
@@ -199,9 +196,7 @@ class Embedding(nn.Module):
                 categorical_embeddings,
             )
         else:
-            merged_embeddings = (
-                categorical_embeddings + numerical_embeddings
-            ) / numerical_mask.shape[1]
+            merged_embeddings = categorical_embeddings + numerical_embeddings
         return merged_embeddings
 
 

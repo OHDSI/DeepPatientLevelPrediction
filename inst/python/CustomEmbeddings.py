@@ -102,6 +102,8 @@ class CustomEmbeddings(nn.Module):
             return fixed_embeddings + trainable_embeddings
 
     def forward(self, x):
+        # count before the feature ids are split into custom and regular below
+        sequence_lengths = (x["feature_ids"] != 0).sum(dim=1, keepdim=True).clamp_min(1)
         custom_embeddings_mask = torch.isin(x["feature_ids"],
                                             self.custom_indices.to(x["feature_ids"].device))
         custom_features = torch.where(custom_embeddings_mask, x["feature_ids"], torch.tensor(0))
@@ -120,7 +122,8 @@ class CustomEmbeddings(nn.Module):
         regular_embeddings = self.regular_embeddings(x)
         custom_embeddings = self.linear_transform(custom_embeddings)
         if self.aggregate == "sum":
-            return (custom_embeddings + regular_embeddings) / custom_embeddings_mask.shape[1]
+            sequence_lengths = sequence_lengths.to(dtype=custom_embeddings.dtype)
+            return (custom_embeddings + regular_embeddings) / sequence_lengths
         else:
             return custom_embeddings + regular_embeddings
 

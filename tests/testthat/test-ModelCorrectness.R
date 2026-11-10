@@ -464,6 +464,17 @@ test_that("custom embedding covariates sharing a concept each get its vector", {
   expect_equal(embedRow(estimator, 3), c(7, 70))
 })
 
+test_that("aggregated custom embeddings do not depend on padding", {
+  skip_if_no_python()
+  estimator <- customEmbeddingEstimator(concepts = 1001, weights = rbind(c(1, 10)))
+  # one custom covariate with one regular covariate
+  unpadded <- embedRow(estimator, c(1, 2))
+  expect_equal(embedRow(estimator, c(1, 2, 0, 0)), unpadded, tolerance = 1e-6)
+  regular <- embedRow(estimator, 2)
+  expect_equal(unpadded, (c(1, 10) + regular) / 2, tolerance = 1e-6)
+  expect_equal(embedRow(estimator, c(1, 0, 0)), c(1, 10), tolerance = 1e-6)
+})
+
 test_that("the tuning metric picks the best hyperparameters", {
   results <- list(
     list(gridPerformance = list(cvPerformance = 0.2), prediction = "a"),
