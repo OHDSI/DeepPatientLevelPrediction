@@ -1100,3 +1100,35 @@ remaining = cleanup_with_high_memory_use()
 ", local = TRUE)
   expect_equal(result$remaining, 4)
 })
+
+poincareEmbedding <- function(points, aggregate = "none", ...) {
+  importModule("CustomEmbeddings")$PoincareEmbeddings(
+    custom_embedding_weights = torch$tensor(points, dtype = torch$float),
+    embedding_dim = ncol(points),
+    feature_info = mappedFeatureInfo(),
+    custom_indices = torch$tensor(array(seq_len(nrow(points))), dtype = torch$long),
+    aggregate = aggregate,
+    ...
+  )
+}
+
+embedTokens <- function(embedding, ids) {
+  embedding(list(
+    feature_ids = torch$tensor(matrix(as.integer(ids), nrow = 1), dtype = torch$long),
+    feature_values = torch$ones(c(1L, length(ids)), dtype = torch$float)
+  ))
+}
+
+test_that("Poincare embeddings add the trainable offset in the tangent space", {
+  skip_if_no_python()
+  point <- c(0.3, 0.4)
+  offset <- c(0.2, -0.1)
+  embedding <- poincareEmbedding(rbind(point))
+  embedding$custom_embeddings_trainable$weight$data$copy_(
+    torch$tensor(rbind(c(0, 0), offset), dtype = torch$float)
+  )
+  # the log map at the origin of a point x with curvature 1
+  tangent <- atanh(sqrt(sum(point^2))) / sqrt(sum(point^2)) * point
+  tokens <- embedTokens(embedding, c(1, 2))
+  expect_equal(asNumeric(tokens$select(1L, 0L)$reshape(-1L)), tangent + offset, tolerance = 1e-6)
+})

@@ -140,6 +140,14 @@ def logmap0(input_tensor: torch.Tensor):
 
 
 class PoincareEmbeddings(CustomEmbeddings):
+    """Custom embeddings that are points in the Poincare ball.
+
+    The points are mapped to the tangent space at the origin, which is a
+    Euclidean space. The trainable offsets are vectors in that tangent space
+    too, so they are added to the mapped points, as for other custom
+    embeddings.
+    """
+
     @staticmethod
     def process_custom_embeddings(embeddings: torch.Tensor) -> torch.Tensor:
         """
@@ -154,35 +162,3 @@ class PoincareEmbeddings(CustomEmbeddings):
             A logmapped tensor of same shape as the input tensor
         """
         return logmap0(embeddings)
-
-    def combine_embeddings(
-        self, fixed_embeddings: torch.Tensor, trainable_embeddings: torch.Tensor
-    ) -> torch.Tensor:
-        if self.aggregate == "sum":
-            # TODO another mobius add ? 
-            return torch.sum(fixed_embeddings + trainable_embeddings, dim=1)
-        else:
-            return self.mobius_add(fixed_embeddings, trainable_embeddings)
-
-    def mobius_add(
-        self, embedding1: torch.Tensor, embedding2: torch.Tensor
-    ) -> torch.Tensor:
-        """
-        Perform Mobius addition of two embeddings.
-
-        Args:
-            embedding1: shape N x D where N is the number of embeddings and
-                D is the embedding dimension
-            embedding2: shape N x D where N is the number of embeddings and
-                D is the embedding dimension
-
-        Returns:
-            A tensor of shape N x D where N is the number of embeddings and
-            D is the embedding dimension
-        """
-        x2 = embedding1.pow(2).sum(dim=-1, keepdim=True)
-        y2 = embedding2.pow(2).sum(dim=-1, keepdim=True)
-        xy = (embedding1 * embedding2).sum(dim=-1, keepdim=True)
-        num = (1 + 2 * xy + y2) * embedding1 + (1 - x2) * embedding2
-        denom = 1 + 2 * xy + x2 * y2
-        return num / denom.clamp_min(1e-15)
