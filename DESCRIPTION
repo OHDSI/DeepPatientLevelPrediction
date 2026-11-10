@@ -37,7 +37,7 @@ Imports:
     PatientLevelPrediction (>= 6.6.0),
     R6,
     reticulate (>= 1.41),
-    rlang,
+    rlang (>= 1.0.0),
     withr
 Suggests:
     curl,

@@ -111,8 +111,10 @@ setEstimator <- function(
   } else {
     findLR <- FALSE
   }
+  generatedSeed <- NULL
   if (is.null(seed)) {
     seed <- as.integer(sample(1e5, 1))
+    generatedSeed <- seed
   }
   estimatorSettings <- list(
     learningRate = learningRate,
@@ -165,6 +167,7 @@ setEstimator <- function(
   }
 
   estimatorSettings$paramsToTune <- extractParamsToTune(estimatorSettings)
+  attr(estimatorSettings, "generatedSeed") <- generatedSeed
   return(estimatorSettings)
 }
 
@@ -637,15 +640,20 @@ gridCvDeep <- function(
 
   paramSearch <- modelSettings$param
 
-  # setup cache for hyperparameterResults
-  trainCache <- setupCache(analysisPath, paramSearch)
-  hyperparameterResults <- trainCache$getGridSearchPredictions()
   dataset <- createDataset(
     data = mappedData,
     labels = labels,
     temporalSettings = attr(paramSearch, "temporalSettings")
   )
   maximize <- tuningMetric$maximize %||% TRUE
+
+  # setup cache for hyperparameterResults
+  trainCache <- setupCache(
+    analysisPath,
+    paramSearch,
+    createCacheFingerprint(dataset, labels, modelSettings, tuningMetric)
+  )
+  hyperparameterResults <- trainCache$getGridSearchPredictions()
 
   if (!trainCache$isFull()) {
     for (gridId in trainCache$getLastGridSearchIndex():length(paramSearch)) {
