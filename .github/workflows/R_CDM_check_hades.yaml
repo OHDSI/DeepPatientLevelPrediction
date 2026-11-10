@@ -142,8 +142,9 @@ jobs:
         with:
           r-version: devel
           # Package Manager has no binaries for R-devel, so dependencies were built
-          # from source, duckdb alone taking over an hour. Asking as R release gets
-          # the release binaries, so only this package is checked under R-devel.
+          # from source, duckdb alone taking over an hour. When install.packages()
+          # asks as R release, Package Manager serves the release binaries, so only
+          # this package is checked under R-devel.
           http-user-agent: release
 
       - uses: r-lib/actions/setup-tinytex@v2
@@ -164,11 +165,13 @@ jobs:
             eval sudo $cmd
           done < <(Rscript -e 'writeLines(remotes::system_requirements("ubuntu", "24.04"))')
 
-      - uses: r-lib/actions/setup-r-dependencies@v2
-        with:
-          cache: always
-          extra-packages: any::rcmdcheck
-          needs: check
+      # Not setup-r-dependencies: pak looks up binaries by the running R version
+      # and ignores the user agent, so it still builds everything from source.
+      - name: Install dependencies
+        run: |
+          install.packages("rcmdcheck")
+          remotes::install_deps(dependencies = TRUE, upgrade = "always")
+        shell: Rscript {0}
 
       - uses: r-lib/actions/check-r-package@v2
         with:
