@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import copy
+import math
 import time
 import pathlib
 import inspect
@@ -125,6 +126,10 @@ class Estimator:
         )
         self.eps = float(parameters["estimator_settings"].get("eps", 1e-8))
         self.label_smoothing = float(parameters["estimator_settings"].get("label_smoothing", 0.0))
+        # settings created before this option existed keep the default initialization
+        self.init_output_bias = bool(
+            parameters["estimator_settings"].get("init_output_bias", False)
+        )
         self.base_dropout = float(parameters["model_parameters"].get("dropout", 0.0))
         self.lr_schedule_name = parameters["estimator_settings"].get("lr_schedule")
         self.dropout_schedule_name = parameters["estimator_settings"].get("dropout_schedule")
@@ -478,6 +483,29 @@ class Estimator:
     def _maybe_run_realmlp_data_dependent_init(self, dataloader):
         self._maybe_run_data_dependent_init(dataloader)
 
+    def _maybe_init_output_bias(self, dataset):
+        """Start the output bias at the log-odds of the outcome rate of ``dataset``.
+
+        A newly initialized network predicts a risk of about 50%. With a rare outcome
+        and few optimizer steps per epoch, the first epochs go into lowering every
+        prediction to the outcome rate. The validation AUROC barely moves meanwhile,
+        so early stopping can end training before the model ranks patients at all.
+        Models with their own loss or probabilities are left as they are.
+        """
+        if not self.init_output_bias or self.has_custom_loss or self.has_custom_proba:
+            return
+        layer = output_layer(self.model)
+        targets = dataset_targets(dataset)
+        if layer is None or layer.bias is None or layer.out_features != 1 or targets is None:
+            return
+        rate = targets.float().mean().item()
+        # the loss is computed against smoothed labels
+        rate = rate * (1.0 - self.label_smoothing) + 0.5 * self.label_smoothing
+        if not 0.0 < rate < 1.0:
+            return
+        with torch.no_grad():
+            layer.bias.fill_(math.log(rate / (1.0 - rate)))
+
     def _train_dataloader(self, dataset):
         if len(dataset) == 0:
             raise ValueError("Cannot train on an empty dataset")
@@ -533,6 +561,7 @@ class Estimator:
             worker_init_fn=self._seed_worker if self.num_workers > 0 else None,
         )
         self._maybe_run_data_dependent_init(train_dataloader)
+        self._maybe_init_output_bias(dataset)
         self.total_steps = max(1, self.epochs * len(train_dataloader))
         self.global_step = 0
 
@@ -724,6 +753,7 @@ class Estimator:
         self._maybe_log_input_fingerprint(dataset, stage="fit_whole_training_set")
         dataloader = self._train_dataloader(dataset)
         self._maybe_run_data_dependent_init(dataloader)
+        self._maybe_init_output_bias(dataset)
         if self.apply_dynamic_schedule:
             if isinstance(learning_rates, list):
                 self.best_epoch = len(learning_rates)
@@ -797,6 +827,26 @@ class Estimator:
             threshold = dataset.target.sum().item() / len(dataset)
         predicted_class = predictions > threshold
         return predicted_class
+
+
+def output_layer(model):
+    """The final linear layer of a model with a ``head``, or None if there is none."""
+    model = getattr(model, "_orig_mod", model)  # compiled models wrap the original
+    head = getattr(model, "head", None)
+    if isinstance(head, torch.nn.Linear):
+        return head
+    linear = getattr(head, "linear", None)
+    return linear if isinstance(linear, torch.nn.Linear) else None
+
+
+def dataset_targets(dataset):
+    """The labels of a dataset or of a Subset of one, or None if they are not available."""
+    if isinstance(dataset, torch.utils.data.Subset):
+        targets = dataset_targets(dataset.dataset)
+        if targets is None:
+            return None
+        return targets[torch.as_tensor(dataset.indices, dtype=torch.long)]
+    return getattr(dataset, "target", None)
 
 
 class EarlyStopping:
