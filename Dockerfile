@@ -53,8 +53,7 @@ RUN --mount=type=cache,id=pip-cache,target=/root/.cache/uv,sharing=locked \
   pyarrow \
   numpy \
   torch \
-  tqdm \
-  nvidia-ml-py
+  tqdm
 
 RUN --mount=type=secret,id=build_github_pat export GITHUB_PAT=$(cat /run/secrets/build_github_pat)
 ARG GIT_BRANCH='main'

@@ -24,9 +24,8 @@ License: Apache License 2.0
 URL: https://ohdsi.github.io/DeepPatientLevelPrediction/,
     https://github.com/OHDSI/DeepPatientLevelPrediction
 BugReports: https://github.com/OHDSI/DeepPatientLevelPrediction/issues
-SystemRequirements: Python (>= 3.11) with Python packages duckdb,
-    nvidia-ml-py, numpy, polars (>= 1.31.0), pyarrow, torch (>= 2.7, < 3),
-    and tqdm
+SystemRequirements: Python (>= 3.11) with Python packages duckdb, numpy,
+    polars (>= 1.31.0), pyarrow, torch (>= 2.7, < 3), and tqdm
 VignetteBuilder: knitr
 Depends:
     R (>= 4.1.0)

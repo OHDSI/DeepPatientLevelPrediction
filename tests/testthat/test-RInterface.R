@@ -43,8 +43,7 @@ test_that("Python bindings declare requirements and delay the torch import", {
       "duckdb",
       "numpy",
       "torch>=2.7,<3",
-      "tqdm",
-      "nvidia-ml-py"
+      "tqdm"
     )
   )
   expect_identical(calls$pythonVersion, ">=3.11")
