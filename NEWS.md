@@ -16,6 +16,7 @@ Bug fixes
 - Clear gradients between learning rate finder trials.
 - Handle a loss minimum within the first few learning rate finder steps. It failed with an `argmin` error, or picked a rate from beyond the minimum.
 - Train the final model when the data is smaller than one batch, instead of silently returning an untrained model.
+- Score validation data whose last batch holds a single patient, which failed with a zero-dimensional tensor error.
 - Report training and validation loss per observation when the last batch is incomplete.
 - Keep patients without any retained covariates when training and predicting, and raise an error if predictions do not match the cohort.
 - Pass the `beta2` setting of RealMLP to the optimizer. AdamW used its default of 0.999 instead of RealMLP's 0.95, so RealMLP results change.

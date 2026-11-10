@@ -655,7 +655,8 @@ class Estimator:
                     sub_batch = batch_to_device(sub_batch, device=self.device)
                     pred = self.model(sub_batch[0])
                     predictions.append(self._prediction_scores(pred))
-                    targets.append(sub_batch[1])
+                    # a single-row batch has a 0-d target, which cannot be concatenated
+                    targets.append(sub_batch[1].reshape(-1))
                     total_loss += float(self._compute_loss(pred, sub_batch[1]).detach())
                     num_observations += sub_batch[1].numel()
             mean_loss = total_loss / max(num_observations, 1)
