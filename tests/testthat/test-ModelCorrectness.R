@@ -1132,3 +1132,61 @@ test_that("Poincare embeddings add the trainable offset in the tangent space", {
   tokens <- embedTokens(embedding, c(1, 2))
   expect_equal(asNumeric(tokens$select(1L, 0L)$reshape(-1L)), tangent + offset, tolerance = 1e-6)
 })
+
+test_that("Poincare embeddings must lie inside the ball of their curvature", {
+  skip_if_no_python()
+  # a norm of 0.6 is inside the ball with curvature -1 but not with -4
+  point <- rbind(c(0.36, 0.48))
+  expect_no_error(poincareEmbedding(point))
+  expect_error(poincareEmbedding(point, curvature = 4), "not inside the Poincare ball")
+  expect_error(poincareEmbedding(rbind(c(0.6, 0.8))), "not inside the Poincare ball")
+  expect_error(poincareEmbedding(rbind(c(NaN, 0.1))), "not finite")
+  expect_error(poincareEmbedding(point, curvature = 0), "positive number")
+})
+
+test_that("the Poincare log map uses the curvature and is finite at the origin", {
+  skip_if_no_python()
+  logmap0 <- importModule("CustomEmbeddings")$logmap0
+  point <- c(0.3, 0.4)
+  for (curvature in c(1, 2)) {
+    radius <- sqrt(curvature) * sqrt(sum(point^2))
+    mapped <- logmap0(torch$tensor(rbind(point), dtype = torch$float), curvature)
+    expect_equal(asNumeric(mapped), atanh(radius) / radius * point, tolerance = 1e-6)
+  }
+  origin <- torch$zeros(c(1L, 2L), dtype = torch$float, requires_grad = TRUE)
+  mapped <- logmap0(origin, 1)
+  mapped$sum()$backward()
+  expect_equal(asNumeric(mapped), c(0, 0))
+  expect_equal(asNumeric(origin$grad), c(1, 1))
+})
+
+test_that("setCustomEmbeddingModel passes the curvature to Poincare embeddings", {
+  skip_if_no_python()
+  embeddingFile <- withr::local_tempfile(fileext = ".pt")
+  torch$save(list(
+    concept_ids = torch$tensor(array(1001L), dtype = torch$long),
+    embeddings = torch$tensor(rbind(c(0.3, 0.4)), dtype = torch$float)
+  ), embeddingFile)
+  settings <- setCustomEmbeddingModel(
+    embeddingFilePath = embeddingFile,
+    modelSettings = setMultiLayerPerceptron(
+      numLayers = 1, sizeHidden = 4, dropout = 0, sizeEmbedding = 2,
+      estimatorSettings = setEstimator(learningRate = 0.001, device = "cpu", seed = 42),
+      randomSample = 1
+    ),
+    embeddingsClass = "PoincareEmbeddings",
+    curvature = 2
+  )
+  parameters <- settings$param[[1]]
+  parameters$modelType <- settings$modelType
+  parameters$feature_info <- mappedFeatureInfo()
+  estimator <- createEstimator(list(
+    modelParameters = parameters,
+    estimatorSettings = settings$estimatorSettings
+  ))
+  expect_equal(estimator$model$embedding$curvature, 2)
+  expect_error(
+    setCustomEmbeddingModel(embeddingFilePath = embeddingFile, curvature = 2),
+    "only applies to"
+  )
+})

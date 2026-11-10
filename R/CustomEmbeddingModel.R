@@ -27,6 +27,12 @@
 #'   `embedding`. The supplied embeddings replace that layer.
 #' @param embeddingsClass Embedding implementation, either
 #'   `"CustomEmbeddings"` or `"PoincareEmbeddings"`.
+#' @param curvature For `"PoincareEmbeddings"`, the magnitude `c` of the
+#'   curvature `-c` of the Poincare ball that the embeddings were trained in.
+#'   The norm of every embedding must be below `1 / sqrt(c)`. This is the
+#'   curvature itself, not the parameter of a library that transforms it:
+#'   HypLL, used by OHDSI/context, applies softplus, so a curvature parameter
+#'   of 1 there means `c = log(1 + exp(1))`, about 1.313.
 #'
 #' @return A `modelSettings` object configured to initialize custom embeddings.
 #'
@@ -74,20 +80,29 @@ setCustomEmbeddingModel <- function(
       hyperParamSearch = "random",
       randomSample = 1
     ),
-    embeddingsClass = "CustomEmbeddings"
+    embeddingsClass = "CustomEmbeddings",
+    curvature = 1
 ) {
   checkIsClass(embeddingFilePath, "character")
   checkFileExists(embeddingFilePath)
   embeddingFilePath <- normalizePath(embeddingFilePath, mustWork = TRUE)
   checkIsClass(embeddingsClass, "character")
   checkInStringVector(embeddingsClass, c("CustomEmbeddings", "PoincareEmbeddings"))
+  checkIsClass(curvature, c("numeric", "integer"))
+  if (length(curvature) != 1 || !is.finite(curvature) || curvature <= 0) {
+    stop("curvature must be a single positive number")
+  }
+  if (embeddingsClass != "PoincareEmbeddings" && curvature != 1) {
+    stop("curvature only applies to embeddingsClass = \"PoincareEmbeddings\"")
+  }
   
   path <- system.file("python", package = "DeepPatientLevelPrediction")
   modelSettings$estimatorSettings$initStrategy <-
     reticulate::import_from_path("InitStrategy",
                                  path = path)$CustomEmbeddingInitStrategy(
                                    embedding_class = embeddingsClass,
-                                   embedding_file = embeddingFilePath
+                                   embedding_file = embeddingFilePath,
+                                   curvature = curvature
                                  )
   transformerSettings <- modelSettings
 

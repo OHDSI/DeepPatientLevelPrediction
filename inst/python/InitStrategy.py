@@ -42,10 +42,12 @@ class FinetuneInitStrategy(InitStrategy):
 
 
 class CustomEmbeddingInitStrategy(InitStrategy):
-    def __init__(self, embedding_class: str, embedding_file: str, freeze: bool = True):
+    def __init__(self, embedding_class: str, embedding_file: str, freeze: bool = True,
+                 curvature: float = 1.0):
         self.embedding_class = embedding_class
         self.embedding_file = embedding_file
         self.freeze = freeze
+        self.curvature = float(curvature)
         self.class_names_to_class = {
             "CustomEmbeddings": CustomEmbeddings,
             "PoincareEmbeddings": PoincareEmbeddings,
@@ -122,6 +124,10 @@ class CustomEmbeddingInitStrategy(InitStrategy):
             aggregate = "none"
 
         embedding_class = self.class_names_to_class[self.embedding_class]
+        extra = dict()
+        if embedding_class is PoincareEmbeddings:
+            # strategies saved with models from before curvature was a setting
+            extra["curvature"] = getattr(self, "curvature", 1.0)
         model.embedding = embedding_class(
             custom_embedding_weights=custom_weights,
             embedding_dim=model.embedding.embedding_dim,
@@ -129,5 +135,6 @@ class CustomEmbeddingInitStrategy(InitStrategy):
             custom_indices=custom_indices,
             freeze=self.freeze,
             aggregate=aggregate,
+            **extra,
         )
         return model

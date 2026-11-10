@@ -10,7 +10,8 @@ setCustomEmbeddingModel(
     attDropout = 0.2, ffnDropout = 0.1, dimHidden = 32, estimatorSettings =
     setEstimator(learningRate = "auto", weightDecay = 1e-04, batchSize = 256, epochs = 2,
     seed = NULL, device = "cpu"), hyperParamSearch = "random", randomSample = 1),
-  embeddingsClass = "CustomEmbeddings"
+  embeddingsClass = "CustomEmbeddings",
+  curvature = 1
 )
 }
 \arguments{
@@ -23,6 +24,13 @@ tensor.}
 
 \item{embeddingsClass}{Embedding implementation, either
 \code{"CustomEmbeddings"} or \code{"PoincareEmbeddings"}.}
+
+\item{curvature}{For \code{"PoincareEmbeddings"}, the magnitude \code{c} of the
+curvature \code{-c} of the Poincare ball that the embeddings were trained in.
+The norm of every embedding must be below \code{1 / sqrt(c)}. This is the
+curvature itself, not the parameter of a library that transforms it:
+HypLL, used by OHDSI/context, applies softplus, so a curvature parameter
+of 1 there means \code{c = log(1 + exp(1))}, about 1.313.}
 }
 \value{
 A \code{modelSettings} object configured to initialize custom embeddings.

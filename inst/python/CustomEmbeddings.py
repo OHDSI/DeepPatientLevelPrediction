@@ -1,6 +1,8 @@
 # Copyright 2022-2026 Observational Health Data Sciences and Informatics
 # SPDX-License-Identifier: Apache-2.0
 
+import math
+
 import torch
 import torch.nn as nn
 
@@ -128,15 +130,40 @@ class CustomEmbeddings(nn.Module):
             return custom_embeddings + regular_embeddings
 
 
-def logmap0(input_tensor: torch.Tensor):
-    curvature = 1.0
-    norm_input = torch.norm(input_tensor, dim=-1, keepdim=True)
-    sqrt_c = torch.sqrt(
-        torch.tensor(curvature, dtype=input_tensor.dtype, device=input_tensor.device)
-    )
-    scale = torch.arctanh(sqrt_c * norm_input) / (sqrt_c * norm_input)
-    scale[torch.isnan(scale)] = 1.0
-    return scale * input_tensor
+def check_poincare_points(points: torch.Tensor, curvature: float) -> None:
+    """Check that the points lie inside the Poincare ball with curvature -c.
+
+    Points of that ball have a norm below 1 / sqrt(c).
+    """
+    if not math.isfinite(curvature) or curvature <= 0:
+        raise ValueError(f"The curvature must be a positive number, not {curvature}")
+    if not torch.isfinite(points).all():
+        raise ValueError("The Poincare embeddings contain values that are not finite")
+    norms = points.detach().double().norm(dim=-1)
+    outside = norms >= 1.0 / math.sqrt(curvature)
+    if outside.any():
+        raise ValueError(
+            f"{int(outside.sum())} of {norms.numel()} Poincare embeddings are not "
+            f"inside the Poincare ball with curvature {curvature:g}, where the norm "
+            f"must be below 1 / sqrt({curvature:g}) = {1.0 / math.sqrt(curvature):.4g}. "
+            f"The largest norm is {norms.max().item():.4g}. Check the curvature the "
+            "embeddings were trained with."
+        )
+
+
+def logmap0(points: torch.Tensor, curvature: float = 1.0) -> torch.Tensor:
+    """Map points of the Poincare ball with curvature -c to the tangent space
+    at the origin.
+
+    Near the origin the scale factor comes from its series, which keeps the
+    result and its gradient finite at zero, the padding embedding.
+    """
+    z = curvature * points.square().sum(dim=-1, keepdim=True)
+    eps = torch.finfo(points.dtype).eps
+    # both branches of torch.where get safe inputs, so neither has a 0 / 0 gradient
+    radius = z.clamp_min(eps).sqrt().clamp_max(1 - eps)
+    scale = torch.where(z < 1e-6, 1 + z / 3 + z.square() / 5, torch.atanh(radius) / radius)
+    return points * scale
 
 
 class PoincareEmbeddings(CustomEmbeddings):
@@ -146,10 +173,21 @@ class PoincareEmbeddings(CustomEmbeddings):
     Euclidean space. The trainable offsets are vectors in that tangent space
     too, so they are added to the mapped points, as for other custom
     embeddings.
+
+    Args:
+        curvature: the c of the ball with curvature -c that the embeddings
+            were trained in. Libraries that constrain a curvature parameter,
+            such as HypLL with softplus, have an effective c that differs from
+            the parameter.
     """
 
-    @staticmethod
-    def process_custom_embeddings(embeddings: torch.Tensor) -> torch.Tensor:
+    def __init__(self, custom_embedding_weights: torch.Tensor, *args,
+                 curvature: float = 1.0, **kwargs):
+        check_poincare_points(custom_embedding_weights, float(curvature))
+        super().__init__(custom_embedding_weights, *args, **kwargs)
+        self.curvature = float(curvature)
+
+    def process_custom_embeddings(self, embeddings: torch.Tensor) -> torch.Tensor:
         """
         Apply the logmap0 function to the embeddings to project them to the
         tangent space at the origin.
@@ -161,4 +199,4 @@ class PoincareEmbeddings(CustomEmbeddings):
         Returns:
             A logmapped tensor of same shape as the input tensor
         """
-        return logmap0(embeddings)
+        return logmap0(embeddings, self.curvature)
