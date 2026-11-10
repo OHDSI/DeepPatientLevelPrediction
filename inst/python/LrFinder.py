@@ -96,20 +96,29 @@ class LrFinder:
                 )
                 break
 
-        # find LR where gradient is highest but before global minimum is reached
-        # I added -5 to make sure it is not still in the minimum
-        global_minimum = torch.argmin(losses[:i + 1])
-        if global_minimum == 0:
-            smallest_gradient = 0
-        else:
-            gradient = torch.diff(losses[: (global_minimum - self.min_factor) + 1])
-            smallest_gradient = torch.argmin(gradient)
-
+        smallest_gradient = suggest_lr_index(losses[: i + 1], self.min_factor)
         suggested_lr = lrs[smallest_gradient]
         self.losses = losses[:i]
         self.loss_index = smallest_gradient
         self.lrs = lrs
         return suggested_lr.item()
+
+
+def suggest_lr_index(losses, min_factor):
+    """Index of the steepest loss decrease before the minimum of a learning rate search.
+
+    The search ends ``min_factor`` steps before the minimum so the suggestion is not
+    taken from the flat region around it. When the minimum comes too early to leave
+    that margin, the steps up to the minimum are searched instead.
+    """
+    global_minimum = int(torch.argmin(losses))
+    if global_minimum == 0:
+        return 0
+    end = global_minimum - min_factor
+    if end < 1:
+        end = global_minimum
+    gradient = torch.diff(losses[: end + 1])
+    return int(torch.argmin(gradient))
 
 
 def get_lr(estimator,
