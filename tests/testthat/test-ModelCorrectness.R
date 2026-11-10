@@ -1300,3 +1300,17 @@ def failed_model_freed():
   expect_equal(nrow(result$prediction), nrow(labels))
   expect_true(main$failed_model_freed())
 })
+
+test_that("custom embeddings leave the batch they are given unchanged", {
+  skip_if_no_python()
+  estimator <- customEmbeddingEstimator(concepts = 1001, weights = rbind(c(1, 10)))
+  ids <- torch$tensor(matrix(c(1L, 2L), nrow = 1), dtype = torch$long)
+  batch <- reticulate::dict(
+    feature_ids = ids,
+    feature_values = torch$ones(c(1L, 2L), dtype = torch$float)
+  )
+  first <- asNumeric(estimator$model$embedding(batch))
+  expect_equal(asNumeric(reticulate::py_get_item(batch, "feature_ids")), c(1, 2))
+  expect_equal(asNumeric(reticulate::py_get_item(batch, "feature_values")), c(1, 1))
+  expect_equal(asNumeric(estimator$model$embedding(batch)), first)
+})
