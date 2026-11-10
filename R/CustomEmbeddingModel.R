@@ -31,8 +31,9 @@
 #'   curvature `-c` of the Poincare ball that the embeddings were trained in.
 #'   The norm of every embedding must be below `1 / sqrt(c)`. This is the
 #'   curvature itself, not the parameter of a library that transforms it:
-#'   HypLL, used by OHDSI/context, applies softplus, so a curvature parameter
-#'   of 1 there means `c = log(1 + exp(1))`, about 1.313.
+#'   HypLL, used by OHDSI/context, applies softplus, so an untrained curvature
+#'   parameter of 1 there means `c = log(1 + exp(1))`, about 1.313. If the
+#'   curvature was trained, use its final value after softplus.
 #'
 #' @return A `modelSettings` object configured to initialize custom embeddings.
 #'
