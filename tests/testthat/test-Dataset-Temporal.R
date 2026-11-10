@@ -35,7 +35,7 @@ createMockTemporalData <- function() {
     timeId = c(10, 20, 30, 5, 15, 25, 35, 45)
   )
 
-  timeRef <- data.frame(timeId = 1:50)
+  timeRef <- data.frame(timePart = "day", timeInterval = 1)
 
   labels <- data.frame(
     rowId = 1:2,

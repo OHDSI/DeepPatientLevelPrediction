@@ -720,3 +720,57 @@ test_that("gridCvDeep selects the hyperparameters with the requested metric", {
   expect_equal(fit(metric)$finalParam$sizeHidden, 8)
   expect_equal(fit(NULL)$finalParam$sizeHidden, 4)
 })
+
+temporalData <- function(timeRef, timeIds) {
+  createMockData(
+    data.frame(
+      rowId = 1, covariateId = 101, columnId = 1L, covariateValue = 1, timeId = timeIds
+    ),
+    isBinary = "Y",
+    timeRef = timeRef
+  )
+}
+
+timeTokenNames <- function(data) {
+  dataset <- createDataset(
+    data,
+    data.frame(rowId = 1, outcomeCount = 1),
+    temporalSettings = list(maxSequenceLength = "max", timeTokens = TRUE)
+  )
+  reference <- reticulate::py_to_r(dataset$get_feature_info()$data_reference)
+  ids <- as.integer(dataset$data$feature_ids$numpy())
+  reference$covariateName[match(ids[ids > 1], reference$columnId)]
+}
+
+test_that("time tokens use the units of the time reference", {
+  skip_if_no_python()
+  cases <- list(
+    list(part = "day", interval = 1, ids = c(0, 30), expected = "M1"),
+    list(part = "day", interval = 30, ids = c(0, 1), expected = "M1"),
+    list(part = "day", interval = 30, ids = c(0, 3), expected = "M3"),
+    list(part = "month", interval = 1, ids = c(0, 3), expected = "M3"),
+    list(part = "MONTH", interval = 1, ids = c(0, 12), expected = "LT"),
+    list(part = "week", interval = 1, ids = c(0, 1), expected = "W1")
+  )
+  for (case in cases) {
+    data <- temporalData(
+      data.frame(timePart = case$part, timeInterval = case$interval),
+      case$ids
+    )
+    expect_equal(timeTokenNames(data), case$expected, info = paste(case$part, case$interval))
+    Andromeda::close(data)
+  }
+})
+
+test_that("time tokens reject time references without a usable unit", {
+  skip_if_no_python()
+  for (timeRef in list(
+    data.frame(timeId = 1:2),
+    data.frame(timePart = "fortnight", timeInterval = 1),
+    data.frame(timePart = "day", timeInterval = 0)
+  )) {
+    data <- temporalData(timeRef, c(0, 1))
+    expect_error(timeTokenNames(data), "[Tt]ime tokens")
+    Andromeda::close(data)
+  }
+})
