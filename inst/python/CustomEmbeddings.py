@@ -109,20 +109,31 @@ class CustomEmbeddings(nn.Module):
         custom_embeddings = custom_embeddings + self.custom_embeddings_trainable(
             custom_mapped_features
         )
-        # project each custom feature on its own and zero the other positions,
-        # so the bias of the projection is not added for padding or regular
-        # features
-        custom_embeddings = self.linear_transform(custom_embeddings)
-        custom_embeddings = custom_embeddings * custom_embeddings_mask.unsqueeze(-1).to(
-            dtype=custom_embeddings.dtype
-        )
+        # the projection applies to custom features only, so that its bias is
+        # not added for padding or regular features
+        mask = custom_embeddings_mask.unsqueeze(-1).to(dtype=custom_embeddings.dtype)
         regular_embeddings = self.regular_embeddings(x)
         if self.aggregate == "sum":
-            custom_embeddings = custom_embeddings.sum(dim=1)
+            custom_embeddings = self.project_sum(custom_embeddings * mask, mask)
             sequence_lengths = sequence_lengths.to(dtype=custom_embeddings.dtype)
             return (custom_embeddings + regular_embeddings) / sequence_lengths
         else:
-            return custom_embeddings + regular_embeddings
+            return self.linear_transform(custom_embeddings) * mask + regular_embeddings
+
+    def project_sum(self, custom_embeddings: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
+        """Sum the projected custom features of each patient.
+
+        The projection is linear, so this projects the sum and adds the bias
+        once per custom feature, without a tensor of the model's width for
+        every position.
+        """
+        summed = custom_embeddings.sum(dim=1)
+        if not isinstance(self.linear_transform, nn.Linear):
+            return self.linear_transform(summed)
+        projected = nn.functional.linear(summed, self.linear_transform.weight)
+        if self.linear_transform.bias is not None:
+            projected = projected + mask.sum(dim=1) * self.linear_transform.bias
+        return projected
 
 
 def check_poincare_points(points: torch.Tensor, curvature: float) -> None:
