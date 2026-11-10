@@ -1085,8 +1085,6 @@ def cleanup_with_high_memory_use():
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
             cleanup.memory_cleanup()
-    except Exception:
-        pass
     finally:
         for name, value in saved.items():
             setattr(torch.cuda, name, value)
@@ -1214,6 +1212,24 @@ test_that("setCustomEmbeddingModel passes the curvature to Poincare embeddings",
     setCustomEmbeddingModel(embeddingFilePath = embeddingFile, curvature = 2),
     "only applies to"
   )
+  for (curvature in list(-1, NA_real_, c(1, 2))) {
+    expect_error(
+      setCustomEmbeddingModel(
+        embeddingFilePath = embeddingFile, embeddingsClass = "PoincareEmbeddings",
+        curvature = curvature
+      ),
+      "single positive number"
+    )
+  }
+
+  # an init strategy saved with a model before curvature was a setting
+  strategy <- settings$estimatorSettings$initStrategy
+  reticulate::py_del_attr(strategy, "curvature")
+  estimator <- createEstimator(list(
+    modelParameters = parameters,
+    estimatorSettings = settings$estimatorSettings
+  ))
+  expect_equal(estimator$model$embedding$curvature, 1)
 })
 
 test_that("the projection of custom embeddings only applies to custom features", {
