@@ -1061,3 +1061,42 @@ test_that("TemporalPE uses the requested sigma", {
   }
   expect_error(temporalPE(dim_token = 4L, num_heads = 2L, sigma = 0), "must be positive")
 })
+
+test_that("memory cleanup leaves tensors that are still in use intact", {
+  skip_if_no_python()
+  importModule("gpu_memory_cleanup")
+  # Pretend that GPU memory use stays high after garbage collection and that a
+  # tensor still in use is on the GPU, which is when cleanup used to free the
+  # storage of every tensor it found.
+  result <- reticulate::py_run_string("
+def cleanup_with_high_memory_use():
+    import warnings
+    import torch
+    import gpu_memory_cleanup as cleanup
+
+    live = torch.arange(4.0)
+    saved = {name: getattr(torch.cuda, name) for name in ('memory_allocated', 'empty_cache')}
+    saved_get_tensors = getattr(cleanup, 'get_tensors', None)
+    torch.cuda.memory_allocated = lambda *args, **kwargs: 4 * 1024 ** 3
+    torch.cuda.empty_cache = lambda: None
+    cleanup.get_tensors = lambda gpu_only=True: iter([live])
+    try:
+        # warnings from the cleanup code are beside the point here
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            cleanup.memory_cleanup()
+    except Exception:
+        pass
+    finally:
+        for name, value in saved.items():
+            setattr(torch.cuda, name, value)
+        if saved_get_tensors is None:
+            del cleanup.get_tensors
+        else:
+            cleanup.get_tensors = saved_get_tensors
+    return live.untyped_storage().nbytes() // live.element_size()
+
+remaining = cleanup_with_high_memory_use()
+", local = TRUE)
+  expect_equal(result$remaining, 4)
+})
