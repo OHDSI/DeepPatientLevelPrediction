@@ -90,14 +90,15 @@ createMockSettings <- function(learningRate = 0.01, seed = 42, ...) {
   )
 }
 
-mappedFeatureInfo <- function(covariateIds = 1:4 + 100, conceptIds = 1:4 + 1000) {
+mappedFeatureInfo <- function(covariateIds = 1:4 + 100, conceptIds = 1:4 + 1000,
+                              isBinary = rep("Y", length(covariateIds))) {
   polars <- reticulate::import("polars", convert = FALSE)
   columnIds <- seq_along(covariateIds)
   importModule("Dataset")$FeatureInfo(polars$DataFrame(list(
     columnId = columnIds,
     covariateId = covariateIds,
     conceptId = conceptIds,
-    isBinary = rep("Y", length(columnIds))
+    isBinary = isBinary
   )))
 }
 
@@ -620,7 +621,8 @@ test_that("RealMLP passes its beta2 setting to the optimizer", {
   }
 })
 
-customEmbeddingEstimator <- function(concepts, weights, conceptIds = 1:4 + 1000) {
+customEmbeddingEstimator <- function(concepts, weights, conceptIds = 1:4 + 1000,
+                                     isBinary = rep("Y", length(conceptIds))) {
   embeddingFile <- withr::local_tempfile(fileext = ".pt", .local_envir = parent.frame())
   torch$save(list(
     concept_ids = torch$tensor(as.array(as.integer(concepts)), dtype = torch$long),
@@ -636,7 +638,7 @@ customEmbeddingEstimator <- function(concepts, weights, conceptIds = 1:4 + 1000)
   )
   parameters <- settings$param[[1]]
   parameters$modelType <- settings$modelType
-  parameters$feature_info <- mappedFeatureInfo(conceptIds = conceptIds)
+  parameters$feature_info <- mappedFeatureInfo(conceptIds = conceptIds, isBinary = isBinary)
   createEstimator(list(
     modelParameters = parameters,
     estimatorSettings = settings$estimatorSettings
@@ -1316,4 +1318,24 @@ test_that("custom embeddings leave the batch they are given unchanged", {
   expect_equal(asNumeric(reticulate::py_get_item(batch, "feature_ids")), c(1, 2))
   expect_equal(asNumeric(reticulate::py_get_item(batch, "feature_values")), c(1, 1))
   expect_equal(asNumeric(estimator$model$embedding(batch)), first)
+})
+
+test_that("custom embeddings leave numeric covariates to their value embedding", {
+  skip_if_no_python()
+  # column 1 is numeric, such as a measurement value, and column 3 binary;
+  # both have a concept in the embeddings file
+  estimator <- customEmbeddingEstimator(
+    concepts = c(1001, 1003),
+    weights = rbind(c(1, 10), c(3, 30)),
+    isBinary = c("N", "Y", "Y", "Y")
+  )
+  expect_equal(unlist(estimator$model$embedding$custom_indices$tolist()), 3L)
+  embedValue <- function(value) {
+    asNumeric(estimator$model$embedding(list(
+      feature_ids = torch$tensor(matrix(1L, nrow = 1), dtype = torch$long),
+      feature_values = torch$tensor(matrix(value, nrow = 1), dtype = torch$float)
+    )))
+  }
+  expect_false(isTRUE(all.equal(embedValue(1), embedValue(7.5))))
+  expect_equal(embedRow(estimator, 3), c(3, 30))
 })

@@ -17,7 +17,10 @@ setCustomEmbeddingModel(
 \arguments{
 \item{embeddingFilePath}{Path to a PyTorch file containing a dictionary with
 \code{concept_ids}, a PyTorch long tensor, and \code{embeddings}, a PyTorch float
-tensor.}
+tensor. Binary covariates whose concept ID is in the file get its vector.
+Numeric covariates, such as measurement values, keep their regular
+embedding, which is scaled by the value, because a concept vector does not
+carry a value.}
 
 \item{modelSettings}{Settings for a model with an embedding layer named
 \code{embedding}. The supplied embeddings replace that layer.}
