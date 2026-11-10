@@ -445,6 +445,25 @@ test_that("final fitting trains when the data is smaller than one batch", {
   )
 })
 
+test_that("reported losses are averaged over the actual observations", {
+  skip_if_no_python()
+  toy <- toyPython()
+  dataLoader <- torch$utils$data$DataLoader
+  sampler <- torch$utils$data$BatchSampler
+  sequential <- torch$utils$data$SequentialSampler
+  estimator <- toy$toy_estimator(
+    importModule("Estimator")$Estimator, batch_size = 8L
+  )
+  # a batch of 8 and a partial batch of 2, with a zero weight every loss is log(2)
+  dataset <- toy$ToyData(rep(1, 10), rep(c(0, 1), 5))
+  loader <- dataLoader(
+    dataset = dataset, batch_size = NULL,
+    sampler = sampler(sequential(dataset), batch_size = 8L, drop_last = FALSE)
+  )
+  expect_equal(estimator$score(loader)$loss, log(2), tolerance = 1e-6)
+  expect_equal(estimator$fit_epoch(loader), log(2), tolerance = 1e-6)
+})
+
 test_that("RealMLP passes its beta2 setting to the optimizer", {
   skip_if_no_python()
   settings <- setRealMLP(sizeHidden = 4L, numLayers = 1L, sizeEmbedding = 4L)

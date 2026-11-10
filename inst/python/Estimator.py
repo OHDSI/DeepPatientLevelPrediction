@@ -580,9 +580,9 @@ class Estimator:
         return
 
     def fit_epoch(self, dataloader):
-        training_losses = torch.empty(len(dataloader))
+        total_loss = 0.0
+        num_observations = 0
         self.model.train()
-        index = 0
         self.optimizer.zero_grad()
         for batch in tqdm(dataloader):
             self._apply_step_hparams()
@@ -602,6 +602,7 @@ class Estimator:
                     loss = loss + reg * sub_batch[1].shape[0]
                 loss.backward()
                 accumulated_loss += loss.detach()
+                num_observations += sub_batch[1].numel()
 
             if self.grad_clip_norm is not None and self.grad_clip_norm > 0:
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.grad_clip_norm)
@@ -609,30 +610,26 @@ class Estimator:
             self.optimizer.zero_grad()
             if self.apply_dynamic_schedule:
                 self.global_step += 1
-            training_losses[index] = accumulated_loss / self.batch_size
-            index += 1
-        return training_losses.mean().item()
+            total_loss += float(accumulated_loss)
+        return total_loss / max(num_observations, 1)
 
     def score(self, dataloader):
         with torch.no_grad():
-            loss = torch.empty(len(dataloader))
+            total_loss = 0.0
+            num_observations = 0
             predictions = list()
             targets = list()
             self.model.eval()
-            index = 0
             for batch in tqdm(dataloader):
                 split_batch = self.split_batch(batch)
-                accumulated_loss = 0
                 for sub_batch in split_batch:
                     sub_batch = batch_to_device(sub_batch, device=self.device)
                     pred = self.model(sub_batch[0])
                     predictions.append(self._prediction_scores(pred))
                     targets.append(sub_batch[1])
-                    accumulated_loss += self._compute_loss(pred, sub_batch[1]).detach()
-                loss[index] = accumulated_loss / self.batch_size
-
-                index += 1
-            mean_loss = loss.mean().item()
+                    total_loss += float(self._compute_loss(pred, sub_batch[1]).detach())
+                    num_observations += sub_batch[1].numel()
+            mean_loss = total_loss / max(num_observations, 1)
             predictions = torch.concat(predictions)
             targets = torch.concat(targets)
             auc = compute_auc(targets.cpu(), predictions.cpu())
