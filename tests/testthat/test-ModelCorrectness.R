@@ -1222,3 +1222,35 @@ test_that("the projection of custom embeddings only applies to custom features",
     asNumeric(embedTokens(pooled, c(1, 2))), (projected + regularOnly) / 2, tolerance = 1e-6
   )
 })
+
+test_that("the search frees a combination that runs out of memory and continues", {
+  skip_if_no_python()
+  reticulate::py_run_string("
+import gc
+import weakref
+import torch
+
+failed_models = []
+
+def run_out_of_memory():
+    model = torch.nn.Linear(2, 1)  # stands in for a model on the GPU
+    failed_models.append(weakref.ref(model))
+    raise torch.OutOfMemoryError('CUDA out of memory. Tried to allocate 2.00 GiB')
+
+def failed_model_freed():
+    gc.collect()
+    return failed_models[-1]() is None
+")
+  main <- reticulate::import_main()
+  labels <- createMockLabels()
+  result <- testthat::with_mocked_bindings(
+    doCrossValidation(
+      dataset = NULL, labels = labels, parameters = list(numLayers = 1),
+      modelSettings = list()
+    ),
+    doCrossValidationImpl = function(...) main$run_out_of_memory()
+  )
+  expect_true(all(is.na(result$prediction$value)))
+  expect_equal(nrow(result$prediction), nrow(labels))
+  expect_true(main$failed_model_freed())
+})

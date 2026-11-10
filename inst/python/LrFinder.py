@@ -9,7 +9,6 @@ from torch.optim.lr_scheduler import _LRScheduler
 from tqdm import tqdm
 
 from Estimator import batch_to_device
-from gpu_memory_cleanup import memory_cleanup
 
 
 class ExponentialSchedulerPerBatch(_LRScheduler):
@@ -124,11 +123,6 @@ def suggest_lr_index(losses, min_factor):
 def get_lr(estimator,
            dataset,
            lr_settings):
-    try:
-        lr_finder = LrFinder(estimator, lr_settings=lr_settings)
-        lr = lr_finder.get_lr(dataset)
-    except torch.cuda.OutOfMemoryError as e:
-        memory_cleanup()
-        raise e
-    return lr
+    lr_finder = LrFinder(estimator, lr_settings=lr_settings)
+    return lr_finder.get_lr(dataset)
 

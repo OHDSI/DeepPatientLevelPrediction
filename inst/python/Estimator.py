@@ -14,7 +14,6 @@ import torch
 from torch.utils.data import DataLoader, BatchSampler, RandomSampler, SequentialSampler
 from tqdm import tqdm
 
-from gpu_memory_cleanup import memory_cleanup
 from InitStrategy import InitStrategy, DefaultInitStrategy
 from schedules import get_schedule
 try:
@@ -958,9 +957,7 @@ def select_best_epoch(metric_values, mode):
 
 
 def fit_estimator(estimator, train, test):
-    try:
-        estimator.fit(train, test)
-    except torch.cuda.OutOfMemoryError as e:
-        memory_cleanup()
-        raise e
+    # after an out-of-memory error, R frees the memory once it has dropped the
+    # error, whose traceback still refers to this fit
+    estimator.fit(train, test)
     return estimator
