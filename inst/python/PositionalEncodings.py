@@ -480,10 +480,12 @@ class TemporalPE(PositionalEncoding):
         self.sinusoidal_pe = SinusoidalPE(dim_token, max_time_id, base,
                                           dropout=dropout)
 
+        if float(sigma) <= 0:
+            raise ValueError(f"sigma must be positive, got {sigma}")
         if learnable_sigma:
-            self.log_sigma = nn.Parameter(torch.tensor(sigma).log())
+            self.log_sigma = nn.Parameter(torch.tensor(float(sigma)).log())
         else:
-            self.register_buffer("log_sigma", torch.tensor(sigma))
+            self.register_buffer("log_sigma", torch.tensor(float(sigma)).log())
 
         self._original_embeddings = None
 

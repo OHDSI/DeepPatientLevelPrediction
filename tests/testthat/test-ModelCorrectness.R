@@ -874,3 +874,15 @@ test_that("convolutional positional encodings do not depend on padding", {
     expect_equal(head(short[[2]], 3L), head(long[[2]], 3L), tolerance = 1e-6)
   }
 })
+
+test_that("TemporalPE uses the requested sigma", {
+  skip_if_no_python()
+  temporalPE <- importModule("PositionalEncodings")$TemporalPE
+  for (learnable in c(FALSE, TRUE)) {
+    module <- temporalPE(
+      dim_token = 4L, num_heads = 2L, sigma = 2, learnable_sigma = learnable
+    )
+    expect_equal(torch$exp(module$log_sigma)$item(), 2, tolerance = 1e-6)
+  }
+  expect_error(temporalPE(dim_token = 4L, num_heads = 2L, sigma = 0), "must be positive")
+})
