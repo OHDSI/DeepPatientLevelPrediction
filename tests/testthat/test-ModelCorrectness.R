@@ -549,6 +549,26 @@ test_that("AUC gives half credit to tied scores", {
   )
 })
 
+test_that("validation works when its last batch has a single patient", {
+  skip_if_no_python()
+  data <- createMockData()
+  withr::defer(Andromeda::close(data))
+  # folds of four patients scored in batches of three leave one patient
+  settings <- setMultiLayerPerceptron(
+    numLayers = 1, sizeHidden = 4, dropout = 0, sizeEmbedding = 4,
+    estimatorSettings = setEstimator(
+      learningRate = 0.01, batchSize = 3, epochs = 1, device = "cpu", seed = 42
+    ),
+    randomSample = 1
+  )
+  result <- gridCvDeep(
+    mappedData = data, labels = createMockLabels(), modelSettings = settings,
+    modelLocation = withr::local_tempdir(), analysisPath = withr::local_tempdir()
+  )
+  cv <- result$prediction[result$prediction$evaluationType == "CV", ]
+  expect_equal(nrow(cv), 8)
+})
+
 test_that("final fitting trains when the data is smaller than one batch", {
   skip_if_no_python()
   toy <- toyPython()
