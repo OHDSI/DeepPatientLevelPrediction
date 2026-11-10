@@ -55,8 +55,12 @@ class CustomEmbeddingInitStrategy(InitStrategy):
 
     def initialize(self, model, parameters):
         file_path = pathlib.Path(self.embedding_file)
+        # A concept vector stands for the concept, not for a value, so only
+        # binary covariates get one. Numeric covariates, such as measurement
+        # values, keep their regular embedding, which is scaled by the value.
         data_reference = (
             parameters["model_parameters"]["feature_info"].data_reference
+            .filter(pl.col("isBinary") != "N")
             .with_columns(pl.col("conceptId").cast(pl.Int64))
         )
 

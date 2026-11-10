@@ -32,6 +32,7 @@ Bug fixes
 - Apply the projection of custom embeddings, used when the embeddings file has another dimension than the model, to custom features only. Its bias was added once per patient for ResNet and MLP, and to every padding and regular feature for the Transformer and RealMLP.
 - Leave the batch given to custom embeddings unchanged. Its custom features were set to zero, so RealMLP lost them in its wide branch and in data-dependent initialization.
 - Load custom embedding files saved from GPU tensors, and reject Poincare embeddings too close to the boundary of the ball to be mapped in their precision.
+- Give custom embedding vectors to binary covariates only. A numeric covariate whose concept was in the embeddings file, such as a measurement value, got the concept's vector and lost its value.
 - Continue the hyperparameter search after a combination runs out of GPU memory, and free that combination's memory first. Since torch 2.5 the error was not recognized, so the search stopped. The cleanup could not free memory that the error's traceback still referred to, and instead, when more than 3 GB stayed allocated, emptied the storage of every CUDA tensor, including those still in use.
 
 Runtime and compatibility
