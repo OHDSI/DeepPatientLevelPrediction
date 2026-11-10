@@ -44,7 +44,7 @@ class CustomEmbeddings(nn.Module):
         # make sure padding idx refers to all zero embeddings at position 0
         custom_embedding_weights = torch.cat(
             [
-                torch.zeros(1, custom_embedding_weights.shape[1]),
+                custom_embedding_weights.new_zeros(1, custom_embedding_weights.shape[1]),
                 custom_embedding_weights,
             ]
         )
@@ -149,8 +149,10 @@ def check_poincare_points(points: torch.Tensor, curvature: float) -> None:
         raise ValueError(f"The curvature must be a positive number, not {curvature}")
     if not torch.isfinite(points).all():
         raise ValueError("The Poincare embeddings contain values that are not finite")
-    norms = points.detach().double().norm(dim=-1)
-    outside = norms >= 1.0 / math.sqrt(curvature)
+    # on the CPU, because some devices, such as MPS, have no float64
+    norms = points.detach().to(device="cpu", dtype=torch.float64).norm(dim=-1)
+    radii = math.sqrt(curvature) * norms
+    outside = radii >= 1.0
     if outside.any():
         raise ValueError(
             f"{int(outside.sum())} of {norms.numel()} Poincare embeddings are not "
@@ -159,6 +161,17 @@ def check_poincare_points(points: torch.Tensor, curvature: float) -> None:
             f"The largest norm is {norms.max().item():.4g}. Check the curvature the "
             "embeddings were trained with. A model saved by an earlier version with "
             "these embeddings mapped them wrongly and needs retraining."
+        )
+    # the log map computes in the precision of the points, where a radius above
+    # the largest value below 1 rounds to 1
+    largest_radius = 1.0 - torch.finfo(points.dtype).eps / 2
+    too_close = radii > largest_radius
+    if too_close.any():
+        raise ValueError(
+            f"{int(too_close.sum())} of {norms.numel()} Poincare embeddings are too "
+            f"close to the boundary of the ball to be mapped in {points.dtype}: "
+            f"sqrt({curvature:g}) times their norm is above {largest_radius!r}. "
+            "Project them further inside the ball, or use a higher precision."
         )
 
 

@@ -61,7 +61,8 @@ class CustomEmbeddingInitStrategy(InitStrategy):
         )
 
         model = DefaultInitStrategy().initialize(model, parameters) 
-        embeddings = torch.load(file_path, weights_only=True)
+        # files saved from GPU tensors load on machines without that GPU
+        embeddings = torch.load(file_path, map_location="cpu", weights_only=True)
 
         if "concept_ids" not in embeddings.keys():
             raise KeyError(
