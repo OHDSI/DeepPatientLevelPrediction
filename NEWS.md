@@ -3,6 +3,7 @@ DeepPatientLevelPrediction 2.4.0.9999
 
 New features
 - Add a `min_epochs` parameter to early stopping, so that training runs for at least that many epochs before it can stop early (#36).
+- Start the bias of the output layer at the log-odds of the outcome rate in the training data, controlled by `initOutputBias` in `setEstimator()` and on by default. Models with rare outcomes no longer spend their first epochs lowering all predictions to the outcome rate, which with few batches per epoch let early stopping end training before the model ranked patients. This removes most of the instability in ResNet learning curves. It applies to models with a single-logit linear `head`, and not to the learning rate search.
 
 Bug fixes
 - Avoid a segfault in batched matrix multiplication on Ubuntu 26.04. On Linux, torch is now imported with `RTLD_DEEPBIND` so that it does not call the system OpenBLAS, which has a crash in `cblas_sgemm_batch`. This is a temporary workaround until distributions ship the OpenBLAS fix. A startup message explains the risk if torch was already imported before the package loaded (#191).
@@ -13,6 +14,7 @@ Bug fixes
 - Use the tuning metric and direction requested through `hyperparameterSettings` when selecting hyperparameters and trimming the cache. Its `search`, `sampleSize`, `randomSeed` and `generator` settings are not used, and a warning now says so; the search is set in the model settings.
 - Give tied positive and negative predictions half credit in the AUC used for early stopping and epoch selection.
 - Clear gradients between learning rate finder trials.
+- Handle a loss minimum within the first few learning rate finder steps. It failed with an `argmin` error, or picked a rate from beyond the minimum.
 - Train the final model when the data is smaller than one batch, instead of silently returning an untrained model.
 - Report training and validation loss per observation when the last batch is incomplete.
 - Keep patients without any retained covariates when training and predicting, and raise an error if predictions do not match the cohort.
