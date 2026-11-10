@@ -156,7 +156,7 @@ def check_poincare_points(points: torch.Tensor, curvature: float) -> None:
     if outside.any():
         raise ValueError(
             f"{int(outside.sum())} of {norms.numel()} Poincare embeddings are not "
-            f"inside the Poincare ball with curvature {curvature:g}, where the norm "
+            f"inside the Poincare ball with curvature -{curvature:g}, where the norm "
             f"must be below 1 / sqrt({curvature:g}) = {1.0 / math.sqrt(curvature):.4g}. "
             f"The largest norm is {norms.max().item():.4g}. Check the curvature the "
             "embeddings were trained with. A model saved by an earlier version with "

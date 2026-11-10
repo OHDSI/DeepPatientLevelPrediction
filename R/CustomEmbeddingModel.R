@@ -56,8 +56,9 @@
 #'   modelSettings = setDefaultTransformer()
 #' )
 #'
-#' # Clean up this example's file. In real use, keep it until training finishes:
-#' # modelSettings stores its path, not the embedding tensors themselves.
+#' # Clean up this example's file. In real use, keep it for as long as you use
+#' # the model: modelSettings and the saved model store its path, not the
+#' # embedding tensors, and predicting with a saved model reads it again.
 #' unlink(embeddingFilePath)
 #' }
 #'
