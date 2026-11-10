@@ -17,7 +17,8 @@
 # limitations under the License.
 createDataset <- function(data, labels,
                           plpModel = NULL,
-                          temporalSettings = NULL) {
+                          temporalSettings = NULL,
+                          numRows = NULL) {
   path <- system.file("python", package = "DeepPatientLevelPrediction")
 
   newPath <- tempfile()
@@ -48,5 +49,8 @@ createDataset <- function(data, labels,
 
   # testing
   args$data_reference <- r_to_py(plpModel$covariateImportance)
+  if (!is.null(numRows)) {
+    args$num_rows <- as.integer(numRows)
+  }
   return(do.call(dataset, args))
 }

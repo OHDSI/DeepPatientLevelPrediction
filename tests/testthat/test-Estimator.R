@@ -249,15 +249,17 @@ test_that("Estimator fit function works", {
 test_that("predictDeepEstimator works", {
 
   # input is an estimator and a dataset
+  # python indices are zero-based
+  cohort <- trainData$Train$labels[unlist(smallDataset$indices) + 1, ]
   sink(nullfile())
   predictions <- predictDeepEstimator(estimator,
                                       smallDataset,
-                                      cohort = trainData$Train$labels)
+                                      cohort = cohort)
   sink()
 
   expect_lte(max(predictions$value), 1)
   expect_gte(min(predictions$value), 0)
-  expect_equal(nrow(predictions), nrow(trainData$Train$labels))
+  expect_equal(nrow(predictions), nrow(cohort))
 
   # input is a plpModel and data
   sink(nullfile())

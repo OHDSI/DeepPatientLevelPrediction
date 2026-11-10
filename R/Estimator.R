@@ -489,7 +489,8 @@ predictDeepEstimator <- function(plpModel, data, cohort) {
     )
     data <- createDataset(mappedData,
       plpModel = plpModel,
-      temporalSettings = attr(plpModel$modelDesign$modelSettings$param, "temporalSettings")
+      temporalSettings = attr(plpModel$modelDesign$modelSettings$param, "temporalSettings"),
+      numRows = nrow(cohort)
     )
   } else if ("plpData" %in% class(data)) {
     mappedData <- PatientLevelPrediction::MapIds(
@@ -499,7 +500,8 @@ predictDeepEstimator <- function(plpModel, data, cohort) {
         dplyr::select("columnId", "covariateId")
     )
     data <- createDataset(mappedData,
-      plpModel = plpModel
+      plpModel = plpModel,
+      numRows = nrow(cohort)
     )
   }
 
@@ -526,11 +528,18 @@ predictDeepEstimator <- function(plpModel, data, cohort) {
     estimator <-
       createEstimator(parameters = parameters)
     estimator$model$load_state_dict(model$model_state_dict)
-    prediction$value <- estimator$predict_proba(data)
+    predictions <- estimator$predict_proba(data)
   } else {
-    prediction$value <- plpModel$model$predict_proba(data)
+    predictions <- plpModel$model$predict_proba(data)
   }
-  prediction$value <- as.numeric(prediction$value)
+  predictions <- as.numeric(predictions)
+  if (length(predictions) != nrow(prediction)) {
+    stop(paste0(
+      "Got ", length(predictions), " predictions for ", nrow(prediction),
+      " patients in the cohort"
+    ))
+  }
+  prediction$value <- predictions
   attr(prediction, "metaData")$modelType <- attr(plpModel, "modelType")
 
   return(prediction)
