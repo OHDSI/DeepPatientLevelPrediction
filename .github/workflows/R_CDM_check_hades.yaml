@@ -90,7 +90,7 @@ jobs:
       - name: setup r-reticulate venv
         shell: bash
         run: |
-          uv pip install polars tqdm pyarrow duckdb nvidia-ml-py numpy
+          uv pip install polars tqdm pyarrow duckdb numpy
           if [ "${{ matrix.config.torch }}" = "latest" ]; then
             uv pip install torch --index https://download.pytorch.org/whl/cpu/
           else

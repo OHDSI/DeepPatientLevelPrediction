@@ -54,8 +54,7 @@ torch <- NULL
   "duckdb",
   "numpy",
   "torch>=2.7,<3",
-  "tqdm",
-  "nvidia-ml-py"
+  "tqdm"
 )
 
 .pythonImportError <- function(error) {
