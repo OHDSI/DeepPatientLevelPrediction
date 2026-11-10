@@ -1,6 +1,7 @@
 # Copyright 2022-2026 Observational Health Data Sciences and Informatics
 # SPDX-License-Identifier: Apache-2.0
 
+import hashlib
 import shutil
 import time
 from typing import Optional, Union, Sequence
@@ -139,6 +140,47 @@ class Data(Dataset):
         self.target = torch.tensor(
             labels if labels is not None else [0] * len(sequence_data), dtype=torch.float32
         )
+
+    def fingerprint(self, chunk_rows: int = 1024) -> str:
+        """
+        A hash of the processed patient data, outcomes and feature mapping, used
+        to detect when a training cache belongs to different data.
+
+        The tensors are hashed ``chunk_rows`` patients at a time, so that sorting
+        the features adds little memory on large data. The chunk size does not
+        change the result.
+        """
+        tensors = dict(self.data)
+        tensors["target"] = self.target
+        # the order of features within a patient is not guaranteed without time
+        sort_features = not self.use_time
+
+        hasher = hashlib.blake2b(digest_size=16)
+        for key in sorted(tensors):
+            tensor = tensors[key]
+            hasher.update(f"{key}{tuple(tensor.shape)}".encode())
+            if tensor.dim() == 0:
+                hasher.update(tensor.numpy())
+                continue
+            for start in range(0, max(tensor.shape[0], 1), chunk_rows):
+                chunk = tensor[start : start + chunk_rows]
+                if sort_features and key in ("feature_ids", "feature_values"):
+                    ids = tensors["feature_ids"][start : start + chunk_rows]
+                    order = torch.argsort(ids, dim=1, stable=True)
+                    chunk = torch.gather(chunk, 1, order)
+                hasher.update(chunk.contiguous().numpy())
+
+        data_ref = self.data_ref.collect()
+        mapping_columns = [
+            column
+            for column in ("columnId", "covariateId", "conceptId", "isBinary")
+            if column in data_ref.columns
+        ]
+        hasher.update(data_ref.select(mapping_columns).sort(mapping_columns).write_csv().encode())
+        if self.time_ref is not None:
+            time_ref = self.time_ref.collect()
+            hasher.update(time_ref.sort(time_ref.columns).write_csv().encode())
+        return hasher.hexdigest()
 
     def get_feature_info(self):
         feature_info = FeatureInfo(

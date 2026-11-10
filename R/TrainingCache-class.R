@@ -20,7 +20,8 @@ trainingCache <- R6Class(
   private = list(
     .paramPersistence = list(
       gridSearchPredictions = NULL,
-      modelParams = NULL
+      modelParams = NULL,
+      fingerprint = NULL
     ),
     .paramContinuity = list(),
     .saveDir = NULL,
@@ -52,6 +53,23 @@ trainingCache <- R6Class(
     #' @returns Whether the provided and cached parameter grid is identical
     isParamGridIdentical = function(inModelParams) {
       return(identical(inModelParams, private$.paramPersistence$modelParams))
+    },
+
+    #' @description
+    #' Checks whether the cached results were produced with the same data and
+    #' training configuration.
+    #' @param inFingerprint Fingerprint of the current data and configuration
+    #' @returns Whether the provided and cached fingerprint are identical
+    isFingerprintIdentical = function(inFingerprint) {
+      return(identical(inFingerprint, private$.paramPersistence$fingerprint))
+    },
+
+    #' @description
+    #' Saves the fingerprint of the data and configuration to the training cache
+    #' @param inFingerprint Fingerprint of the current data and configuration
+    saveFingerprint = function(inFingerprint) {
+      private$.paramPersistence$fingerprint <- inFingerprint
+      private$writeToFile()
     },
 
     #' @description
@@ -139,15 +157,119 @@ trainingCache <- R6Class(
   )
 )
 
-setupCache <- function(analysisPath, parameters) {
+setupCache <- function(analysisPath, parameters, fingerprint = NULL) {
   trainCache <- trainingCache$new(analysisPath)
-  if (trainCache$isParamGridIdentical(parameters)) {
-    hyperparameterResults <- trainCache$getGridSearchPredictions()
-  } else {
+  isSameRun <- trainCache$isParamGridIdentical(parameters) &&
+    trainCache$isFingerprintIdentical(fingerprint)
+  if (!isSameRun) {
+    cached <- trainCache$getGridSearchPredictions()
+    if (any(!vapply(cached, is.null, logical(1)))) {
+      ParallelLogger::logInfo(
+        "Ignoring the training cache because the data or settings have changed"
+      )
+    }
     hyperparameterResults <- list()
     length(hyperparameterResults) <- length(parameters)
     trainCache$saveGridSearchPredictions(hyperparameterResults)
     trainCache$saveModelParams(parameters)
+    trainCache$saveFingerprint(fingerprint)
   }
   return(trainCache)
+}
+
+# Identifies everything besides the parameter grid that cached results depend on.
+createCacheFingerprint <- function(
+    dataset,
+    labels,
+    modelSettings,
+    tuningMetric = NULL) {
+  estimatorSettings <- modelSettings$estimatorSettings
+  # a seed drawn because none was requested should not block resuming a run
+  if (identical(estimatorSettings$seed, attr(estimatorSettings, "generatedSeed"))) {
+    estimatorSettings$seed <- NULL
+  }
+  # the device changes where the model trains, not what is being estimated
+  estimatorSettings$device <- NULL
+  labelColumns <- intersect(c("rowId", "outcomeCount", "index"), names(labels))
+  return(rlang::hash(list(
+    data = as.character(dataset$fingerprint()),
+    labels = normalizeForFingerprint(as.list(as.data.frame(labels)[labelColumns])),
+    modelType = modelSettings$modelType,
+    estimatorSettings = normalizeForFingerprint(estimatorSettings),
+    tuningMetric = describeTuningMetric(tuningMetric),
+    files = describeInputFiles(estimatorSettings)
+  )))
+}
+
+# Files read during training, identified by their contents, since the same
+# path can hold new weights or embeddings in a later run.
+describeInputFiles <- function(estimatorSettings) {
+  paths <- estimatorSettings$finetuneModelPath
+  strategy <- estimatorSettings$initStrategy
+  if (inherits(strategy, "python.builtin.object") &&
+    reticulate::py_has_attr(strategy, "embedding_file")) {
+    paths <- c(paths, as.character(strategy$embedding_file))
+  }
+  return(vapply(
+    paths,
+    function(path) if (file.exists(path)) rlang::hash_file(path) else NA_character_,
+    character(1),
+    USE.NAMES = FALSE
+  ))
+}
+
+# createTuningMetric() wraps the metric function in a closure that holds the
+# original function and its funArgs, so the wrapper alone tells metrics apart
+# only by name.
+describeTuningMetric <- function(tuningMetric) {
+  if (is.null(tuningMetric)) {
+    return(NULL)
+  }
+  metricFunction <- tuningMetric$fun
+  if (is.function(metricFunction) &&
+    all(c("fun", "funArgs") %in% ls(environment(metricFunction)))) {
+    metricFunction <- environment(metricFunction)$fun
+  }
+  return(normalizeForFingerprint(list(
+    name = tuningMetric$name,
+    maximize = tuningMetric$maximize,
+    fun = metricFunction,
+    funArgs = tuningMetric$funArgs
+  )))
+}
+
+# Python objects and closures have no stable serialized form. Values that R
+# closures or Python callables capture are not part of the description, so
+# changing such a value alone does not invalidate the cache.
+normalizeForFingerprint <- function(x) {
+  if (inherits(x, "python.builtin.object")) {
+    return(describePythonObject(x))
+  }
+  if (inherits(x, "delayed")) {
+    return(normalizeForFingerprint(x()))
+  }
+  if (is.function(x)) {
+    return(deparse(x, control = NULL))
+  }
+  if (is.list(x)) {
+    return(lapply(x, normalizeForFingerprint))
+  }
+  if (is.atomic(x) && !is.null(x)) {
+    # equal vectors can hash differently when one is a compact ALTREP sequence
+    # such as 1:n; c() gives an ordinary copy
+    attributes <- attributes(x)
+    x <- c(x)
+    attributes(x) <- attributes
+  }
+  return(x)
+}
+
+describePythonObject <- function(x) {
+  builtins <- reticulate::import_builtins(convert = FALSE)
+  description <- as.character(builtins$repr(x))
+  if (!reticulate::import("inspect")$isclass(x) &&
+    reticulate::py_has_attr(x, "__dict__")) {
+    description <- c(description, as.character(builtins$repr(builtins$vars(x))))
+  }
+  return(gsub(" at 0x[0-9a-fA-F]+", "", description))
 }

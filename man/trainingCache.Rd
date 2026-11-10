@@ -24,6 +24,8 @@ unlink(cacheDirectory, recursive = TRUE)
   \itemize{
     \item \href{#method-TrainingCache-initialize}{\code{TrainingCache$new()}}
     \item \href{#method-TrainingCache-isParamGridIdentical}{\code{TrainingCache$isParamGridIdentical()}}
+    \item \href{#method-TrainingCache-isFingerprintIdentical}{\code{TrainingCache$isFingerprintIdentical()}}
+    \item \href{#method-TrainingCache-saveFingerprint}{\code{TrainingCache$saveFingerprint()}}
     \item \href{#method-TrainingCache-saveGridSearchPredictions}{\code{TrainingCache$saveGridSearchPredictions()}}
     \item \href{#method-TrainingCache-saveModelParams}{\code{TrainingCache$saveModelParams()}}
     \item \href{#method-TrainingCache-getGridSearchPredictions}{\code{TrainingCache$getGridSearchPredictions()}}
@@ -73,6 +75,48 @@ the cached parameters.
   }
   \subsection{Returns}{
     Whether the provided and cached parameter grid is identical
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-TrainingCache-isFingerprintIdentical"></a>}}
+\if{latex}{\out{\hypertarget{method-TrainingCache-isFingerprintIdentical}{}}}
+\subsection{\code{TrainingCache$isFingerprintIdentical()}}{
+  Checks whether the cached results were produced with the same data and
+training configuration.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{TrainingCache$isFingerprintIdentical(inFingerprint)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{inFingerprint}}{Fingerprint of the current data and configuration}
+    }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    Whether the provided and cached fingerprint are identical
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-TrainingCache-saveFingerprint"></a>}}
+\if{latex}{\out{\hypertarget{method-TrainingCache-saveFingerprint}{}}}
+\subsection{\code{TrainingCache$saveFingerprint()}}{
+  Saves the fingerprint of the data and configuration to the training cache
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{TrainingCache$saveFingerprint(inFingerprint)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{inFingerprint}}{Fingerprint of the current data and configuration}
+    }
+    \if{html}{\out{</div>}}
   }
 }
 
