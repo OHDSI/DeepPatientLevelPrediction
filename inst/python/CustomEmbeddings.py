@@ -153,11 +153,21 @@ def logmap0(points: torch.Tensor, curvature: float = 1.0) -> torch.Tensor:
     Near the origin the scale factor comes from its series, which keeps the
     result and its gradient finite at zero, the padding embedding.
     """
-    z = curvature * points.square().sum(dim=-1, keepdim=True)
-    eps = torch.finfo(points.dtype).eps
-    # both branches of torch.where get safe inputs, so neither has a 0 / 0 gradient
-    radius = z.clamp_min(eps).sqrt().clamp_max(1 - eps)
-    scale = torch.where(z < 1e-6, 1 + z / 3 + z.square() / 5, torch.atanh(radius) / radius)
+    # scale before squaring, so that a small curvature cannot overflow
+    z = (math.sqrt(curvature) * points).square().sum(dim=-1, keepdim=True)
+    # the series 1 + z/3 + z^2/5 is off by about z^3/7, far below float precision
+    small = z < 1e-4
+    # torch.where also differentiates the branch it does not select, so that
+    # branch gets inputs with a finite gradient
+    z_exact = torch.where(small, torch.full_like(z, 0.25), z)
+    # the largest radius below 1, so that rounding cannot reach the boundary
+    # and points inside the ball are not clipped
+    below_one = 1.0 - torch.finfo(points.dtype).eps / 2
+    radius = z_exact.sqrt().clamp_max(below_one)
+    z_series = torch.where(small, z, torch.zeros_like(z))
+    scale = torch.where(
+        small, 1 + z_series / 3 + z_series.square() / 5, torch.atanh(radius) / radius
+    )
     return points * scale
 
 
