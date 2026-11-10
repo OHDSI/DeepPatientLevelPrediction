@@ -1142,6 +1142,7 @@ test_that("Poincare embeddings must lie inside the ball of their curvature", {
   expect_error(poincareEmbedding(rbind(c(0.6, 0.8))), "not inside the Poincare ball")
   expect_error(poincareEmbedding(rbind(c(NaN, 0.1))), "not finite")
   expect_error(poincareEmbedding(point, curvature = 0), "positive number")
+  expect_error(poincareEmbedding(point, freeze = FALSE), "needs frozen embeddings")
 })
 
 test_that("the Poincare log map uses the curvature and is finite at the origin", {
