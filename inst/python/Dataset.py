@@ -24,6 +24,7 @@ class Data(Dataset):
         labels: Optional[list] = None,
         data_reference: Optional[pl.DataFrame | pl.LazyFrame] = None,
         temporal_settings: Optional[dict] = None,
+        num_rows: Optional[int] = None,
     ):
         """
         Args:
@@ -35,8 +36,14 @@ class Data(Dataset):
                 truncation: the truncation strategy to use, only "tail" is implemented
                 max_sequence_length: the maximum sequence length to use, can be "max" 
                 or an integer
+            num_rows: the number of patients when there are no labels. Rows are
+                numbered from 1 to this number, patients without any covariates
+                are kept with an empty sequence
         """
         start = time.time()
+        if labels is not None and not isinstance(labels, (list, tuple)):
+            labels = [labels]  # reticulate converts a single label to a scalar
+        num_rows = len(labels) if labels is not None else num_rows
 
         data_dict = read_data(data_path, lazy=True, data_reference=data_reference)
         self.use_time = "timeId" in data_dict["data"].collect_schema().names()
@@ -44,6 +51,7 @@ class Data(Dataset):
         sequence_data, self.data_ref, self.time_ref = self._build_sequences(
             data_dict,
             temporal_settings=temporal_settings,
+            num_rows=num_rows,
         )
 
         self._finalize_tensors(sequence_data, labels)
@@ -55,6 +63,7 @@ class Data(Dataset):
         self,
         data_dict: dict[str, pl.DataFrame | pl.LazyFrame],
         temporal_settings: Optional[dict] = None,
+        num_rows: Optional[int] = None,
     ) -> tuple[pl.DataFrame, pl.LazyFrame | pl.DataFrame, Optional[pl.LazyFrame]]:
         """
         Builds sequences from the data and returns a LazyFrame with sequences,
@@ -64,13 +73,20 @@ class Data(Dataset):
         data_ref = data_dict["data_ref"]
         time_ref = data_dict["time_ref"]
 
-        data = fill_missing_means_zero(data, data_ref=data_ref, with_time=self.use_time)
+        data = fill_missing_means_zero(
+            data,
+            data_ref=data_ref,
+            with_time=self.use_time,
+            num_rows=num_rows,
+        )
 
         if self.use_time and temporal_settings and temporal_settings.get("time_tokens"):
             data, data_ref = insert_time_tokens(
                 data, data_ref=data_ref, strategy="coarse"
             )
-        sequence_data = aggregate_sequences(data, with_time=self.use_time)
+        sequence_data = aggregate_sequences(
+            data, with_time=self.use_time, num_rows=num_rows
+        )
         max_len = self._get_max_sequence_length(
             sequence_data, temporal_settings=temporal_settings
         )
@@ -316,10 +332,28 @@ def read_data(
     return {"data": data, "data_ref": data_ref, "time_ref": time_ref if time else None}
 
 
+def get_all_rows(data: pl.LazyFrame, num_rows: Optional[int] = None) -> pl.LazyFrame:
+    """
+    Gets the zero-indexed rowIds of all patients, which are also the patients
+    without any covariates if the total number of patients is known.
+    """
+    if num_rows is None:
+        return data.select("rowId").unique()
+    largest_row = data.select(pl.col("rowId").max()).collect().item()
+    if largest_row is not None and largest_row >= num_rows:
+        raise ValueError(
+            f"Covariates refer to row {largest_row + 1} but there are only "
+            f"{num_rows} patients"
+        )
+    row_type = data.collect_schema()["rowId"]
+    return pl.LazyFrame({"rowId": pl.int_range(num_rows, eager=True).cast(row_type)})
+
+
 def fill_missing_means_zero(
     data: pl.LazyFrame,
     data_ref: pl.LazyFrame,
     with_time: bool = False,
+    num_rows: Optional[int] = None,
 ) -> pl.LazyFrame:
     """
     Fills the missing values in the data with 0.0 for features that have
@@ -336,7 +370,7 @@ def fill_missing_means_zero(
         pl.col("rowId") - 1  # Convert R rowId to Python rowId (0-indexed)
     )
     missing_means_zero_columns = missing_means_zero.collect()["columnId"].to_list()
-    all_rows = data.select("rowId").unique()
+    all_rows = get_all_rows(data, num_rows)
     all_pairs = all_rows.join(missing_means_zero, how="cross")
     zero_filled = (
         data.filter(pl.col("columnId").is_in(missing_means_zero_columns))
@@ -354,6 +388,7 @@ def fill_missing_means_zero(
 def aggregate_sequences(
     data: pl.LazyFrame,
     with_time: bool = False,
+    num_rows: Optional[int] = None,
 ) -> pl.LazyFrame:
     """
     Groups the data by rowId and creates lists of feature_ids, feature_values,
@@ -375,9 +410,7 @@ def aggregate_sequences(
         data = data.with_columns(pl.col("timeId").fill_null(0).cast(pl.Int32))
         aggs.append(pl.col("timeId").sort_by(["timeId", "columnId"]).alias("time_ids"))
     grouped = data.group_by("rowId").agg(*aggs)
-    all_rows = (
-        data.select("rowId").unique().with_columns((pl.col("rowId")).alias("rowId"))
-    )
+    all_rows = get_all_rows(data, num_rows)
     return all_rows.join(grouped, on="rowId", how="left").with_columns(
         pl.col("feature_ids").fill_null(pl.lit([0], dtype=pl.List(pl.Int32))),
         pl.col("feature_values").fill_null(pl.lit([], dtype=pl.List(pl.Float32))),

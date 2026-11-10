@@ -475,6 +475,94 @@ test_that("aggregated custom embeddings do not depend on padding", {
   expect_equal(embedRow(estimator, c(1, 0, 0)), c(1, 10), tolerance = 1e-6)
 })
 
+test_that("predictions are kept for patients without covariates", {
+  skip_if_no_python()
+  data <- createMockData(data.frame(
+    rowId = c(1, 1, 3),
+    covariateId = c(101, 102, 101),
+    columnId = c(1L, 2L, 1L),
+    covariateValue = c(1, 1, 2)
+  ))
+  withr::defer(Andromeda::close(data))
+  plpModel <- list(covariateImportance = data.frame(
+    columnId = 1:2, covariateId = c(101, 102), analysisId = 1,
+    conceptId = c(1001, 1002), covariateName = c("a", "b")
+  ))
+  dataset <- createDataset(data, plpModel = plpModel, numRows = 4)
+
+  expect_equal(reticulate::py_len(dataset), 4L)
+  featureIds <- dataset$data$feature_ids$numpy()
+  expect_equal(unname(featureIds[1, ]), c(1, 2))
+  expect_equal(unname(featureIds[2, ]), c(0, 0))
+  expect_equal(unname(featureIds[3, ]), c(1, 0))
+  expect_equal(unname(featureIds[4, ]), c(0, 0))
+
+  settingsList <- list(
+    setMultiLayerPerceptron(
+      numLayers = 1, sizeHidden = 4, dropout = 0, sizeEmbedding = 4,
+      estimatorSettings = setEstimator(learningRate = 0.01, device = "cpu", seed = 42),
+      randomSample = 1
+    ),
+    setResNet(
+      numLayers = 1, sizeHidden = 4, hiddenFactor = 1, residualDropout = 0,
+      hiddenDropout = 0, sizeEmbedding = 4,
+      estimatorSettings = setEstimator(learningRate = 0.01, device = "cpu", seed = 42),
+      randomSample = 1
+    ),
+    setTransformer(
+      numBlocks = 1, dimToken = 4, dimOut = 1, numHeads = 2, attDropout = 0,
+      ffnDropout = 0, dimHidden = 4,
+      estimatorSettings = setEstimator(learningRate = 0.01, device = "cpu", seed = 42),
+      randomSample = 1
+    ),
+    setRealMLP(sizeHidden = 4L, numLayers = 1L, sizeEmbedding = 4L)
+  )
+  for (settings in settingsList) {
+    parameters <- settings$param[[1]]
+    parameters$modelType <- settings$modelType
+    parameters$feature_info <- dataset$get_feature_info()
+    estimator <- createEstimator(list(
+      modelParameters = parameters,
+      estimatorSettings = settings$estimatorSettings
+    ))
+    predictions <- as.numeric(estimator$predict_proba(dataset))
+    expect_length(predictions, 4)
+    expect_true(all(is.finite(predictions)), info = settings$modelType)
+  }
+})
+
+test_that("training keeps patients without covariates aligned with their labels", {
+  skip_if_no_python()
+  data <- createMockData(data.frame(
+    rowId = c(1, 3), covariateId = c(101, 101), columnId = c(1L, 1L),
+    covariateValue = c(1, 2)
+  ))
+  withr::defer(Andromeda::close(data))
+  dataset <- createDataset(data, data.frame(rowId = 1:3, outcomeCount = c(1, 0, 1)))
+  expect_equal(reticulate::py_len(dataset), 3L)
+  expect_equal(as.numeric(dataset$data$feature_values$numpy()), c(1, 0, 2))
+})
+
+test_that("covariates outside of the cohort are rejected", {
+  skip_if_no_python()
+  data <- createMockData(data.frame(
+    rowId = 5, covariateId = 101, columnId = 1L, covariateValue = 1
+  ))
+  withr::defer(Andromeda::close(data))
+  expect_error(
+    createDataset(data, data.frame(rowId = 1:2, outcomeCount = c(0, 1))),
+    "only 2 patients"
+  )
+})
+
+test_that("a mismatch between predictions and the cohort is an error", {
+  estimator <- list(predict_proba = function(data) c(0.1, 0.9))
+  expect_error(
+    predictDeepEstimator(estimator, data = NULL, cohort = data.frame(rowId = 1:4)),
+    "2 predictions for 4 patients"
+  )
+})
+
 test_that("the tuning metric picks the best hyperparameters", {
   results <- list(
     list(gridPerformance = list(cvPerformance = 0.2), prediction = "a"),
