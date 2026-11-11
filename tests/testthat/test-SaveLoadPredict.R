@@ -12,13 +12,14 @@ quickMlp <- function() {
   )
 }
 
-# Fits with fitPlp() on the simulated training data, saves and loads the
-# model, and predicts the whole simulated population with the loaded model.
-roundTrip <- function(modelSettings, analysisId) {
+# Fits with fitPlp() on the training data, saves and loads the model, and
+# predicts the whole population with the loaded model.
+roundTrip <- function(modelSettings, analysisId, trainData = simTrainData$Train,
+                      plpData = simPlpData, population = simPopulation) {
   directory <- tempfile(analysisId)
   dir.create(directory)
   fitted <- quietly(PatientLevelPrediction::fitPlp(
-    trainData = simTrainData$Train,
+    trainData = trainData,
     modelSettings = modelSettings,
     analysisId = analysisId,
     analysisPath = directory
@@ -29,7 +30,7 @@ roundTrip <- function(modelSettings, analysisId) {
   list(
     modelPath = modelPath,
     fitted = fitted,
-    predicted = quietly(PatientLevelPrediction::predictPlp(loaded, simPlpData, simPopulation))
+    predicted = quietly(PatientLevelPrediction::predictPlp(loaded, plpData, population))
   )
 }
 
@@ -105,4 +106,42 @@ test_that("fine-tuned models predict the same after saving and loading", {
     estimatorSettings = quickEstimator()
   )
   expectSamePredictions(roundTrip(fineTuned, "Finetuner"))
+})
+
+# simulated data turned into temporal sequences: every covariate gets one of
+# 30 days before the index date
+delayedAssign("simTemporal", local({
+  plpData <- simulatedPlpData(n = 400)
+  plpData$covariateData$covariates <- plpData$covariateData$covariates %>%
+    dplyr::mutate(timeId = (.data$rowId + .data$covariateId) %% 30 + 1)
+  plpData$covariateData$timeRef <- data.frame(
+    timePart = "day", timeInterval = 1, sequenceStartDay = -30, sequenceEndDay = -1
+  )
+  population <- PatientLevelPrediction::createStudyPopulation(
+    plpData, outcomeId = 3, populationSettings = simulatedPopulationSettings()
+  )
+  list(
+    plpData = plpData,
+    population = population,
+    trainData = PatientLevelPrediction::splitData(
+      plpData, population,
+      PatientLevelPrediction::createDefaultSplitSetting(splitSeed = 42, nfold = 2)
+    )
+  )
+}))
+
+test_that("temporal models predict the same after saving and loading", {
+  skip_if_no_python()
+  temporalTransformer <- setTransformer(
+    numBlocks = 1, dimToken = 8, dimOut = 1, numHeads = 2, attDropout = 0,
+    ffnDropout = 0, dimHidden = 16, temporal = TRUE,
+    temporalSettings = list(maxSequenceLength = 16, truncation = "tail", timeTokens = TRUE),
+    estimatorSettings = quickEstimator()
+  )
+  expectSamePredictions(roundTrip(
+    temporalTransformer, "TemporalTransformer",
+    trainData = simTemporal$trainData$Train,
+    plpData = simTemporal$plpData,
+    population = simTemporal$population
+  ))
 })
