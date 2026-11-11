@@ -165,26 +165,9 @@ setEstimator <- function(
   if (!is.null(trainValidationSplit)) {
     estimatorSettings$trainValidationSplit <- trainValidationSplit
   }
-  optimizer <- rlang::enquo(optimizer)
-  estimatorSettings$optimizer <- function() rlang::eval_tidy(optimizer)
-  class(estimatorSettings$optimizer) <- c(
-    "delayed",
-    class(estimatorSettings$optimizer)
-  )
-
-  criterion <- rlang::enquo(criterion)
-  estimatorSettings$criterion <- function() rlang::eval_tidy(criterion)
-  class(estimatorSettings$criterion) <- c(
-    "delayed",
-    class(estimatorSettings$criterion)
-  )
-
-  scheduler <- rlang::enquo(scheduler)
-  estimatorSettings$scheduler <- function() rlang::eval_tidy(scheduler)
-  class(estimatorSettings$scheduler) <- c(
-    "delayed",
-    class(estimatorSettings$scheduler)
-  )
+  estimatorSettings$optimizer <- delaySetting(rlang::enquo(optimizer))
+  estimatorSettings$criterion <- delaySetting(rlang::enquo(criterion))
+  estimatorSettings$scheduler <- delaySetting(rlang::enquo(scheduler))
 
   if (is.function(device)) {
     class(estimatorSettings$device) <- c(
@@ -202,6 +185,23 @@ setEstimator <- function(
   estimatorSettings$paramsToTune <- extractParamsToTune(estimatorSettings)
   attr(estimatorSettings, "generatedSeed") <- generatedSeed
   return(estimatorSettings)
+}
+
+# Settings that refer to Python objects, such as torch's optimizers, stay
+# unevaluated until a model is fitted, so creating settings doesn't load Python.
+delaySetting <- function(quosure) {
+  structure(function() rlang::eval_tidy(quosure), class = c("delayed", "function"))
+}
+
+# TRUE if a setting kept by delaySetting() was given as NULL. The expression is
+# checked without evaluating it.
+isDelayedNull <- function(setting) {
+  quosure <- rlang::fn_env(setting)$quosure
+  if (is.null(quosure)) {
+    # settings created before delaySetting() existed
+    return(is.null(setting()))
+  }
+  rlang::quo_is_null(quosure)
 }
 
 #' Fit a Deep Learning Estimator
@@ -1020,7 +1020,9 @@ doCrossValidationImpl <- function(
     )
     learnRates[[i]] <- list(
       LRs = estimator$learn_rate_schedule,
-      bestEpoch = estimator$best_epoch
+      bestEpoch = estimator$best_epoch,
+      # the rate before any schedule, which the learning-rate finder may have chosen
+      baseLR = estimator$base_learning_rate
     )
   }
   gridPerformance <- computeTuningPerformance(
@@ -1127,9 +1129,9 @@ trainFinalModel <- function(dataset, finalParam, modelSettings, labels) {
     fitParams,
     finalParam
   )
-  if (!startsWith(modelSettings$modelType, "RealMLP")) {
-    estimatorSettings$learningRate <- finalParam$learnSchedule$LRs[[1]]
-  }
+  # results cached before baseLR was recorded start from the first epoch's rate
+  estimatorSettings$learningRate <- finalParam$learnSchedule$baseLR %||%
+    finalParam$learnSchedule$LRs[[1]]
   parameters <- list(
     modelParameters = modelParams,
     estimatorSettings = estimatorSettings

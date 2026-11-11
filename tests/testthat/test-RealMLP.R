@@ -24,6 +24,7 @@ test_that("setRealMLP settings are created correctly", {
   expect_equal(settings$estimatorSettings$epochs, 256L)
   expect_equal(settings$estimatorSettings$metric, "loss")
   expect_null(settings$estimatorSettings$earlyStopping)
+  expect_true(isDelayedNull(settings$estimatorSettings$scheduler))
   # RealMLP's own training settings are model parameters
   for (name in c("beta2", "eps", "labelSmoothing", "lrSchedule", "scalingLrMult",
                  "dataDependentInit", "dataDependentInitMode")) {
@@ -84,6 +85,54 @@ test_that("setRealMLP expands vector parameters into grid combinations", {
     }, logical(1))
   ))
   expect_true(all(vapply(settings$param, function(x) x$featureScaleMode == "scalar", logical(1))))
+})
+
+test_that("setRealMLP takes estimator settings like the other models", {
+  settings <- setRealMLP(
+    estimatorSettings = setEstimator(
+      learningRate = c(1e-3, 2e-3),
+      batchSize = 64L,
+      epochs = 3L,
+      scheduler = NULL,
+      seed = 7L,
+      gradClipNorm = 1,
+      deterministic = TRUE
+    )
+  )
+  expect_equal(settings$estimatorSettings$batchSize, 64L)
+  expect_equal(settings$estimatorSettings$epochs, 3L)
+  expect_equal(settings$estimatorSettings$seed, 7L)
+  expect_equal(settings$estimatorSettings$gradClipNorm, 1)
+  expect_true(settings$estimatorSettings$deterministic)
+  # estimator settings with several values are tuned
+  expect_length(settings$param, 2L)
+  expect_setequal(
+    vapply(settings$param, function(x) x$estimator.learningRate, numeric(1)),
+    c(1e-3, 2e-3)
+  )
+})
+
+test_that("setRealMLP ignores a scheduler with a warning", {
+  expect_warning(
+    settings <- setRealMLP(estimatorSettings = setEstimator(learningRate = 2e-3)),
+    "RealMLP follows its own learning-rate schedule"
+  )
+  expect_true(isDelayedNull(settings$estimatorSettings$scheduler))
+  expect_null(evalEstimatorSettings(settings$estimatorSettings)$scheduler)
+  expect_no_warning(setRealMLP())
+})
+
+test_that("setRealMLP's device argument is deprecated", {
+  expect_warning(
+    settings <- setRealMLP(device = "cuda"),
+    "`device` is deprecated"
+  )
+  expect_equal(settings$estimatorSettings$device, "cuda")
+  expect_warning(
+    settings <- setRealMLP(device = function() "cpu"),
+    "`device` is deprecated"
+  )
+  expect_equal(evalEstimatorSettings(settings$estimatorSettings)$device, "cpu")
 })
 
 test_that("setRealMLP random search samples expanded grid combinations", {
@@ -379,8 +428,7 @@ test_that("RealMLP optimizer parameter groups and dynamic schedules work", {
     dropout = 0.2,
     sizeEmbedding = 16L,
     labelSmoothing = 0.1,
-    numericEmbeddingMode = "pbld",
-    device = "cpu"
+    numericEmbeddingMode = "pbld"
   )
   settings$estimatorSettings$epochs <- 1L
   settings$estimatorSettings$batchSize <- 64L
@@ -424,11 +472,11 @@ test_that("RealMLP optimizer parameter groups and dynamic schedules work", {
 
 test_that("RealMLP passes its optimizer options to an optimizer that takes them", {
   skip_if_no_python()
-  realMlpEstimator <- function(optimizer = NULL) {
-    settings <- setRealMLP(sizeHidden = 4L, numLayers = 1L, sizeEmbedding = 4L)
-    if (!is.null(optimizer)) {
-      settings$estimatorSettings$optimizer <- optimizer
-    }
+  realMlpEstimator <- function(estimatorSettings) {
+    settings <- setRealMLP(
+      sizeHidden = 4L, numLayers = 1L, sizeEmbedding = 4L,
+      estimatorSettings = estimatorSettings
+    )
     parameters <- settings$param[[1]]
     parameters$modelType <- settings$modelType
     parameters$feature_info <- mappedFeatureInfo()
@@ -437,13 +485,15 @@ test_that("RealMLP passes its optimizer options to an optimizer that takes them"
       estimatorSettings = settings$estimatorSettings
     ))
   }
-  estimator <- realMlpEstimator()
+  estimator <- realMlpEstimator(setEstimator(learningRate = 2e-3, scheduler = NULL))
   for (group in estimator$optimizer$param_groups) {
     expect_equal(group$betas[[2]], 0.95)
     expect_equal(group$eps, 1e-8)
   }
   # SGD has no betas or eps, so they are left out with a warning
-  estimator <- realMlpEstimator(torch$optim$SGD)
+  estimator <- realMlpEstimator(setEstimator(
+    learningRate = 2e-3, scheduler = NULL, optimizer = torch$optim$SGD
+  ))
   expect_s3_class(estimator$optimizer, "torch.optim.sgd.SGD")
   py <- reticulate::py_run_string("
 import warnings
