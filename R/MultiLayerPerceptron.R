@@ -68,11 +68,13 @@ setMultiLayerPerceptron <- function(numLayers = c(1:8),
 
   checkIsClass(dropout, c("numeric"))
   checkHigherEqual(dropout, 0)
+  checkLower(dropout, 1)
 
   checkIsClass(sizeEmbedding, c("numeric", "integer"))
   checkHigherEqual(sizeEmbedding, 1)
 
   checkIsClass(hyperParamSearch, "character")
+  checkInStringVector(hyperParamSearch, c("random", "grid"))
 
   checkIsClass(randomSample, c("numeric", "integer"))
   checkHigherEqual(randomSample, 1)

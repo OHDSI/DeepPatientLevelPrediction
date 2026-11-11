@@ -242,3 +242,25 @@ test_that("setEstimator checks the gradient clipping and deterministic settings"
     c("grad_clip_norm", "deterministic")
   )
 })
+
+test_that("model settings reject an unknown search type and dropout outside [0, 1)", {
+  settings <- list(
+    ResNet = function(...) setResNet(randomSample = 1, ...),
+    MultiLayerPerceptron = function(...) setMultiLayerPerceptron(randomSample = 1, ...),
+    Transformer = function(...) setTransformer(...),
+    RealMLP = function(...) setRealMLP(...)
+  )
+  for (name in names(settings)) {
+    # a misspelled "random" ran the whole grid
+    expect_error(
+      settings[[name]](hyperParamSearch = "randon"),
+      'hyperParamSearch has incorrect value. It must be one of: "random", "grid"',
+      fixed = TRUE
+    )
+  }
+  expect_error(setMultiLayerPerceptron(dropout = c(-1, 0.5)), "dropout needs to be >= 0")
+  expect_error(setMultiLayerPerceptron(dropout = 1), "dropout needs to be < 1")
+  expect_error(setResNet(hiddenDropout = c(0.1, 1)), "hiddenDropout needs to be < 1")
+  expect_error(setTransformer(ffnDropout = 1), "ffnDropout needs to be < 1")
+  expect_error(setRealMLP(dropout = 1.5), "dropout needs to be < 1")
+})

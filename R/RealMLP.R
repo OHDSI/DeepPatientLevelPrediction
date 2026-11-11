@@ -84,6 +84,7 @@ setRealMLP <- function(
   checkHigherEqual(sizeHidden, 1)
   checkIsClass(dropout, "numeric")
   checkHigherEqual(dropout, 0)
+  checkLower(dropout, 1)
   checkIsClass(sizeEmbedding, c("integer", "numeric"))
   checkHigherEqual(sizeEmbedding, 1)
   checkIsClass(labelSmoothing, "numeric")
@@ -135,6 +136,7 @@ setRealMLP <- function(
   checkIsClass(device, c("character", "function"))
 
   checkIsClass(hyperParamSearch, "character")
+  checkInStringVector(hyperParamSearch, c("random", "grid"))
 
   checkIsClass(randomSample, c("numeric", "integer"))
   checkHigherEqual(randomSample, 1)

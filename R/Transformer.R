@@ -167,9 +167,11 @@ setTransformer <- function(numBlocks = 3,
 
   checkIsClass(attDropout, c("numeric"))
   checkHigherEqual(attDropout, 0)
+  checkLower(attDropout, 1)
 
   checkIsClass(ffnDropout, c("numeric"))
   checkHigherEqual(ffnDropout, 0)
+  checkLower(ffnDropout, 1)
 
   checkIsClass(dimHidden, c("integer", "numeric", "NULL"))
   if (!is.null(dimHidden)) {
@@ -183,6 +185,7 @@ setTransformer <- function(numBlocks = 3,
   }
 
   checkIsClass(hyperParamSearch, "character")
+  checkInStringVector(hyperParamSearch, c("random", "grid"))
 
   checkIsClass(randomSample, c("numeric", "integer"))
   checkHigherEqual(randomSample, 1)

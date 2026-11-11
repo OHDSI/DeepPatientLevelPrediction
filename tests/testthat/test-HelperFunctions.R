@@ -380,3 +380,17 @@ test_that("keepDefaults errors when userSettings is not a list", {
   defaults <- list(lr = 0.01)
   expect_error(keepDefaults(defaults, "not-a-list"), "Settings argument must be a list.")
 })
+
+test_that("the check helpers reject a vector with any value out of range", {
+  expect_error(checkHigher(c(2, 1), 1), "needs to be > 1", fixed = TRUE)
+  expect_error(checkHigher(c(2, NA), 1), "needs to be > 1", fixed = TRUE)
+  expect_error(checkHigherEqual(c(-1, 0.5), 0), "needs to be >= 0", fixed = TRUE)
+  expect_true(checkHigherEqual(c(0, 0.5), 0))
+  expect_error(checkLower(c(0.5, 1), 1), "needs to be < 1", fixed = TRUE)
+  expect_true(checkLower(c(0, 0.5), 1))
+  expect_error(
+    checkInStringVector(c("random", "grid"), c("random", "grid")),
+    'must be one of: "random", "grid"',
+    fixed = TRUE
+  )
+})
