@@ -1,8 +1,10 @@
-skip_if_no_integration()
+skip_if_no_python()
 
-conceptIds <- torch$tensor(plpData$covariateData$covariateRef %>%
-  dplyr::filter(analysisId == 210) %>%
-  dplyr::pull("conceptId"), dtype = torch$long)
+# condition concepts of the simulated data
+conceptIds <- torch$tensor(simPlpData$covariateData$covariateRef %>%
+  dplyr::filter(analysisId == 102) %>%
+  dplyr::pull("conceptId") %>%
+  unique(), dtype = torch$long)
 
 # points of the Poincare ball: each coordinate is below 0.5 in absolute value,
 # so every norm is below sqrt(3) / 2
@@ -10,11 +12,11 @@ customEmbeddings <- list(
   "concept_ids" = conceptIds,
   "embeddings" = torch$rand(conceptIds$shape[0], 3L) - 0.5
 )
-torch$save(customEmbeddings, file.path(testLoc, "custom_embeddings.pt"))
+torch$save(customEmbeddings, file.path(tempdir(), "custom_embeddings.pt"))
 
 test_that("Poincare Transformer works", {
   settings <- setCustomEmbeddingModel(
-    embeddingFilePath = file.path(testLoc, "custom_embeddings.pt"),
+    embeddingFilePath = file.path(tempdir(), "custom_embeddings.pt"),
     modelSettings = setTransformer(
       numBlocks = 1,
       dimToken = 6,
@@ -30,12 +32,12 @@ test_that("Poincare Transformer works", {
   )
 
   results <- PatientLevelPrediction::runPlp(
-    plpData = plpData,
+    plpData = simPlpData,
     outcomeId = 3,
     modelSettings = settings,
     analysisId = "Analysis_Poincare",
     analysisName = "Testing Deep Learning",
-    populationSettings = populationSet,
+    populationSettings = simulatedPopulationSettings(),
     splitSettings = PatientLevelPrediction::createDefaultSplitSetting(splitSeed = 42, nfold = 2),
     sampleSettings = PatientLevelPrediction::createSampleSettings(),
     featureEngineeringSettings = PatientLevelPrediction::createFeatureEngineeringSettings(),
@@ -48,7 +50,7 @@ test_that("Poincare Transformer works", {
       runModelDevelopment = TRUE,
       runCovariateSummary = FALSE
     ),
-    saveDirectory = file.path(testLoc, "Poincare")
+    saveDirectory = file.path(tempdir(), "Poincare")
   )
 
   model <- torch$load(file.path(results$model$model, "DeepEstimatorModel.pt"),
@@ -58,7 +60,7 @@ test_that("Poincare Transformer works", {
   # get custom embeddings and verify they are same as the ones created above
   customModelEmbeddings <- model$model_state_dict$embedding.custom_embeddings.weight
   conceptsInData <- results$model$covariateImportance %>%
-    dplyr::filter(analysisId == 210) %>%
+    dplyr::filter(analysisId == 102) %>%
     dplyr::pull(.data$conceptId)
   embeddingsMask <- torch$isin(
     customEmbeddings[["concept_ids"]],
@@ -75,7 +77,7 @@ test_that("Poincare Transformer works", {
 
 test_that("ResNet with poincare works", {
   settings <- setCustomEmbeddingModel(
-    embeddingFilePath = file.path(testLoc, "custom_embeddings.pt"),
+    embeddingFilePath = file.path(tempdir(), "custom_embeddings.pt"),
     modelSettings = setResNet(
       numLayers = 1,
       sizeEmbedding = 6,
@@ -94,12 +96,12 @@ test_that("ResNet with poincare works", {
   )
 
   results <- PatientLevelPrediction::runPlp(
-    plpData = plpData,
+    plpData = simPlpData,
     outcomeId = 3,
     modelSettings = settings,
     analysisId = "Analysis_Poincare",
     analysisName = "Testing Deep Learning",
-    populationSettings = populationSet,
+    populationSettings = simulatedPopulationSettings(),
     splitSettings = PatientLevelPrediction::createDefaultSplitSetting(splitSeed = 42, nfold = 2),
     sampleSettings = PatientLevelPrediction::createSampleSettings(),
     featureEngineeringSettings = PatientLevelPrediction::createFeatureEngineeringSettings(),
@@ -112,7 +114,7 @@ test_that("ResNet with poincare works", {
       runModelDevelopment = TRUE,
       runCovariateSummary = FALSE
     ),
-    saveDirectory = file.path(testLoc, "PoincareResNet")
+    saveDirectory = file.path(tempdir(), "PoincareResNet")
   )
 
   model <- torch$load(file.path(results$model$model, "DeepEstimatorModel.pt"),
@@ -123,7 +125,7 @@ test_that("ResNet with poincare works", {
   customModelEmbeddings <- model$model_state_dict$embedding.custom_embeddings.weight
   conceptsInData <- results$model$covariateImportance %>%
     dplyr::filter(
-      analysisId == 210
+      analysisId == 102
     ) %>%
     dplyr::pull("conceptId")
   embeddingsMask <- torch$isin(customEmbeddings[["concept_ids"]], torch$tensor(conceptsInData, dtype = torch$long))
@@ -135,7 +137,7 @@ test_that("ResNet with poincare works", {
 
 test_that("MLP with poincare works", {
   settings <- setCustomEmbeddingModel(
-    embeddingFilePath = file.path(testLoc, "custom_embeddings.pt"),
+    embeddingFilePath = file.path(tempdir(), "custom_embeddings.pt"),
     modelSettings = setMultiLayerPerceptron(
       numLayers = 1,
       sizeEmbedding = 6,
@@ -152,12 +154,12 @@ test_that("MLP with poincare works", {
   )
 
   results <- PatientLevelPrediction::runPlp(
-    plpData = plpData,
+    plpData = simPlpData,
     outcomeId = 3,
     modelSettings = settings,
     analysisId = "Analysis_Poincare",
     analysisName = "Testing Deep Learning",
-    populationSettings = populationSet,
+    populationSettings = simulatedPopulationSettings(),
     splitSettings = PatientLevelPrediction::createDefaultSplitSetting(splitSeed = 42, nfold = 2),
     sampleSettings = PatientLevelPrediction::createSampleSettings(),
     featureEngineeringSettings = PatientLevelPrediction::createFeatureEngineeringSettings(),
@@ -170,7 +172,7 @@ test_that("MLP with poincare works", {
       runModelDevelopment = TRUE,
       runCovariateSummary = FALSE
     ),
-    saveDirectory = file.path(testLoc, "PoincareMLP")
+    saveDirectory = file.path(tempdir(), "PoincareMLP")
   )
 
   model <- torch$load(file.path(results$model$model, "DeepEstimatorModel.pt"),
@@ -180,7 +182,7 @@ test_that("MLP with poincare works", {
   # get custom embeddings and verify they are same as the ones created above
   customModelEmbeddings <- model$model_state_dict$embedding.custom_embeddings.weight
   conceptsInData <- results$model$covariateImportance %>%
-    dplyr::filter(analysisId == 210) %>%
+    dplyr::filter(analysisId == 102) %>%
     dplyr::pull("conceptId")
   embeddingsMask <- torch$isin(customEmbeddings[["concept_ids"]], torch$tensor(conceptsInData, dtype = torch$long))
   embeddingsInData <- customEmbeddings[["embeddings"]][embeddingsMask]
