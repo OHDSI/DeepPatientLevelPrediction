@@ -691,6 +691,47 @@ test_that("the output bias is left alone when switched off or the model has its 
   }
 })
 
+test_that("gradient clipping limits the gradient norm of each optimizer step", {
+  skip_if_no_python()
+  py <- toyPython()
+  Estimator <- importModule("Estimator")$Estimator
+  y <- c(1, 0, 0, 0, 0, 0, 0, 1)
+  data <- py$ToyData(seq_along(y), y)
+  weightAfterOneStep <- function(...) {
+    estimator <- py$toy_estimator(Estimator, batch_size = 8L, ...)
+    estimator$fit_whole_training_set(data, list(1.0))
+    estimator$model$weight$item()
+  }
+  # at weight 0 the gradient of the summed loss is sum((0.5 - y) * x) = 9, and
+  # SGD with a learning rate of 1 subtracts it
+  expect_equal(weightAfterOneStep(), -9, tolerance = 1e-6)
+  expect_equal(weightAfterOneStep(grad_clip_norm = 0.5), -0.5, tolerance = 1e-5)
+})
+
+test_that("each estimator sets deterministic training on or off", {
+  skip_if_no_python()
+  py <- toyPython()
+  Estimator <- importModule("Estimator")$Estimator
+  os <- reticulate::import("os")
+  previousConfig <- os$environ$get("CUBLAS_WORKSPACE_CONFIG")
+  withr::defer({
+    torch$use_deterministic_algorithms(FALSE)
+    torch$backends$cudnn$deterministic <- FALSE
+    if (is.null(previousConfig)) os$environ$pop("CUBLAS_WORKSPACE_CONFIG", NULL)
+  })
+
+  py$toy_estimator(Estimator, deterministic = TRUE)
+  expect_true(torch$are_deterministic_algorithms_enabled())
+  expect_true(torch$is_deterministic_algorithms_warn_only_enabled())
+  expect_true(torch$backends$cudnn$deterministic)
+  expect_false(is.null(os$environ$get("CUBLAS_WORKSPACE_CONFIG")))
+
+  # the setting is for the whole process, so the next fit must not inherit it
+  py$toy_estimator(Estimator)
+  expect_false(torch$are_deterministic_algorithms_enabled())
+  expect_false(torch$backends$cudnn$deterministic)
+})
+
 test_that("AUC gives half credit to tied scores", {
   skip_if_no_python()
   computeAuc <- importModule("Estimator")$compute_auc

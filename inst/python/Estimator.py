@@ -40,14 +40,6 @@ class Estimator:
             np.random.seed(self.seed)
 
         self.deterministic = bool(parameters["estimator_settings"].get("deterministic", False))
-        self.deterministic_warn_only = bool(
-            parameters["estimator_settings"].get("deterministic_warn_only", True)
-        )
-        self.cublas_workspace_config = parameters["estimator_settings"].get(
-            "cublas_workspace_config"
-        )
-        if self.cublas_workspace_config:
-            os.environ["CUBLAS_WORKSPACE_CONFIG"] = str(self.cublas_workspace_config)
         self._configure_determinism()
 
         if "init_strategy" in parameters["estimator_settings"]:
@@ -217,17 +209,14 @@ class Estimator:
             self.model = torch.compile(self.model, dynamic=False)
 
     def _configure_determinism(self):
-        if not self.deterministic:
-            return
-        torch.backends.cudnn.deterministic = True
-        torch.backends.cudnn.benchmark = False
-        try:
-            torch.use_deterministic_algorithms(
-                True,
-                warn_only=self.deterministic_warn_only,
-            )
-        except TypeError:
-            torch.use_deterministic_algorithms(True)
+        # These are settings of the whole Python process, so every estimator sets
+        # them, and one fit's choice does not carry over to the next.
+        if self.deterministic:
+            # deterministic cuBLAS needs a fixed workspace, set before CUDA starts
+            os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
+        torch.backends.cudnn.deterministic = self.deterministic
+        # operations without a deterministic version warn instead of failing
+        torch.use_deterministic_algorithms(self.deterministic, warn_only=True)
 
     def _log_model_training_configuration(self):
         if hasattr(self.model, "log_training_config"):

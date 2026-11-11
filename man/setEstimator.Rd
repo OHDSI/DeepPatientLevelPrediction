@@ -20,7 +20,9 @@ setEstimator(
   accumulationSteps = NULL,
   seed = NULL,
   trainValidationSplit = FALSE,
-  initOutputBias = TRUE
+  initOutputBias = TRUE,
+  gradClipNorm = NULL,
+  deterministic = FALSE
 )
 }
 \arguments{
@@ -70,6 +72,18 @@ rare outcomes spend their first epochs lowering all predictions, and early
 stopping can end training before they learn to rank patients. It applies to
 models whose output is a single logit from a linear \code{head} layer and is
 not used during the learning-rate search.}
+
+\item{gradClipNorm}{The largest norm the gradients may have at each
+optimizer step, or \code{NULL} to leave them as they are. Larger gradients are
+scaled down to this norm, which keeps a few extreme batches from
+destabilizing training. The loss is summed over the patients of a batch, so
+the gradient norm grows with the batch size. Several values are tuned as
+hyperparameters.}
+
+\item{deterministic}{Whether PyTorch may only use deterministic algorithms,
+so that training with the same seed and data gives the same model each
+time. This matters mostly on a GPU, and makes training slower. Operations
+that have no deterministic version give a warning.}
 }
 \value{
 A list of estimator settings used by the model-setting functions.
