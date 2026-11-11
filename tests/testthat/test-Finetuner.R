@@ -36,12 +36,12 @@ test_that("Finetuner settings work", {
   })
 
 test_that("Finetuner fitEstimator works", {
-  fineTunerPath <- file.path(tempdir(), "fineTuner")
+  fineTunerPath <- withr::local_tempdir()
   dir.create(fineTunerPath, showWarnings = FALSE)
   # index should be 70% 1 and 30% 2
   simTrainData$Test$folds <- data.frame(
     rowId = simTrainData$Test$labels$rowId,
-    index = ifelse(runif(nrow(simTrainData$Test$labels)) < 0.7, 1, 2)
+    index = withr::with_seed(42, ifelse(runif(nrow(simTrainData$Test$labels)) < 0.7, 1, 2))
   )
   fineTunerResults <- fitEstimator(simTrainData$Test,
                                    modelSettings = fineTunerSettings,

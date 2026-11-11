@@ -26,9 +26,16 @@ estimatorSettings <-
                earlyStopping = NULL)
 parameters <- list(modelParameters = modelParameters,
                    estimatorSettings = estimatorSettings)
-estimator <- createEstimator(parameters = parameters)
+# Each call builds a new estimator, so that tests cannot change each other's.
+newEstimator <- function() createEstimator(parameters = parameters)
+fittedEstimator <- function() {
+  estimator <- newEstimator()
+  quietly(estimator$fit(simSmallDataset, simSmallDataset))
+  estimator
+}
 
 test_that("Estimator initialization works", {
+  estimator <- newEstimator()
 
   # count parameters in both instances
   path <- system.file("python", package = "DeepPatientLevelPrediction")
@@ -63,11 +70,8 @@ test_that("Estimator detects wrong inputs", {
   testthat::expect_error(setEstimator(seed = "32"), "seed is wrong class", fixed = TRUE)
 })
 
-sink(nullfile())
-estimator$fit(simSmallDataset, simSmallDataset)
-sink()
-
 test_that("estimator fitting works", {
+  estimator <- fittedEstimator()
 
   expect_true(!is.null(estimator$best_epoch))
   expect_true(!is.null(estimator$best_score$loss))
@@ -75,9 +79,9 @@ test_that("estimator fitting works", {
 
   oldWeights <- estimator$model$head$weight$mean()$item()
 
-  sink(nullfile())
-  estimator$fit_whole_training_set(simSmallDataset, estimator$learn_rate_schedule)
-  sink()
+  quietly({
+    estimator$fit_whole_training_set(simSmallDataset, estimator$learn_rate_schedule)
+  })
 
   expect_equal(estimator$optimizer$param_groups[[1]]$lr,
                tail(estimator$learn_rate_schedule, 1)[[1]])
@@ -87,25 +91,26 @@ test_that("estimator fitting works", {
   # model should be updated when refitting
   expect_true(oldWeights != newWeights)
 
-  estimator$save(tempdir(), "estimator.pt")
+  directory <- withr::local_tempdir()
+  estimator$save(directory, "estimator.pt")
 
-  expect_true(file.exists(file.path(tempdir(), "estimator.pt")))
+  expect_true(file.exists(file.path(directory, "estimator.pt")))
 
-  sink(nullfile())
-  preds <- estimator$predict_proba(simDataset)
-  sink()
+  quietly({
+    preds <- estimator$predict_proba(simDataset)
+  })
 
   expect_lt(max(preds), 1)
   expect_gt(min(preds), 0)
 
-  sink(nullfile())
-  classes <- estimator$predict(simSmallDataset, threshold = 0.5)
-  sink()
+  quietly({
+    classes <- estimator$predict(simSmallDataset, threshold = 0.5)
+  })
   expect_equal(all(unique(classes) %in% c(0, 1)), TRUE)
 
-  sink(nullfile())
-  classes <- estimator$predict(simSmallDataset$dataset)
-  sink()
+  quietly({
+    classes <- estimator$predict(simSmallDataset$dataset)
+  })
   expect_equal(all(unique(classes) %in% c(0, 1)), TRUE)
 
   estimatorSettings <- setEstimator(learningRate = 3e-4,
@@ -118,16 +123,16 @@ test_that("estimator fitting works", {
                      estimatorSettings = estimatorSettings)
   estimator <- createEstimator(parameters = parameters)
 
-  sink(nullfile())
-  estimator$fit(simSmallDataset, simSmallDataset)
-  sink()
+  quietly({
+    estimator$fit(simSmallDataset, simSmallDataset)
+  })
 
   expect_equal(estimator$metric$mode, "min")
   expect_equal(estimator$metric$name, "loss")
 
-  sink(nullfile())
-  estimator$fit_whole_training_set(simSmallDataset, estimator$learn_rate_schedule)
-  sink()
+  quietly({
+    estimator$fit_whole_training_set(simSmallDataset, estimator$learn_rate_schedule)
+  })
 
   expect_equal(estimator$learn_rate_schedule[[estimator$best_epoch]],
                estimator$optimizer$param_groups[[1]]$lr)
@@ -243,37 +248,39 @@ test_that("Estimator fit function works", {
   fakeTrainData$Train$covariateData <- list(fakeCovData = c("Fake"))
   expect_error(fitEstimator(fakeTrainData$Train,
                             simModelSettings, analysisId = 1,
-                            analysisPath = tempdir()), "must be a CovariateData object", fixed = TRUE)
+                            analysisPath = withr::local_tempdir()), "must be a CovariateData object", fixed = TRUE)
 })
 
 test_that("predictDeepEstimator works", {
+  estimator <- fittedEstimator()
 
   # input is an estimator and a dataset
   # python indices are zero-based
   cohort <- simTrainData$Train$labels[unlist(simSmallDataset$indices) + 1, ]
-  sink(nullfile())
-  predictions <- predictDeepEstimator(estimator,
-                                      simSmallDataset,
-                                      cohort = cohort)
-  sink()
+  quietly({
+    predictions <- predictDeepEstimator(estimator,
+                                        simSmallDataset,
+                                        cohort = cohort)
+  })
 
   expect_lte(max(predictions$value), 1)
   expect_gte(min(predictions$value), 0)
   expect_equal(nrow(predictions), nrow(cohort))
 
   # input is a plpModel and data
-  sink(nullfile())
-  predictions <- predictDeepEstimator(
-    plpModel = simFitEstimatorResults, data = simTrainData$Test,
-    simTrainData$Test$labels
-  )
-  sink()
+  quietly({
+    predictions <- predictDeepEstimator(
+      plpModel = simFitEstimatorResults, data = simTrainData$Test,
+      simTrainData$Test$labels
+    )
+  })
   expect_lte(max(predictions$value), 1)
   expect_gte(min(predictions$value), 0)
   expect_equal(nrow(predictions), nrow(simTrainData$Test$labels))
 })
 
 test_that("batchToDevice works", {
+  estimator <- newEstimator()
   batchToDevice <- importModule("Estimator")$batch_to_device
   # since we can't test moving to gpu there is a fake device called meta
   # which we can use to test of the device is updated
@@ -303,9 +310,9 @@ test_that("Estimator without earlyStopping works", {
   parameters <- list(modelParameters = modelParameters,
                      estimatorSettings = estimatorSettings)
   estimator2 <- createEstimator(parameters = parameters)
-  sink(nullfile())
-  estimator2$fit(simSmallDataset, simSmallDataset)
-  sink()
+  quietly({
+    estimator2$fit(simSmallDataset, simSmallDataset)
+  })
 
   expect_null(estimator2$early_stopper)
   expect_true(!is.null(estimator2$best_epoch))
@@ -327,9 +334,9 @@ test_that("Early stopper can use loss and stops early", {
   parameters <- list(modelParameters = modelParameters,
                      estimatorSettings = estimatorSettings)
   estimator <- createEstimator(parameters = parameters)
-  sink(nullfile())
-  estimator$fit(simSmallDataset, simSmallDataset)
-  sink()
+  quietly({
+    estimator$fit(simSmallDataset, simSmallDataset)
+  })
 
   expect_true(estimator$best_epoch < estimator$epochs)
 
@@ -360,9 +367,9 @@ test_that("Custom metric in estimator works", {
   expect_true(is.character(estimator$metric$name))
   expect_true(estimator$metric$mode %in% c("min", "max"))
 
-  sink(nullfile())
-  estimator$fit(simSmallDataset, simSmallDataset)
-  sink()
+  quietly({
+    estimator$fit(simSmallDataset, simSmallDataset)
+  })
 
   expect_true(estimator$best_score[["auprc"]] > 0)
 
@@ -427,7 +434,7 @@ test_that("device as a function argument works", {
 
   expect_equal(estimator$device, "cpu")
 
-  Sys.setenv("testDeepPLPDevice" = "meta")
+  withr::local_envvar(testDeepPLPDevice = "meta")
 
   estimatorSettings <- setEstimator(device = getDevice,
                                     learningRate = 3e-4)
@@ -441,16 +448,16 @@ test_that("device as a function argument works", {
 
   expect_equal(estimator$device, "meta")
 
-  Sys.unsetenv("testDeepPLPDevice")
 
 })
 
 test_that("estimatorSettings can be saved and loaded with python objects", {
   settings <- setEstimator()
 
-  saveRDS(settings, file = file.path(tempdir(), "settings.RDS"))
+  settingsFile <- withr::local_tempfile(fileext = ".RDS")
+  saveRDS(settings, file = settingsFile)
 
-  loadedSettings <- readRDS(file = file.path(tempdir(), "settings.RDS"))
+  loadedSettings <- readRDS(file = settingsFile)
   optimizer <- loadedSettings$optimizer()
   scheduler <- loadedSettings$scheduler()
   criterion <- loadedSettings$criterion()
@@ -497,7 +504,7 @@ test_that("accumulationSteps as a function argument works", {
 
   expect_equal(estimator$accumulation_steps, 1)
 
-  Sys.setenv("testAccSteps" = "4")
+  withr::local_envvar(testAccSteps = "4")
 
   estimatorSettings <- setEstimator(accumulationSteps = getSteps,
                                     learningRate = 3e-4,
@@ -513,7 +520,6 @@ test_that("accumulationSteps as a function argument works", {
   expect_equal(estimator$accumulation_steps, 4)
 
 
-  Sys.unsetenv("testAccSteps")
 
 })
 
@@ -539,7 +545,7 @@ test_that("train-validation split functionality works", {
                              estimatorSettings = estimatorSettings,
                              randomSample = 1)
 
-  fitResult <- fitEstimator(simTrainData$Train, modelSettings, analysisId = 1, analysisPath = tempdir())
+  fitResult <- fitEstimator(simTrainData$Train, modelSettings, analysisId = 1, analysisPath = withr::local_tempdir())
 
   expect_s3_class(fitResult, "plpModel")
   uniqueEvalTypes <- unique(fitResult$prediction$evaluationType)

@@ -68,7 +68,7 @@ test_that("fitEstimator with Transformer works", {
     fitEstimator(simTrainData$Train,
       settings,
       analysisId = 1,
-      analysisPath = tempdir()
+      analysisPath = withr::local_tempdir()
     )
 
   expect_equal(class(results), "plpModel")
@@ -249,7 +249,7 @@ test_that("temporal transformer works", {
     fitEstimator(trainData$Train,
       settings,
       analysisId = "temporalTransformer",
-      analysisPath = tempdir()
+      analysisPath = withr::local_tempdir()
     )
 
   expect_equal(class(results), "plpModel")

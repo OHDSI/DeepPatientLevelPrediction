@@ -82,13 +82,12 @@ parameters <- list(
   model_parameters = modelParams,
   estimator_settings = estimatorSettings
 )
-estimator <- Estimator(
-  model = model,
-  parameters = parameters
-)
+# a new estimator for each test, so that training in one does not affect another
+newEstimator <- function() Estimator(model = model, parameters = parameters)
 
 
 test_that("Gradient accumulation provides same results as without, ", {
+  estimator <- newEstimator()
   predsWithout <- estimator$predict_proba(dataset)
 
   estimatorSettings$accumulation_steps <- 2
@@ -126,6 +125,7 @@ test_that("Gradient accumulation provides same results as without, ", {
 })
 
 test_that("Loss is equal without dropout and layernorm", {
+  estimator <- newEstimator()
   dataloader <- torch$utils$data$DataLoader(dataset,
     batch_size = NULL,
     sampler = torch$utils$data$BatchSampler(
