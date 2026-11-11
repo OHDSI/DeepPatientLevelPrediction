@@ -24,19 +24,25 @@ Bug fixes
 - Assign custom embeddings to the right covariates. Vectors were shifted to the preceding column, and depended on the order of the embeddings file. A concept with more than one vector in the file is now an error.
 - Make predictions independent of the padded sequence width for custom embedding models, RealMLP with mean aggregation and convolutional positional encodings.
 - Compute time token gaps in days from the time reference: its `timePart` and `timeInterval` for temporal sequence covariates, or the start day of each time window for covariates with explicit windows. Raise an error if neither is available.
-- Keep column and covariate IDs apart when loading RealMLP wide coefficients. A row's covariateId is used when it has one, so coefficients exported from another model, such as a covariateImportance file, load correctly.
 - Leave frozen RealMLP layers unchanged during data-dependent initialization.
 - Use the requested `sigma` in `TemporalPE` when it is not learnable. It was applied as exp(sigma), so the default of 1 acted as 2.72.
 - Add the trainable offsets of `PoincareEmbeddings` in the tangent space at the origin. For the Transformer and RealMLP they were combined with the mapped vectors by Mobius addition, which is defined for points inside the ball, not for tangent vectors.
 - Check that Poincare embeddings are finite and inside the ball. Vectors outside it passed through without being mapped, and vectors on its boundary became infinite. Compute the log map accurately near the boundary and for small curvatures, and reject trainable ball coordinates, which a Euclidean optimizer can move outside the ball.
 - Apply the projection of custom embeddings, used when the embeddings file has another dimension than the model, to custom features only. Its bias was added once per patient for ResNet and MLP, and to every padding and regular feature for the Transformer and RealMLP.
-- Leave the batch given to custom embeddings unchanged. Its custom features were set to zero, so RealMLP lost them in its wide branch and in data-dependent initialization.
+- Leave the batch given to custom embeddings unchanged. Its custom features were set to zero, so RealMLP lost them in data-dependent initialization.
 - Load custom embedding files saved from GPU tensors, and reject Poincare embeddings too close to the boundary of the ball to be mapped in their precision.
 - Give custom embedding vectors to binary covariates only. A numeric covariate whose concept was in the embeddings file, such as a measurement value, got the concept's vector and lost its value.
 - Name the combinations of `dimToken` and `numHeads` that are not divisible in the error of `setTransformer()`. It pasted the two vectors element by element, so it could name a combination that is divisible.
 - Stop with a clear error when `fitEstimator()` gets training data without a `CovariateData` object, instead of an error from deep inside the data mapping.
 - Predict with models loaded by `loadPlpModel()` when the data store `analysisId` as doubles. The saved covariate reference comes back from CSV with integer IDs, and joining it to the data's analysis reference failed with a polars `SchemaError`.
 - Continue the hyperparameter search after a combination runs out of GPU memory, and free that combination's memory first. Since torch 2.5 the error was not recognized, so the search stopped. The cleanup could not free memory that the error's traceback still referred to, and instead, when more than 3 GB stayed allocated, emptied the storage of every CUDA tensor, including those still in use.
+
+Removed
+- Remove settings that no function of the package sets, and that could only be reached by editing the model or estimator settings by hand. Models fitted with the package's own settings train and predict exactly as before.
+- Remove RealMLP's wide branch: a linear model added to the network's logit, with coefficient files to start it from, freezing of either part, an L1 penalty, weighting by the linear model's uncertainty, and starting the whole model from a file. It is kept on the branch `archive/realmlp-wide-branch`.
+- Remove the `concat_num`, `token_aggregation` and numerical bias options of ResNet and the MLP, and the `concatenate` numeric embedding mode, which only `concat_num` used.
+- Remove the optimizer parameter groups of ResNet and the MLP. With their default factors they trained exactly like a single group.
+- Remove parallel data loading workers, input fingerprints, batch diagnostics, the `previous_epochs` epoch offset and an unused `prefix` setting.
 
 Runtime and compatibility
 - Require Python 3.11 or newer. Python 3.10 reached end-of-life in October 2026, and duckdb 2.0.0 requires Python 3.11.

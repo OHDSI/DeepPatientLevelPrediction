@@ -6,7 +6,6 @@ import math
 import time
 import pathlib
 import inspect
-import hashlib
 import os
 import random
 
@@ -66,22 +65,8 @@ class Estimator:
             self.learning_rate = parameters["estimator_settings"].get("learning_rate", 3e-4)
         self.weight_decay = parameters["estimator_settings"].get("weight_decay", 1e-5)
         self.batch_size = int(parameters["estimator_settings"].get("batch_size", 1024))
-        self.num_workers = int(parameters["estimator_settings"].get("num_workers", 0))
-        self.persistent_workers = bool(
-            parameters["estimator_settings"].get(
-                "persistent_workers",
-                self.num_workers > 0,
-            )
-        )
-        if self.num_workers <= 0:
-            self.num_workers = 0
-            self.persistent_workers = False
-        self.dataloader_seed = int(
-            parameters["estimator_settings"].get("dataloader_seed", self.seed)
-        )
         self.train_generator = torch.Generator()
-        self.train_generator.manual_seed(self.dataloader_seed)
-        self.prefix = parameters["estimator_settings"].get("prefix", self.model.name)
+        self.train_generator.manual_seed(self.seed)
         self.base_learning_rate = float(self.learning_rate)
         self.base_weight_decay = float(self.weight_decay)
         grad_clip_norm = parameters["estimator_settings"].get("grad_clip_norm")
@@ -97,17 +82,14 @@ class Estimator:
             self.accumulation_steps = 1
             self.sub_batch_size = self.batch_size
 
-        self.previous_epochs = int(parameters["estimator_settings"].get("previous_epochs", 0))
         self.model.to(device=self.device)
 
         self.has_custom_param_groups = hasattr(self.model, "get_optimizer_param_groups")
         self.has_custom_loss = hasattr(self.model, "compute_loss")
         self.has_custom_scores = hasattr(self.model, "prediction_scores")
         self.has_custom_proba = hasattr(self.model, "predict_proba_from_output")
-        self.has_custom_regularization = hasattr(self.model, "regularization_loss")
         self.has_custom_schedule = hasattr(self.model, "apply_dynamic_schedule")
         self.has_data_dependent_init = hasattr(self.model, "data_dependent_init")
-        self.has_batch_diagnostics = hasattr(self.model, "collect_batch_diagnostics")
 
         # R converts beta2 to beta_2, while Python callers may pass beta2 directly.
         self.beta2_key = next(
@@ -176,30 +158,6 @@ class Estimator:
             parameters["estimator_settings"].get("data_dependent_init_bias_refit_steps", 2)
         )
         self.data_dependent_init_done = False
-        self.enable_batch_diagnostics = bool(
-            parameters["estimator_settings"].get("enable_batch_diagnostics", False)
-        )
-        self.batch_diagnostics_steps = int(
-            parameters["estimator_settings"].get("batch_diagnostics_steps", 0)
-        )
-        if self.enable_batch_diagnostics and self.batch_diagnostics_steps <= 0:
-            self.batch_diagnostics_steps = 50
-        self.batch_diagnostics_every = int(
-            parameters["estimator_settings"].get("batch_diagnostics_every", 10)
-        )
-        self.batch_diagnostics_counter = 0
-        self.batch_diagnostics_totals = dict()
-
-        self.input_fingerprint_enabled = bool(
-            parameters["estimator_settings"].get("input_fingerprint_enabled", False)
-        )
-        self.input_fingerprint_num_rows = int(
-            parameters["estimator_settings"].get("input_fingerprint_num_rows", 128)
-        )
-        self.input_fingerprint_output = parameters["estimator_settings"].get(
-            "input_fingerprint_output"
-        )
-        self.input_fingerprint_logged = False
         self._log_model_training_configuration()
 
         self.metric = None
@@ -275,70 +233,6 @@ class Estimator:
         if hasattr(self.model, "log_training_config"):
             self.model.log_training_config(self)
 
-    def _seed_worker(self, worker_id):
-        worker_seed = self.dataloader_seed + int(worker_id)
-        random.seed(worker_seed)
-        torch.manual_seed(worker_seed)
-        if np is not None:
-            np.random.seed(worker_seed % (2**32 - 1))
-
-    def _maybe_log_input_fingerprint(self, dataset, stage: str = "fit"):
-        if not self.input_fingerprint_enabled or self.input_fingerprint_logged:
-            return
-        if not hasattr(dataset, "data"):
-            return
-        required_keys = ("row_ids", "feature_ids", "feature_values")
-        if not all(key in dataset.data for key in required_keys):
-            return
-        rows = min(len(dataset), max(1, self.input_fingerprint_num_rows))
-        hasher = hashlib.sha256()
-        for key in required_keys:
-            tensor = dataset.data[key][:rows].detach().cpu().contiguous()
-            hasher.update(tensor.numpy().tobytes())
-        digest = hasher.hexdigest()
-        message = (
-            f"Input fingerprint ({stage}) | seed={self.seed} | rows={rows} | sha256={digest}"
-        )
-        print(message)
-        if self.input_fingerprint_output:
-            output_path = pathlib.Path(self.input_fingerprint_output)
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(output_path, "a", encoding="utf-8") as handle:
-                handle.write(message + "\n")
-        self.input_fingerprint_logged = True
-
-    def _log_batch_diagnostics(self, features):
-        if (
-            not self.enable_batch_diagnostics
-            or not self.has_batch_diagnostics
-            or self.batch_diagnostics_counter >= self.batch_diagnostics_steps
-        ):
-            return
-        with torch.no_grad():
-            diagnostics = self.model.collect_batch_diagnostics(features)
-        if diagnostics is None:
-            return
-        for key, value in diagnostics.items():
-            self.batch_diagnostics_totals[key] = (
-                self.batch_diagnostics_totals.get(key, 0.0) + float(value)
-            )
-        self.batch_diagnostics_counter += 1
-        if (
-            self.batch_diagnostics_counter % max(1, self.batch_diagnostics_every) == 0
-            or self.batch_diagnostics_counter == self.batch_diagnostics_steps
-        ):
-            averaged = {
-                key: value / self.batch_diagnostics_counter
-                for key, value in self.batch_diagnostics_totals.items()
-            }
-            stats = " | ".join(
-                f"{key}={value:.4f}" for key, value in sorted(averaged.items())
-            )
-            print(
-                f"Batch diagnostics ({self.batch_diagnostics_counter}/"
-                f"{self.batch_diagnostics_steps}) | {stats}"
-            )
-
     def _create_optimizer(self, optimizer_class):
         params = self.model.parameters()
         if self.has_custom_param_groups:
@@ -388,16 +282,6 @@ class Estimator:
             )
         prepared_targets = self._default_prepare_targets_for_loss(targets)
         return self.criterion(predictions.squeeze(), prepared_targets)
-
-    def _regularization_loss(self):
-        if not self.has_custom_regularization:
-            return None
-        value = self.model.regularization_loss()
-        if value is None:
-            return None
-        if torch.is_tensor(value):
-            return value
-        return torch.as_tensor(float(value), device=self.device)
 
     def _prediction_scores(self, predictions):
         if self.has_custom_scores:
@@ -509,10 +393,7 @@ class Estimator:
                 # keep the only batch when the data is smaller than one batch
                 drop_last=len(dataset) > self.batch_size,
             ),
-            num_workers=self.num_workers,
-            persistent_workers=self.persistent_workers,
             pin_memory=True,
-            worker_init_fn=self._seed_worker if self.num_workers > 0 else None,
         )
 
     def _keep_best_checkpoint(self, checkpoints, all_scores, epoch):
@@ -536,7 +417,6 @@ class Estimator:
         }
 
     def fit(self, dataset, test_dataset):
-        self._maybe_log_input_fingerprint(dataset, stage="fit")
         train_dataloader = self._train_dataloader(dataset)
         test_dataloader = DataLoader(
             dataset=test_dataset,
@@ -546,10 +426,7 @@ class Estimator:
                 batch_size=self.batch_size,
                 drop_last=False,
             ),
-            num_workers=self.num_workers,
-            persistent_workers=self.persistent_workers,
             pin_memory=True,
-            worker_init_fn=self._seed_worker if self.num_workers > 0 else None,
         )
         self._maybe_run_data_dependent_init(train_dataloader)
         self._maybe_init_output_bias(dataset)
@@ -567,9 +444,8 @@ class Estimator:
             scores = self.score(test_dataloader)
             end_time = time.time()
             delta_time = end_time - start_time
-            current_epoch = epoch + self.previous_epochs
             lr = self.optimizer.param_groups[0]["lr"]
-            self.print_progress(scores, training_loss, delta_time, current_epoch)
+            self.print_progress(scores, training_loss, delta_time, epoch)
             if self.scheduler is not None:
                 self.scheduler.step(scores["metric"])
             all_scores.append(scores)
@@ -580,7 +456,7 @@ class Estimator:
                 self.early_stopper(scores["metric"])
                 if self.early_stopper.improved:
                     self._keep_best_checkpoint(model_state_dict, all_scores, epoch)
-                    trained_epochs[epoch] = current_epoch
+                    trained_epochs[epoch] = epoch
                 if self.early_stopper.early_stop:
                     print("Early stopping, validation metric stopped improving")
                     print(
@@ -592,7 +468,7 @@ class Estimator:
                     return
             else:
                 self._keep_best_checkpoint(model_state_dict, all_scores, epoch)
-                trained_epochs[epoch] = current_epoch
+                trained_epochs[epoch] = epoch
         print(
             f"Average time per epoch was: {torch.mean(torch.as_tensor(times)).item()} seconds"
         )
@@ -608,18 +484,10 @@ class Estimator:
             self._apply_step_hparams()
             split_batch = self.split_batch(batch)
             accumulated_loss = 0
-            logged_diagnostics = False
             for sub_batch in split_batch:
                 sub_batch = batch_to_device(sub_batch, device=self.device)
-                if not logged_diagnostics:
-                    self._log_batch_diagnostics(sub_batch[0])
-                    logged_diagnostics = True
                 out = self.model(sub_batch[0])
                 loss = self._compute_loss(out, sub_batch[1])
-                reg = self._regularization_loss()
-                if reg is not None:
-                    # Main loss uses reduction="sum"; scale regularization accordingly.
-                    loss = loss + reg * sub_batch[1].shape[0]
                 loss.backward()
                 accumulated_loss += loss.detach()
                 num_observations += sub_batch[1].numel()
@@ -742,7 +610,6 @@ class Estimator:
         return sub_batches
 
     def fit_whole_training_set(self, dataset, learning_rates=None):
-        self._maybe_log_input_fingerprint(dataset, stage="fit_whole_training_set")
         dataloader = self._train_dataloader(dataset)
         self._maybe_run_data_dependent_init(dataloader)
         self._maybe_init_output_bias(dataset)
@@ -794,10 +661,7 @@ class Estimator:
                 batch_size=self.batch_size,
                 drop_last=False,
             ),
-            num_workers=self.num_workers,
-            persistent_workers=self.persistent_workers,
             pin_memory=True,
-            worker_init_fn=self._seed_worker if self.num_workers > 0 else None,
         )
         with torch.no_grad():
             predictions = list()

@@ -415,118 +415,6 @@ test_that("RealMLP optimizer parameter groups and dynamic schedules work", {
   expect_false(isTRUE(all.equal(lr0, lr1)))
 })
 
-test_that("RealMLP wide path composes logits as wide + alpha * deep", {
-  realMlp <- importModule("RealMLP")$RealMLP
-  featureInfo <- simDataset$get_feature_info()
-
-  modelWide <- realMlp(
-    feature_info = featureInfo,
-    size_embedding = 8L,
-    size_hidden = 16L,
-    num_layers = 1L,
-    dropout = 0.1,
-    paper_mode = FALSE,
-    wide_enabled = TRUE,
-    wide_alpha_init = 1.0
-  )
-  modelDeep <- realMlp(
-    feature_info = featureInfo,
-    size_embedding = 8L,
-    size_hidden = 16L,
-    num_layers = 1L,
-    dropout = 0.1,
-    paper_mode = FALSE,
-    wide_enabled = FALSE
-  )
-
-  # Copy the deep branch state so wide and deep-only outputs are comparable.
-  modelDeep$load_state_dict(modelWide$state_dict(), strict = FALSE)
-  with_no_grad <- torch$no_grad()
-  with_no_grad$`__enter__`()
-  modelWide$wide_embedding$weight$zero_()
-  modelWide$wide_bias$zero_()
-  with_no_grad$`__exit__`(NULL, NULL, NULL)
-  modelWide$eval()
-  modelDeep$eval()
-
-  vocab_size <- as.integer(reticulate::py_to_r(featureInfo$get_vocabulary_size()))
-  batch <- list(
-    feature_ids = torch$randint(1L, vocab_size + 1L, c(6L, 10L), dtype = torch$long),
-    feature_values = torch$rand(c(6L, 10L))
-  )
-
-  outWideAlpha1 <- modelWide(batch)$detach()$cpu()$numpy()
-  outDeep <- modelDeep(batch)$detach()$cpu()$numpy()
-  expect_equal(as.array(outWideAlpha1), as.array(outDeep), tolerance = 1e-6)
-
-  with_no_grad <- torch$no_grad()
-  with_no_grad$`__enter__`()
-  modelWide$wide_alpha$fill_(0.0)
-  with_no_grad$`__exit__`(NULL, NULL, NULL)
-  outWideAlpha0 <- modelWide(batch)$detach()$cpu()$numpy()
-  expect_equal(as.array(outWideAlpha0), array(0, dim = dim(outWideAlpha0)), tolerance = 1e-6)
-})
-
-test_that("RealMLP wide L1 regularization excludes padding row", {
-  realMlp <- importModule("RealMLP")$RealMLP
-  model <- realMlp(
-    feature_info = simDataset$get_feature_info(),
-    size_embedding = 8L,
-    size_hidden = 16L,
-    num_layers = 1L,
-    dropout = 0.1,
-    paper_mode = FALSE,
-    wide_enabled = TRUE,
-    l1_wide_lambda = 0.5
-  )
-
-  with_no_grad <- torch$no_grad()
-  with_no_grad$`__enter__`()
-  weight_rows <- as.integer(reticulate::py_to_r(model$wide_embedding$weight$size(0L)))
-  weight_matrix <- matrix(0, nrow = weight_rows, ncol = 1)
-  # Python index 1 -> R row 2, Python index 2 -> R row 3.
-  weight_matrix[2, 1] <- 2.0
-  weight_matrix[3, 1] <- -3.0
-  model$wide_embedding$weight$copy_(torch$tensor(weight_matrix, dtype = torch$float32))
-  with_no_grad$`__exit__`(NULL, NULL, NULL)
-
-  reg <- model$regularization_loss()
-  expect_equal(as.numeric(reg$item()), 2.5, tolerance = 1e-8)
-})
-
-test_that("RealMLP wide initialization loads coefficients from csv", {
-  realMlp <- importModule("RealMLP")$RealMLP
-  initCsv <- tempfile(fileext = ".csv")
-  writeLines(
-    c(
-      "columnId,weight",
-      "1,0.25",
-      "2,-0.75",
-      "(Intercept),-1.5"
-    ),
-    con = initCsv
-  )
-
-  model <- realMlp(
-    feature_info = simDataset$get_feature_info(),
-    size_embedding = 8L,
-    size_hidden = 16L,
-    num_layers = 1L,
-    dropout = 0.1,
-    paper_mode = FALSE,
-    wide_enabled = TRUE,
-    wide_init_path = initCsv
-  )
-
-  weights <- as.array(model$wide_embedding$weight$detach()$cpu()$numpy())
-  w1 <- as.numeric(weights[2, 1])
-  w2 <- as.numeric(weights[3, 1])
-  wb <- as.numeric(model$wide_bias$item())
-  expect_equal(w1, 0.25, tolerance = 1e-8)
-  expect_equal(w2, -0.75, tolerance = 1e-8)
-  expect_equal(wb, -1.5, tolerance = 1e-8)
-})
-
 test_that("RealMLP passes its beta2 setting to the optimizer", {
   skip_if_no_python()
   settings <- setRealMLP(sizeHidden = 4L, numLayers = 1L, sizeEmbedding = 4L)
@@ -555,38 +443,6 @@ test_that("RealMLP mean aggregation ignores padding", {
   expect_equal(asNumeric(model$`_aggregate_tokens`(tokens, ids)), c(2, 2))
 })
 
-test_that("wide coefficients keep column and covariate IDs apart", {
-  skip_if_no_python()
-  realMlp <- importModule("RealMLP")$RealMLP
-  # column 1 has covariateId 3, so column ID 3 must not be read as covariateId 3
-  featureInfo <- mappedFeatureInfo(covariateIds = c(3, 9, 7, 8))
-  loadWide <- function(lines) {
-    file <- withr::local_tempfile(fileext = ".csv", .local_envir = parent.frame(2))
-    writeLines(lines, file)
-    model <- realMlp(
-      feature_info = featureInfo, size_embedding = 2L, size_hidden = 4L,
-      num_layers = 1L, dropout = 0, paper_mode = FALSE,
-      wide_enabled = TRUE, wide_init_path = file
-    )
-    as.numeric(model$wide_embedding$weight$detach()$numpy())[2:5]
-  }
-  expect_equal(loadWide(c("columnId,weight", "3,2")), c(0, 0, 2, 0))
-  expect_equal(loadWide(c("covariateId,weight", "3,2")), c(2, 0, 0, 0))
-  expect_equal(loadWide(c("covariateId,columnId,weight", "3,1,2")), c(2, 0, 0, 0))
-  # not in the vocabulary, so it can not be used as a column ID either
-  expect_error(loadWide(c("covariateId,weight", "2,2")), "Failed to map")
-  # a file's columnId comes from the model that wrote it, so covariateId decides
-  expect_equal(loadWide(c("covariateId,columnId,weight", "3,2,2")), c(2, 0, 0, 0))
-  # a covariateImportance export from another model
-  expect_equal(
-    loadWide(c(
-      "covariateId,covariateName,columnId,covariateValue",
-      "9,second,5,1.5", "8,fourth,1,0.5", "99,unknown,2,4"
-    )),
-    c(0, 1.5, 0, 0.5)
-  )
-})
-
 test_that("data-dependent initialization leaves frozen RealMLP weights alone", {
   skip_if_no_python()
   realMlp <- importModule("RealMLP")$RealMLP
@@ -598,9 +454,14 @@ test_that("data-dependent initialization leaves frozen RealMLP weights alone", {
     torch$manual_seed(42L)
     model <- realMlp(
       feature_info = mappedFeatureInfo(), size_embedding = 2L, size_hidden = 4L,
-      num_layers = 1L, dropout = 0, paper_mode = FALSE,
-      wide_enabled = TRUE, freeze_deep = freeze
+      num_layers = 1L, dropout = 0, paper_mode = FALSE
     )
+    # as fine-tuning freezes a fitted model
+    if (freeze) {
+      for (parameter in reticulate::iterate(model$parameters())) {
+        parameter$requires_grad_(FALSE)
+      }
+    }
     layer <- model$`_linear_layers`[[1]]
     before <- c(asNumeric(layer$weight), asNumeric(layer$bias))
     model$data_dependent_init(list(batch))

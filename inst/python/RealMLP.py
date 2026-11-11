@@ -2,9 +2,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import math
-import csv
-import json
-from pathlib import Path
 import torch
 from torch import nn
 from torch.nn import functional as F
@@ -97,23 +94,6 @@ class RealMLP(nn.Module):
         numeric_periodic_init_std: float = 0.1,
         numeric_pbld_hidden_dim: int = 16,
         numeric_pbld_embedding_dim: int = 4,
-        numerical_bias: bool = True,
-        numerical_bias_scale: float = 1.0,
-        numerical_bias_normalization: str = "none",
-        wide_enabled: bool = False,
-        wide_alpha_init: float = 0.0,
-        wide_alpha_trainable: bool = True,
-        wide_alpha_mode: str = "trainable",
-        freeze_wide: bool = False,
-        freeze_deep: bool = False,
-        l1_wide_lambda: float = 0.0,
-        l_1_wide_lambda: Optional[float] = None,
-        wide_init_path: Optional[str] = None,
-        wide_init_strict: bool = True,
-        model_init_path: Optional[str] = None,
-        model_init_strict: bool = True,
-        deep_zero_init: bool = False,
-        sample_weight_mode: str = "none",
     ):
         super().__init__()
         self.name = model_type
@@ -122,21 +102,6 @@ class RealMLP(nn.Module):
         self.token_aggregation = str(token_aggregation)
         self.feature_scale_mode = str(feature_scale_mode)
         self.numeric_embedding_mode = str(numeric_embedding_mode)
-        self.wide_enabled = bool(wide_enabled)
-        if l_1_wide_lambda is not None:
-            l1_wide_lambda = l_1_wide_lambda
-        self.l1_wide_lambda = float(l1_wide_lambda)
-        self.freeze_wide = bool(freeze_wide)
-        self.freeze_deep = bool(freeze_deep)
-        self.feature_info = feature_info
-        self.wide_alpha_mode = str(wide_alpha_mode)
-        self.deep_zero_init = bool(deep_zero_init)
-        self.sample_weight_mode = str(sample_weight_mode)
-        if self.sample_weight_mode not in ("none", "uncertainty"):
-            raise ValueError(
-                f"Unknown sample_weight_mode: {self.sample_weight_mode}. "
-                "Expected one of: none, uncertainty."
-            )
 
         if self.paper_mode and self.token_aggregation == "mean":
             self.token_aggregation = "sum"
@@ -152,9 +117,9 @@ class RealMLP(nn.Module):
                 "Expected one of: scalar, vector."
             )
 
-        if self.numeric_embedding_mode not in ("scale", "concatenate", "pl", "pbld"):
+        if self.numeric_embedding_mode not in ("scale", "pl", "pbld"):
             raise ValueError(
-                "numeric_embedding_mode must be one of: scale, concatenate, pl, pbld"
+                "numeric_embedding_mode must be one of: scale, pl, pbld"
             )
 
         # Use existing Embedding so Dataset interface stays unchanged.
@@ -166,9 +131,6 @@ class RealMLP(nn.Module):
             numerical_pbld_hidden_dim=int(numeric_pbld_hidden_dim),
             numerical_pbld_embedding_dim=int(numeric_pbld_embedding_dim),
             embedding_dim=int(size_embedding),
-            numerical_bias=bool(numerical_bias),
-            numerical_bias_scale=float(numerical_bias_scale),
-            numerical_bias_normalization=str(numerical_bias_normalization),
             aggregate="none",
         )
         for parameter in self.embedding.parameters():
@@ -195,62 +157,10 @@ class RealMLP(nn.Module):
 
         self.output_dim = 2 if self.use_two_logit_ce else int(dim_out)
         self.head = nn.Linear(last, self.output_dim)
-        if self.deep_zero_init:
-            with torch.no_grad():
-                self.head.weight.zero_()
-                if self.head.bias is not None:
-                    self.head.bias.zero_()
-        vocabulary_size = int(feature_info.get_vocabulary_size())
-        if self.wide_enabled:
-            self.wide_embedding = nn.Embedding(
-                vocabulary_size + 1,
-                1,
-                padding_idx=0,
-            )
-            nn.init.zeros_(self.wide_embedding.weight)
-            with torch.no_grad():
-                self.wide_embedding.weight[0].zero_()
-            setattr(self.wide_embedding.weight, "_is_wide_param", True)
-            self.wide_bias = nn.Parameter(torch.zeros(1))
-            setattr(self.wide_bias, "_is_wide_param", True)
-            alpha_mode = self.wide_alpha_mode.lower()
-            if alpha_mode == "fixed1":
-                alpha_value = 1.0
-                alpha_trainable = False
-            elif alpha_mode == "fixed0":
-                alpha_value = 0.0
-                alpha_trainable = False
-            elif alpha_mode == "trainable":
-                alpha_value = float(wide_alpha_init)
-                alpha_trainable = bool(wide_alpha_trainable)
-            else:
-                raise ValueError(
-                    f"Unknown wide_alpha_mode: {self.wide_alpha_mode}. "
-                    "Expected one of: trainable, fixed1, fixed0."
-                )
-            self.wide_alpha = nn.Parameter(torch.tensor(alpha_value))
-            setattr(self.wide_alpha, "_is_wide_param", True)
-            if not alpha_trainable:
-                self.wide_alpha.requires_grad_(False)
-        else:
-            self.wide_embedding = None
-            self.wide_bias = None
-            self.wide_alpha = None
 
         # cache for schedule updates
         self._sched_drops = [m for m in self.blocks if isinstance(m, ScheduledDropout)]
         self._linear_layers = [m for m in self.blocks if isinstance(m, LinearNTP)]
-        self.set_branch_trainability(
-            freeze_wide=self.freeze_wide,
-            freeze_deep=self.freeze_deep,
-        )
-        if model_init_path is not None and str(model_init_path).strip() != "":
-            self.load_model_from_file(
-                path=str(model_init_path),
-                strict=bool(model_init_strict),
-            )
-        if self.wide_enabled and wide_init_path is not None and str(wide_init_path).strip() != "":
-            self.load_wide_from_file(str(wide_init_path), strict=bool(wide_init_strict))
 
     def set_dropout(self, p: float):
         for d in self._sched_drops:
@@ -264,14 +174,6 @@ class RealMLP(nn.Module):
             f"token_aggregation={self.token_aggregation} | "
             f"feature_scale_mode={self.feature_scale_mode} | "
             f"numeric_embedding_mode={self.numeric_embedding_mode} | "
-            f"wide_enabled={self.wide_enabled} | "
-            f"wide_alpha={self.get_wide_alpha():.6f} | "
-            f"wide_alpha_mode={self.wide_alpha_mode} | "
-            f"freeze_wide={self.freeze_wide} | "
-            f"freeze_deep={self.freeze_deep} | "
-            f"deep_zero_init={self.deep_zero_init} | "
-            f"l1_wide_lambda={self.l1_wide_lambda} | "
-            f"sample_weight_mode={self.sample_weight_mode} | "
             f"label_smoothing={estimator.label_smoothing} | "
             f"lr_schedule={estimator.lr_schedule_name} | "
             f"dropout_schedule={estimator.dropout_schedule_name} | "
@@ -281,216 +183,9 @@ class RealMLP(nn.Module):
             f"data_dependent_init_bias_mode={estimator.data_dependent_init_bias_mode}"
         )
 
-    def set_branch_trainability(
-        self,
-        freeze_wide: Optional[bool] = None,
-        freeze_deep: Optional[bool] = None,
-    ):
-        if freeze_wide is not None:
-            self.freeze_wide = bool(freeze_wide)
-        if freeze_deep is not None:
-            self.freeze_deep = bool(freeze_deep)
-
-        if self.freeze_deep:
-            deep_modules = (self.embedding, self.feature_scale, self.blocks, self.head)
-            for module in deep_modules:
-                for parameter in module.parameters():
-                    parameter.requires_grad_(False)
-
-        if self.freeze_wide and self.wide_enabled:
-            # Keep alpha trainable for residual-stage runs unless explicitly disabled.
-            for parameter in (self.wide_embedding.weight, self.wide_bias):
-                parameter.requires_grad_(False)
-
-    def get_wide_alpha(self) -> float:
-        if not self.wide_enabled or self.wide_alpha is None:
-            return 0.0
-        return float(self.wide_alpha.detach().item())
-
-    def regularization_loss(self):
-        if (not self.wide_enabled) or self.l1_wide_lambda <= 0.0:
-            return None
-        # Ignore padding row 0.
-        return self.l1_wide_lambda * self.wide_embedding.weight[1:].abs().sum()
-
-    def _feature_map_covariate_to_column(self):
-        mapping = {}
-        data_reference = getattr(self.feature_info, "data_reference", None)
-        if data_reference is None:
-            return mapping
-        columns = getattr(data_reference, "columns", [])
-        if ("covariateId" not in columns) or ("columnId" not in columns):
-            return mapping
-        covariate_ids = data_reference["covariateId"].to_list()
-        column_ids = data_reference["columnId"].to_list()
-        for covariate_id, column_id in zip(covariate_ids, column_ids):
-            key = self._normalize_covariate_key(covariate_id)
-            mapping[key] = int(column_id)
-        return mapping
-
-    @staticmethod
-    def _normalize_covariate_key(value):
-        text = str(value).strip()
-        if text == "(Intercept)":
-            return text
-        try:
-            numeric = float(text)
-            if math.isfinite(numeric):
-                rounded = int(round(numeric))
-                if abs(numeric - rounded) < 1e-9:
-                    return str(rounded)
-        except ValueError:
-            pass
-        return text
-
-    @staticmethod
-    def _pick_first_existing(row, keys):
-        for key in keys:
-            if key in row and row[key] is not None and str(row[key]).strip() != "":
-                return row[key]
-        return None
-
-    def _parse_wide_init_json(self, path: Path):
-        content = json.loads(path.read_text(encoding="utf-8"))
-        coefficients = content.get("coefficients", content)
-        if not isinstance(coefficients, dict):
-            raise ValueError(f"Expected dict-like coefficients in {path}")
-        covariate_ids = coefficients.get("covariateIds")
-        betas = coefficients.get("betas")
-        if covariate_ids is None or betas is None:
-            raise ValueError(f"Expected covariateIds and betas in {path}")
-        if len(covariate_ids) != len(betas):
-            raise ValueError(f"Mismatched covariateIds/betas length in {path}")
-        return covariate_ids, betas
-
-    def _parse_wide_init_csv(self, path: Path):
-        identifiers = []
-        betas = []
-        with path.open("r", encoding="utf-8") as handle:
-            reader = csv.DictReader(handle)
-            for row in reader:
-                covariate_id = self._pick_first_existing(
-                    row,
-                    ("covariateId", "covariate_id"),
-                )
-                column_id = self._pick_first_existing(row, ("columnId", "column_id"))
-                beta = self._pick_first_existing(
-                    row,
-                    ("weight", "coefficient", "beta", "covariateValue"),
-                )
-                if (covariate_id is None and column_id is None) or beta is None:
-                    continue
-                identifiers.append((covariate_id, column_id))
-                betas.append(float(beta))
-        return identifiers, betas
-
-    @staticmethod
-    def _parse_integer_id(value):
-        try:
-            return int(float(str(value)))
-        except ValueError:
-            return None
-
-    def _resolve_wide_column(self, covariate_id, column_id, covariate_to_column):
-        """Find the model column of a coefficient, keeping the two ID types apart.
-
-        A covariateId is translated with the current feature map. The columnId in
-        a file belongs to the model the file came from, for example a
-        covariateImportance export, so it is only used when the row has no
-        covariateId or there is no feature map to translate with.
-        """
-        if covariate_id is None:
-            return self._parse_integer_id(column_id)
-        if not covariate_to_column:
-            # without a feature map there is nothing to translate covariate IDs with
-            return self._parse_integer_id(
-                covariate_id if column_id is None else column_id
-            )
-        return covariate_to_column.get(self._normalize_covariate_key(covariate_id))
-
-    def load_wide_from_file(self, path: str, strict: bool = True):
-        if not self.wide_enabled:
-            raise ValueError("Cannot load wide initialization when wide_enabled=False")
-        init_path = Path(path)
-        if not init_path.exists():
-            raise FileNotFoundError(f"Wide init file not found: {init_path}")
-
-        if init_path.suffix.lower() == ".json":
-            covariate_ids, betas = self._parse_wide_init_json(init_path)
-            identifiers = [(covariate_id, None) for covariate_id in covariate_ids]
-        else:
-            identifiers, betas = self._parse_wide_init_csv(init_path)
-
-        covariate_to_column = self._feature_map_covariate_to_column()
-        vocabulary_size = self.wide_embedding.weight.shape[0] - 1
-        loaded = 0
-        missing = 0
-        intercept = None
-
-        with torch.no_grad():
-            self.wide_embedding.weight.zero_()
-            self.wide_embedding.weight[0].zero_()
-            self.wide_bias.zero_()
-            for (covariate_id, file_column_id), beta in zip(identifiers, betas):
-                label = covariate_id if covariate_id is not None else file_column_id
-                if self._normalize_covariate_key(label) == "(Intercept)":
-                    intercept = float(beta)
-                    continue
-
-                column_id = self._resolve_wide_column(
-                    covariate_id, file_column_id, covariate_to_column
-                )
-
-                if column_id is None or not (1 <= int(column_id) <= vocabulary_size):
-                    missing += 1
-                    continue
-                self.wide_embedding.weight[int(column_id), 0] = float(beta)
-                loaded += 1
-
-            if intercept is not None:
-                self.wide_bias.fill_(float(intercept))
-
-        if strict and loaded == 0:
-            raise ValueError(
-                f"Failed to map any coefficients from {init_path} to current feature vocabulary."
-            )
-        print(
-            f"Loaded wide init from {init_path} | loaded={loaded} | missing={missing} "
-            f"| intercept={'set' if intercept is not None else 'unset'}"
-        )
-
-    def load_model_from_file(self, path: str, strict: bool = True):
-        init_path = Path(path)
-        if not init_path.exists():
-            raise FileNotFoundError(f"Model init file not found: {init_path}")
-
-        try:
-            payload = torch.load(str(init_path), map_location="cpu", weights_only=False)
-        except TypeError:
-            payload = torch.load(str(init_path), map_location="cpu")
-        if isinstance(payload, dict) and "model_state_dict" in payload:
-            state_dict = payload["model_state_dict"]
-        elif isinstance(payload, dict):
-            state_dict = payload
-        else:
-            raise ValueError(f"Unsupported model init payload in {init_path}")
-
-        missing_keys, unexpected_keys = self.load_state_dict(state_dict, strict=False)
-        if strict and (len(missing_keys) > 0 or len(unexpected_keys) > 0):
-            raise ValueError(
-                f"Model init strict load failed for {init_path} | "
-                f"missing={missing_keys} | unexpected={unexpected_keys}"
-            )
-        print(
-            f"Loaded model init from {init_path} | "
-            f"missing={len(missing_keys)} | unexpected={len(unexpected_keys)}"
-        )
-
     def get_optimizer_param_groups(self, estimator_settings):
         scale_params = []
         embedding_params = []
-        fm_params = []
-        wide_params = []
         act_params = []
         bias_params = []
         other_params = []
@@ -499,10 +194,6 @@ class RealMLP(nn.Module):
         bias_lr_mult = float(estimator_settings.get("bias_lr_mult", 1.0))
         act_lr_mult = float(estimator_settings.get("act_lr_mult", 1.0))
         embedding_lr_mult = float(estimator_settings.get("embedding_lr_mult", 1.0))
-        fm_lr_mult = float(estimator_settings.get("fm_lr_mult", 1.0))
-        fm_wd_factor = float(estimator_settings.get("fm_wd_factor", 1.0))
-        wide_lr_mult = float(estimator_settings.get("wide_lr_mult", 1.0))
-        wide_wd_factor = float(estimator_settings.get("wide_wd_factor", 0.0))
         bias_wd_factor = float(estimator_settings.get("bias_wd_factor", 0.0))
 
         for name, param in self.named_parameters():
@@ -514,10 +205,6 @@ class RealMLP(nn.Module):
                 act_params.append(param)
             elif getattr(param, "_is_embedding_param", False):
                 embedding_params.append(param)
-            elif getattr(param, "_is_fm_param", False):
-                fm_params.append(param)
-            elif getattr(param, "_is_wide_param", False):
-                wide_params.append(param)
             elif name.endswith(".bias"):
                 bias_params.append(param)
             else:
@@ -544,24 +231,6 @@ class RealMLP(nn.Module):
                     "name": "embed",
                     "lr_factor": embedding_lr_mult,
                     "wd_factor": 1.0,
-                }
-            )
-        if fm_params:
-            groups.append(
-                {
-                    "params": fm_params,
-                    "name": "fm",
-                    "lr_factor": fm_lr_mult,
-                    "wd_factor": fm_wd_factor,
-                }
-            )
-        if wide_params:
-            groups.append(
-                {
-                    "params": wide_params,
-                    "name": "wide",
-                    "lr_factor": wide_lr_mult,
-                    "wd_factor": wide_wd_factor,
                 }
             )
         if bias_params:
@@ -595,12 +264,6 @@ class RealMLP(nn.Module):
                 base_weight_decay * group.get("wd_factor", 1.0) * wd_scale
             )
         self.set_dropout(base_dropout * drop_scale)
-
-    def collect_batch_diagnostics(self, batch):
-        return self.embedding.get_aggregation_diagnostics(
-            batch,
-            mode=self.token_aggregation,
-        )
 
     def compute_loss(self, predictions, targets, criterion, label_smoothing: float = 0.0):
         if self.use_two_logit_ce:
@@ -712,7 +375,7 @@ class RealMLP(nn.Module):
         if len(batches) == 0:
             return
 
-        # frozen weights, e.g. from a pretrained deep branch, must stay unchanged
+        # frozen weights, such as those of a fine-tuned model, must stay unchanged
         trainable_layers = [
             layer for layer in self._linear_layers if layer.weight.requires_grad
         ]
@@ -782,36 +445,12 @@ class RealMLP(nn.Module):
         # sum_len_norm / sum_sqrt_len
         return scaled_tokens.sum(dim=1) / torch.sqrt(lengths)
 
-    def _wide_logit(self, feature_ids, feature_values, dtype):
-        if not self.wide_enabled:
-            return None
-        if feature_values is None:
-            feature_values = torch.ones_like(feature_ids, dtype=dtype)
-        else:
-            feature_values = feature_values.to(dtype=dtype)
-        wide_terms = self.wide_embedding(feature_ids).squeeze(-1) * feature_values
-        return wide_terms.sum(dim=1) + self.wide_bias
-
-    def _sample_weights(self):
-        if self.sample_weight_mode == "none":
-            return None
-        if self.sample_weight_mode == "uncertainty":
-            if self.wide_enabled and hasattr(self, "_last_wide_logit"):
-                p = torch.sigmoid(self._last_wide_logit.detach())
-                w = 4.0 * p * (1.0 - p)
-                return w / w.mean().clamp_min(1e-6)
-            return None
-        return None
-
     def _binary_loss(self, predictions, targets, label_smoothing: float = 0.0):
         logits = predictions.squeeze()
         targets = targets.float()
         if label_smoothing > 0.0:
             targets = targets * (1.0 - label_smoothing) + 0.5 * label_smoothing
         losses = F.binary_cross_entropy_with_logits(logits, targets, reduction="none")
-        weights = self._sample_weights()
-        if weights is not None:
-            losses = losses * weights
         return losses.sum()
 
     def _cross_entropy_loss(self, predictions, targets, label_smoothing: float = 0.0):
@@ -821,9 +460,6 @@ class RealMLP(nn.Module):
             reduction="none",
             label_smoothing=float(label_smoothing),
         )
-        weights = self._sample_weights()
-        if weights is not None:
-            losses = losses * weights
         return losses.sum()
 
     def forward(self, x):
@@ -833,19 +469,5 @@ class RealMLP(nn.Module):
         hidden = self._aggregate_tokens(tokens * scales, feature_ids)  # [B, size_embedding]
         for m in self.blocks:
             hidden = m(hidden)
-        deep_logits = self.head(hidden)
-        if not self.wide_enabled:
-            return deep_logits.squeeze(-1)
+        return self.head(hidden).squeeze(-1)
 
-        deep_logit = self.prediction_scores(deep_logits)
-        wide_logit = self._wide_logit(
-            feature_ids=feature_ids,
-            feature_values=x.get("feature_values", None),
-            dtype=deep_logit.dtype,
-        )
-        self._last_wide_logit = wide_logit
-        combined = wide_logit + self.wide_alpha * deep_logit
-        if self.use_two_logit_ce:
-            # Keep a two-logit output for CE while preserving the intended margin.
-            return torch.stack((-0.5 * combined, 0.5 * combined), dim=1)
-        return combined
