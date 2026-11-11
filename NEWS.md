@@ -73,6 +73,7 @@ Documentation and CI
 - Opt into the Eunomia integration tests with `DPLP_RUN_INTEGRATION_TESTS=true`, separately from the Python tests (`DPLP_RUN_PYTHON_TESTS=true`). Running Python tests no longer downloads Eunomia and fits a model before the first test. Most tests now use PatientLevelPrediction's simulated data; only the runPlp() checks on real data, the result uploads and the temporal Transformer test need Eunomia.
 - Check the Python backend with ruff in CI.
 - Measure test coverage on one CI job instead of all three Linux jobs, and add coverage of the Python backend, which covr cannot see.
+- Document the 12 positional encodings and their options in the temporal transformer vignette.
 
 DeepPatientLevelPrediction 2.4.0
 ======================
