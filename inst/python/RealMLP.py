@@ -166,6 +166,9 @@ class RealMLP(nn.Module):
         for d in self._sched_drops:
             d.set_p(p)
 
+    def reset_head(self):
+        self.head = nn.Linear(self.head.in_features, self.head.out_features)
+
     def log_training_config(self, estimator):
         print(
             "RealMLP config | "
