@@ -146,16 +146,12 @@ checkInStringVector <- function(parameter, values) {
 # is included from R4.4.0
 if (!exists("%||%", "package:base")) `%||%` <- function(x, y) if (is.null(x)) y else x
 
-#' Use polars instead of pandas for default conversion from R to Python
-#' @exportS3Method reticulate::r_to_py data.frame
-#' @param x A data.frame object in R
-#' @param convert Logical, whether to convert the data types to Python types
-#' @return A polars DataFrame object in Python
-r_to_py.data.frame <- function(x, convert = FALSE) {
-  if (!requireNamespace("reticulate", quietly = TRUE)) {
-    stop("package \"reticulate\" is required")
-  }
+# The Python code works with polars data frames. reticulate converts data
+# frames to and from pandas, so these convert them for the package's own calls,
+# without changing how data frames convert in the rest of the session.
 
+# Converts an R data.frame to a polars DataFrame.
+rToPolars <- function(x) {
   if (reticulate::py_module_available("polars")) {
     pl <- reticulate::import("polars", convert = FALSE)
     toPyCol <- function(col) {
@@ -180,11 +176,8 @@ r_to_py.data.frame <- function(x, convert = FALSE) {
   }
 }
 
-#' Use polars instead of pandas for default conversion from python to R
-#' @exportS3Method reticulate::py_to_r polars.dataframe.frame.DataFrame
-#' @param x A polars DataFrame object
-#' @return The same data.frame in R
-py_to_r.polars.dataframe.frame.DataFrame <- function(x) {
+# Converts a polars DataFrame to an R data.frame.
+polarsToR <- function(x) {
   lst <- py_to_r(x$to_dict(as_series = FALSE))
   dtypes <- py_to_r(x$dtypes)
   lst <- noneToNA(lst, dtypes)

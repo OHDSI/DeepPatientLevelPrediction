@@ -162,7 +162,7 @@ timeTokenNames <- function(data) {
     data.frame(rowId = 1, outcomeCount = 1),
     temporalSettings = list(maxSequenceLength = "max", timeTokens = TRUE)
   )
-  reference <- reticulate::py_to_r(dataset$get_feature_info()$data_reference)
+  reference <- polarsToR(dataset$get_feature_info()$data_reference)
   ids <- as.integer(dataset$data$feature_ids$numpy())
   reference$covariateName[match(ids[ids > 1], reference$columnId)]
 }
