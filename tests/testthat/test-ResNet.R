@@ -38,63 +38,39 @@ test_that("setResNet works", {
 })
 
 # fitted on Eunomia when an integration test first uses it
-delayedAssign("res2", {
-  sink(nullfile())
-  result <- tryCatch(
-    {
-      PatientLevelPrediction::runPlp(
-        plpData = plpData,
-        outcomeId = 3,
-        modelSettings = resSet,
-        analysisId = "Analysis_ResNet",
-        analysisName = "Testing Deep Learning",
-        populationSettings = populationSet,
-        splitSettings = PatientLevelPrediction::createDefaultSplitSetting(),
-        sampleSettings = PatientLevelPrediction::createSampleSettings(),
-        featureEngineeringSettings =
-          PatientLevelPrediction::createFeatureEngineeringSettings(),
-        preprocessSettings = PatientLevelPrediction::createPreprocessSettings(),
-        executeSettings = PatientLevelPrediction::createExecuteSettings(
-          runSplitData = TRUE,
-          runSampleData = FALSE,
-          runFeatureEngineering = FALSE,
-          runPreprocessData = TRUE,
-          runModelDevelopment = TRUE,
-          runCovariateSummary = FALSE
-        ),
-        saveDirectory = file.path(tempdir(), "ResNet")
-      )
-    },
-    error = function(e) {
-      print(e)
-      return(NULL)
-    }
-  )
-  sink()
-  result
-})
+delayedAssign("res2", quietly(PatientLevelPrediction::runPlp(
+  plpData = plpData,
+  outcomeId = 3,
+  modelSettings = resSet,
+  analysisId = "Analysis_ResNet",
+  analysisName = "Testing Deep Learning",
+  populationSettings = populationSet,
+  splitSettings = PatientLevelPrediction::createDefaultSplitSetting(),
+  executeSettings = PatientLevelPrediction::createExecuteSettings(
+    runSplitData = TRUE,
+    runPreprocessData = TRUE,
+    runModelDevelopment = TRUE
+  ),
+  saveDirectory = eunomiaResultsDirectory
+)))
 
-test_that("ResNet with runPlp working checks", {
+delayedAssign("eunomiaResultsDirectory", tempfile("ResNet"))
+
+# A smoke test that a DPLP model runs end to end on real data. What runPlp()
+# itself produces is PatientLevelPrediction's to test.
+test_that("ResNet runs end to end with runPlp on Eunomia", {
   skip_if_no_integration()
-  expect_false(is.null(res2))
-
-  # check structure
-  expect_true("prediction" %in% names(res2))
-  expect_true("model" %in% names(res2))
-  expect_true("covariateSummary" %in% names(res2))
-  expect_true("performanceEvaluation" %in% names(res2))
-
-  # check prediction same size as pop
-  expect_equal(nrow(res2$prediction %>%
-                                dplyr::filter(evaluationType %in% c("Train",
-                                                                    "Test"))),
-                         nrow(population))
-
-  # check prediction between 0 and 1
+  # runPlp() catches fitting errors and returns a placeholder model
+  expect_equal(
+    attr(res2$model, "predictionFunction"),
+    "DeepPatientLevelPrediction::predictDeepEstimator"
+  )
+  trainAndTest <- res2$prediction %>%
+    dplyr::filter(.data$evaluationType %in% c("Train", "Test"))
+  expect_equal(nrow(trainAndTest), nrow(population))
   expect_gte(min(res2$prediction$value), 0)
   expect_lte(max(res2$prediction$value), 1)
 })
-
 
 test_that("ResNet nn-module works ", {
   skip_if_no_python()
@@ -170,7 +146,9 @@ test_that("Errors are produced by settings function", {
 })
 
 
-test_that("Can upload results to database", {
+# PatientLevelPrediction stores the results; DPLP's part is that its model
+# settings can be stored and read back.
+test_that("DPLP model settings are stored with the results", {
   skip_if_not_installed("DatabaseConnector")
   skip_if_not_installed("ResultModelManager")
   skip_if_not_installed("RSQLite")
@@ -178,32 +156,22 @@ test_that("Can upload results to database", {
   # writes the results that are uploaded
   force(res2)
 
-  cohortDefinitions <- data.frame(
-    cohortName = c("blank1"),
-    cohortId = c(1),
-    json = c("json")
-  )
-
-  sink(nullfile())
-  sqliteFile <-
-    PatientLevelPrediction::insertResultsToSqlite(resultLocation = file.path(tempdir(), "ResNet"),
-                          cohortDefinitions = cohortDefinitions)
-  sink()
-
-  expect_true(file.exists(sqliteFile))
-
-  cdmDatabaseSchema <- "main"
-  ohdsiDatabaseSchema <- "main"
-  connectionDetails <- DatabaseConnector::createConnectionDetails(
+  sqliteFile <- quietly(PatientLevelPrediction::insertResultsToSqlite(
+    resultLocation = eunomiaResultsDirectory,
+    cohortDefinitions = data.frame(cohortName = "blank1", cohortId = 1, json = "json")
+  ))
+  connection <- DatabaseConnector::connect(DatabaseConnector::createConnectionDetails(
     dbms = "sqlite",
     server = sqliteFile
-  )
-  conn <- DatabaseConnector::connect(connectionDetails = connectionDetails)
-  withr::defer(DatabaseConnector::disconnect(conn))
-  targetDialect <- "sqlite"
+  ))
+  withr::defer(DatabaseConnector::disconnect(connection))
 
-  # check the results table is populated
-  sql <- "select count(*) as N from main.performances;"
-  res <- DatabaseConnector::querySql(conn, sql)
-  testthat::expect_true(res$N[1] > 0)
+  stored <- DatabaseConnector::querySql(
+    connection,
+    "SELECT model_type, model_settings_json FROM main.model_settings;",
+    snakeCaseToCamelCase = TRUE
+  )
+  expect_equal(stored$modelType, "ResNet")
+  expect_match(stored$modelSettingsJson, "DeepPatientLevelPrediction::fitEstimator", fixed = TRUE)
+  expect_match(stored$modelSettingsJson, "numLayers", fixed = TRUE)
 })
