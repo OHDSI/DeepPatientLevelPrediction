@@ -1,6 +1,6 @@
-skip_if_no_integration()
+skip_if_no_python()
 
-featureInfo <- smallDataset$dataset$get_feature_info()
+featureInfo <- simSmallDataset$dataset$get_feature_info()
 modelParameters <- list(
   feature_info = featureInfo,
   sizeEmbedding = 16,
@@ -64,7 +64,7 @@ test_that("Estimator detects wrong inputs", {
 })
 
 sink(nullfile())
-estimator$fit(smallDataset, smallDataset)
+estimator$fit(simSmallDataset, simSmallDataset)
 sink()
 
 test_that("estimator fitting works", {
@@ -76,7 +76,7 @@ test_that("estimator fitting works", {
   oldWeights <- estimator$model$head$weight$mean()$item()
 
   sink(nullfile())
-  estimator$fit_whole_training_set(smallDataset, estimator$learn_rate_schedule)
+  estimator$fit_whole_training_set(simSmallDataset, estimator$learn_rate_schedule)
   sink()
 
   expect_equal(estimator$optimizer$param_groups[[1]]$lr,
@@ -87,24 +87,24 @@ test_that("estimator fitting works", {
   # model should be updated when refitting
   expect_true(oldWeights != newWeights)
 
-  estimator$save(testLoc, "estimator.pt")
+  estimator$save(tempdir(), "estimator.pt")
 
-  expect_true(file.exists(file.path(testLoc, "estimator.pt")))
+  expect_true(file.exists(file.path(tempdir(), "estimator.pt")))
 
   sink(nullfile())
-  preds <- estimator$predict_proba(dataset)
+  preds <- estimator$predict_proba(simDataset)
   sink()
 
   expect_lt(max(preds), 1)
   expect_gt(min(preds), 0)
 
   sink(nullfile())
-  classes <- estimator$predict(smallDataset, threshold = 0.5)
+  classes <- estimator$predict(simSmallDataset, threshold = 0.5)
   sink()
   expect_equal(all(unique(classes) %in% c(0, 1)), TRUE)
 
   sink(nullfile())
-  classes <- estimator$predict(smallDataset$dataset)
+  classes <- estimator$predict(simSmallDataset$dataset)
   sink()
   expect_equal(all(unique(classes) %in% c(0, 1)), TRUE)
 
@@ -119,14 +119,14 @@ test_that("estimator fitting works", {
   estimator <- createEstimator(parameters = parameters)
 
   sink(nullfile())
-  estimator$fit(smallDataset, smallDataset)
+  estimator$fit(simSmallDataset, simSmallDataset)
   sink()
 
   expect_equal(estimator$metric$mode, "min")
   expect_equal(estimator$metric$name, "loss")
 
   sink(nullfile())
-  estimator$fit_whole_training_set(smallDataset, estimator$learn_rate_schedule)
+  estimator$fit_whole_training_set(simSmallDataset, estimator$learn_rate_schedule)
   sink()
 
   expect_equal(estimator$learn_rate_schedule[[estimator$best_epoch]],
@@ -136,7 +136,7 @@ test_that("estimator fitting works", {
 
 test_that("early stopping works", {
   earlyStopping <-
-    reticulate::import_from_path("Estimator", path = path)$EarlyStopping
+    importModule("Estimator")$EarlyStopping
   earlyStop <- earlyStopping(patience = 3, delta = 0, verbose = FALSE)
 
 
@@ -152,7 +152,7 @@ test_that("early stopping works", {
 
 test_that("early stopping respects min_epochs", {
   earlyStopping <-
-    reticulate::import_from_path("Estimator", path = path)$EarlyStopping
+    importModule("Estimator")$EarlyStopping
 
   # patience exhausted before min_epochs: no stop yet
   earlyStop <- earlyStopping(patience = 1, min_epochs = 3, verbose = FALSE)
@@ -190,7 +190,7 @@ test_that("early stopping respects min_epochs", {
 
 test_that("early stopping trains through the full minimum epoch period", {
   earlyStopping <-
-    reticulate::import_from_path("Estimator", path = path)$EarlyStopping
+    importModule("Estimator")$EarlyStopping
   earlyStop <- earlyStopping(patience = 1, min_epochs = 4, verbose = FALSE)
 
   for (metric in c(0.8, 0.7, 0.6)) {
@@ -203,7 +203,7 @@ test_that("early stopping trains through the full minimum epoch period", {
 
 test_that("early stopping with zero minimum epochs preserves default behavior", {
   earlyStopping <-
-    reticulate::import_from_path("Estimator", path = path)$EarlyStopping
+    importModule("Estimator")$EarlyStopping
   earlyStop <- earlyStopping(patience = 2, min_epochs = 0, verbose = FALSE)
 
   earlyStop(0.8)
@@ -215,7 +215,7 @@ test_that("early stopping with zero minimum epochs preserves default behavior", 
 
 test_that("early stopping respects minimum epochs when minimizing a metric", {
   earlyStopping <-
-    reticulate::import_from_path("Estimator", path = path)$EarlyStopping
+    importModule("Estimator")$EarlyStopping
   earlyStop <- earlyStopping(
     patience = 1, min_epochs = 3, verbose = FALSE, mode = "min"
   )
@@ -229,31 +229,31 @@ test_that("early stopping respects minimum epochs when minimizing a metric", {
 })
 
 test_that("Estimator fit function works", {
-  expect_true(!is.null(fitEstimatorResults$trainDetails$trainingTime))
-  expect_false(is.null(fitEstimatorResults$trainDetails$developmentDatabase))
+  expect_true(!is.null(simFitEstimatorResults$trainDetails$trainingTime))
+  expect_false(is.null(simFitEstimatorResults$trainDetails$developmentDatabase))
   expect_false(is.null(
-    fitEstimatorResults$trainDetails$developmentDatabaseSchema
+    simFitEstimatorResults$trainDetails$developmentDatabaseSchema
   ))
-  expect_false(fitEstimatorResults$preprocessing$requiresDenseMatrix)
+  expect_false(simFitEstimatorResults$preprocessing$requiresDenseMatrix)
 
-  expect_equal(class(fitEstimatorResults), "plpModel")
-  expect_equal(attr(fitEstimatorResults, "modelType"), "binary")
-  expect_equal(attr(fitEstimatorResults, "saveType"), "file")
-  fakeTrainData <- trainData
+  expect_equal(class(simFitEstimatorResults), "plpModel")
+  expect_equal(attr(simFitEstimatorResults, "modelType"), "binary")
+  expect_equal(attr(simFitEstimatorResults, "saveType"), "file")
+  fakeTrainData <- simTrainData
   fakeTrainData$train$covariateData <- list(fakeCovData = c("Fake"))
   expect_error(fitEstimator(fakeTrainData$train,
-                            modelSettings, analysisId = 1,
-                            analysisPath = testLoc))
+                            simModelSettings, analysisId = 1,
+                            analysisPath = tempdir()))
 })
 
 test_that("predictDeepEstimator works", {
 
   # input is an estimator and a dataset
   # python indices are zero-based
-  cohort <- trainData$Train$labels[unlist(smallDataset$indices) + 1, ]
+  cohort <- simTrainData$Train$labels[unlist(simSmallDataset$indices) + 1, ]
   sink(nullfile())
   predictions <- predictDeepEstimator(estimator,
-                                      smallDataset,
+                                      simSmallDataset,
                                       cohort = cohort)
   sink()
 
@@ -264,23 +264,22 @@ test_that("predictDeepEstimator works", {
   # input is a plpModel and data
   sink(nullfile())
   predictions <- predictDeepEstimator(
-    plpModel = fitEstimatorResults, data = trainData$Test,
-    trainData$Test$labels
+    plpModel = simFitEstimatorResults, data = simTrainData$Test,
+    simTrainData$Test$labels
   )
   sink()
   expect_lte(max(predictions$value), 1)
   expect_gte(min(predictions$value), 0)
-  expect_equal(nrow(predictions), nrow(trainData$Test$labels))
+  expect_equal(nrow(predictions), nrow(simTrainData$Test$labels))
 })
 
 test_that("batchToDevice works", {
-  batchToDevice <- reticulate::import_from_path("Estimator",
-                                                path = path)$batch_to_device
+  batchToDevice <- importModule("Estimator")$batch_to_device
   # since we can't test moving to gpu there is a fake device called meta
   # which we can use to test of the device is updated
   estimator$device <- "meta"
   b <- 1:10
-  batch <- batchToDevice(dataset[b], device = estimator$device)
+  batch <- batchToDevice(simDataset[b], device = estimator$device)
 
   devices <- lapply(
     lapply(unlist(batch, recursive = TRUE), function(x) x$device),
@@ -289,7 +288,7 @@ test_that("batchToDevice works", {
   # test that all are meta
   expect_true(all(devices == TRUE))
 
-  numDevice <- batchToDevice(dataset[b][[1]]$feature_values, device = estimator$device)
+  numDevice <- batchToDevice(simDataset[b][[1]]$feature_values, device = estimator$device)
   expect_true(numDevice$device == torch$device(type = "meta"))
 })
 
@@ -305,7 +304,7 @@ test_that("Estimator without earlyStopping works", {
                      estimatorSettings = estimatorSettings)
   estimator2 <- createEstimator(parameters = parameters)
   sink(nullfile())
-  estimator2$fit(smallDataset, smallDataset)
+  estimator2$fit(simSmallDataset, simSmallDataset)
   sink()
 
   expect_null(estimator2$early_stopper)
@@ -329,7 +328,7 @@ test_that("Early stopper can use loss and stops early", {
                      estimatorSettings = estimatorSettings)
   estimator <- createEstimator(parameters = parameters)
   sink(nullfile())
-  estimator$fit(smallDataset, smallDataset)
+  estimator$fit(simSmallDataset, simSmallDataset)
   sink()
 
   expect_true(estimator$best_epoch < estimator$epochs)
@@ -362,7 +361,7 @@ test_that("Custom metric in estimator works", {
   expect_true(estimator$metric$mode %in% c("min", "max"))
 
   sink(nullfile())
-  estimator$fit(smallDataset, smallDataset)
+  estimator$fit(simSmallDataset, simSmallDataset)
   sink()
 
   expect_true(estimator$best_score[["auprc"]] > 0)
@@ -449,9 +448,9 @@ test_that("device as a function argument works", {
 test_that("estimatorSettings can be saved and loaded with python objects", {
   settings <- setEstimator()
 
-  saveRDS(settings, file = file.path(testLoc, "settings.RDS"))
+  saveRDS(settings, file = file.path(tempdir(), "settings.RDS"))
 
-  loadedSettings <- readRDS(file = file.path(testLoc, "settings.RDS"))
+  loadedSettings <- readRDS(file = file.path(tempdir(), "settings.RDS"))
   optimizer <- loadedSettings$optimizer()
   scheduler <- loadedSettings$scheduler()
   criterion <- loadedSettings$criterion()
@@ -463,9 +462,9 @@ test_that("estimatorSettings can be saved and loaded with python objects", {
 
 test_that("evaluation works on predictDeepEstimator output", {
   
-  prediction <- predictDeepEstimator(plpModel = fitEstimatorResults,
-                                     data = trainData$Test,
-                                     cohort = trainData$Test$labels)
+  prediction <- predictDeepEstimator(plpModel = simFitEstimatorResults,
+                                     data = simTrainData$Test,
+                                     cohort = simTrainData$Test$labels)
   prediction$evaluationType <- 'Validation'
 
   evaluation <-
@@ -542,7 +541,7 @@ test_that("train-validation split functionality works", {
                              estimatorSettings = estimatorSettings,
                              randomSample = 1)
 
-  fitResult <- fitEstimator(trainData$Train, modelSettings, analysisId = 1, analysisPath = tempdir())
+  fitResult <- fitEstimator(simTrainData$Train, modelSettings, analysisId = 1, analysisPath = tempdir())
 
   expect_s3_class(fitResult, "plpModel")
   uniqueEvalTypes <- unique(fitResult$prediction$evaluationType)

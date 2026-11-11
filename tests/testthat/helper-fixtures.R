@@ -60,3 +60,37 @@ delayedAssign("simDataset", createDataset(
   labels = simTrainData$Train$labels,
   plpModel = NULL
 ))
+
+delayedAssign("simSmallDataset", torch$utils$data$Subset(
+  simDataset,
+  (1:round(length(simDataset) / 3))
+))
+
+delayedAssign("simModelSettings", setResNet(
+  numLayers = 1, sizeHidden = 16, hiddenFactor = 1,
+  residualDropout = c(0, 0.2), hiddenDropout = 0,
+  sizeEmbedding = 16, hyperParamSearch = "random",
+  randomSample = 2,
+  setEstimator(
+    epochs = 1,
+    learningRate = 3e-4
+  )
+))
+
+# a fitted model, also saved to simFitEstimatorPath/plpModel
+delayedAssign("simFitEstimatorPath", {
+  path <- file.path(tempdir(), "simFitEstimator")
+  dir.create(path, showWarnings = FALSE)
+  path
+})
+
+delayedAssign("simFitEstimatorResults", {
+  results <- fitEstimator(
+    simTrainData$Train,
+    modelSettings = simModelSettings,
+    analysisId = 1,
+    analysisPath = simFitEstimatorPath
+  )
+  PatientLevelPrediction::savePlpModel(results, file.path(simFitEstimatorPath, "plpModel"))
+  results
+})
