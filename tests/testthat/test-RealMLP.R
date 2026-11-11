@@ -184,7 +184,13 @@ test_that("RealMLP module and schedules are wired correctly", {
 
   linear <- model$blocks$`__getitem__`(0L)
   bn <- model$blocks$`__getitem__`(1L)
-  expect_equal(linear$`_ntp_factor`$item(), 1.0 / sqrt(8), tolerance = 1e-6)
+  # neural tangent parametrization: a linear layer scaled by 1 / sqrt(inputs)
+  input <- torch$randn(3L, linear$in_features)
+  expect_equal(
+    asNumeric(linear(input)),
+    asNumeric(torch$nn$functional$linear(input, linear$weight, linear$bias)) / sqrt(linear$in_features),
+    tolerance = 1e-6
+  )
   expect_equal(reticulate::py_to_r(bn$`__class__`$`__name__`), "BatchNorm1d")
   expect_equal(
     reticulate::py_to_r(model$feature_scale$`__class__`$`__name__`),
@@ -400,11 +406,11 @@ test_that("RealMLP optimizer parameter groups and dynamic schedules work", {
 
   estimator$total_steps <- 10L
   estimator$global_step <- 1L
-  estimator$`_apply_realmlp_step_hparams`()
+  estimator$`_apply_step_hparams`()
   lr0 <- reticulate::py_to_r(estimator$optimizer$param_groups[[1]]$lr)
 
   estimator$global_step <- 5L
-  estimator$`_apply_realmlp_step_hparams`()
+  estimator$`_apply_step_hparams`()
   lr1 <- reticulate::py_to_r(estimator$optimizer$param_groups[[1]]$lr)
   expect_false(isTRUE(all.equal(lr0, lr1)))
 })
