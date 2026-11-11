@@ -2,6 +2,9 @@
 # tests that need realistic data, but no database, run without the Eunomia
 # integration setup. The `sim*` objects are promises: nothing is built, and
 # Python is not started, until a test first uses one, and each is built once.
+# A promise is evaluated where it was created, so promises with several
+# statements use local() to keep their variables out of the shared test
+# environment, where they would replace objects of the integration setup.
 
 simulatedPlpData <- function(n = 1000, seed = 42) {
   profileEnv <- new.env()
@@ -25,7 +28,7 @@ simulatedPopulationSettings <- function() {
   )
 }
 
-delayedAssign("simPlpData", {
+delayedAssign("simPlpData", local({
   plpData <- simulatedPlpData()
   # squared age as a second numeric feature, as the integration setup adds
   plpData$covariateData$covariateRef <- plpData$covariateData$covariateRef %>%
@@ -38,7 +41,7 @@ delayedAssign("simPlpData", {
   plpData$covariateData$covariates <- plpData$covariateData$covariates %>%
     dplyr::rows_append(squaredAges)
   plpData
-})
+}))
 
 delayedAssign("simPopulation", PatientLevelPrediction::createStudyPopulation(
   simPlpData, outcomeId = 3, populationSettings = simulatedPopulationSettings()
@@ -78,13 +81,13 @@ delayedAssign("simModelSettings", setResNet(
 ))
 
 # a fitted model, also saved to simFitEstimatorPath/plpModel
-delayedAssign("simFitEstimatorPath", {
+delayedAssign("simFitEstimatorPath", local({
   path <- file.path(tempdir(), "simFitEstimator")
   dir.create(path, showWarnings = FALSE)
   path
-})
+}))
 
-delayedAssign("simFitEstimatorResults", {
+delayedAssign("simFitEstimatorResults", local({
   results <- fitEstimator(
     simTrainData$Train,
     modelSettings = simModelSettings,
@@ -93,4 +96,4 @@ delayedAssign("simFitEstimatorResults", {
   )
   PatientLevelPrediction::savePlpModel(results, file.path(simFitEstimatorPath, "plpModel"))
   results
-})
+}))
