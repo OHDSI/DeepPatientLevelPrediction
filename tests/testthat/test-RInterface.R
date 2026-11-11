@@ -8,7 +8,21 @@ test_that("package loading and settings do not initialize Python", {
   expect_s3_class(estimator$optimizer, "delayed")
   expect_s3_class(estimator$scheduler, "delayed")
   expect_s3_class(estimator$criterion, "delayed")
+  # checking the scheduler doesn't evaluate its torch expression
+  expect_false(isDelayedNull(estimator$scheduler))
+  expect_true(isDelayedNull(setEstimator(seed = 1, scheduler = NULL)$scheduler))
   expect_false(reticulate::py_available(initialize = FALSE))
+})
+
+test_that("isDelayedNull evaluates delayed settings created before delaySetting()", {
+  # setEstimator() kept the quosure under the setting's own name
+  oldDelayed <- function(value) {
+    scheduler <- rlang::quo(value)
+    structure(function() rlang::eval_tidy(scheduler), class = c("delayed", "function"))
+  }
+  expect_true(isDelayedNull(oldDelayed(NULL)))
+  expect_false(isDelayedNull(oldDelayed(list(params = list(patience = 1)))))
+  expect_true(isDelayedNull(delaySetting(rlang::quo(NULL))))
 })
 
 test_that("Python bindings declare requirements and delay the torch import", {

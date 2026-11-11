@@ -497,6 +497,11 @@ test_that("RealMLP passes its optimizer options to an optimizer that takes them"
   expect_s3_class(estimator$optimizer, "torch.optim.sgd.SGD")
   py <- reticulate::py_run_string("
 import warnings
+import torch
+
+class KeywordOptimizer(torch.optim.SGD):
+    def __init__(self, params, **kwargs):
+        super().__init__(params, lr=kwargs['lr'])
 
 def caught_warnings(fun, *args):
     with warnings.catch_warnings(record=True) as caught:
@@ -511,6 +516,10 @@ def caught_warnings(fun, *args):
     "SGD does not take the option(s) betas, eps of RealMLP, which are ignored",
     fixed = TRUE
   )
+  # an optimizer that takes any keyword gets all the options
+  result <- py$caught_warnings(estimator$`_accepted_optimizer_options`, py$KeywordOptimizer)
+  expect_setequal(names(result[[1]]), c("betas", "eps"))
+  expect_length(result[[2]], 0)
 })
 
 test_that("RealMLP mean aggregation ignores padding", {
