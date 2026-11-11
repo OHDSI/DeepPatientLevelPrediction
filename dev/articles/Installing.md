@@ -74,7 +74,7 @@ the environment with `uv` and Python 3.14:
 ``` bash
 uv python install 3.14
 uv venv --python 3.14
-uv pip install polars tqdm pyarrow duckdb nvidia-ml-py numpy
+uv pip install polars tqdm pyarrow duckdb numpy
 uv pip install "torch==2.12.1" --index https://download.pytorch.org/whl/cpu/
 ```
 

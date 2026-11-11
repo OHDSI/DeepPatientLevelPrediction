@@ -13,7 +13,12 @@ epochs lowering all predictions to the outcome rate, which with few
 batches per epoch let early stopping end training before the model
 ranked patients. This removes most of the instability in ResNet learning
 curves. It applies to models with a single-logit linear `head`, and not
-to the learning rate search.
+to the learning rate search. - Add a `curvature` argument to
+[`setCustomEmbeddingModel()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setCustomEmbeddingModel.md)
+for Poincare embeddings trained in a ball whose curvature is not -1.
+HypLL, which OHDSI/context uses, applies softplus to its curvature
+parameter, so its default of 1, when not trained, is a curvature of
+about -1.313.
 
 Bug fixes - Avoid a segfault in batched matrix multiplication on Ubuntu
 26.04. On Linux, torch is now imported with `RTLD_DEEPBIND` so that it
@@ -64,7 +69,29 @@ another model, such as a covariateImportance file, load correctly. -
 Leave frozen RealMLP layers unchanged during data-dependent
 initialization. - Use the requested `sigma` in `TemporalPE` when it is
 not learnable. It was applied as exp(sigma), so the default of 1 acted
-as 2.72.
+as 2.72. - Add the trainable offsets of `PoincareEmbeddings` in the
+tangent space at the origin. For the Transformer and RealMLP they were
+combined with the mapped vectors by Mobius addition, which is defined
+for points inside the ball, not for tangent vectors. - Check that
+Poincare embeddings are finite and inside the ball. Vectors outside it
+passed through without being mapped, and vectors on its boundary became
+infinite. Compute the log map accurately near the boundary and for small
+curvatures, and reject trainable ball coordinates, which a Euclidean
+optimizer can move outside the ball. - Apply the projection of custom
+embeddings, used when the embeddings file has another dimension than the
+model, to custom features only. Its bias was added once per patient for
+ResNet and MLP, and to every padding and regular feature for the
+Transformer and RealMLP. - Leave the batch given to custom embeddings
+unchanged. Its custom features were set to zero, so RealMLP lost them in
+its wide branch and in data-dependent initialization. - Load custom
+embedding files saved from GPU tensors, and reject Poincare embeddings
+too close to the boundary of the ball to be mapped in their precision. -
+Continue the hyperparameter search after a combination runs out of GPU
+memory, and free that combination’s memory first. Since torch 2.5 the
+error was not recognized, so the search stopped. The cleanup could not
+free memory that the error’s traceback still referred to, and instead,
+when more than 3 GB stayed allocated, emptied the storage of every CUDA
+tensor, including those still in use.
 
 Runtime and compatibility - Require Python 3.11 or newer. Python 3.10
 reached end-of-life in October 2026, and duckdb 2.0.0 requires Python
@@ -72,7 +99,10 @@ reached end-of-life in October 2026, and duckdb 2.0.0 requires Python
 tuning metrics. - Models trained with custom embeddings, RealMLP mean
 aggregation, time tokens, convolutional positional encodings or a fixed
 `TemporalPE` sigma compute their inputs differently now. Predictions
-from such saved models change, so retrain them.
+from such saved models change, so retrain them. - Poincare embeddings
+with vectors outside the ball are now an error, also when predicting
+with a model saved by an earlier version. - Drop the `nvidia-ml-py`
+Python dependency.
 
 Documentation and CI - Add an Ubuntu 26.04 CI job and a regression test
 for batched matrix multiplication. - Stop pinning Python duckdb on macOS

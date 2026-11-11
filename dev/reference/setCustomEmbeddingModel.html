@@ -58,7 +58,8 @@ or embeddings from a foundation model.</p>
 <span>    attDropout <span class="op">=</span> <span class="fl">0.2</span>, ffnDropout <span class="op">=</span> <span class="fl">0.1</span>, dimHidden <span class="op">=</span> <span class="fl">32</span>, estimatorSettings <span class="op">=</span></span>
 <span>    <span class="fu"><a href="setEstimator.html">setEstimator</a></span><span class="op">(</span>learningRate <span class="op">=</span> <span class="st">"auto"</span>, weightDecay <span class="op">=</span> <span class="fl">1e-04</span>, batchSize <span class="op">=</span> <span class="fl">256</span>, epochs <span class="op">=</span> <span class="fl">2</span>,</span>
 <span>    seed <span class="op">=</span> <span class="cn">NULL</span>, device <span class="op">=</span> <span class="st">"cpu"</span><span class="op">)</span>, hyperParamSearch <span class="op">=</span> <span class="st">"random"</span>, randomSample <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>,</span>
-<span>  embeddingsClass <span class="op">=</span> <span class="st">"CustomEmbeddings"</span></span>
+<span>  embeddingsClass <span class="op">=</span> <span class="st">"CustomEmbeddings"</span>,</span>
+<span>  curvature <span class="op">=</span> <span class="fl">1</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -80,6 +81,16 @@ tensor.</p></dd>
 <dt id="arg-embeddingsclass">embeddingsClass<a class="anchor" aria-label="anchor" href="#arg-embeddingsclass"></a></dt>
 <dd><p>Embedding implementation, either
 <code>"CustomEmbeddings"</code> or <code>"PoincareEmbeddings"</code>.</p></dd>
+
+
+<dt id="arg-curvature">curvature<a class="anchor" aria-label="anchor" href="#arg-curvature"></a></dt>
+<dd><p>For <code>"PoincareEmbeddings"</code>, the magnitude <code>c</code> of the
+curvature <code>-c</code> of the Poincare ball that the embeddings were trained in.
+The norm of every embedding must be below <code>1 / sqrt(c)</code>. This is the
+curvature itself, not the parameter of a library that transforms it:
+HypLL, used by OHDSI/context, applies softplus, so an untrained curvature
+parameter of 1 there means <code>c = log(1 + exp(1))</code>, about 1.313. If the
+curvature was trained, use its final value after softplus.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -107,8 +118,9 @@ tensor.</p></dd>
 <span class="r-in"><span>  modelSettings <span class="op">=</span> <span class="fu"><a href="setDefaultTransformer.html">setDefaultTransformer</a></span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Clean up this example's file. In real use, keep it until training finishes:</span></span></span>
-<span class="r-in"><span><span class="co"># modelSettings stores its path, not the embedding tensors themselves.</span></span></span>
+<span class="r-in"><span><span class="co"># Clean up this example's file. In real use, keep it for as long as you use</span></span></span>
+<span class="r-in"><span><span class="co"># the model: modelSettings and the saved model store its path, not the</span></span></span>
+<span class="r-in"><span><span class="co"># embedding tensors, and predicting with a saved model reads it again.</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/unlink.html" class="external-link">unlink</a></span><span class="op">(</span><span class="va">embeddingFilePath</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
 <span class="r-in"><span></span></span>

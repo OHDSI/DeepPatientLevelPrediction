@@ -12,7 +12,8 @@ setCustomEmbeddingModel(
     attDropout = 0.2, ffnDropout = 0.1, dimHidden = 32, estimatorSettings =
     setEstimator(learningRate = "auto", weightDecay = 1e-04, batchSize = 256, epochs = 2,
     seed = NULL, device = "cpu"), hyperParamSearch = "random", randomSample = 1),
-  embeddingsClass = "CustomEmbeddings"
+  embeddingsClass = "CustomEmbeddings",
+  curvature = 1
 )
 ```
 
@@ -32,6 +33,16 @@ setCustomEmbeddingModel(
 
   Embedding implementation, either `"CustomEmbeddings"` or
   `"PoincareEmbeddings"`.
+
+- curvature:
+
+  For `"PoincareEmbeddings"`, the magnitude `c` of the curvature `-c` of
+  the Poincare ball that the embeddings were trained in. The norm of
+  every embedding must be below `1 / sqrt(c)`. This is the curvature
+  itself, not the parameter of a library that transforms it: HypLL, used
+  by OHDSI/context, applies softplus, so an untrained curvature
+  parameter of 1 there means `c = log(1 + exp(1))`, about 1.313. If the
+  curvature was trained, use its final value after softplus.
 
 ## Value
 
@@ -58,8 +69,9 @@ modelSettings <- setCustomEmbeddingModel(
   modelSettings = setDefaultTransformer()
 )
 
-# Clean up this example's file. In real use, keep it until training finishes:
-# modelSettings stores its path, not the embedding tensors themselves.
+# Clean up this example's file. In real use, keep it for as long as you use
+# the model: modelSettings and the saved model store its path, not the
+# embedding tensors, and predicting with a saved model reads it again.
 unlink(embeddingFilePath)
 } # }
 ```
