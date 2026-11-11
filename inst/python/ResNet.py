@@ -32,7 +32,6 @@ class ResNet(nn.Module):
         self.embedding = Embedding(
             feature_info=feature_info,
             embedding_dim=size_embedding,
-            aggregate="none",
         )
 
         self.first_layer = nn.Linear(size_embedding, size_hidden)
@@ -77,9 +76,6 @@ class ResNet(nn.Module):
 
     def _aggregate_tokens(self, tokens, feature_ids):
         """The mean of the tokens of each patient, leaving out the padding."""
-        if tokens.dim() <= 2:
-            # custom embeddings that sum the tokens themselves
-            return tokens
         lengths = (feature_ids != 0).sum(dim=1, keepdim=True).clamp_min(1)
         return tokens.sum(dim=1) / lengths.to(dtype=tokens.dtype)
 

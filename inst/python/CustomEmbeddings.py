@@ -18,7 +18,6 @@ class CustomEmbeddings(nn.Module):
         feature_info: FeatureInfo,
         custom_indices: torch.Tensor,
         freeze: bool = True,
-        aggregate: str = "none",
     ):
         """
         Custom embeddings class that allows for the use of custom embeddings
@@ -62,11 +61,8 @@ class CustomEmbeddings(nn.Module):
             self.custom_embeddings_trainable.weight
         )  # initialize trainable embeddings to 0
         num_regular_embeddings = feature_info.get_vocabulary_size()
-        self.aggregate = aggregate
 
-        self.regular_embeddings = Embedding(embedding_dim, 
-                                            feature_info=feature_info,
-                                            aggregate=aggregate)
+        self.regular_embeddings = Embedding(embedding_dim, feature_info=feature_info)
 
         self.register_buffer("custom_indices", custom_indices)
 
@@ -100,8 +96,6 @@ class CustomEmbeddings(nn.Module):
         # which RealMLP uses again after the embedding
         x = dict(x)
         feature_ids = x["feature_ids"]
-        # count before the feature ids are split into custom and regular below
-        sequence_lengths = (feature_ids != 0).sum(dim=1, keepdim=True).clamp_min(1)
         custom_embeddings_mask = torch.isin(feature_ids,
                                             self.custom_indices.to(feature_ids.device))
         custom_features = torch.where(custom_embeddings_mask, feature_ids, 0)
@@ -117,27 +111,7 @@ class CustomEmbeddings(nn.Module):
         # not added for padding or regular features
         mask = custom_embeddings_mask.unsqueeze(-1).to(dtype=custom_embeddings.dtype)
         regular_embeddings = self.regular_embeddings(x)
-        if self.aggregate == "sum":
-            custom_embeddings = self.project_sum(custom_embeddings * mask, mask)
-            sequence_lengths = sequence_lengths.to(dtype=custom_embeddings.dtype)
-            return (custom_embeddings + regular_embeddings) / sequence_lengths
-        else:
-            return self.linear_transform(custom_embeddings) * mask + regular_embeddings
-
-    def project_sum(self, custom_embeddings: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
-        """Sum the projected custom features of each patient.
-
-        The projection is linear, so this projects the sum and adds the bias
-        once per custom feature, without a tensor of the model's width for
-        every position.
-        """
-        summed = custom_embeddings.sum(dim=1)
-        if not isinstance(self.linear_transform, nn.Linear):
-            return self.linear_transform(summed)
-        projected = nn.functional.linear(summed, self.linear_transform.weight)
-        if self.linear_transform.bias is not None:
-            projected = projected + mask.sum(dim=1) * self.linear_transform.bias
-        return projected
+        return self.linear_transform(custom_embeddings) * mask + regular_embeddings
 
 
 def check_poincare_points(points: torch.Tensor, curvature: float) -> None:

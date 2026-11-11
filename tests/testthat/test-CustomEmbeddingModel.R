@@ -74,12 +74,14 @@ customEmbeddingEstimator <- function(concepts, weights, conceptIds = 1:4 + 1000,
   ))
 }
 
+# the patient's embedding: its tokens, pooled as the model pools them
 embedRow <- function(estimator, ids) {
-  ids <- matrix(as.integer(ids), nrow = 1)
-  asNumeric(estimator$model$embedding(list(
-    feature_ids = torch$tensor(ids, dtype = torch$long),
-    feature_values = torch$ones(dim(ids), dtype = torch$float)
-  )))
+  featureIds <- torch$tensor(matrix(as.integer(ids), nrow = 1), dtype = torch$long)
+  tokens <- estimator$model$embedding(list(
+    feature_ids = featureIds,
+    feature_values = torch$ones(featureIds$shape, dtype = torch$float)
+  ))
+  asNumeric(estimator$model$`_aggregate_tokens`(tokens, featureIds))
 }
 
 test_that("custom embeddings are assigned to their own covariates", {
@@ -141,13 +143,12 @@ test_that("the projection of custom embeddings only applies to custom features",
   skip_if_no_python()
   # two custom embeddings with two dimensions, projected to three
   vectors <- rbind(c(1, 2), c(3, 4))
-  customEmbedding <- function(aggregate) {
+  customEmbedding <- function() {
     importModule("CustomEmbeddings")$CustomEmbeddings(
       custom_embedding_weights = torch$tensor(vectors, dtype = torch$float),
       embedding_dim = 3L,
       feature_info = mappedFeatureInfo(),
-      custom_indices = torch$tensor(c(1L, 3L), dtype = torch$long),
-      aggregate = aggregate
+      custom_indices = torch$tensor(c(1L, 3L), dtype = torch$long)
     )
   }
   position <- function(tokens, i) asNumeric(tokens$select(1L, i)$reshape(-1L))
@@ -156,22 +157,12 @@ test_that("the projection of custom embeddings only applies to custom features",
   }
   torch$manual_seed(42L)
 
-  perToken <- customEmbedding("none")
+  perToken <- customEmbedding()
   regular <- embedTokens(perToken$regular_embeddings, c(0, 2, 0))
   tokens <- embedTokens(perToken, c(1, 2, 0))
   expect_equal(position(tokens, 0L), project(perToken, 1), tolerance = 1e-6)
   expect_equal(position(tokens, 1L), position(regular, 1L), tolerance = 1e-6)
   expect_equal(position(tokens, 2L), c(0, 0, 0))
-
-  pooled <- customEmbedding("sum")
-  regularOnly <- asNumeric(embedTokens(pooled$regular_embeddings, c(2, 0)))
-  expect_equal(asNumeric(embedTokens(pooled, c(2, 0))), regularOnly, tolerance = 1e-6)
-  # each custom feature gets the bias once
-  expect_equal(
-    asNumeric(embedTokens(pooled, c(1, 3, 2, 0))),
-    (project(pooled, 1) + project(pooled, 2) + regularOnly) / 3,
-    tolerance = 1e-6
-  )
 })
 
 test_that("custom embeddings leave the batch they are given unchanged", {

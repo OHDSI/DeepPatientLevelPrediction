@@ -132,11 +132,6 @@ class CustomEmbeddingInitStrategy(InitStrategy):
             )
         custom_indices = torch.as_tensor(matches["columnId"].to_list(), dtype=torch.long)
         custom_weights = embeddings["embeddings"][matches["embeddingRow"].to_list()]
-        if model.name == "ResNet" or model.name == "MultiLayerPerceptron":
-            aggregate = "sum"
-        else:
-            aggregate = "none"
-
         embedding_class = self.class_names_to_class[self.embedding_class]
         extra = dict()
         if embedding_class is PoincareEmbeddings:
@@ -148,7 +143,6 @@ class CustomEmbeddingInitStrategy(InitStrategy):
             feature_info=parameters["model_parameters"]["feature_info"],
             custom_indices=custom_indices,
             freeze=self.freeze,
-            aggregate=aggregate,
             **extra,
         )
         return model

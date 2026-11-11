@@ -88,13 +88,12 @@ test_that("MLP with poincare works", {
   ))
 })
 
-poincareEmbedding <- function(points, aggregate = "none", ...) {
+poincareEmbedding <- function(points, ...) {
   importModule("CustomEmbeddings")$PoincareEmbeddings(
     custom_embedding_weights = torch$tensor(points, dtype = torch$float),
     embedding_dim = ncol(points),
     feature_info = mappedFeatureInfo(),
     custom_indices = torch$tensor(array(seq_len(nrow(points))), dtype = torch$long),
-    aggregate = aggregate,
     ...
   )
 }

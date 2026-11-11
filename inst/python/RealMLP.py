@@ -131,7 +131,6 @@ class RealMLP(nn.Module):
             numerical_pbld_hidden_dim=int(numeric_pbld_hidden_dim),
             numerical_pbld_embedding_dim=int(numeric_pbld_embedding_dim),
             embedding_dim=int(size_embedding),
-            aggregate="none",
         )
         for parameter in self.embedding.parameters():
             setattr(parameter, "_is_embedding_param", True)
