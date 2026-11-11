@@ -107,10 +107,10 @@ class ResLayer(nn.Module):
         self.linear0 = nn.Linear(size_hidden, res_hidden)
         self.linear1 = nn.Linear(res_hidden, size_hidden)
 
-        if hidden_dropout is not None:
-            self.hidden_dropout = nn.Dropout(p=hidden_dropout)
-        if residual_dropout is not None:
-            self.residual_dropout = nn.Dropout(p=residual_dropout)
+        self.hidden_dropout = None if hidden_dropout is None else nn.Dropout(p=hidden_dropout)
+        self.residual_dropout = (
+            None if residual_dropout is None else nn.Dropout(p=residual_dropout)
+        )
         self.activation = activation()
 
     def forward(self, input):

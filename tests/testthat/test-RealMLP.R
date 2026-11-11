@@ -472,3 +472,28 @@ test_that("data-dependent initialization leaves frozen RealMLP weights alone", {
   trainable <- layerWeights(FALSE)
   expect_false(isTRUE(all.equal(trainable$after, trainable$before)))
 })
+
+test_that("setRealMLP rejects mean aggregation in paper mode and needs no scheduler", {
+  expect_error(
+    setRealMLP(paperMode = TRUE, tokenAggregation = "mean"),
+    "can't be combined with paperMode = TRUE"
+  )
+  expect_no_error(setRealMLP(paperMode = TRUE, tokenAggregation = "auto"))
+  expect_null(setRealMLP()$estimatorSettings$scheduler())
+})
+
+test_that("the LR finder uses RealMLP's own loss", {
+  skip_if_no_python()
+  # in paper mode RealMLP has two outputs, which the plain criterion can't take
+  settings <- setRealMLP(numLayers = 1, sizeHidden = 8, dropout = 0, sizeEmbedding = 8, paperMode = TRUE)
+  parameters <- settings$param[[1]]
+  parameters$modelType <- settings$modelType
+  parameters$feature_info <- simDataset$get_feature_info()
+  lr <- quietly(getLR(
+    parameters = list(modelParameters = parameters, estimatorSettings = settings$estimatorSettings),
+    lrSettings = list(minLr = 1e-6, maxLr = 0.1, numLr = 5L, divergenceThreshold = 4),
+    dataset = simDataset
+  ))
+  expect_gte(lr, 1e-6 - 1e-12)
+  expect_lte(lr, 0.1 + 1e-12)
+})

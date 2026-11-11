@@ -44,6 +44,9 @@ Bug fixes
 - Keep the defaults of the temporal settings that a partial `temporalSettings` list leaves out. A partial list had `timeTokens = FALSE`, while the argument's default has `TRUE`. Unknown names, such as `time_tokens`, are now an error; they were passed on next to the default.
 - Pass positional encoding options written in camelCase, such as `kernelSize`, to the encoding. Options an encoding does not take were dropped without a message, and now give a warning.
 - Reject `tokenAggregation = "mean"` with `paperMode = TRUE` in `setRealMLP()`. RealMLP sums the tokens in paper mode, so it silently replaced the setting.
+- Use the slopes of the ALiBi paper in `ALiBiPE`. A wrong formula gave other slopes for every number of heads but 4, for example 2^-3 to 2^-24 instead of 2^-1 to 2^-8 for 8 heads, and numbers of heads that are not a power of two failed. Saved models keep the slopes they were trained with.
+- Build `ResLayer` without dropout, which failed in `forward`.
+- Let the learning rate finder use the model's own loss and label smoothing, as training does. It failed for RealMLP in paper mode, which has two outputs.
 
 Removed
 - Remove settings that no function of the package sets, and that could only be reached by editing the model or estimator settings by hand. Models fitted with the package's own settings train and predict exactly as before.

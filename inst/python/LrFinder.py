@@ -69,7 +69,8 @@ class LrFinder:
                 batch = batch_to_device(batch, self.estimator.device)
 
                 out = self.estimator.model(batch[0])
-                loss = self.estimator.criterion(out, batch[1])
+                # the model's own loss, such as RealMLP's, with any label smoothing
+                loss = self.estimator._compute_loss(out, batch[1])
                 loss.backward()
                 loss_value += loss.item()
             loss_value = loss_value / self.accumulation_steps

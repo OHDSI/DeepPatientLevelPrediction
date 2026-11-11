@@ -116,6 +116,15 @@ test_that("ResNet nn-module works ", {
   expect_equal(output$shape[0], 10L)
 })
 
+test_that("a residual layer works without dropout", {
+  skip_if_no_python()
+  layer <- importModule("ResNet")$ResLayer(
+    size_hidden = 4L, res_hidden = 8L, normalization = torch$nn$BatchNorm1d,
+    activation = torch$nn$ReLU, hidden_dropout = NULL, residual_dropout = NULL
+  )
+  expect_equal(layer(torch$randn(3L, 4L))$shape[1], 4L)
+})
+
 test_that("Default Resnet works", {
   defaultResNet <- setDefaultResNet()
   params <- defaultResNet$param[[1]]

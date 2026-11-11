@@ -337,3 +337,41 @@ test_that("TemporalPE uses the requested sigma", {
   }
   expect_error(temporalPE(dim_token = 4L, num_heads = 2L, sigma = 0), "must be positive")
 })
+
+test_that("ALiBi uses the slopes of the ALiBi paper for any number of heads", {
+  slopes <- function(heads) asNumeric(importModule("PositionalEncodings")$alibi_slopes(heads))
+  expect_equal(slopes(8L), 2^-(1:8), tolerance = 1e-7)
+  expect_equal(slopes(4L), 2^-(2 * 1:4), tolerance = 1e-7)
+  expect_equal(slopes(2L), 2^-(4 * 1:2), tolerance = 1e-7)
+  # four heads, then every other slope of eight heads
+  expect_equal(slopes(6L), c(2^-(2 * 1:4), 2^-c(1, 3)), tolerance = 1e-7)
+  alibi <- importModule("PositionalEncodings")$ALiBiPE(dim_token = 12L, num_heads = 6L)
+  expect_equal(alibi$slopes$shape[0], 6L)
+})
+
+test_that("options a positional encoding does not take give a warning", {
+  pe <- importModule("PositionalEncodings")
+  py <- reticulate::py_run_string("
+import warnings
+
+class MaxTime:
+    def get_max_time_id(self):
+        return 10
+
+def encoding_warnings(factory, config):
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter('always')
+        factory({'positional_encoding': config, 'dim_token': 8, 'num_heads': 2,
+                 'feature_info': MaxTime()})
+    return [str(warning.message) for warning in caught]
+")
+  encodingWarnings <- function(...) {
+    py$encoding_warnings(pe$create_positional_encoding_module, list(...))
+  }
+  expect_length(encodingWarnings(name = "SinusoidalPE", dropout = 0.1), 0)
+  expect_match(
+    encodingWarnings(name = "RotaryPE", dropout = 0.1, kernelSize = 3),
+    "RotaryPE does not take the option(s) dropout, kernelSize, which are ignored",
+    fixed = TRUE
+  )
+})
