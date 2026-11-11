@@ -836,17 +836,7 @@ class ALiBiPE(PositionalEncoding):
                  **kwrargs):
         super().__init__(dim_token)
         self.num_heads = int(num_heads)
-        closest_power_of_2 = 2 ** (math.ceil(math.log2(self.num_heads)))
-        base = torch.tensor(2**(-math.log2(closest_power_of_2)))
-
-        slopes_of_power_of_2 = torch.pow(base, torch.arange(1, closest_power_of_2 + 1))
-
-        if closest_power_of_2 != self.num_heads:
-            extra_slopes = torch.pow(base, torch.arange(1, 2 * self.num_heads - closest_power_of_2) + 1, 2)
-            slopes = torch.cat((slopes_of_power_of_2, extra_slopes))
-        else:
-            slopes = slopes_of_power_of_2
-        self.register_buffer("slopes", slopes)
+        self.register_buffer("slopes", alibi_slopes(self.num_heads))
 
     def get_attention_bias(
         self,
@@ -873,6 +863,27 @@ class ALiBiPE(PositionalEncoding):
         
         bias = -slopes_for_broadcast * distances_for_broadcast
         return bias
+
+
+def alibi_slopes(num_heads: int) -> torch.Tensor:
+    """The slope of each attention head in ALiBi (Press et al., 2022).
+
+    For a power of two n, the slopes are 2^(-8/n), 2^(-16/n), ... 2^(-8). Other
+    head counts take the slopes of the largest power of two below them, followed
+    by every other slope of twice that power.
+    """
+
+    def power_of_two_slopes(n):
+        start = 2.0 ** (-8.0 / n)
+        return [start ** (i + 1) for i in range(n)]
+
+    if num_heads & (num_heads - 1) == 0:
+        slopes = power_of_two_slopes(num_heads)
+    else:
+        closest = 2 ** math.floor(math.log2(num_heads))
+        extra = power_of_two_slopes(2 * closest)[0::2][: num_heads - closest]
+        slopes = power_of_two_slopes(closest) + extra
+    return torch.tensor(slopes, dtype=torch.float32)
 
 
 def create_positional_encoding_module(model_parameters: dict) -> PositionalEncoding:
