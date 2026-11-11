@@ -104,3 +104,10 @@ mappedFeatureInfo <- function(covariateIds = 1:4 + 100, conceptIds = 1:4 + 1000,
     isBinary = isBinary
   )))
 }
+
+# Evaluates an expression without its printed output and messages, so test
+# logs stay readable. The output is restored even when the expression fails.
+quietly <- function(expr) {
+  withr::local_output_sink(nullfile())
+  suppressMessages(expr)
+}
