@@ -32,8 +32,17 @@ class FinetuneInitStrategy(InitStrategy):
         # weights only false because seralizing lazyframe doesn't work
         # TODO fix
         fitted_estimator = torch.load(path, map_location="cpu", weights_only=False)
-        fitted_parameters = fitted_estimator["model_parameters"]
-        model_instance = model(**fitted_parameters)
+        # Build the network the way the fitted model was built, for example with
+        # its custom embeddings, so that its weights fit.
+        fitted_settings = fitted_estimator["estimator_settings"]
+        fitted_strategy = fitted_settings.get("init_strategy") or DefaultInitStrategy()
+        model_instance = fitted_strategy.initialize(
+            model,
+            {
+                "model_parameters": fitted_estimator["model_parameters"],
+                "estimator_settings": fitted_settings,
+            },
+        )
         model_instance.load_state_dict(fitted_estimator["model_state_dict"])
         for param in model_instance.parameters():
             param.requires_grad = False

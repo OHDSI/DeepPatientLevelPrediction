@@ -96,16 +96,24 @@ test_that("custom embedding models predict the same after saving and loading", {
     embeddingFilePath = embeddingFile,
     modelSettings = quickMlp()
   )
-  expectSamePredictions(roundTrip(customEmbedding, "CustomEmbedding"))
+  fitted <- roundTrip(customEmbedding, "CustomEmbedding")
+  expectSamePredictions(fitted)
+
+  # fine-tuning builds the network with its custom embeddings again (#198)
+  fineTuned <- setFinetuner(modelPath = fitted$modelPath, estimatorSettings = quickEstimator())
+  expectSamePredictions(roundTrip(fineTuned, "FinetunedCustomEmbedding"))
 })
 
 test_that("fine-tuned models predict the same after saving and loading", {
   skip_if_no_python()
-  fineTuned <- setFinetuner(
-    modelPath = roundTrips$MultiLayerPerceptron$modelPath,
-    estimatorSettings = quickEstimator()
-  )
-  expectSamePredictions(roundTrip(fineTuned, "Finetuner"))
+  # RealMLP had no reset_head() for the new output layer (#198)
+  for (name in c("MultiLayerPerceptron", "RealMLP")) {
+    fineTuned <- setFinetuner(
+      modelPath = roundTrips[[name]]$modelPath,
+      estimatorSettings = quickEstimator()
+    )
+    expectSamePredictions(roundTrip(fineTuned, paste0("Finetuned", name)))
+  }
 })
 
 # simulated data turned into temporal sequences: every covariate gets one of
