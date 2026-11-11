@@ -122,6 +122,23 @@ jobs:
           name: package_tarball
           path: check/*.tar.gz
 
+  Python-lint:
+    runs-on: ubuntu-24.04
+
+    name: Python lint (ruff)
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Check the Python backend
+        # pinned so that a new ruff release does not fail unrelated pull requests
+        run: uvx ruff@0.14.4 check inst/python
+
   CRAN-check:
     runs-on: ubuntu-24.04
 

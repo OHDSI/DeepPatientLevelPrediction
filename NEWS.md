@@ -48,6 +48,7 @@ Documentation and CI
 - Stop pinning Python duckdb on macOS CI, because version 1.5.2 cannot read files written by R duckdb 2.0.0.
 - Update `tlmgr` before installing LaTeX packages in the R-devel CI job.
 - Opt into the Eunomia integration tests with `DPLP_RUN_INTEGRATION_TESTS=true`, separately from the Python tests (`DPLP_RUN_PYTHON_TESTS=true`). Running Python tests no longer downloads Eunomia and fits a model before the first test.
+- Check the Python backend with ruff in CI.
 
 DeepPatientLevelPrediction 2.4.0
 ======================

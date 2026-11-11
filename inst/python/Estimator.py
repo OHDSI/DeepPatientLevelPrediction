@@ -14,7 +14,7 @@ import torch
 from torch.utils.data import DataLoader, BatchSampler, RandomSampler, SequentialSampler
 from tqdm import tqdm
 
-from InitStrategy import InitStrategy, DefaultInitStrategy
+from InitStrategy import DefaultInitStrategy
 from schedules import get_schedule
 try:
     import numpy as np
