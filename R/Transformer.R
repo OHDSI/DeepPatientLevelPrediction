@@ -77,8 +77,11 @@ setDefaultTransformer <- function(estimatorSettings =
 #'   `dimToken`. Exactly one of `dimHidden` and `dimHiddenRatio` must be `NULL`.
 #' @param temporal Whether to configure a transformer for temporal covariates.
 #' @param temporalSettings A list with `positionalEncoding`,
-#'   `maxSequenceLength`, `truncation`, and `timeTokens`. The only supported
-#'   truncation strategy is `"tail"`.
+#'   `maxSequenceLength`, `truncation`, and `timeTokens`. Settings left out
+#'   keep their defaults, and other names are an error. The only supported
+#'   truncation strategy is `"tail"`. The options in `positionalEncoding`, other
+#'   than its `name`, are passed to the encoding and may be written in camelCase;
+#'   options the encoding does not take give a warning.
 #' @param estimatorSettings Estimator settings created by [setEstimator()].
 #' @param hyperParamSearch Hyperparameter-search strategy, either `"random"`
 #'   or `"grid"`.
@@ -139,15 +142,8 @@ setTransformer <- function(numBlocks = 3,
                            hyperParamSearch = "random",
                            randomSample = 1,
                            randomSampleSeed = NULL) {
-  defaultTemporalSettings <- list(
-    positionalEncoding = list(
-      name = "SinusoidalPE",
-      dropout = 0.1
-    ),
-    maxSequenceLength = 256,
-    truncation = "tail",
-    timeTokens = FALSE
-  )
+  # the defaults of the argument, so that a partial list keeps the others
+  defaultTemporalSettings <- eval(formals(setTransformer)$temporalSettings)
   temporalSettings <- keepDefaults(
     defaultTemporalSettings,
     temporalSettings
@@ -252,8 +248,11 @@ setTransformer <- function(numBlocks = 3,
   )
   if (temporal) {
     if (!is.null(temporalSettings$positionalEncoding)) {
-      paramGrid[["positionalEncoding"]] <- 
-        expandComponentGrid(temporalSettings$positionalEncoding)
+      # the options become keyword arguments in Python, so kernelSize is kernel_size
+      paramGrid[["positionalEncoding"]] <- lapply(
+        expandComponentGrid(temporalSettings$positionalEncoding),
+        snakeCaseNamesDeep
+      )
     }
   }
 
@@ -306,4 +305,16 @@ setTransformer <- function(numBlocks = 3,
   attr(results$param, "settings")$modelType <- results$modelType
   class(results) <- "modelSettings"
   return(results)
+}
+
+# Converts the names of a list and of the lists in it to snake_case.
+snakeCaseNamesDeep <- function(x) {
+  if (!is.list(x)) {
+    return(x)
+  }
+  x <- lapply(x, snakeCaseNamesDeep)
+  if (!is.null(names(x))) {
+    names(x) <- camelCaseToSnakeCase(names(x))
+  }
+  x
 }
