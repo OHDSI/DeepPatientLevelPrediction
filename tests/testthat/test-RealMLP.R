@@ -105,7 +105,7 @@ test_that("setRealMLP random search samples expanded grid combinations", {
       hyperParamSearch = "random",
       randomSample = 2L
     )
-  )
+  , "Chosen amount of randomSamples is higher than the", fixed = TRUE)
 })
 
 test_that("setRealMLP validates vector-aware RealMLP parameters", {

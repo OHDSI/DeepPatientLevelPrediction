@@ -51,16 +51,16 @@ test_that("Estimator initialization works", {
 
 test_that("Estimator detects wrong inputs", {
 
-  testthat::expect_error(setEstimator(learningRate = "notAuto"))
-  testthat::expect_error(setEstimator(weightDecay = -1))
-  testthat::expect_error(setEstimator(weightDecay = "text"))
-  testthat::expect_error(setEstimator(batchSize = 0))
-  testthat::expect_error(setEstimator(batchSize = "text"))
-  testthat::expect_error(setEstimator(epochs = 0))
-  testthat::expect_error(setEstimator(epochs = "test"))
-  testthat::expect_error(setEstimator(earlyStopping = "notListorNull"))
-  testthat::expect_error(setEstimator(metric = 1))
-  testthat::expect_error(setEstimator(seed = "32"))
+  testthat::expect_error(setEstimator(learningRate = "notAuto"), "should be either a numeric or \"auto\"", fixed = TRUE)
+  testthat::expect_error(setEstimator(weightDecay = -1), "weightDecay needs to be >= 0", fixed = TRUE)
+  testthat::expect_error(setEstimator(weightDecay = "text"), "weightDecay is wrong class", fixed = TRUE)
+  testthat::expect_error(setEstimator(batchSize = 0), "batchSize needs to be > 0", fixed = TRUE)
+  testthat::expect_error(setEstimator(batchSize = "text"), "batchSize is wrong class", fixed = TRUE)
+  testthat::expect_error(setEstimator(epochs = 0), "epochs needs to be > 0", fixed = TRUE)
+  testthat::expect_error(setEstimator(epochs = "test"), "epochs is wrong class", fixed = TRUE)
+  testthat::expect_error(setEstimator(earlyStopping = "notListorNull"), "earlyStopping is wrong class", fixed = TRUE)
+  testthat::expect_error(setEstimator(metric = 1), "metric is wrong class", fixed = TRUE)
+  testthat::expect_error(setEstimator(seed = "32"), "seed is wrong class", fixed = TRUE)
 })
 
 sink(nullfile())
@@ -240,10 +240,10 @@ test_that("Estimator fit function works", {
   expect_equal(attr(simFitEstimatorResults, "modelType"), "binary")
   expect_equal(attr(simFitEstimatorResults, "saveType"), "file")
   fakeTrainData <- simTrainData
-  fakeTrainData$train$covariateData <- list(fakeCovData = c("Fake"))
-  expect_error(fitEstimator(fakeTrainData$train,
+  fakeTrainData$Train$covariateData <- list(fakeCovData = c("Fake"))
+  expect_error(fitEstimator(fakeTrainData$Train,
                             simModelSettings, analysisId = 1,
-                            analysisPath = tempdir()))
+                            analysisPath = tempdir()), "must be a CovariateData object", fixed = TRUE)
 })
 
 test_that("predictDeepEstimator works", {

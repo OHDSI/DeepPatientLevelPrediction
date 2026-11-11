@@ -1,27 +1,27 @@
 test_that("Helper functions", {
   expect_true(checkInStringVector("test", c("test", "test2")))
-  expect_error(checkInStringVector("test", c("test2", "test3")))
+  expect_error(checkInStringVector("test", c("test2", "test3")), "has incorrect value", fixed = TRUE)
 
   local({
     filePath <<- withr::local_tempfile(lines = "File contents")
     expect_true(checkFileExists(filePath))
   })
-  expect_error(checkFileExists(filePath))
+  expect_error(checkFileExists(filePath), "does not exist", fixed = TRUE)
 
   # checkHigherEqual
   expect_true(checkHigherEqual(2, 1))
   expect_true(checkHigherEqual(1, 1))
-  expect_error(checkHigherEqual(0, 1))
+  expect_error(checkHigherEqual(0, 1), "needs to be >= 1", fixed = TRUE)
 
   # checkHigher
   expect_true(checkHigher(2, 1))
-  expect_error(checkHigher(1, 1))
-  expect_error(checkHigher(0, 1))
+  expect_error(checkHigher(1, 1), "needs to be > 1", fixed = TRUE)
+  expect_error(checkHigher(0, 1), "needs to be > 1", fixed = TRUE)
 
   # checkIsClass)
   expect_true(checkIsClass(2, c("numeric", "integer")))
-  expect_error(checkIsClass(2, c("character")))
-  expect_error(checkIsClass("2", c("numeric", "integer")))
+  expect_error(checkIsClass(2, c("character")), "is wrong class", fixed = TRUE)
+  expect_error(checkIsClass("2", c("numeric", "integer")), "is wrong class", fixed = TRUE)
 })
 
 test_that("r_to_py() converts a data.frame to a polars DataFrame", {

@@ -417,7 +417,7 @@ test_that("setEstimator turns on the output bias initialization by default", {
   settings <- setEstimator(seed = 1)
   expect_true(settings$initOutputBias)
   expect_false(setEstimator(seed = 1, initOutputBias = FALSE)$initOutputBias)
-  expect_error(setEstimator(seed = 1, initOutputBias = "yes"))
+  expect_error(setEstimator(seed = 1, initOutputBias = "yes"), "initOutputBias is wrong class", fixed = TRUE)
   expect_named(camelCaseToSnakeCaseNames(list(initOutputBias = TRUE)), "init_output_bias")
 })
 
