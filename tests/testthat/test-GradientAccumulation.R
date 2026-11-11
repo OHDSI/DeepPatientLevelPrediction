@@ -1,63 +1,32 @@
 skip_if_no_python()
 
-path <- system.file("python", package = "DeepPatientLevelPrediction")
-
+# A dataset of random binary features, plus one numeric feature if numCovs.
 generateData <- function(observations, features, totalFeatures = 6,
                          numCovs = FALSE) {
-  rowId <- rep(1:observations, each = features)
   withr::with_seed(42, {
-    columnId <- sample(1:totalFeatures, observations * features, replace = TRUE)
-  })
-  covariateValue <- rep(1, observations * features)
-  covariates <- data.frame(rowId = rowId, columnId = columnId, covariateValue = covariateValue)
-  covariateRef <- data.frame(
-    columnId = unique(covariates %>% dplyr::pull(.data$columnId)),
-    analysisId = 1L
-  )
-  analysisRef <- data.frame(
-    analysisId = 1L,
-    analysisName = "test",
-    isBinary = "Y",
-    missingMeansZero = NA
-  )
-  if (numCovs) {
-    numRow <- 1:observations
-    numCol <- as.integer(rep(totalFeatures + 1, observations))
-    withr::with_seed(42, {
-      numVal <- runif(observations)
-    })
-    numCovariates <- data.frame(
-      rowId = as.integer(numRow),
-      columnId = as.integer(numCol),
-      covariateValue = numVal
+    covariates <- data.frame(
+      rowId = rep(1:observations, each = features),
+      columnId = sample(1:totalFeatures, observations * features, replace = TRUE),
+      covariateValue = 1
     )
-    covariates <- rbind(covariates, numCovariates)
-    covariateRef <- rbind(covariateRef, data.frame(
-      columnId = unique(numCol),
-      analysisId = 2L
-    ))
-    analysisRef <- rbind(analysisRef, data.frame(
-      analysisId = 2L,
-      analysisName = "numCov",
-      isBinary = "N",
-      missingMeansZero = "Y"
-    ))
-  }
-
-  labels <- list(outcomeCount = as.numeric(sample(0:1, observations, replace = TRUE)))
-  data <- Andromeda::andromeda(
-    covariates = covariates,
-    covariateRef = covariateRef,
-    analysisRef = analysisRef
-  )
-
-  dataset <- createDataset(data, labels)
-  return(dataset)
+    numericColumns <- NULL
+    if (numCovs) {
+      numericColumns <- as.integer(totalFeatures + 1)
+      covariates <- rbind(covariates, data.frame(
+        rowId = 1:observations,
+        columnId = numericColumns,
+        covariateValue = runif(observations)
+      ))
+    }
+    labels <- list(outcomeCount = as.numeric(sample(0:1, observations, replace = TRUE)))
+  })
+  data <- createMockData(covariates, isBinary = "Y", numericColumns = numericColumns)
+  createDataset(data, labels)
 }
 
 dataset <- generateData(observations = 5, features = 3, totalFeatures = 6)
 
-model <- reticulate::import_from_path("ResNet", path = path)$ResNet
+model <- importModule("ResNet")$ResNet
 modelParams <- list(
   "num_layers" = 1L,
   "size_hidden" = 32,
@@ -65,7 +34,7 @@ modelParams <- list(
   "feature_info" = dataset$get_feature_info(),
   "normalization" = torch$nn$LayerNorm
 )
-Estimator <- reticulate::import_from_path("Estimator", path = path)$Estimator
+Estimator <- importModule("Estimator")$Estimator
 estimatorSettings <- list(
   learningRate = 3e-4,
   weightDecay = 1e-6,
@@ -177,7 +146,7 @@ test_that("LR finder works same with and without accumulation", {
 test_that("Gradient accumulation works when batch is smaller than batch_size * steps", {
   dataset <- generateData(observations = 50, features = 3, totalFeatures = 6)
 
-  model <- reticulate::import_from_path("ResNet", path = path)$ResNet
+  model <- importModule("ResNet")$ResNet
   modelParams <- list(
     "num_layers" = 1L,
     "size_hidden" = 32,
@@ -185,7 +154,7 @@ test_that("Gradient accumulation works when batch is smaller than batch_size * s
     "feature_info" = dataset$get_feature_info(),
     "normalization" = torch$nn$LayerNorm
   )
-  Estimator <- reticulate::import_from_path("Estimator", path = path)$Estimator
+  Estimator <- importModule("Estimator")$Estimator
   estimatorSettings <- list(
     learningRate = 3e-4,
     weightDecay = 1e-6,

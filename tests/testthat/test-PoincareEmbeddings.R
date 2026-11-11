@@ -20,10 +20,6 @@ delayedAssign("poincareEmbeddings", local({
   list(file = file, embeddings = embeddings)
 }))
 
-quickEstimator <- function() {
-  setEstimator(learningRate = 1e-3, epochs = 1, device = "cpu", seed = 42)
-}
-
 # Fits the model with Poincare embeddings and checks that the saved model holds
 # the supplied vectors of the concepts in the data.
 expectPoincareEmbeddingsKept <- function(modelSettings) {
