@@ -24,6 +24,7 @@ jobs:
       RSPM: ${{ matrix.config.rspm }}
       UV_SYSTEM_PYTHON: 1
       DPLP_RUN_PYTHON_TESTS: "true"
+      DPLP_RUN_INTEGRATION_TESTS: "true"
 
     steps:
       - uses: actions/checkout@v4
