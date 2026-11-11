@@ -3,6 +3,7 @@
 
 from typing import Optional, Callable
 import math
+import warnings
 
 import torch
 from torch import nn
@@ -933,4 +934,11 @@ def create_positional_encoding_module(model_parameters: dict) -> PositionalEncod
 
     sig = inspect.signature(pe_class.__init__)
     valid_args = {k: v for k, v in constructor_args.items() if k in sig.parameters}
+    # options that this encoding does not take would otherwise vanish unnoticed
+    ignored = sorted(key for key in pe_config if key != "name" and key not in sig.parameters)
+    if ignored:
+        warnings.warn(
+            f"{pe_name} does not take the option(s) {', '.join(ignored)}, which are ignored. "
+            f"It takes: {', '.join(name for name in sig.parameters if name not in ('self', 'kwrargs'))}."
+        )
     return pe_class(**valid_args)

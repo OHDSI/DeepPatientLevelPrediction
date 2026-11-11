@@ -44,8 +44,11 @@ setTransformer(
 \item{temporal}{Whether to configure a transformer for temporal covariates.}
 
 \item{temporalSettings}{A list with \code{positionalEncoding},
-\code{maxSequenceLength}, \code{truncation}, and \code{timeTokens}. The only supported
-truncation strategy is \code{"tail"}.}
+\code{maxSequenceLength}, \code{truncation}, and \code{timeTokens}. Settings left out
+keep their defaults, and other names are an error. The only supported
+truncation strategy is \code{"tail"}. The options in \code{positionalEncoding}, other
+than its \code{name}, are passed to the encoding and may be written in camelCase;
+options the encoding does not take give a warning.}
 
 \item{estimatorSettings}{Estimator settings created by \code{\link[=setEstimator]{setEstimator()}}.}
 

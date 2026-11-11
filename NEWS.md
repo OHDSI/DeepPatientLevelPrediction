@@ -41,6 +41,9 @@ Bug fixes
 - Reject model settings in which any value is out of range. The checks only failed when every value was, so `dropout = c(-1, 0.5)` passed. Dropout must now also be below 1.
 - Reject an unknown `hyperParamSearch`. Any value other than `"random"`, such as a misspelling, ran the full grid.
 - Fine-tune models trained with custom embeddings, and RealMLP models (#198). The fine-tuner rebuilt the network without its custom embeddings, so the saved weights did not fit, and RealMLP had no `reset_head()`.
+- Keep the defaults of the temporal settings that a partial `temporalSettings` list leaves out. A partial list had `timeTokens = FALSE`, while the argument's default has `TRUE`. Unknown names, such as `time_tokens`, are now an error; they were passed on next to the default.
+- Pass positional encoding options written in camelCase, such as `kernelSize`, to the encoding. Options an encoding does not take were dropped without a message, and now give a warning.
+- Reject `tokenAggregation = "mean"` with `paperMode = TRUE` in `setRealMLP()`. RealMLP sums the tokens in paper mode, so it silently replaced the setting.
 
 Removed
 - Remove settings that no function of the package sets, and that could only be reached by editing the model or estimator settings by hand. Models fitted with the package's own settings train and predict exactly as before.

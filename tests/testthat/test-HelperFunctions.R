@@ -358,16 +358,18 @@ test_that("handles multiple nested hyperparameter lists", {
   ))
 
 })
-test_that("keepDefaults overrides defaults and adds new keys", {
+test_that("keepDefaults overrides defaults and rejects unknown keys", {
   defaults <- list(lr = 0.01, weight_decay = 0)
-  users <- list(lr = 0.001, beta1 = 0.9)
 
-  res <- keepDefaults(defaults, users)
-
+  res <- keepDefaults(defaults, list(lr = 0.001))
   expect_equal(res$lr, 0.001)
   expect_equal(res$weight_decay, 0)
-  expect_true("beta1" %in% names(res))
-  expect_equal(res$beta1, 0.9)
+
+  expect_error(
+    keepDefaults(defaults, list(lr = 0.001, beta1 = 0.9)),
+    "Unknown settings: beta1. The settings are: lr, weight_decay",
+    fixed = TRUE
+  )
 })
 
 test_that("keepDefaults returns defaults when userSettings is NULL", {

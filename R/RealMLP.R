@@ -206,6 +206,14 @@ setRealMLP <- function(
     if (x$tokenAggregation == "auto") {
       x$tokenAggregation <- if (isTRUE(x$paperMode)) "sum" else "mean"
     }
+    # RealMLP() replaces mean by sum in paper mode, which models saved
+    # before this check rely on
+    if (isTRUE(x$paperMode) && x$tokenAggregation == "mean") {
+      stop(
+        "tokenAggregation = \"mean\" can't be combined with paperMode = TRUE, ",
+        "which sums the tokens. Use \"auto\", \"sum\" or \"sum_len_norm\"."
+      )
+    }
     if (x$featureScaleMode == "auto") {
       x$featureScaleMode <- "scalar"
     }

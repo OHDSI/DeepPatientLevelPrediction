@@ -280,6 +280,13 @@ keepDefaults <- function(defaultSettings, userSettings) {
     stop("Settings argument must be a list.")
   }
   userSettingsNames <- names(userSettings)
+  unknown <- setdiff(userSettingsNames, names(defaultSettings))
+  if (length(unknown) > 0) {
+    stop(paste0(
+      "Unknown settings: ", paste(unknown, collapse = ", "),
+      ". The settings are: ", paste(names(defaultSettings), collapse = ", ")
+    ))
+  }
   defaultSettings[userSettingsNames] <- userSettings
 
   return(defaultSettings)

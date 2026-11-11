@@ -35,7 +35,7 @@ test_that("Transformer settings work", {
     temporalSettings = list(
       maxSequenceLength = "notMaxSequenceLength",
       truncation = "tail",
-      time_tokens = TRUE
+      timeTokens = TRUE
     )
   ), "maxSequenceLength must be either", fixed = TRUE)
   expect_error(setTransformer(
@@ -43,7 +43,7 @@ test_that("Transformer settings work", {
     temporalSettings = list(
       maxSequenceLength = 256,
       truncation = "max",
-      time_tokens = TRUE
+      timeTokens = TRUE
     )
   ), "Only truncation method 'tail' is supported", fixed = TRUE)
 
@@ -52,14 +52,37 @@ test_that("Transformer settings work", {
     temporalSettings = list(
       maxSequenceLength = "max",
       truncation = "tail",
-      time_tokens = TRUE
+      timeTokens = TRUE
     )
   )
   expect_true(attr(transformerSettings$param, "temporalModel"))
   temporalSettings <- attr(transformerSettings$param, "temporalSettings")
   expect_equal(temporalSettings$maxSequenceLength, "max")
   expect_equal(temporalSettings$truncation, "tail")
-  expect_equal(temporalSettings$time_tokens, TRUE)
+  expect_equal(temporalSettings$timeTokens, TRUE)
+})
+
+test_that("a partial list of temporal settings keeps the other defaults", {
+  temporalSettings <- function(...) {
+    attr(setTransformer(temporal = TRUE, temporalSettings = list(...))$param, "temporalSettings")
+  }
+  # the argument's default has time tokens, and so does a list without them
+  expect_true(temporalSettings(maxSequenceLength = 128)$timeTokens)
+  expect_equal(temporalSettings(maxSequenceLength = 128)$positionalEncoding$name, "SinusoidalPE")
+  expect_false(temporalSettings(timeTokens = FALSE)$timeTokens)
+  # the snake_case name was kept next to the default, so Python got both
+  expect_error(temporalSettings(time_tokens = TRUE), "Unknown settings: time_tokens")
+})
+
+test_that("positional encoding options may be written in camelCase", {
+  settings <- setTransformer(
+    temporal = TRUE,
+    temporalSettings = list(positionalEncoding = list(name = "StochasticConvPE", kernelSize = c(3, 5))),
+    hyperParamSearch = "grid"
+  )
+  encodings <- lapply(settings$param, function(x) x$positionalEncoding)
+  expect_equal(sort(vapply(encodings, function(x) x$kernel_size, numeric(1))), c(3, 5))
+  expect_equal(unique(lapply(encodings, names)), list(c("name", "kernel_size")))
 })
 
 test_that("fitEstimator with Transformer works", {
