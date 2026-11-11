@@ -70,7 +70,10 @@ or embeddings from a foundation model.</p>
 <dl><dt id="arg-embeddingfilepath">embeddingFilePath<a class="anchor" aria-label="anchor" href="#arg-embeddingfilepath"></a></dt>
 <dd><p>Path to a PyTorch file containing a dictionary with
 <code>concept_ids</code>, a PyTorch long tensor, and <code>embeddings</code>, a PyTorch float
-tensor.</p></dd>
+tensor. Binary covariates whose concept ID is in the file get its vector.
+Numeric covariates, such as measurement values, keep their regular
+embedding, which is scaled by the value, because a concept vector does not
+carry a value.</p></dd>
 
 
 <dt id="arg-modelsettings">modelSettings<a class="anchor" aria-label="anchor" href="#arg-modelsettings"></a></dt>

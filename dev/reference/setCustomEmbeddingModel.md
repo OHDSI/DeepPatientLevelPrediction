@@ -22,7 +22,11 @@ setCustomEmbeddingModel(
 - embeddingFilePath:
 
   Path to a PyTorch file containing a dictionary with `concept_ids`, a
-  PyTorch long tensor, and `embeddings`, a PyTorch float tensor.
+  PyTorch long tensor, and `embeddings`, a PyTorch float tensor. Binary
+  covariates whose concept ID is in the file get its vector. Numeric
+  covariates, such as measurement values, keep their regular embedding,
+  which is scaled by the value, because a concept vector does not carry
+  a value.
 
 - modelSettings:
 
