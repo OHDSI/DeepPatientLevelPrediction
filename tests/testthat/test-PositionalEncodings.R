@@ -304,3 +304,36 @@ test_that("Methods using dropout apply dropout", {
     )
   }
 })
+
+test_that("convolutional positional encodings do not depend on padding", {
+  skip_if_no_python()
+  encodings <- importModule("PositionalEncodings")
+  head <- function(tensor, n) as.numeric(tensor$detach()$numpy()[1, , 1:n, ])
+  attentionPe <- function(module, length) {
+    q <- torch$zeros(1L, 2L, length, 2L)
+    timeIds <- torch$arange(length + 0L, dtype = torch$long)$unsqueeze(0L)
+    module$apply_attention_pe(q, q, time_ids = timeIds)
+  }
+  modules <- list(
+    encodings$StochasticConvPE(dim_token = 4L, num_heads = 2L, kernel_size = 3L),
+    encodings$HybridRoPEConvPE(dim_token = 4L, max_time_id = 16L, num_heads = 2L, kernel_size = 3L)
+  )
+  for (module in modules) {
+    short <- attentionPe(module, 3L)
+    long <- attentionPe(module, 5L)
+    expect_equal(head(short[[1]], 3L), head(long[[1]], 3L), tolerance = 1e-6)
+    expect_equal(head(short[[2]], 3L), head(long[[2]], 3L), tolerance = 1e-6)
+  }
+})
+
+test_that("TemporalPE uses the requested sigma", {
+  skip_if_no_python()
+  temporalPE <- importModule("PositionalEncodings")$TemporalPE
+  for (learnable in c(FALSE, TRUE)) {
+    module <- temporalPE(
+      dim_token = 4L, num_heads = 2L, sigma = 2, learnable_sigma = learnable
+    )
+    expect_equal(torch$exp(module$log_sigma)$item(), 2, tolerance = 1e-6)
+  }
+  expect_error(temporalPE(dim_token = 4L, num_heads = 2L, sigma = 0), "must be positive")
+})

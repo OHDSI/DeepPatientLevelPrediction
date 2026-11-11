@@ -127,3 +127,10 @@ quietly <- function(expr) {
 quickEstimator <- function() {
   setEstimator(learningRate = 1e-3, batchSize = 64, epochs = 1, seed = 42, device = "cpu")
 }
+
+embedTokens <- function(embedding, ids) {
+  embedding(list(
+    feature_ids = torch$tensor(matrix(as.integer(ids), nrow = 1), dtype = torch$long),
+    feature_values = torch$ones(c(1L, length(ids)), dtype = torch$float)
+  ))
+}

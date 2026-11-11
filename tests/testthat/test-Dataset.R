@@ -1,6 +1,5 @@
-skip_if_no_python()
-
 test_that("number of num and cat features sum correctly", {
+  skip_if_no_python()
   featureInfo <- simDataset$get_feature_info()
   testthat::expect_equal(
     featureInfo$get_vocabulary_size(),
@@ -12,6 +11,7 @@ test_that("number of num and cat features sum correctly", {
 
 
 test_that("length of simDataset correct", {
+  skip_if_no_python()
   expect_equal(length(simDataset), simDataset$data[["feature_ids"]]$shape[[0]])
   expect_equal(length(simDataset), simDataset$data[["feature_values"]]$shape[[0]])
   expect_equal(
@@ -23,6 +23,7 @@ test_that("length of simDataset correct", {
 })
 
 test_that(".getbatch works", {
+  skip_if_no_python()
   batchSize <- 16
   # get one sample
   out <- simDataset[10]
@@ -58,6 +59,7 @@ test_that(".getbatch works", {
 })
 
 test_that("Column order is preserved when features are missing", {
+  skip_if_no_python()
   # important for transfer learning and external validation
   reducedCovData <- Andromeda::copyAndromeda(simTrainData$Train$covariateData)
 
@@ -142,6 +144,7 @@ test_that("Column order is preserved when features are missing", {
 })
 
 test_that("feature_ids and feature_values remain in sync in dataset with timeIds", {
+  skip_if_no_python()
   analysisRef <- data.frame(
     analysisId = 1,
     analysisName = "dummy",
@@ -206,4 +209,108 @@ test_that("feature_ids and feature_values remain in sync in dataset with timeIds
     expect_equal(datasetFeatures$ids, expectedFeatures$columnId)
     expect_equal(datasetFeatures$values, expectedFeatures$covariateValue)
   }
+})
+
+test_that("predictions are kept for patients without covariates", {
+  skip_if_no_python()
+  data <- createMockData(data.frame(
+    rowId = c(1, 1, 3),
+    covariateId = c(101, 102, 101),
+    columnId = c(1L, 2L, 1L),
+    covariateValue = c(1, 1, 2)
+  ))
+  withr::defer(Andromeda::close(data))
+  plpModel <- list(covariateImportance = data.frame(
+    columnId = 1:2, covariateId = c(101, 102), analysisId = 1,
+    conceptId = c(1001, 1002), covariateName = c("a", "b")
+  ))
+  dataset <- createDataset(data, plpModel = plpModel, numRows = 4)
+
+  expect_equal(reticulate::py_len(dataset), 4L)
+  featureIds <- dataset$data$feature_ids$numpy()
+  expect_equal(unname(featureIds[1, ]), c(1, 2))
+  expect_equal(unname(featureIds[2, ]), c(0, 0))
+  expect_equal(unname(featureIds[3, ]), c(1, 0))
+  expect_equal(unname(featureIds[4, ]), c(0, 0))
+
+  settingsList <- list(
+    setMultiLayerPerceptron(
+      numLayers = 1, sizeHidden = 4, dropout = 0, sizeEmbedding = 4,
+      estimatorSettings = setEstimator(learningRate = 0.01, device = "cpu", seed = 42),
+      randomSample = 1
+    ),
+    setResNet(
+      numLayers = 1, sizeHidden = 4, hiddenFactor = 1, residualDropout = 0,
+      hiddenDropout = 0, sizeEmbedding = 4,
+      estimatorSettings = setEstimator(learningRate = 0.01, device = "cpu", seed = 42),
+      randomSample = 1
+    ),
+    setTransformer(
+      numBlocks = 1, dimToken = 4, dimOut = 1, numHeads = 2, attDropout = 0,
+      ffnDropout = 0, dimHidden = 4,
+      estimatorSettings = setEstimator(learningRate = 0.01, device = "cpu", seed = 42),
+      randomSample = 1
+    ),
+    setRealMLP(sizeHidden = 4L, numLayers = 1L, sizeEmbedding = 4L)
+  )
+  for (settings in settingsList) {
+    parameters <- settings$param[[1]]
+    parameters$modelType <- settings$modelType
+    parameters$feature_info <- dataset$get_feature_info()
+    estimator <- createEstimator(list(
+      modelParameters = parameters,
+      estimatorSettings = settings$estimatorSettings
+    ))
+    predictions <- as.numeric(estimator$predict_proba(dataset))
+    expect_length(predictions, 4)
+    expect_true(all(is.finite(predictions)), info = settings$modelType)
+  }
+})
+
+test_that("training keeps patients without covariates aligned with their labels", {
+  skip_if_no_python()
+  data <- createMockData(data.frame(
+    rowId = c(1, 3), covariateId = c(101, 101), columnId = c(1L, 1L),
+    covariateValue = c(1, 2)
+  ))
+  withr::defer(Andromeda::close(data))
+  dataset <- createDataset(data, data.frame(rowId = 1:3, outcomeCount = c(1, 0, 1)))
+  expect_equal(reticulate::py_len(dataset), 3L)
+  expect_equal(as.numeric(dataset$data$feature_values$numpy()), c(1, 0, 2))
+})
+
+test_that("covariates outside of the cohort are rejected", {
+  skip_if_no_python()
+  data <- createMockData(data.frame(
+    rowId = 5, covariateId = 101, columnId = 1L, covariateValue = 1
+  ))
+  withr::defer(Andromeda::close(data))
+  expect_error(
+    createDataset(data, data.frame(rowId = 1:2, outcomeCount = c(0, 1))),
+    "only 2 patients"
+  )
+})
+
+test_that("a mismatch between predictions and the cohort is an error", {
+  estimator <- list(predict_proba = function(data) c(0.1, 0.9))
+  expect_error(
+    predictDeepEstimator(estimator, data = NULL, cohort = data.frame(rowId = 1:4)),
+    "2 predictions for 4 patients"
+  )
+})
+
+test_that("datasets join analysis IDs stored as integers and doubles", {
+  skip_if_no_python()
+  data <- createMockData()
+  withr::defer(Andromeda::close(data))
+  # a saved model's covariate reference comes back from CSV with integer IDs,
+  # while the analysis reference of new data can hold doubles
+  data$covariateRef <- data$covariateRef %>%
+    dplyr::collect() %>%
+    dplyr::mutate(analysisId = as.integer(.data$analysisId))
+  data$analysisRef <- data$analysisRef %>%
+    dplyr::collect() %>%
+    dplyr::mutate(analysisId = as.double(.data$analysisId))
+  dataset <- createDataset(data, createMockLabels())
+  expect_equal(length(dataset), 8)
 })

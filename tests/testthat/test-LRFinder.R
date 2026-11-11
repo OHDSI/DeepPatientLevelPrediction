@@ -127,3 +127,62 @@ test_that("LR finder works with device specified by a function", {
   expect_lte(lr, 0.03 + tol)
   expect_gte(lr, 1e-6 - tol)
 })
+
+test_that("an automatic learning rate only sees the training folds", {
+  skip_if_no_python()
+  data <- createMockData()
+  withr::defer(Andromeda::close(data))
+  labels <- createMockLabels()
+  settings <- createMockSettings(learningRate = "auto")
+  dataset <- createDataset(data, labels)
+  parameters <- settings$param[[1]]
+  searched <- list()
+  testthat::with_mocked_bindings(
+    doCrossValidationImpl(dataset, labels, parameters, settings),
+    getLR = function(parameters, dataset, lrSettings = NULL) {
+      searched[[length(searched) + 1]] <<- sort(unlist(dataset$indices))
+      0.01
+    }
+  )
+  expect_equal(searched, list(c(2L, 3L, 6L, 7L), c(0L, 1L, 4L, 5L)))
+})
+
+test_that("the learning rate finder clears gradients between trials", {
+  skip_if_no_python()
+  toy <- toyPython()
+  estimator <- toy$toy_estimator(
+    importModule("Estimator")$Estimator, optimizer = torch$optim$AdamW,
+    weight_decay = 0
+  )
+  finder <- importModule("LrFinder")$LrFinder(
+    estimator, lr_settings = list(num_lr = 2L, min_lr = 0.01, max_lr = 0.1)
+  )
+  dataset <- toy$ToyData(c(1, 1), c(1, 1))
+  finder$get_lr(dataset)
+  # after the last trial the gradient has been cleared
+  expect_null(estimator$model$weight$grad)
+})
+
+test_that("the learning rate finder handles an early loss minimum", {
+  skip_if_no_python()
+  suggest <- importModule("LrFinder")$suggest_lr_index
+  # The smallest loss is at python index `minimum`. Before it, the steepest decrease is
+  # from the first to the second step. After it, a steeper drop that stays above the
+  # minimum would be picked by a search that runs past the minimum.
+  lossesWithMinimumAt <- function(minimum, n = 30) {
+    descent <- if (minimum == 1) 1 else seq(4, 1, length.out = minimum)
+    after <- c(seq(2, 20, length.out = 5), 1.5, seq(3, 9, length.out = n - minimum - 7))
+    torch$tensor(c(10, descent, after))
+  }
+  # minima at the 4th and 5th step left no losses to search and argmin failed
+  expect_equal(suggest(lossesWithMinimumAt(4L), 5L), 0L)
+  expect_equal(suggest(lossesWithMinimumAt(5L), 5L), 0L)
+  # minima at the 1st to 3rd step wrapped around to the end of the search
+  for (minimum in 1:3) {
+    expect_lt(suggest(lossesWithMinimumAt(minimum), 5L), minimum)
+  }
+  # a later minimum keeps the margin of min_factor steps
+  losses <- torch$tensor(c(10, 9, 8, 7, 6, 2, 1.9, 1.8, 1.7, 1.6, 1.5, 1.4, 3, 5))
+  expect_equal(suggest(losses, 5L), 4L)
+  expect_equal(suggest(torch$tensor(c(1, 2, 3)), 5L), 0L)
+})
