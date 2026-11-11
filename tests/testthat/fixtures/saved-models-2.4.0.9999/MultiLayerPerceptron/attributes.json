@@ -1,0 +1,6 @@
+{
+  "class": "plpModel",
+  "predictionFunction": "DeepPatientLevelPrediction::predictDeepEstimator",
+  "modelType": "binary",
+  "saveType": "file"
+}
