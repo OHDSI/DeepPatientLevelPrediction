@@ -1,20 +1,23 @@
-skip_if_no_integration()
+skip_if_no_python()
+
+# fitting the model saves it to simFitEstimatorPath/plpModel
+force(simFitEstimatorResults)
 
 fineTunerSettings <- setFinetuner(
-  modelPath = file.path(fitEstimatorPath, "plpModel"),
+  modelPath = file.path(simFitEstimatorPath, "plpModel"),
   estimatorSettings = setEstimator(device = "cpu",
                                    learningRate = 3e-4,
                                    batchSize = 128,
                                    epochs = 1)
 )
 
-plpModel <- PatientLevelPrediction::loadPlpModel(file.path(fitEstimatorPath,
+plpModel <- PatientLevelPrediction::loadPlpModel(file.path(simFitEstimatorPath,
                                                            "plpModel"))
 modelType <- plpModel$modelDesign$modelSettings$modelType
 
 test_that("Finetuner settings work", {
   expect_equal(fineTunerSettings$param[[1]]$modelPath,
-               file.path(fitEstimatorPath, "plpModel"))
+               file.path(simFitEstimatorPath, "plpModel"))
   expect_equal(fineTunerSettings$estimatorSettings$device, "cpu")
   expect_equal(fineTunerSettings$estimatorSettings$batchSize, 128)
   expect_equal(fineTunerSettings$estimatorSettings$epochs, 1)  
@@ -25,38 +28,38 @@ test_that("Finetuner settings work", {
   expect_equal(class(fineTunerSettings), "modelSettings")
   expect_equal(attr(fineTunerSettings$param, "settings")$modelType, "Finetuner")
   expect_error(setFinetuner(modelPath = "notAPath", estimatorSettings = setEstimator()))
-  expect_error(setFinetuner(modelPath = fitEstimatorPath, estimatorSettings = setEstimator()))
-  fakeDir <- file.path(fitEstimatorPath, "fakeDir")
+  expect_error(setFinetuner(modelPath = simFitEstimatorPath, estimatorSettings = setEstimator()))
+  fakeDir <- file.path(simFitEstimatorPath, "fakeDir")
   fakeSubdir <- file.path(fakeDir, "model")
   dir.create(fakeSubdir, recursive = TRUE, showWarnings = FALSE)
   expect_error(setFinetuner(modelPath = fakeDir, estimatorSettings = setEstimator()))
   })
 
 test_that("Finetuner fitEstimator works", {
-  fineTunerPath <- file.path(testLoc, "fineTuner")
+  fineTunerPath <- file.path(tempdir(), "fineTuner")
   dir.create(fineTunerPath, showWarnings = FALSE)
   # index should be 70% 1 and 30% 2
-  trainData$Test$folds <- data.frame(
-    rowId = trainData$Test$labels$rowId,
-    index = ifelse(runif(nrow(trainData$Test$labels)) < 0.7, 1, 2)
+  simTrainData$Test$folds <- data.frame(
+    rowId = simTrainData$Test$labels$rowId,
+    index = ifelse(runif(nrow(simTrainData$Test$labels)) < 0.7, 1, 2)
   )
-  fineTunerResults <- fitEstimator(trainData$Test,
+  fineTunerResults <- fitEstimator(simTrainData$Test,
                                    modelSettings = fineTunerSettings,
                                    analysisId = 1,
                                    analysisPath = fineTunerPath)
   expect_equal(nrow(fineTunerResults$covariateImportance),
-               nrow(fitEstimatorResults$covariateImportance))
+               nrow(simFitEstimatorResults$covariateImportance))
   expect_equal(fineTunerResults$covariateImportance$columnId,
-               fitEstimatorResults$covariateImportance$columnId)
+               simFitEstimatorResults$covariateImportance$columnId)
   expect_equal(fineTunerResults$covariateImportance$covariateId,
-               fitEstimatorResults$covariateImportance$covariateId)
+               simFitEstimatorResults$covariateImportance$covariateId)
   
   fineTunedModel <- torch$load(file.path(fineTunerResults$model,
                                          "DeepEstimatorModel.pt"),
                                weights_only = FALSE)
   expect_equal(fineTunedModel$estimator_settings$finetune_model_path, 
-               normalizePath(file.path(fitEstimatorPath, "plpModel", "model",
+               normalizePath(file.path(simFitEstimatorPath, "plpModel", "model",
                          "DeepEstimatorModel.pt")))
   expect_equal(fineTunedModel$model_parameters$model_type, 
-               fitEstimatorResults$modelDesign$modelSettings$modelType)
+               simFitEstimatorResults$modelDesign$modelSettings$modelType)
 })

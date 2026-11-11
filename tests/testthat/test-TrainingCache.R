@@ -58,9 +58,11 @@ test_that("Param grid predictions can be cached", {
 })
 
 test_that("Estimator can resume training from cache", {
-  skip_if_no_integration()
-  trainCache <- readRDS(file.path(fitEstimatorPath, "paramPersistence.rds"))
-  newPath <- file.path(testLoc, "resume")
+  skip_if_no_python()
+  # fitting the model writes the cache
+  force(simFitEstimatorResults)
+  trainCache <- readRDS(file.path(simFitEstimatorPath, "paramPersistence.rds"))
+  newPath <- file.path(tempdir(), "resume")
   dir.create(newPath, showWarnings = FALSE)
 
   # remove last row
@@ -71,8 +73,8 @@ test_that("Estimator can resume training from cache", {
   saveRDS(trainCache, file = file.path(newPath, "paramPersistence.rds"))
 
   sink(nullfile())
-  fitEstimatorResults <- fitEstimator(trainData$Train,
-    modelSettings = modelSettings,
+  fitEstimatorResults <- fitEstimator(simTrainData$Train,
+    modelSettings = simModelSettings,
     analysisId = 1,
     analysisPath = newPath
   )
@@ -83,8 +85,10 @@ test_that("Estimator can resume training from cache", {
 })
 
 test_that("Prediction is cached for optimal parameters", {
-  skip_if_no_integration()
-  testCache <- readRDS(file.path(fitEstimatorPath, "paramPersistence.rds"))
+  skip_if_no_python()
+  # fitting the model writes the cache
+  force(simFitEstimatorResults)
+  testCache <- readRDS(file.path(simFitEstimatorPath, "paramPersistence.rds"))
   indexOfMax <-
     which.max(unlist(lapply(
       testCache$gridSearchPredictions,
