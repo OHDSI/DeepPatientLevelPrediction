@@ -1,5 +1,3 @@
-skip_if_no_integration()
-
 settings <- setTransformer(
   numBlocks = 1,
   dimToken = 8,
@@ -65,11 +63,12 @@ test_that("Transformer settings work", {
 })
 
 test_that("fitEstimator with Transformer works", {
+  skip_if_no_python()
   results <-
-    fitEstimator(trainData$Train,
+    fitEstimator(simTrainData$Train,
       settings,
       analysisId = 1,
-      analysisPath = testLoc
+      analysisPath = tempdir()
     )
 
   expect_equal(class(results), "plpModel")
@@ -82,22 +81,29 @@ test_that("fitEstimator with Transformer works", {
 })
 
 test_that("transformer nn-module works", {
-  transformer <-
-    reticulate::import_from_path("Transformer", path = path)$Transformer
-  model <- transformer(
-    feature_info = dataset$get_feature_info(),
-    num_blocks = 2,
-    dim_token = 16,
-    num_heads = 2,
-    att_dropout = 0,
-    ffn_dropout = 0,
-    dim_hidden = 32
-  )
+  skip_if_no_python()
+  transformer <- importModule("Transformer")$Transformer
+  newModel <- function(featureInfo) {
+    transformer(
+      feature_info = featureInfo,
+      num_blocks = 2,
+      dim_token = 16,
+      num_heads = 2,
+      att_dropout = 0,
+      ffn_dropout = 0,
+      dim_hidden = 32
+    )
+  }
+  # one numeric and four binary features
+  model <- newModel(mappedFeatureInfo(
+    covariateIds = 1:5 + 100, conceptIds = 1:5 + 1000,
+    isBinary = c("N", "Y", "Y", "Y", "Y")
+  ))
 
   pars <- sum(reticulate::iterate(model$parameters(), function(x) x$numel()))
 
   # expected number of parameters
-  expect_equal(pars, 7313)
+  expect_equal(pars, 5713)
 
   input <- list()
   input$feature_ids <- torch$randint(0L, 5L, c(10L, 5L), dtype = torch$long)
@@ -108,16 +114,11 @@ test_that("transformer nn-module works", {
   # output is correct shape, size of batch
   expect_equal(output$shape[0], 10L)
 
-  model <- transformer(
-    feature_info = dataset$get_feature_info(),
-    num_blocks = 2,
-    dim_token = 16,
-    num_heads = 2,
-    att_dropout = 0,
-    ffn_dropout = 0,
-    dim_hidden = 32
-  )
+  model <- newModel(mappedFeatureInfo(
+    covariateIds = 1:5 + 100, conceptIds = 1:5 + 1000, isBinary = rep("Y", 5)
+  ))
   output <- model(input)
+  # model works without numeric variables
   expect_equal(output$shape[0], 10L)
 })
 
@@ -165,6 +166,7 @@ test_that("dimHidden ratio works as expected", {
 })
 
 test_that("numerical embedding works as expected", {
+  skip_if_no_python()
   embeddings <- 32L # size of embeddings
   features <- 2L # number of numerical features
   patients <- 9L
@@ -176,7 +178,7 @@ test_that("numerical embedding works as expected", {
   values <- torch$randn(c(patients, features))
 
   numericalEmbeddingClass <-
-    reticulate::import_from_path("Embeddings", path = path)$NumericalEmbedding
+    importModule("Embeddings")$NumericalEmbedding
   numericalEmbedding <- numericalEmbeddingClass(
     num_embeddings = features,
     embedding_dim = embeddings,
@@ -202,6 +204,8 @@ test_that("numerical embedding works as expected", {
 })
 
 test_that("temporal transformer works", {
+  # needs temporal covariates from FeatureExtraction
+  skip_if_no_integration()
   temporalCovSettings <- FeatureExtraction::createTemporalSequenceCovariateSettings(
     useDemographicsAge = TRUE,
     useDemographicsGender = TRUE,
@@ -245,7 +249,7 @@ test_that("temporal transformer works", {
     fitEstimator(trainData$Train,
       settings,
       analysisId = "temporalTransformer",
-      analysisPath = testLoc
+      analysisPath = tempdir()
     )
 
   expect_equal(class(results), "plpModel")
