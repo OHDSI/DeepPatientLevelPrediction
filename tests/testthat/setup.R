@@ -1,27 +1,29 @@
-.integrationRequested <- identical(
-  Sys.getenv("DPLP_RUN_PYTHON_TESTS"),
-  "true"
-)
+# Python tests and the Eunomia integration tests are opted into separately, so
+# that the Python tests run offline and without the slow integration setup.
+.pythonRequested <- identical(Sys.getenv("DPLP_RUN_PYTHON_TESTS"), "true")
+.integrationRequested <- identical(Sys.getenv("DPLP_RUN_INTEGRATION_TESTS"), "true")
 .integrationPackages <- c("curl", "DatabaseConnector", "Eunomia", "FeatureExtraction")
 .missingIntegrationPackages <- .integrationPackages[
   !vapply(.integrationPackages, requireNamespace, logical(1), quietly = TRUE)
 ]
-.runIntegrationTests <- .integrationRequested &&
+.runIntegrationTests <- .pythonRequested && .integrationRequested &&
   length(.missingIntegrationPackages) == 0 && curl::has_internet()
 
 skip_if_no_python <- function() {
   testthat::skip_if_not(
-    .integrationRequested,
+    .pythonRequested,
     "Set DPLP_RUN_PYTHON_TESTS=true to run Python tests"
   )
 }
 
 skip_if_no_integration <- function() {
-  reason <- if (!.integrationRequested) {
-    "Set DPLP_RUN_PYTHON_TESTS=true to run Python integration tests"
+  reason <- if (!.pythonRequested) {
+    "Set DPLP_RUN_PYTHON_TESTS=true to run Python tests"
+  } else if (!.integrationRequested) {
+    "Set DPLP_RUN_INTEGRATION_TESTS=true to run the Eunomia integration tests"
   } else if (length(.missingIntegrationPackages) > 0) {
     paste(
-      "Python integration tests require:",
+      "Integration tests require:",
       paste(.missingIntegrationPackages, collapse = ", ")
     )
   } else {

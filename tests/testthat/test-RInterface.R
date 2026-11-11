@@ -1,5 +1,6 @@
 test_that("package loading and settings do not initialize Python", {
-  skip_if(.integrationRequested)
+  # other test files may have started Python already
+  skip_if(.pythonRequested)
 
   expect_false(reticulate::py_available(initialize = FALSE))
 
