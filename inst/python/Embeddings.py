@@ -19,12 +19,11 @@ class Embedding(nn.Module):
         numerical_periodic_init_std: float = 0.1,
         numerical_pbld_hidden_dim: int = 16,
         numerical_pbld_embedding_dim: int = 4,
-        aggregate: str = "none",
     ):
+        """One token per feature: numeric features get a token that depends on
+        their value, binary features a learned token. The model pools them."""
         super(Embedding, self).__init__()
-        assert aggregate in ("none", "sum")
         self.embedding_dim = int(embedding_dim)
-        self.aggregate = aggregate
 
         self.feature_info = feature_info
         self.vocabulary_size = feature_info.get_vocabulary_size()
@@ -44,24 +43,15 @@ class Embedding(nn.Module):
                 periodic_init_std=float(numerical_periodic_init_std),
                 pbld_hidden_dim=int(numerical_pbld_hidden_dim),
                 pbld_embedding_dim=int(numerical_pbld_embedding_dim),
-                aggregate=(aggregate != "none"),
             )
         else:
             self.numerical_embedding = None
 
-        if aggregate == "none":
-            self.embedding = nn.Embedding(
-                num_embeddings=n_cat + 1, 
-                embedding_dim=embedding_dim, 
-                padding_idx=0
-            )
-        else:
-            self.embedding = nn.EmbeddingBag(
-                num_embeddings=n_cat + 1,
-                embedding_dim=embedding_dim,
-                padding_idx=0,
-                mode=aggregate,
-            )
+        self.embedding = nn.Embedding(
+            num_embeddings=n_cat + 1,
+            embedding_dim=embedding_dim,
+            padding_idx=0,
+        )
 
         # create a router to router the input to the correct embedding such that
         # input_to_numeric[input] will give the index of the numerical feature
@@ -116,15 +106,11 @@ class Embedding(nn.Module):
             numerical_mapped_features, numerical_values
         )
 
-        if self.aggregate == "none":
-            merged_embeddings = torch.where(
-                numerical_mask.unsqueeze(-1),
-                numerical_embeddings,
-                categorical_embeddings,
-            )
-        else:
-            merged_embeddings = categorical_embeddings + numerical_embeddings
-        return merged_embeddings
+        return torch.where(
+            numerical_mask.unsqueeze(-1),
+            numerical_embeddings,
+            categorical_embeddings,
+        )
 
 
 class ClassToken(nn.Module):
@@ -228,7 +214,6 @@ class NumericalEmbedding(nn.Module):
         pbld_hidden_dim: int = 16,
         pbld_embedding_dim: int = 4,
         bias: bool = True,
-        aggregate: bool = False,
     ):
         """
         Merged Numerical Embedding Layer that supports multiple modes:
@@ -249,7 +234,6 @@ class NumericalEmbedding(nn.Module):
             num_embeddings (int): Number of embeddings (excluding padding).
             embedding_dim (int): Final embedding dimension.
             mode (str): One of 'scale', 'pl', 'pbld'.
-            aggregate (bool): Whether to use an nn.EmbeddingBag with a sum for the lookup
             bias (bool): Whether to include a bias embedding (only applies to scale mode).
         """
         super(NumericalEmbedding, self).__init__()
@@ -263,7 +247,6 @@ class NumericalEmbedding(nn.Module):
             raise ValueError("pbld_embedding_dim must be > 0")
 
         self.mode = mode
-        self.aggregate = aggregate
         self.embedding_dim = int(embedding_dim)
         self.num_frequencies = int(num_frequencies)
         self.pbld_hidden_dim = int(pbld_hidden_dim)
@@ -428,17 +411,7 @@ class NumericalEmbedding(nn.Module):
             out.mul_(values.unsqueeze(-1))
             if self.bias_embedding is not None:
                 out.add_(self.bias_embedding(ids))
-            if self.aggregate:
-                out = out.sum(dim=1)
             return out
-
         if self.mode == "pl":
-            out = self._pl_forward(ids, values)
-            if self.aggregate:
-                out = out.sum(dim=1)
-            return out
-
-        out = self._pbld_forward(ids, values)
-        if self.aggregate:
-            out = out.sum(dim=1)
-        return out
+            return self._pl_forward(ids, values)
+        return self._pbld_forward(ids, values)

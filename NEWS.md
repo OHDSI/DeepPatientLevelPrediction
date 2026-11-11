@@ -56,6 +56,7 @@ Removed
 - Remove the optimizer parameter groups of ResNet and the MLP. With their default factors they trained exactly like a single group.
 - Remove parallel data loading workers, input fingerprints, batch diagnostics, the `previous_epochs` epoch offset and an unused `prefix` setting.
 - Remove code that could not work: the `plpData` branch of `predictDeepEstimator()`, the `numericalIndex` branch of the dataset creation, `convert_to_long()`, and `extras/example_plp5.R`, which called functions that do not exist. Also remove the placeholder scheduler of `setRealMLP()`, which RealMLP's learning rate schedule bypassed.
+- Remove the second way that ResNet and the MLP pooled custom embeddings, which summed the tokens and divided by their number. They now take the mean of the tokens like the other models, so predictions of saved custom embedding models change only by rounding.
 
 Runtime and compatibility
 - Require Python 3.11 or newer. Python 3.10 reached end-of-life in October 2026, and duckdb 2.0.0 requires Python 3.11.
