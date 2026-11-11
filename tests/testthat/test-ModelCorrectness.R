@@ -1237,3 +1237,19 @@ test_that("custom embeddings leave numeric covariates to their value embedding",
   expect_false(isTRUE(all.equal(embedValue(1), embedValue(7.5))))
   expect_equal(embedRow(estimator, 3), c(3, 30))
 })
+
+test_that("datasets join analysis IDs stored as integers and doubles", {
+  skip_if_no_python()
+  data <- createMockData()
+  withr::defer(Andromeda::close(data))
+  # a saved model's covariate reference comes back from CSV with integer IDs,
+  # while the analysis reference of new data can hold doubles
+  data$covariateRef <- data$covariateRef %>%
+    dplyr::collect() %>%
+    dplyr::mutate(analysisId = as.integer(.data$analysisId))
+  data$analysisRef <- data$analysisRef %>%
+    dplyr::collect() %>%
+    dplyr::mutate(analysisId = as.double(.data$analysisId))
+  dataset <- createDataset(data, createMockLabels())
+  expect_equal(length(dataset), 8)
+})
