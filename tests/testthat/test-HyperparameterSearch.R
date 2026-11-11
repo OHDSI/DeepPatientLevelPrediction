@@ -188,3 +188,22 @@ def fail_otherwise():
     fixed = TRUE
   )
 })
+
+test_that("the model design records the hyperparameter settings that were used", {
+  skip_if_no_python()
+  metric <- PatientLevelPrediction::createTuningMetric(
+    fun = function(prediction) 1, maximize = FALSE, name = "constant"
+  )
+  hyperparameterSettings <- PatientLevelPrediction::createHyperparameterSettings(tuningMetric = metric)
+  fitted <- quietly(fitEstimator(
+    simTrainData$Train,
+    modelSettings = setMultiLayerPerceptron(
+      numLayers = 1, sizeHidden = 8, dropout = 0, sizeEmbedding = 8,
+      estimatorSettings = quickEstimator(), randomSample = 1
+    ),
+    analysisId = "design",
+    analysisPath = withr::local_tempdir(),
+    hyperparameterSettings = hyperparameterSettings
+  ))
+  expect_equal(fitted$modelDesign$hyperparameterSettings$tuningMetric$name, "constant")
+})
