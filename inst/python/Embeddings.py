@@ -5,7 +5,6 @@ import math
 
 import torch
 from torch import nn
-from torch.nn import functional as F
 
 from Dataset import FeatureInfo
 
@@ -20,9 +19,6 @@ class Embedding(nn.Module):
         numerical_periodic_init_std: float = 0.1,
         numerical_pbld_hidden_dim: int = 16,
         numerical_pbld_embedding_dim: int = 4,
-        numerical_bias: bool = True,
-        numerical_bias_scale: float = 1.0,
-        numerical_bias_normalization: str = "none",
         aggregate: str = "none",
     ):
         super(Embedding, self).__init__()
@@ -48,9 +44,6 @@ class Embedding(nn.Module):
                 periodic_init_std=float(numerical_periodic_init_std),
                 pbld_hidden_dim=int(numerical_pbld_hidden_dim),
                 pbld_embedding_dim=int(numerical_pbld_embedding_dim),
-                bias=numerical_bias,
-                bias_scale=float(numerical_bias_scale),
-                bias_normalization=str(numerical_bias_normalization),
                 aggregate=(aggregate != "none"),
             )
         else:
@@ -86,15 +79,6 @@ class Embedding(nn.Module):
         )
         self.register_buffer("input_to_categorical", input_to_categorical)
 
-    def _categorical_token_embeddings(self, categorical_mapped_features):
-        if isinstance(self.embedding, nn.EmbeddingBag):
-            return F.embedding(
-                categorical_mapped_features,
-                self.embedding.weight,
-                padding_idx=0,
-            )
-        return self.embedding(categorical_mapped_features)
-
     def _split_feature_components(self, x: dict[str, torch.Tensor]):
         feature_ids = x["feature_ids"]
         feature_values = x["feature_values"]
@@ -116,63 +100,6 @@ class Embedding(nn.Module):
             numerical_mapped_features,
             numerical_values,
         )
-
-    def get_aggregation_diagnostics(self, x: dict[str, torch.Tensor], mode: str = "sum"):
-        (
-            numerical_mask,
-            categorical_mapped_features,
-            numerical_mapped_features,
-            numerical_values,
-        ) = self._split_feature_components(x)
-        valid_mask = x["feature_ids"] != 0
-
-        categorical_tokens = self._categorical_token_embeddings(categorical_mapped_features)
-        sum_categorical = categorical_tokens.sum(dim=1)
-        if self.numerical_embedding is None:
-            sum_num_value = torch.zeros_like(sum_categorical)
-            sum_num_bias = torch.zeros_like(sum_categorical)
-        elif (
-            self.numerical_embedding.mode == "scale"
-            and self.numerical_embedding.bias_embedding is not None
-        ):
-            value_tokens, bias_tokens = self.numerical_embedding.scale_components(
-                numerical_mapped_features,
-                numerical_values,
-            )
-            sum_num_value = value_tokens.sum(dim=1)
-            sum_num_bias = bias_tokens.sum(dim=1)
-        else:
-            numerical_tokens = self.numerical_embedding(
-                numerical_mapped_features,
-                numerical_values,
-            )
-            if numerical_tokens.dim() == 2:
-                sum_num_value = numerical_tokens
-            else:
-                sum_num_value = numerical_tokens.sum(dim=1)
-            sum_num_bias = torch.zeros_like(sum_num_value)
-
-        sum_total = sum_categorical + sum_num_value + sum_num_bias
-
-        counts = valid_mask.sum(dim=1).clamp_min(1).to(dtype=sum_total.dtype)
-        if mode == "mean":
-            aggregated = sum_total / counts.unsqueeze(-1)
-        elif mode in ("sum_sqrt_len", "sum_len_norm"):
-            aggregated = sum_total / torch.sqrt(counts).unsqueeze(-1)
-        else:
-            aggregated = sum_total
-
-        num_counts = numerical_mask.sum(dim=1).to(dtype=sum_total.dtype)
-        cat_counts = (valid_mask & ~numerical_mask).sum(dim=1).to(dtype=sum_total.dtype)
-        return {
-            "tokens_per_sample_mean": counts.mean().item(),
-            "numeric_tokens_per_sample_mean": num_counts.mean().item(),
-            "categorical_tokens_per_sample_mean": cat_counts.mean().item(),
-            "sum_norm_mean": torch.linalg.norm(sum_total, dim=1).mean().item(),
-            "sum_value_norm_mean": torch.linalg.norm(sum_num_value, dim=1).mean().item(),
-            "sum_bias_norm_mean": torch.linalg.norm(sum_num_bias, dim=1).mean().item(),
-            "aggregated_norm_mean": torch.linalg.norm(aggregated, dim=1).mean().item(),
-        }
 
     def forward(self, x: dict[str, torch.Tensor]) -> torch.Tensor:
         (
@@ -301,8 +228,6 @@ class NumericalEmbedding(nn.Module):
         pbld_hidden_dim: int = 16,
         pbld_embedding_dim: int = 4,
         bias: bool = True,
-        bias_scale: float = 1.0,
-        bias_normalization: str = "none",
         aggregate: bool = False,
     ):
         """
@@ -312,12 +237,6 @@ class NumericalEmbedding(nn.Module):
           Uses an nn.Embedding to lookup a learned vector, which is then
           scaled by the provided numerical value. Optionally, a separate
           bias embedding is added.
-
-        - 'concatenate':
-          Uses an nn.Embedding (with output dimension embedding_dim - 1) to
-          look up a learned vector and then concatenates the provided numerical
-          value (expanded to match dimensions) so that the final output has
-          dimension embedding_dim.
 
         - 'pl':
           Periodic + linear numerical embeddings inspired by RealMLP/RTDL.
@@ -329,32 +248,22 @@ class NumericalEmbedding(nn.Module):
         Args:
             num_embeddings (int): Number of embeddings (excluding padding).
             embedding_dim (int): Final embedding dimension.
-            mode (str): One of 'scale', 'concatenate', 'pl', 'pbld'.
+            mode (str): One of 'scale', 'pl', 'pbld'.
             aggregate (bool): Whether to use an nn.EmbeddingBag with a sum for the lookup
             bias (bool): Whether to include a bias embedding (only applies to scale mode).
         """
         super(NumericalEmbedding, self).__init__()
-        if mode not in ["scale", "concatenate", "pl", "pbld"]:
-            raise ValueError(
-                "mode must be one of: 'scale', 'concatenate', 'pl', 'pbld'"
-            )
-        if bias_normalization not in ("none", "mean", "sqrt_len"):
-            raise ValueError(
-                "bias_normalization must be one of: none, mean, sqrt_len"
-            )
+        if mode not in ["scale", "pl", "pbld"]:
+            raise ValueError("mode must be one of: 'scale', 'pl', 'pbld'")
         if int(num_frequencies) <= 0:
             raise ValueError("num_frequencies must be > 0")
         if int(pbld_hidden_dim) <= 0:
             raise ValueError("pbld_hidden_dim must be > 0")
         if int(pbld_embedding_dim) <= 0:
             raise ValueError("pbld_embedding_dim must be > 0")
-        if mode == "concatenate" and int(embedding_dim) <= 1:
-            raise ValueError("embedding_dim must be > 1 when mode='concatenate'")
 
         self.mode = mode
         self.aggregate = aggregate
-        self.bias_scale = float(bias_scale)
-        self.bias_normalization = bias_normalization
         self.embedding_dim = int(embedding_dim)
         self.num_frequencies = int(num_frequencies)
         self.pbld_hidden_dim = int(pbld_hidden_dim)
@@ -372,13 +281,13 @@ class NumericalEmbedding(nn.Module):
         self.pbld_activation = None
         self.pbld_projection = None
 
-        if mode in ("scale", "concatenate"):
+        if mode == "scale":
             self.embedding = nn.Embedding(
                 num_embeddings + 1,
-                embedding_dim if mode == "scale" else embedding_dim - 1,
+                embedding_dim,
                 padding_idx=0,
             )
-            if mode == "scale" and bias:
+            if bias:
                 self.bias_embedding = nn.Embedding(
                     num_embeddings + 1,
                     embedding_dim,
@@ -505,25 +414,6 @@ class NumericalEmbedding(nn.Module):
         valid_mask = (ids != 0).unsqueeze(-1).to(dtype=out.dtype)
         return out * valid_mask
 
-    def scale_components(self, ids: torch.Tensor, values: torch.Tensor):
-        out = self.embedding(ids)
-        out.mul_(values.unsqueeze(-1))
-
-        bias = None
-        if self.bias_embedding is not None:
-            bias = self.bias_embedding(ids)
-            if self.bias_normalization != "none":
-                lengths = (ids != 0).sum(dim=1, keepdim=True).clamp_min(1)
-                lengths = lengths.to(dtype=bias.dtype)
-                if self.bias_normalization == "mean":
-                    divisor = lengths
-                else:
-                    divisor = torch.sqrt(lengths)
-                bias = bias / divisor.unsqueeze(-1)
-            if self.bias_scale != 1.0:
-                bias = bias * self.bias_scale
-        return out, bias
-
     def forward(self, ids: torch.Tensor, values: torch.Tensor):
         """
         Args:
@@ -534,9 +424,10 @@ class NumericalEmbedding(nn.Module):
             Tensor: Output embeddings.
         """
         if self.mode == "scale":
-            out, bias = self.scale_components(ids, values)
-            if bias is not None:
-                out.add_(bias)
+            out = self.embedding(ids)
+            out.mul_(values.unsqueeze(-1))
+            if self.bias_embedding is not None:
+                out.add_(self.bias_embedding(ids))
             if self.aggregate:
                 out = out.sum(dim=1)
             return out
@@ -547,26 +438,7 @@ class NumericalEmbedding(nn.Module):
                 out = out.sum(dim=1)
             return out
 
-        if self.mode == "pbld":
-            out = self._pbld_forward(ids, values)
-            if self.aggregate:
-                out = out.sum(dim=1)
-            return out
-
-        x = self.embedding(ids)
+        out = self._pbld_forward(ids, values)
         if self.aggregate:
-            x = x.sum(dim=1)
-            values = values.sum(dim=1)
-            B, Dm1 = x.shape
-            out = x.new_empty(B, Dm1 + 1)  # (B, D)
-
-            out[:, :Dm1] = x
-            out[:, Dm1] = values  # broadcast along B
-            return out
-        else:
-            values = values.unsqueeze(-1)
-            B, L, Dm1 = x.shape
-            out = x.new_empty(B, L, Dm1 + 1)  # (B, L, D)
-            out[..., :Dm1] = x
-            out[..., Dm1] = values.squeeze(-1)
-            return out
+            out = out.sum(dim=1)
+        return out
