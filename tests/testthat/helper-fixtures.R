@@ -82,8 +82,8 @@ delayedAssign("simModelSettings", setResNet(
 
 # a fitted model, also saved to simFitEstimatorPath/plpModel
 delayedAssign("simFitEstimatorPath", local({
-  path <- file.path(tempdir(), "simFitEstimator")
-  dir.create(path, showWarnings = FALSE)
+  path <- tempfile("simFitEstimator")
+  dir.create(path)
   path
 }))
 

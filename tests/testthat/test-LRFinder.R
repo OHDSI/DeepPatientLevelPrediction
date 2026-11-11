@@ -70,9 +70,6 @@ test_that("LR finder works", {
   expect_gte(lr, 1e-08 - tol)
 
   # following the LR finder, the actual training should use the LR found
-  if (!dir.exists(file.path(tempdir(), "lrFinder"))) {
-    dir.create(file.path(tempdir(), "lrFinder"))
-  }
   modelSettings <- setResNet(
     numLayers = 1, sizeHidden = 16, hiddenFactor = 1,
     residualDropout = 0, hiddenDropout = 0,
@@ -86,7 +83,7 @@ test_that("LR finder works", {
   results <- fitEstimator(
     simTrainData$Train,
     modelSettings, 1,
-    file.path(tempdir(), "lrFinder")
+    withr::local_tempdir()
   )
   expect_false(results$trainDetails$finalModelParameters$learnSchedule$LRs == 3e-4)
 })

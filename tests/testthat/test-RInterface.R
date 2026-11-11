@@ -173,7 +173,7 @@ test_that("training cache persists R objects", {
 })
 
 test_that("Python-backed settings reject missing model files before import", {
-  missingPath <- file.path(tempdir(), "missing-deep-plp-model")
+  missingPath <- tempfile("missing-deep-plp-model")
 
   expect_error(setFinetuner(missingPath), "does not exist")
   expect_error(setCustomEmbeddingModel(missingPath), "does not exist")

@@ -1,5 +1,3 @@
-.cacheTestDir <- withr::local_tempdir()
-
 resNetSettings <- setResNet(
   numLayers = c(1, 2, 4),
   sizeHidden = 64,
@@ -21,16 +19,18 @@ resNetSettings <- setResNet(
   randomSampleSeed = 42
 )
 
-trainCache <- trainingCache$new(.cacheTestDir)
 paramSearch <- resNetSettings$param
 
 test_that("Training cache exists on disk", {
+  cacheDirectory <- withr::local_tempdir()
+  trainingCache$new(cacheDirectory)
   expect_true(
-    file.exists(file.path(.cacheTestDir, "paramPersistence.rds"))
+    file.exists(file.path(cacheDirectory, "paramPersistence.rds"))
   )
 })
 
 test_that("Grid search can be cached", {
+  trainCache <- trainingCache$new(withr::local_tempdir())
   gridSearchPredictons <- list()
   length(gridSearchPredictons) <- length(paramSearch)
   trainCache$saveGridSearchPredictions(gridSearchPredictons)
@@ -51,6 +51,7 @@ test_that("Grid search can be cached", {
 })
 
 test_that("Param grid predictions can be cached", {
+  trainCache <- trainingCache$new(withr::local_tempdir())
   expect_false(trainCache$isParamGridIdentical(paramSearch))
 
   trainCache$saveModelParams(paramSearch)
@@ -62,7 +63,7 @@ test_that("Estimator can resume training from cache", {
   # fitting the model writes the cache
   force(simFitEstimatorResults)
   trainCache <- readRDS(file.path(simFitEstimatorPath, "paramPersistence.rds"))
-  newPath <- file.path(tempdir(), "resume")
+  newPath <- withr::local_tempdir()
   dir.create(newPath, showWarnings = FALSE)
 
   # remove last row
@@ -72,13 +73,13 @@ test_that("Estimator can resume training from cache", {
   # save new cache
   saveRDS(trainCache, file = file.path(newPath, "paramPersistence.rds"))
 
-  sink(nullfile())
-  fitEstimatorResults <- fitEstimator(simTrainData$Train,
-    modelSettings = simModelSettings,
-    analysisId = 1,
-    analysisPath = newPath
-  )
-  sink()
+  quietly({
+    fitEstimatorResults <- fitEstimator(simTrainData$Train,
+      modelSettings = simModelSettings,
+      analysisId = 1,
+      analysisPath = newPath
+    )
+  })
   newCache <- readRDS(file.path(newPath, "paramPersistence.rds"))
   cS <- nrow(newCache$gridSearchPredictions[[2]]$gridPerformance$hyperSummary)
   expect_equal(cS, 4)
