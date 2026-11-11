@@ -314,13 +314,21 @@ def read_data(
     lazy polars dataframes.
     """
     reader = DBReader(path)
-    analysis_ref = reader.read_table("analysisRef", lazy=lazy)
+    # analysisId can be stored as an integer or a double, for example after a
+    # saved model's covariate reference is read back from CSV, and polars only
+    # joins keys of the same type
+    analysis_ref = reader.read_table("analysisRef", lazy=lazy).with_columns(
+        pl.col("analysisId").cast(pl.Int64)
+    )
     if data_reference is None:
         data_ref = reader.read_table("covariateRef", lazy=lazy)
     else:
         data_ref = data_reference.lazy()
     data_ref = (
-        data_ref.with_columns(pl.col("columnId").cast(pl.Int32))
+        data_ref.with_columns(
+            pl.col("analysisId").cast(pl.Int64),
+            pl.col("columnId").cast(pl.Int32),
+        )
         .join(analysis_ref, on="analysisId")
         .select(pl.all().exclude("collisions"))
     )
