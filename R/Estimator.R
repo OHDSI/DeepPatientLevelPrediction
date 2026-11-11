@@ -528,17 +528,6 @@ predictDeepEstimator <- function(plpModel, data, cohort) {
       temporalSettings = attr(plpModel$modelDesign$modelSettings$param, "temporalSettings"),
       numRows = nrow(cohort)
     )
-  } else if ("plpData" %in% class(data)) {
-    mappedData <- PatientLevelPrediction::MapIds(
-      data$covariateData,
-      cohort = cohort,
-      mapping = plpModel$covariateImportance %>%
-        dplyr::select("columnId", "covariateId")
-    )
-    data <- createDataset(mappedData,
-      plpModel = plpModel,
-      numRows = nrow(cohort)
-    )
   }
 
   # get predictions
