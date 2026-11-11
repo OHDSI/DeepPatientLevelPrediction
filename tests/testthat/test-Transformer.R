@@ -21,15 +21,15 @@ test_that("Transformer settings work", {
   expect_error(setTransformer(
     numBlocks = 1, dimToken = 50,
     numHeads = 7
-  ))
+  ), "divisible by numHeads", fixed = TRUE)
   expect_error(setTransformer(
     numBlocks = 1, dimToken = c(2, 4),
     numHeads = c(2, 4)
-  ))
+  ), "not for dimToken = 2 and numHeads = 4", fixed = TRUE)
   expect_error(setTransformer(
     numBlocks = 1, dimToken = c(4, 6),
     numHeads = c(2, 4)
-  ))
+  ), "divisible by numHeads", fixed = TRUE)
   expect_error(setTransformer(
     temporal = TRUE,
     temporalSettings = list(
@@ -37,7 +37,7 @@ test_that("Transformer settings work", {
       truncation = "tail",
       time_tokens = TRUE
     )
-  ))
+  ), "maxSequenceLength must be either", fixed = TRUE)
   expect_error(setTransformer(
     temporal = TRUE,
     temporalSettings = list(
@@ -45,7 +45,7 @@ test_that("Transformer settings work", {
       truncation = "max",
       time_tokens = TRUE
     )
-  ))
+  ), "Only truncation method 'tail' is supported", fixed = TRUE)
 
   transformerSettings <- setTransformer(
     temporal = TRUE,
@@ -139,7 +139,7 @@ test_that("Default Transformer works", {
 test_that("Errors are produced by settings function", {
   randomSample <- 2
 
-  expect_error(setTransformer(randomSample = randomSample))
+  expect_error(setTransformer(randomSample = randomSample), "Chosen amount of randomSamples is higher than the", fixed = TRUE)
 })
 
 test_that("dimHidden ratio works as expected", {
@@ -158,11 +158,11 @@ test_that("dimHidden ratio works as expected", {
   testthat::expect_error(setTransformer(
     dimHidden = NULL,
     dimHiddenRatio = NULL
-  ))
+  ), "cannot be both set or both NULL", fixed = TRUE)
   testthat::expect_error(setTransformer(
     dimHidden = 256,
     dimHiddenRatio = 4 / 3
-  ))
+  ), "cannot be both set or both NULL", fixed = TRUE)
 })
 
 test_that("numerical embedding works as expected", {

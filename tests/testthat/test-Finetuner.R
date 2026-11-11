@@ -27,12 +27,12 @@ test_that("Finetuner settings work", {
   expect_equal(fineTunerSettings$modelParamNames, "modelPath")
   expect_equal(class(fineTunerSettings), "modelSettings")
   expect_equal(attr(fineTunerSettings$param, "settings")$modelType, "Finetuner")
-  expect_error(setFinetuner(modelPath = "notAPath", estimatorSettings = setEstimator()))
-  expect_error(setFinetuner(modelPath = simFitEstimatorPath, estimatorSettings = setEstimator()))
+  expect_error(setFinetuner(modelPath = "notAPath", estimatorSettings = setEstimator()), "does not exist", fixed = TRUE)
+  expect_error(setFinetuner(modelPath = simFitEstimatorPath, estimatorSettings = setEstimator()), "does not contain a model directory", fixed = TRUE)
   fakeDir <- file.path(simFitEstimatorPath, "fakeDir")
   fakeSubdir <- file.path(fakeDir, "model")
   dir.create(fakeSubdir, recursive = TRUE, showWarnings = FALSE)
-  expect_error(setFinetuner(modelPath = fakeDir, estimatorSettings = setEstimator()))
+  expect_error(setFinetuner(modelPath = fakeDir, estimatorSettings = setEstimator()), "does not contain a model file", fixed = TRUE)
   })
 
 test_that("Finetuner fitEstimator works", {

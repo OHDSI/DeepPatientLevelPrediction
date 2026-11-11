@@ -34,7 +34,7 @@ test_that("setResNet works", {
                                         batchSize = 128,
                                         epochs = 1),
                          hyperParamSearch = "random",
-                         randomSample = 2))
+                         randomSample = 2), "Chosen amount of randomSamples is higher than the", fixed = TRUE)
 })
 
 # fitted on Eunomia when an integration test first uses it
@@ -142,7 +142,7 @@ test_that("Errors are produced by settings function", {
                                                           learningRate = 0.01,
                                                           seed = 42),
                          hyperParamSearch = "random",
-                         randomSample = randomSample))
+                         randomSample = randomSample), "Chosen amount of randomSamples is higher than the", fixed = TRUE)
 })
 
 

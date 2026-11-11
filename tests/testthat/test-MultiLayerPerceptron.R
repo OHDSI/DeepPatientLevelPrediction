@@ -26,7 +26,7 @@ test_that("setMultiLayerPerceptron works", {
                                        sizeEmbedding = 128,
                                        estimatorSettings =
                                          setEstimator(learningRate = 3e-4),
-                                       randomSample = 2))
+                                       randomSample = 2), "Chosen amount of randomSamples is higher than the", fixed = TRUE)
 })
 
 test_that("MLP nn-module works ", {
@@ -87,5 +87,6 @@ test_that("Errors are produced by settings function", {
                                                       weightDecay = c(1e-3),
                                                       batchSize = 1024,
                                                       epochs = 30,
-                                                      device = "cpu")))
+                                                      device = "cpu")),
+               "Chosen amount of randomSamples is higher than the", fixed = TRUE)
 })
