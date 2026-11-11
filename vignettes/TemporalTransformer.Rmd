@@ -88,6 +88,28 @@ The most important settings are:
   This can be a character value such as `"SinusoidalPE"` or a list with
   the encoding name and settings.
 
+The positional encodings tell the transformer when each record happened.
+All but `NoPositionalEncoding` use the time of each record. Give the options in the list with the `name`, for example
+`list(name = "StochasticConvPE", kernelSize = 7)`. Options may be written in
+camelCase or snake_case, and an option the encoding does not take gives a
+warning. A vector of values, such as `kernelSize = c(7, 15)`, is tuned like
+other hyperparameters.
+
+| Encoding | How it encodes time | Options (defaults) |
+|---|---|---|
+| `NoPositionalEncoding` | Not at all; the records are a set | |
+| `SinusoidalPE` | Adds a fixed sinusoidal vector of the time to each token | `base` (10000), `dropout` (0) |
+| `LearnablePE` | Adds a learned vector for each time | `dropout` (0.1) |
+| `TapePE` | Adds sinusoids scaled to the embedding size and sequence length (tAPE) | `dropout` (0.1), `base` (10000) |
+| `RotaryPE` | Rotates the queries and keys by the time (RoPE) | `base` (10000) |
+| `RelativePE` | Adds a learned attention bias for each distance in time, up to a maximum (Shaw et al.) | `maxRelativePosition` (16) |
+| `EfficientRPE` | Adds a learned bias for each distance to the attention weights after the softmax (eRPE) | |
+| `TemporalPE` | Adds sinusoids of the time, and an attention bias from the similarity of the tokens | `base` (10000), `sigma` (1), `dropout` (0), `learnableSigma` (`FALSE`) |
+| `StochasticConvPE` | Adds convolved random noise to the queries and keys (convSPE) | `kernelSize` (15) |
+| `HybridRoPEConvPE` | Combines `RotaryPE` and `StochasticConvPE` | `kernelSize` (15), `base` (10000) |
+| `TUPE` | Computes the attention of the positions apart from that of the content, with an absolute encoding as its base (TUPE) | `basePeConfig` (`list(name = "SinusoidalPE", dropout = 0.1)`) |
+| `ALiBiPE` | Lowers the attention between records in proportion to the time between them, with a different slope for each head (ALiBi) | |
+
 For reproducible model definitions, set `temporalSettings` explicitly
 instead of relying on defaults.
 
