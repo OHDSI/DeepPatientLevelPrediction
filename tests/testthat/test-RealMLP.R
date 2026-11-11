@@ -520,3 +520,88 @@ test_that("RealMLP wide initialization loads coefficients from csv", {
   expect_equal(w2, -0.75, tolerance = 1e-8)
   expect_equal(wb, -1.5, tolerance = 1e-8)
 })
+
+test_that("RealMLP passes its beta2 setting to the optimizer", {
+  skip_if_no_python()
+  settings <- setRealMLP(sizeHidden = 4L, numLayers = 1L, sizeEmbedding = 4L)
+  parameters <- settings$param[[1]]
+  parameters$modelType <- settings$modelType
+  parameters$feature_info <- mappedFeatureInfo()
+  estimator <- createEstimator(list(
+    modelParameters = parameters,
+    estimatorSettings = settings$estimatorSettings
+  ))
+  expect_equal(estimator$beta2, settings$estimatorSettings$beta2)
+  for (group in estimator$optimizer$param_groups) {
+    expect_equal(group$betas[[2]], settings$estimatorSettings$beta2)
+  }
+})
+
+test_that("RealMLP mean aggregation ignores padding", {
+  skip_if_no_python()
+  model <- importModule("RealMLP")$RealMLP(
+    feature_info = mappedFeatureInfo(), size_embedding = 2L, size_hidden = 4L,
+    num_layers = 1L, dropout = 0, paper_mode = FALSE
+  )
+  expect_equal(model$token_aggregation, "mean")
+  tokens <- torch$tensor(array(c(1, 3, 0, 0, 1, 3, 0, 0), dim = c(1, 4, 2)), dtype = torch$float)
+  ids <- torch$tensor(matrix(c(1L, 2L, 0L, 0L), nrow = 1), dtype = torch$long)
+  expect_equal(asNumeric(model$`_aggregate_tokens`(tokens, ids)), c(2, 2))
+})
+
+test_that("wide coefficients keep column and covariate IDs apart", {
+  skip_if_no_python()
+  realMlp <- importModule("RealMLP")$RealMLP
+  # column 1 has covariateId 3, so column ID 3 must not be read as covariateId 3
+  featureInfo <- mappedFeatureInfo(covariateIds = c(3, 9, 7, 8))
+  loadWide <- function(lines) {
+    file <- withr::local_tempfile(fileext = ".csv", .local_envir = parent.frame(2))
+    writeLines(lines, file)
+    model <- realMlp(
+      feature_info = featureInfo, size_embedding = 2L, size_hidden = 4L,
+      num_layers = 1L, dropout = 0, paper_mode = FALSE,
+      wide_enabled = TRUE, wide_init_path = file
+    )
+    as.numeric(model$wide_embedding$weight$detach()$numpy())[2:5]
+  }
+  expect_equal(loadWide(c("columnId,weight", "3,2")), c(0, 0, 2, 0))
+  expect_equal(loadWide(c("covariateId,weight", "3,2")), c(2, 0, 0, 0))
+  expect_equal(loadWide(c("covariateId,columnId,weight", "3,1,2")), c(2, 0, 0, 0))
+  # not in the vocabulary, so it can not be used as a column ID either
+  expect_error(loadWide(c("covariateId,weight", "2,2")), "Failed to map")
+  # a file's columnId comes from the model that wrote it, so covariateId decides
+  expect_equal(loadWide(c("covariateId,columnId,weight", "3,2,2")), c(2, 0, 0, 0))
+  # a covariateImportance export from another model
+  expect_equal(
+    loadWide(c(
+      "covariateId,covariateName,columnId,covariateValue",
+      "9,second,5,1.5", "8,fourth,1,0.5", "99,unknown,2,4"
+    )),
+    c(0, 1.5, 0, 0.5)
+  )
+})
+
+test_that("data-dependent initialization leaves frozen RealMLP weights alone", {
+  skip_if_no_python()
+  realMlp <- importModule("RealMLP")$RealMLP
+  batch <- list(
+    feature_ids = torch$tensor(matrix(c(1L, 2L, 3L, 4L), nrow = 2), dtype = torch$long),
+    feature_values = torch$ones(2L, 2L, dtype = torch$float)
+  )
+  layerWeights <- function(freeze) {
+    torch$manual_seed(42L)
+    model <- realMlp(
+      feature_info = mappedFeatureInfo(), size_embedding = 2L, size_hidden = 4L,
+      num_layers = 1L, dropout = 0, paper_mode = FALSE,
+      wide_enabled = TRUE, freeze_deep = freeze
+    )
+    layer <- model$`_linear_layers`[[1]]
+    before <- c(asNumeric(layer$weight), asNumeric(layer$bias))
+    model$data_dependent_init(list(batch))
+    list(before = before, after = c(asNumeric(layer$weight), asNumeric(layer$bias)))
+  }
+  frozen <- layerWeights(TRUE)
+  expect_equal(frozen$after, frozen$before)
+  trainable <- layerWeights(FALSE)
+  expect_false(isTRUE(all.equal(trainable$after, trainable$before)))
+})

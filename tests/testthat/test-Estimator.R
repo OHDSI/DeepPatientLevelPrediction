@@ -558,3 +558,217 @@ test_that("Estimator tie-breaking chooses the last best epoch", {
   expect_equal(estimatorModule$select_best_epoch(list(0.1, 0.5, 0.5), "max"), 2L)
   expect_equal(estimatorModule$select_best_epoch(list(0.2, 0.1, 0.1), "min"), 2L)
 })
+
+test_that("the restored checkpoint holds the weights of the best epoch", {
+  skip_if_no_python()
+  toy <- toyPython()
+  estimatorClass <- importModule("Estimator")$Estimator
+  dataset <- toy$ToyData(c(-1, 1), c(1, 0))
+
+  # the weight moves away from the optimum, so the first epoch is the best one
+  earlyStopping <- list(fun = NULL, params = list(patience = 1L, mode = "min"))
+  for (settings in list(list(early_stopping = NULL), list(early_stopping = earlyStopping))) {
+    estimator <- do.call(toy$toy_estimator, c(
+      list(estimatorClass, epochs = 4L, learning_rate = 0.5, batch_size = 2L),
+      settings
+    ))
+    epochScores <- c(1, 2, 3, 4)
+    epoch <- 0L
+    weightsPerEpoch <- numeric()
+    reticulate::py_set_attr(estimator, "score", function(dataloader) {
+      epoch <<- epoch + 1L
+      weightsPerEpoch[epoch] <<- estimator$model$weight$item()
+      list(metric = epochScores[epoch], auc = 0.5, loss = epochScores[epoch])
+    })
+    estimator$fit(dataset, dataset)
+
+    expect_equal(estimator$best_epoch, 0L)
+    expect_equal(estimator$model$weight$item(), weightsPerEpoch[1], tolerance = 1e-6)
+    expect_false(isTRUE(all.equal(weightsPerEpoch[1], weightsPerEpoch[2])))
+  }
+})
+
+test_that("checkpoints do not accumulate over the epochs", {
+  skip_if_no_python()
+  toy <- toyPython()
+  estimator <- toy$toy_estimator(
+    importModule("Estimator")$Estimator, early_stopping = NULL
+  )
+  checkpoints <- reticulate::dict()
+  scores <- list(list(metric = 3), list(metric = 2), list(metric = 1))
+  for (epoch in 0:2) {
+    estimator$`_keep_best_checkpoint`(checkpoints, scores, epoch)
+  }
+  expect_equal(reticulate::py_len(checkpoints), 1L)
+  expect_false(is.null(checkpoints$get(2L)))
+})
+
+biasPython <- function() {
+  toyPython()
+  reticulate::py_run_string("
+class HeadModel(nn.Module):
+    name = 'HeadModel'
+    def __init__(self):
+        super().__init__()
+        self.head = nn.Linear(1, 1)
+    def forward(self, x):
+        return self.head(x['feature_values']).squeeze(-1)
+
+class WrappedHeadModel(nn.Module):
+    name = 'WrappedHeadModel'
+    def __init__(self):
+        super().__init__()
+        self.head = nn.Module()
+        self.head.linear = nn.Linear(1, 1)
+    def forward(self, x):
+        return self.head.linear(x['feature_values']).squeeze(-1)
+
+class CustomLossModel(HeadModel):
+    def compute_loss(self, predictions, targets, criterion, label_smoothing=0.0):
+        return criterion(predictions.squeeze(), targets.float())
+
+class LabelledData(ToyData):
+    def __init__(self, x, y):
+        super().__init__(x, y)
+        self.target = self.y
+
+def bias_estimator(estimator_class, model, **settings):
+    # a learning rate of zero keeps the initial bias through training
+    defaults = dict(device='cpu', find_l_r=False, learning_rate=0.0, weight_decay=0.0,
+                    batch_size=4, epochs=1, optimizer=torch.optim.SGD,
+                    criterion=torch.nn.BCEWithLogitsLoss, metric='loss',
+                    init_output_bias=True)
+    return estimator_class(model, {'model_parameters': {},
+                                   'estimator_settings': {**defaults, **settings}})
+")
+}
+
+test_that("the output bias starts at the outcome rate of the training data", {
+  skip_if_no_python()
+  py <- biasPython()
+  Estimator <- importModule("Estimator")$Estimator
+  y <- c(1, 0, 0, 0, 0, 0, 0, 1)
+  data <- py$LabelledData(seq_along(y), y)
+
+  estimator <- py$bias_estimator(Estimator, py$HeadModel)
+  estimator$fit_whole_training_set(data, list(0))
+  expect_equal(asNumeric(estimator$model$head$bias), qlogis(2 / 8), tolerance = 1e-6)
+
+  # a cross-validation fit uses the outcome rate of its training fold only
+  estimator <- py$bias_estimator(Estimator, py$HeadModel)
+  estimator$fit(
+    torch$utils$data$Subset(data, indices = 0:3),
+    torch$utils$data$Subset(data, indices = 4:7)
+  )
+  expect_equal(asNumeric(estimator$model$head$bias), qlogis(1 / 4), tolerance = 1e-6)
+
+  # the loss sees smoothed labels, so their rate is used
+  estimator <- py$bias_estimator(Estimator, py$HeadModel, label_smoothing = 0.1)
+  estimator$fit_whole_training_set(data, list(0))
+  expect_equal(asNumeric(estimator$model$head$bias), qlogis(2 / 8 * 0.9 + 0.05), tolerance = 1e-6)
+
+  # transformer heads keep their linear layer in head.linear
+  estimator <- py$bias_estimator(Estimator, py$WrappedHeadModel)
+  estimator$fit_whole_training_set(data, list(0))
+  expect_equal(asNumeric(estimator$model$head$linear$bias), qlogis(2 / 8), tolerance = 1e-6)
+})
+
+test_that("the output bias is left alone when switched off or the model has its own loss", {
+  skip_if_no_python()
+  py <- biasPython()
+  Estimator <- importModule("Estimator")$Estimator
+  y <- c(1, 0, 0, 0, 0, 0, 0, 1)
+  data <- py$LabelledData(seq_along(y), y)
+  cases <- list(
+    list(model = py$HeadModel, init = FALSE),
+    list(model = py$CustomLossModel, init = TRUE)
+  )
+  for (case in cases) {
+    estimator <- py$bias_estimator(Estimator, case$model, init_output_bias = case$init)
+    before <- asNumeric(estimator$model$head$bias)
+    estimator$fit_whole_training_set(data, list(0))
+    expect_equal(asNumeric(estimator$model$head$bias), before)
+  }
+})
+
+test_that("AUC gives half credit to tied scores", {
+  skip_if_no_python()
+  computeAuc <- importModule("Estimator")$compute_auc
+  auc <- function(labels, scores) {
+    computeAuc(
+      torch$tensor(labels, dtype = torch$float32),
+      torch$tensor(scores, dtype = torch$float32)
+    )$item()
+  }
+  expect_equal(auc(c(1, 0), c(0, 0)), 0.5)
+  expect_equal(auc(c(0, 1), c(0, 0)), 0.5)
+  expect_equal(auc(c(1, 0), c(1, 0)), 1)
+  expect_equal(auc(c(1, 0), c(0, 1)), 0)
+  # pairs: (0.9>0.5), (0.9>0.1), (0.5=0.5 tie), (0.5>0.1)
+  expect_equal(auc(c(1, 1, 0, 0), c(0.9, 0.5, 0.5, 0.1)), 3.5 / 4)
+
+  set.seed(1)
+  labels <- rep(c(0, 1), 50)
+  scores <- sample(c(0.1, 0.2, 0.3), 100, replace = TRUE)
+  prediction <- data.frame(outcomeCount = labels, value = scores)
+  expect_equal(
+    auc(labels, scores),
+    PatientLevelPrediction::computeAuc(prediction),
+    tolerance = 1e-6
+  )
+})
+
+test_that("validation works when its last batch has a single patient", {
+  skip_if_no_python()
+  data <- createMockData()
+  withr::defer(Andromeda::close(data))
+  # folds of four patients scored in batches of three leave one patient
+  settings <- setMultiLayerPerceptron(
+    numLayers = 1, sizeHidden = 4, dropout = 0, sizeEmbedding = 4,
+    estimatorSettings = setEstimator(
+      learningRate = 0.01, batchSize = 3, epochs = 1, device = "cpu", seed = 42
+    ),
+    randomSample = 1
+  )
+  result <- gridCvDeep(
+    mappedData = data, labels = createMockLabels(), modelSettings = settings,
+    modelLocation = withr::local_tempdir(), analysisPath = withr::local_tempdir()
+  )
+  cv <- result$prediction[result$prediction$evaluationType == "CV", ]
+  expect_equal(nrow(cv), 8)
+})
+
+test_that("final fitting trains when the data is smaller than one batch", {
+  skip_if_no_python()
+  toy <- toyPython()
+  estimator <- toy$toy_estimator(
+    importModule("Estimator")$Estimator, batch_size = 512L, epochs = 1L
+  )
+  estimator$fit_whole_training_set(toy$ToyData(c(-1, 1), c(0, 1)))
+  expect_false(estimator$model$weight$item() == 0)
+
+  emptyEstimator <- toy$toy_estimator(importModule("Estimator")$Estimator)
+  expect_error(
+    emptyEstimator$fit_whole_training_set(toy$ToyData(numeric(), numeric())),
+    "empty dataset"
+  )
+})
+
+test_that("reported losses are averaged over the actual observations", {
+  skip_if_no_python()
+  toy <- toyPython()
+  dataLoader <- torch$utils$data$DataLoader
+  sampler <- torch$utils$data$BatchSampler
+  sequential <- torch$utils$data$SequentialSampler
+  estimator <- toy$toy_estimator(
+    importModule("Estimator")$Estimator, batch_size = 8L
+  )
+  # a batch of 8 and a partial batch of 2, with a zero weight every loss is log(2)
+  dataset <- toy$ToyData(rep(1, 10), rep(c(0, 1), 5))
+  loader <- dataLoader(
+    dataset = dataset, batch_size = NULL,
+    sampler = sampler(sequential(dataset), batch_size = 8L, drop_last = FALSE)
+  )
+  expect_equal(estimator$score(loader)$loss, log(2), tolerance = 1e-6)
+  expect_equal(estimator$fit_epoch(loader), log(2), tolerance = 1e-6)
+})
