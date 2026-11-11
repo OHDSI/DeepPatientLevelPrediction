@@ -552,3 +552,9 @@ test_that("train-validation split functionality works", {
   expect_true("Validation" %in% uniqueEvalTypes)
   expect_true("Train" %in% uniqueEvalTypes)
 })
+
+test_that("Estimator tie-breaking chooses the last best epoch", {
+  estimatorModule <- importModule("Estimator")
+  expect_equal(estimatorModule$select_best_epoch(list(0.1, 0.5, 0.5), "max"), 2L)
+  expect_equal(estimatorModule$select_best_epoch(list(0.2, 0.1, 0.1), "min"), 2L)
+})

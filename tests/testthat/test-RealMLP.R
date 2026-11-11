@@ -409,12 +409,6 @@ test_that("RealMLP optimizer parameter groups and dynamic schedules work", {
   expect_false(isTRUE(all.equal(lr0, lr1)))
 })
 
-test_that("Estimator tie-breaking chooses the last best epoch", {
-  estimatorModule <- importModule("Estimator")
-  expect_equal(estimatorModule$select_best_epoch(list(0.1, 0.5, 0.5), "max"), 2L)
-  expect_equal(estimatorModule$select_best_epoch(list(0.2, 0.1, 0.1), "min"), 2L)
-})
-
 test_that("RealMLP wide path composes logits as wide + alpha * deep", {
   realMlp <- importModule("RealMLP")$RealMLP
   featureInfo <- simDataset$get_feature_info()

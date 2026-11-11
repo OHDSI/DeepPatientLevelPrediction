@@ -1,24 +1,28 @@
-test_that("Helper functions", {
+test_that("checkInStringVector accepts only the allowed values", {
   expect_true(checkInStringVector("test", c("test", "test2")))
   expect_error(checkInStringVector("test", c("test2", "test3")), "has incorrect value", fixed = TRUE)
+})
 
-  local({
-    filePath <<- withr::local_tempfile(lines = "File contents")
-    expect_true(checkFileExists(filePath))
-  })
+test_that("checkFileExists rejects missing files", {
+  filePath <- withr::local_tempfile(lines = "File contents")
+  expect_true(checkFileExists(filePath))
+  unlink(filePath)
   expect_error(checkFileExists(filePath), "does not exist", fixed = TRUE)
+})
 
-  # checkHigherEqual
+test_that("checkHigherEqual accepts the bound", {
   expect_true(checkHigherEqual(2, 1))
   expect_true(checkHigherEqual(1, 1))
   expect_error(checkHigherEqual(0, 1), "needs to be >= 1", fixed = TRUE)
+})
 
-  # checkHigher
+test_that("checkHigher rejects the bound", {
   expect_true(checkHigher(2, 1))
   expect_error(checkHigher(1, 1), "needs to be > 1", fixed = TRUE)
   expect_error(checkHigher(0, 1), "needs to be > 1", fixed = TRUE)
+})
 
-  # checkIsClass)
+test_that("checkIsClass checks against the allowed classes", {
   expect_true(checkIsClass(2, c("numeric", "integer")))
   expect_error(checkIsClass(2, c("character")), "is wrong class", fixed = TRUE)
   expect_error(checkIsClass("2", c("numeric", "integer")), "is wrong class", fixed = TRUE)

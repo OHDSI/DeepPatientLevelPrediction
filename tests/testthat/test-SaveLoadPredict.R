@@ -5,10 +5,6 @@
 # preprocessing and evaluation are PLP's and are not tested here. Uses the
 # simulated fixtures, so it needs Python but no database.
 
-quickEstimator <- function() {
-  setEstimator(learningRate = 1e-3, batchSize = 64, epochs = 1, seed = 42, device = "cpu")
-}
-
 quickMlp <- function() {
   setMultiLayerPerceptron(
     numLayers = 1, sizeHidden = 8, dropout = 0, sizeEmbedding = 8,

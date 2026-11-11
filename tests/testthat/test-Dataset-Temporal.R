@@ -16,17 +16,9 @@ skip_if_no_python()
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Patient 1 has a short sequence (3 events), patient 2 a long one (5 events)
+# that needs truncation.
 createMockTemporalData <- function() {
-  analysisRef <- data.frame(analysisId = 1, isBinary = "Y", missingMeansZero = "N")
-  covariateRef <- data.frame(
-    covariateId = 1:5,
-    columnId = 1:5,
-    covariateName = paste0("Cov_", 1:5),
-    analysisId = 1
-  )
-
-  # Patient 1: Short sequence (3 events)
-  # Patient 2: Long sequence (5 events) that needs truncation
   covariates <- data.frame(
     rowId = c(1, 1, 1, 2, 2, 2, 2, 2),
     covariateId = c(101, 102, 103, 201, 202, 203, 204, 205),
@@ -34,24 +26,15 @@ createMockTemporalData <- function() {
     covariateValue = c(1.1, 1.2, 1.3, 2.1, 2.2, 2.3, 2.4, 2.5),
     timeId = c(10, 20, 30, 5, 15, 25, 35, 45)
   )
-
-  timeRef <- data.frame(timePart = "day", timeInterval = 1)
-
-  labels <- data.frame(
-    rowId = 1:2,
-    outcomeCount = c(1, 0)
+  list(
+    data = createMockData(
+      covariates,
+      isBinary = "Y",
+      timeRef = data.frame(timePart = "day", timeInterval = 1)
+    ),
+    labels = data.frame(rowId = 1:2, outcomeCount = c(1, 0))
   )
-
-  andromedaData <- Andromeda::andromeda(
-    analysisRef = analysisRef,
-    covariateRef = covariateRef,
-    covariates = covariates,
-    timeRef = timeRef
-  )
-
-  return(list(data = andromedaData, labels = labels))
 }
-
 
 test_that("correctly truncates sequences longer than max_sequence_length", {
   mockData <- createMockTemporalData()

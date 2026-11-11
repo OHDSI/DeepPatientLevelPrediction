@@ -46,6 +46,9 @@ asNumeric <- function(tensor) {
   as.numeric(tensor$detach()$cpu()$numpy())
 }
 
+# Mock covariate data. All columns share one analysis with the given isBinary,
+# except numericColumns, which form a numeric analysis whose missing values
+# mean zero.
 createMockData <- function(
     covariates = data.frame(
       rowId = rep(1:8, each = 2),
@@ -54,14 +57,22 @@ createMockData <- function(
       covariateValue = rep(c(1, 2), 8)
     ),
     isBinary = "N",
-    timeRef = NULL) {
+    timeRef = NULL,
+    numericColumns = NULL) {
   columnIds <- sort(unique(covariates$columnId))
+  analysisRef <- data.frame(analysisId = 1, isBinary = isBinary, missingMeansZero = "N")
+  if (!is.null(numericColumns)) {
+    analysisRef <- rbind(
+      analysisRef,
+      data.frame(analysisId = 2, isBinary = "N", missingMeansZero = "Y")
+    )
+  }
   tables <- list(
-    analysisRef = data.frame(analysisId = 1, isBinary = isBinary, missingMeansZero = "N"),
+    analysisRef = analysisRef,
     covariateRef = data.frame(
       columnId = columnIds,
       covariateId = columnIds + 100,
-      analysisId = 1,
+      analysisId = ifelse(columnIds %in% numericColumns, 2, 1),
       conceptId = columnIds + 1000,
       covariateName = paste("covariate", columnIds)
     ),
@@ -110,4 +121,9 @@ mappedFeatureInfo <- function(covariateIds = 1:4 + 100, conceptIds = 1:4 + 1000,
 quietly <- function(expr) {
   withr::local_output_sink(nullfile())
   suppressMessages(expr)
+}
+
+# Estimator settings for a quick, deterministic fit of a small model.
+quickEstimator <- function() {
+  setEstimator(learningRate = 1e-3, batchSize = 64, epochs = 1, seed = 42, device = "cpu")
 }
