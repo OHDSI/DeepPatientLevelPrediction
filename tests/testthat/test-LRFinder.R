@@ -1,10 +1,10 @@
-skip_if_no_integration()
+skip_if_no_python()
 
-resNet <- reticulate::import_from_path("ResNet", path)$ResNet
+resNet <- importModule("ResNet")$ResNet
 
 test_that("LR scheduler that changes per batch works", {
   model <- resNet(
-    feature_info = dataset$get_feature_info(),
+    feature_info = simDataset$get_feature_info(),
     size_embedding = 32L, size_hidden = 64L,
     num_layers = 1L, hidden_factor = 1L
   )
@@ -13,7 +13,7 @@ test_that("LR scheduler that changes per batch works", {
 
   exponentialSchedulerPerBatch <-
     reticulate::import_from_path("LrFinder",
-      path = path
+      path = pythonPath
     )$ExponentialSchedulerPerBatch
   scheduler <- exponentialSchedulerPerBatch(optimizer,
     end_lr = 1e-2,
@@ -41,7 +41,7 @@ test_that("LR finder works", {
     seed = 42
   )
   modelParameters <- list(
-    feature_info = dataset$get_feature_info(),
+    feature_info = simDataset$get_feature_info(),
     size_embedding = 32L,
     size_hidden = 64L,
     num_layers = 1L,
@@ -63,7 +63,7 @@ test_that("LR finder works", {
   lr <- getLR(
     parameters = parameters,
     lrSettings = lrSettings,
-    dataset = dataset
+    dataset = simDataset
   )
   tol <- 1e-10
   expect_lte(lr, 0.01 + tol)
@@ -84,7 +84,7 @@ test_that("LR finder works", {
     )
   )
   results <- fitEstimator(
-    trainData$Train,
+    simTrainData$Train,
     modelSettings, 1,
     file.path(tempdir(), "lrFinder")
   )
@@ -98,7 +98,7 @@ test_that("LR finder works with device specified by a function", {
   }
   modelParameters <-
     list(
-      feature_info = dataset$get_feature_info(),
+      feature_info = simDataset$get_feature_info(),
       size_embedding = 8L,
       size_hidden = 16L,
       num_layers = 1L,
@@ -123,7 +123,7 @@ test_that("LR finder works with device specified by a function", {
   lr <- getLR(
     parameters = parameters,
     lrSettings = lrSettings,
-    dataset = dataset
+    dataset = simDataset
   )
 
   tol <- 1e-8
