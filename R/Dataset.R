@@ -40,13 +40,6 @@ createDataset <- function(data, labels,
     return(do.call(dataset, args))
   }
 
-  # backwards compatibility with numerical index either from data from plpModel
-  numericalIndex <- data$numericalIndex %||% plpModel$covariateImportance$isNumeric
-  if (!is.null(numericalIndex)) {
-    args$numericalIndex <- r_to_py(as.array(numericalIndex %>% dplyr::pull()))
-    return(do.call(dataset, args))
-  }
-
   # testing
   args$data_reference <- r_to_py(plpModel$covariateImportance)
   if (!is.null(numRows)) {

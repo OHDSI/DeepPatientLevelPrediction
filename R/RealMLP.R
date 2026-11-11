@@ -150,11 +150,8 @@ setRealMLP <- function(
     epochs = 256L,
     device = device,
     optimizer = torch$optim$AdamW,
-    # keep scheduler object for other models; we'll bypass it for RealMLP internally
-    scheduler = list(
-      fun = torch$optim$lr_scheduler$ReduceLROnPlateau,
-      params = list(patience = 1000000L)
-    ),
+    # the learning rate follows RealMLP's own schedule
+    scheduler = NULL,
     criterion = torch$nn$BCEWithLogitsLoss, # logits + label smoothing inside Estimator
     earlyStopping = NULL, # train full and pick best
     compile = FALSE,

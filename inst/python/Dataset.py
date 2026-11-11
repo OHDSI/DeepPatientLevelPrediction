@@ -646,38 +646,6 @@ def augment_data_reference(data_ref, strategy, offset) -> pl.LazyFrame:
     return data_ref_aug
 
 
-def convert_to_long(data: pl.LazyFrame) -> pl.LazyFrame:
-    events = (
-        data.select(
-            "rowId",
-            pl.col("feature_ids").alias("f_ids"),
-            pl.col("feature_values").alias("f_vals"),
-            pl.col("time_ids").alias("t_ids"),
-        )
-        .explode(["f_ids", "f_vals", "t_ids"])
-        .rename(
-            {
-                "f_ids": "feature_id",
-                "f_vals": "feature_value",
-                "t_ids": "time_ids",
-            }
-        )
-        .sort(["rowId", "time_ids"])
-        .with_columns(
-            [
-                pl.cum_count("rowId").cast(pl.float64).alias("_pos"),  # 0,1,2…
-                (
-                    pl.col("time_ids")  # δt (days)
-                    - pl.col("time_ids").shift(1).over("rowid")
-                )
-                .fill_null(0)
-                .alias("_delta"),
-            ]
-        )
-    )
-    return events
-
-
 def get_offset(data_ref: pl.LazyFrame) -> int:
     """
     Get the offset for the time tokens based on the maximum columnId in the data reference.

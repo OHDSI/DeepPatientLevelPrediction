@@ -51,6 +51,7 @@ Removed
 - Remove the `concat_num`, `token_aggregation` and numerical bias options of ResNet and the MLP, and the `concatenate` numeric embedding mode, which only `concat_num` used.
 - Remove the optimizer parameter groups of ResNet and the MLP. With their default factors they trained exactly like a single group.
 - Remove parallel data loading workers, input fingerprints, batch diagnostics, the `previous_epochs` epoch offset and an unused `prefix` setting.
+- Remove code that could not work: the `plpData` branch of `predictDeepEstimator()`, the `numericalIndex` branch of the dataset creation, `convert_to_long()`, and `extras/example_plp5.R`, which called functions that do not exist. Also remove the placeholder scheduler of `setRealMLP()`, which RealMLP's learning rate schedule bypassed.
 
 Runtime and compatibility
 - Require Python 3.11 or newer. Python 3.10 reached end-of-life in October 2026, and duckdb 2.0.0 requires Python 3.11.
