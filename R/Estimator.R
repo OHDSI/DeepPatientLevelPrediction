@@ -54,6 +54,16 @@
 #'   stopping can end training before they learn to rank patients. It applies to
 #'   models whose output is a single logit from a linear `head` layer and is
 #'   not used during the learning-rate search.
+#' @param gradClipNorm The largest norm the gradients may have at each
+#'   optimizer step, or `NULL` to leave them as they are. Larger gradients are
+#'   scaled down to this norm, which keeps a few extreme batches from
+#'   destabilizing training. The loss is summed over the patients of a batch, so
+#'   the gradient norm grows with the batch size. Several values are tuned as
+#'   hyperparameters.
+#' @param deterministic Whether PyTorch may only use deterministic algorithms,
+#'   so that training with the same seed and data gives the same model each
+#'   time. This matters mostly on a GPU, and makes training slower. Operations
+#'   that have no deterministic version give a warning.
 #'
 #' @return A list of estimator settings used by the model-setting functions.
 #'
@@ -87,7 +97,9 @@ setEstimator <- function(
     accumulationSteps = NULL,
     seed = NULL,
     trainValidationSplit = FALSE,
-    initOutputBias = TRUE) {
+    initOutputBias = TRUE,
+    gradClipNorm = NULL,
+    deterministic = FALSE) {
   checkIsClass(learningRate, c("numeric", "character"))
   if (inherits(learningRate, "character") && learningRate != "auto") {
     stop(paste0(
@@ -107,6 +119,14 @@ setEstimator <- function(
   checkIsClass(seed, c("numeric", "integer", "NULL"))
   checkIsClass(trainValidationSplit, "logical")
   checkIsClass(initOutputBias, "logical")
+  checkIsClass(gradClipNorm, c("numeric", "integer", "NULL"))
+  if (!is.null(gradClipNorm) && !all(is.finite(gradClipNorm) & gradClipNorm > 0)) {
+    stop("gradClipNorm must be NULL or positive numbers")
+  }
+  checkIsClass(deterministic, "logical")
+  if (length(deterministic) != 1 || is.na(deterministic)) {
+    stop("deterministic must be TRUE or FALSE")
+  }
   if (!is.null(accumulationSteps) && !is.function(accumulationSteps)) {
     checkHigher(accumulationSteps, 0)
     checkIsClass(accumulationSteps, c("numeric", "integer"))
@@ -137,7 +157,9 @@ setEstimator <- function(
     metric = metric,
     accumulationSteps = accumulationSteps,
     seed = seed[1],
-    initOutputBias = initOutputBias
+    initOutputBias = initOutputBias,
+    gradClipNorm = gradClipNorm,
+    deterministic = deterministic
   )
   if (!is.null(trainValidationSplit)) {
     estimatorSettings$trainValidationSplit <- trainValidationSplit

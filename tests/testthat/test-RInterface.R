@@ -211,3 +211,34 @@ test_that("setEstimator turns on the output bias initialization by default", {
   expect_error(setEstimator(seed = 1, initOutputBias = "yes"), "initOutputBias is wrong class", fixed = TRUE)
   expect_named(camelCaseToSnakeCaseNames(list(initOutputBias = TRUE)), "init_output_bias")
 })
+
+test_that("setEstimator checks the gradient clipping and deterministic settings", {
+  settings <- setEstimator(seed = 1)
+  expect_null(settings$gradClipNorm)
+  expect_false(settings$deterministic)
+  settings <- setEstimator(seed = 1, gradClipNorm = 1, deterministic = TRUE)
+  expect_equal(settings$gradClipNorm, 1)
+  expect_true(settings$deterministic)
+  # several values are tuned like other estimator settings
+  expect_equal(
+    setEstimator(seed = 1, gradClipNorm = c(1, 5))$paramsToTune,
+    list(estimator.gradClipNorm = c(1, 5))
+  )
+  for (gradClipNorm in list(0, -1, NA_real_, Inf)) {
+    expect_error(
+      setEstimator(seed = 1, gradClipNorm = gradClipNorm),
+      "gradClipNorm must be NULL or positive numbers"
+    )
+  }
+  expect_error(setEstimator(seed = 1, gradClipNorm = "1"), "gradClipNorm is wrong class", fixed = TRUE)
+  for (deterministic in list(NA, c(TRUE, FALSE))) {
+    expect_error(
+      setEstimator(seed = 1, deterministic = deterministic),
+      "deterministic must be TRUE or FALSE"
+    )
+  }
+  expect_named(
+    camelCaseToSnakeCaseNames(list(gradClipNorm = 1, deterministic = TRUE)),
+    c("grad_clip_norm", "deterministic")
+  )
+})
