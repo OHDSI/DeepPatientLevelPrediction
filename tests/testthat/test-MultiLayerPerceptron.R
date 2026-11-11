@@ -1,5 +1,3 @@
-skip_if_no_integration()
-
 modelSettings <- setMultiLayerPerceptron(
   numLayers = 2,
   sizeHidden = 32,
@@ -31,40 +29,45 @@ test_that("setMultiLayerPerceptron works", {
                                        randomSample = 2))
 })
 
-sink(nullfile())
-results <- tryCatch(
-  {
-    PatientLevelPrediction::runPlp(
-      plpData = plpData,
-      outcomeId = 3,
-      modelSettings = modelSettings,
-      analysisId = "Analysis_MLP",
-      analysisName = "Testing Deep Learning",
-      populationSettings = populationSet,
-      splitSettings = PatientLevelPrediction::createDefaultSplitSetting(),
-      sampleSettings = PatientLevelPrediction::createSampleSettings(),
-      featureEngineeringSettings =
-        PatientLevelPrediction::createFeatureEngineeringSettings(),
-      preprocessSettings = PatientLevelPrediction::createPreprocessSettings(),
-      executeSettings = PatientLevelPrediction::createExecuteSettings(
-        runSplitData = TRUE,
-        runSampleData = FALSE,
-        runFeatureEngineering = FALSE,
-        runPreprocessData = TRUE,
-        runModelDevelopment = TRUE,
-        runCovariateSummary = FALSE
-      ),
-      saveDirectory = file.path(testLoc, "MLP")
-    )
-  },
-  error = function(e) {
-    print(e)
-    return(NULL)
-  }
-)
-sink()
+# fitted on Eunomia when an integration test first uses it
+delayedAssign("results", {
+  sink(nullfile())
+  result <- tryCatch(
+    {
+      PatientLevelPrediction::runPlp(
+        plpData = plpData,
+        outcomeId = 3,
+        modelSettings = modelSettings,
+        analysisId = "Analysis_MLP",
+        analysisName = "Testing Deep Learning",
+        populationSettings = populationSet,
+        splitSettings = PatientLevelPrediction::createDefaultSplitSetting(),
+        sampleSettings = PatientLevelPrediction::createSampleSettings(),
+        featureEngineeringSettings =
+          PatientLevelPrediction::createFeatureEngineeringSettings(),
+        preprocessSettings = PatientLevelPrediction::createPreprocessSettings(),
+        executeSettings = PatientLevelPrediction::createExecuteSettings(
+          runSplitData = TRUE,
+          runSampleData = FALSE,
+          runFeatureEngineering = FALSE,
+          runPreprocessData = TRUE,
+          runModelDevelopment = TRUE,
+          runCovariateSummary = FALSE
+        ),
+        saveDirectory = file.path(tempdir(), "MLP")
+      )
+    },
+    error = function(e) {
+      print(e)
+      return(NULL)
+    }
+  )
+  sink()
+  result
+})
 
 test_that("MLP with runPlp working checks", {
+  skip_if_no_integration()
   expect_false(is.null(results))
 
   # check structure
@@ -86,47 +89,47 @@ test_that("MLP with runPlp working checks", {
 
 
 test_that("MLP nn-module works ", {
-  mlp <- reticulate::import_from_path("MultiLayerPerceptron", path = path)$MultiLayerPerceptron
-  model <- mlp(
-    feature_info = dataset$get_feature_info(),
-    size_embedding = 5,
-    size_hidden = 16,
-    num_layers = 1,
-    activation = torch$nn$ReLU,
-    normalization = torch$nn$BatchNorm1d,
-    dropout = 0.3
-  )
+  skip_if_no_python()
+  mlp <- importModule("MultiLayerPerceptron")$MultiLayerPerceptron
+  newModel <- function(featureInfo) {
+    mlp(
+      feature_info = featureInfo,
+      size_embedding = 5L,
+      size_hidden = 16L,
+      num_layers = 1L,
+      activation = torch$nn$ReLU,
+      normalization = torch$nn$BatchNorm1d,
+      dropout = 0.3,
+      dim_out = 1L
+    )
+  }
+  # one numeric and four binary features
+  model <- newModel(mappedFeatureInfo(
+    covariateIds = 1:5 + 100, conceptIds = 1:5 + 1000,
+    isBinary = c("N", "Y", "Y", "Y", "Y")
+  ))
 
   pars <- sum(reticulate::iterate(model$parameters(), function(x) x$numel()))
 
   # expected number of parameters
-  expect_equal(pars, 994.0)
+  expect_equal(pars, 494)
 
   input <- list()
   input$feature_ids <- torch$randint(0L, 5L, c(10L, 5L), dtype = torch$long)
   input$feature_values <- torch$randint(0L, 5L, c(10L, 5L), dtype = torch$long)
-
 
   output <- model(input)
 
   # output is correct shape
   expect_equal(output$shape[0], 10L)
 
-  model <- mlp(
-    feature_info = dataset$get_feature_info(),
-    size_embedding = 5L,
-    size_hidden = 16L,
-    num_layers = 1L,
-    activation = torch$nn$ReLU,
-    normalization = torch$nn$BatchNorm1d,
-    dropout = 0.3,
-    dim_out = 1L
-  )
+  model <- newModel(mappedFeatureInfo(
+    covariateIds = 1:5 + 100, conceptIds = 1:5 + 1000, isBinary = rep("Y", 5)
+  ))
   output <- model(input)
   # model works without numeric variables
   expect_equal(output$shape[0], 10L)
 })
-
 
 test_that("Errors are produced by settings function", {
   randomSample <- 2
@@ -150,7 +153,9 @@ test_that("Can upload results to database", {
   skip_if_not_installed("DatabaseConnector")
   skip_if_not_installed("ResultModelManager")
   skip_if_not_installed("RSQLite")
-  skip_if_offline()
+  skip_if_no_integration()
+  # writes the results that are uploaded
+  force(results)
 
   cohortDefinitions <- data.frame(
     cohortName = c("blank1"),
@@ -160,7 +165,7 @@ test_that("Can upload results to database", {
 
   sink(nullfile())
   sqliteFile <-
-    PatientLevelPrediction::insertResultsToSqlite(resultLocation = file.path(testLoc, "MLP"),
+    PatientLevelPrediction::insertResultsToSqlite(resultLocation = file.path(tempdir(), "MLP"),
                           cohortDefinitions = cohortDefinitions)
   sink()
 
