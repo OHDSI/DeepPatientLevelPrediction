@@ -41,7 +41,7 @@ createDataset <- function(data, labels,
   }
 
   # testing
-  args$data_reference <- r_to_py(plpModel$covariateImportance)
+  args$data_reference <- rToPolars(plpModel$covariateImportance)
   if (!is.null(numRows)) {
     args$num_rows <- as.integer(numRows)
   }

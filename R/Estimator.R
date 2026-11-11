@@ -349,7 +349,7 @@ fitEstimator <- function(
     )
   )
   prediction <- cvResult$prediction
-  covariateRef <- py_to_r(cvResult[["featureInfo"]]$data_reference)
+  covariateRef <- polarsToR(cvResult[["featureInfo"]]$data_reference)
   incs <- rep(
     1,
     covariateRef %>%

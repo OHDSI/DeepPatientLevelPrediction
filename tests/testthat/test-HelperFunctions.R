@@ -28,7 +28,7 @@ test_that("checkIsClass checks against the allowed classes", {
   expect_error(checkIsClass("2", c("numeric", "integer")), "is wrong class", fixed = TRUE)
 })
 
-test_that("r_to_py() converts a data.frame to a polars DataFrame", {
+test_that("rToPolars() converts a data.frame to a polars DataFrame and back", {
   skip_if_no_python()
   skip_if_not_installed("reticulate")
   skip_if_not(
@@ -44,7 +44,7 @@ test_that("r_to_py() converts a data.frame to a polars DataFrame", {
     strAsFactors = FALSE
   )
 
-  pdf <- r_to_py(df, convert = TRUE)
+  pdf <- rToPolars(df)
 
   expect_true(inherits(pdf, "polars.dataframe.frame.DataFrame"))
   shape <- reticulate::py_to_r(pdf$shape) # (rows, cols)
@@ -52,19 +52,20 @@ test_that("r_to_py() converts a data.frame to a polars DataFrame", {
   expect_equal(shape[[2]], ncol(df))
   expect_setequal(reticulate::py_to_r(pdf$columns), names(df))
 
-  dfBack <- reticulate::py_to_r(pdf)
+  dfBack <- polarsToR(pdf)
   expect_identical(dfBack, df)
+
+  # the package leaves the rest of the session's data frame conversion alone
+  expect_false(inherits(reticulate::r_to_py(df), "polars.dataframe.frame.DataFrame"))
 })
 
-test_that("py_to_r() S3 method returns a faithful R data.frame", {
+test_that("polarsToR() returns a faithful R data.frame", {
   skip_if_no_python()
   skip_if_not_installed("reticulate")
   skip_if_not(
     reticulate::py_module_available("polars"),
     "Python module `polars` not available for testing"
   )
-
-  pl <- reticulate::import("polars", convert = FALSE)
 
   df <- data.frame(
     covariateId = c(1002, 2002, 3003),
@@ -74,9 +75,12 @@ test_that("py_to_r() S3 method returns a faithful R data.frame", {
     stringsAsFactors = FALSE
   )
 
-  pdf <- pl$DataFrame(df)
-  res <- reticulate::py_to_r(pdf)
-  expect_identical(res, df)
+  pdf <- reticulate::py_eval(paste0(
+    "__import__('polars').DataFrame({'covariateId': [1002.0, 2002.0, 3003.0], ",
+    "'analysisId': [210.0, 210.0, 210.0], 'valueAsConceptId': [None, None, 0.0], ",
+    "'covariateName': ['x', 'y', 'z']})"
+  ), convert = FALSE)
+  expect_identical(polarsToR(pdf), df)
 })
 
 test_that("noneToNA() replaces NULLs with correct typed NA", {

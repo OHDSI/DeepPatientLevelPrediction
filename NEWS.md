@@ -64,6 +64,7 @@ Runtime and compatibility
 - Models trained with custom embeddings, RealMLP mean aggregation, time tokens, convolutional positional encodings or a fixed `TemporalPE` sigma compute their inputs differently now. Predictions from such saved models change, so retrain them.
 - Poincare embeddings with vectors outside the ball are now an error, also when predicting with a model saved by an earlier version.
 - Drop the `nvidia-ml-py` Python dependency.
+- Stop registering `r_to_py()` and `py_to_r()` methods for data frames for the whole R session. Once the package was loaded, every data frame that reticulate converted became a polars DataFrame instead of a pandas one, also in other packages and in users' own code. The package now converts its own data frames.
 
 Documentation and CI
 - Add an Ubuntu 26.04 CI job and a regression test for batched matrix multiplication.
