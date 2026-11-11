@@ -152,6 +152,11 @@ class Estimator:
         self.data_dependent_init_done = False
         self._log_model_training_configuration()
 
+        # setEstimator() keeps useEarlyStopping in the list, where names stay camelCase
+        early_stopping = parameters["estimator_settings"].get("early_stopping")
+        if early_stopping is not None and not early_stopping.get("useEarlyStopping", True):
+            early_stopping = None
+
         self.metric = None
         if (
             "metric" in parameters["estimator_settings"].keys()
@@ -168,13 +173,8 @@ class Estimator:
                 and parameters["estimator_settings"]["scheduler"] is not None
             ):
                 parameters["estimator_settings"]["scheduler"]["params"]["mode"] = self.metric["mode"]
-            if (
-                "early_stopping" in parameters["estimator_settings"].keys()
-                and parameters["estimator_settings"]["early_stopping"] is not None
-            ):
-                parameters["estimator_settings"]["early_stopping"]["params"]["mode"] = self.metric[
-                    "mode"
-                ]
+            if early_stopping is not None:
+                early_stopping["params"]["mode"] = self.metric["mode"]
 
         self.optimizer = self._create_optimizer(parameters["estimator_settings"]["optimizer"])
         self.criterion = parameters["estimator_settings"]["criterion"](reduction="sum")
@@ -191,13 +191,8 @@ class Estimator:
         else:
             self.scheduler = None
 
-        if (
-            "early_stopping" in parameters["estimator_settings"].keys()
-            and parameters["estimator_settings"]["early_stopping"] is not None
-        ):
-            self.early_stopper = EarlyStopping(
-                **parameters["estimator_settings"]["early_stopping"]["params"]
-            )
+        if early_stopping is not None:
+            self.early_stopper = EarlyStopping(**early_stopping["params"])
         else:
             self.early_stopper = None
 

@@ -691,6 +691,21 @@ test_that("the output bias is left alone when switched off or the model has its 
   }
 })
 
+test_that("useEarlyStopping = FALSE switches early stopping off", {
+  skip_if_no_python()
+  py <- toyPython()
+  Estimator <- importModule("Estimator")$Estimator
+  earlyStopper <- function(useEarlyStopping) {
+    estimator <- py$toy_estimator(
+      Estimator,
+      early_stopping = list(useEarlyStopping = useEarlyStopping, params = list(patience = 1L))
+    )
+    estimator$early_stopper
+  }
+  expect_false(is.null(earlyStopper(TRUE)))
+  expect_null(earlyStopper(FALSE))
+})
+
 test_that("gradient clipping limits the gradient norm of each optimizer step", {
   skip_if_no_python()
   py <- toyPython()

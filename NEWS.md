@@ -37,6 +37,7 @@ Bug fixes
 - Stop with a clear error when `fitEstimator()` gets training data without a `CovariateData` object, instead of an error from deep inside the data mapping.
 - Predict with models loaded by `loadPlpModel()` when the data store `analysisId` as doubles. The saved covariate reference comes back from CSV with integer IDs, and joining it to the data's analysis reference failed with a polars `SchemaError`.
 - Continue the hyperparameter search after a combination runs out of GPU memory, and free that combination's memory first. Since torch 2.5 the error was not recognized, so the search stopped. The cleanup could not free memory that the error's traceback still referred to, and instead, when more than 3 GB stayed allocated, emptied the storage of every CUDA tensor, including those still in use.
+- Switch early stopping off when `earlyStopping` has `useEarlyStopping = FALSE`. The setting was never read, so training still stopped early.
 
 Removed
 - Remove settings that no function of the package sets, and that could only be reached by editing the model or estimator settings by hand. Models fitted with the package's own settings train and predict exactly as before.
