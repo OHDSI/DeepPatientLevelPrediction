@@ -460,21 +460,19 @@ test_that("estimatorSettings can be saved and loaded with python objects", {
   testthat::expect_false(reticulate::py_is_null_xptr(criterion))
 })
 
-test_that("evaluation works on predictDeepEstimator output", {
-  
-  prediction <- predictDeepEstimator(plpModel = simFitEstimatorResults,
-                                     data = simTrainData$Test,
-                                     cohort = simTrainData$Test$labels)
-  prediction$evaluationType <- 'Validation'
-
-  evaluation <-
-    PatientLevelPrediction::evaluatePlp(prediction, "evaluationType")
-  
-  expect_length(evaluation, 5)
-  expect_s3_class(evaluation, "plpEvaluation")
-  
+# PatientLevelPrediction evaluates the predictions; DPLP must return them in
+# the shape its evaluation expects.
+test_that("predictDeepEstimator returns predictions PLP can evaluate", {
+  prediction <- quietly(predictDeepEstimator(
+    plpModel = simFitEstimatorResults,
+    data = simTrainData$Test,
+    cohort = simTrainData$Test$labels
+  ))
+  expect_true(all(c("rowId", "outcomeCount", "value") %in% names(prediction)))
+  expect_equal(prediction$rowId, simTrainData$Test$labels$rowId)
+  expect_true(all(prediction$value >= 0 & prediction$value <= 1))
+  expect_equal(attr(prediction, "metaData")$modelType, "binary")
 })
-
 
 test_that("accumulationSteps as a function argument works", {
   getSteps <- function() {
