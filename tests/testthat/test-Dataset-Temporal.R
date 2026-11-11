@@ -1,4 +1,4 @@
-skip_if_no_integration()
+skip_if_no_python()
 
 # Copyright 2025 Observational Health Data Sciences and Informatics
 #

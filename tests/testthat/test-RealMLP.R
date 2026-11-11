@@ -1,4 +1,4 @@
-skip_if_no_integration()
+skip_if_no_python()
 
 test_that("setRealMLP settings are created correctly", {
   settings <- setRealMLP(
@@ -132,8 +132,8 @@ test_that("setRealMLP validates vector-aware RealMLP parameters", {
 })
 
 test_that("RealMLP supports PL and PBLD numerical embedding modes", {
-  realMlp <- reticulate::import_from_path("RealMLP", path = path)$RealMLP
-  featureInfo <- dataset$get_feature_info()
+  realMlp <- importModule("RealMLP")$RealMLP
+  featureInfo <- simDataset$get_feature_info()
   vocab_size <- as.integer(reticulate::py_to_r(featureInfo$get_vocabulary_size()))
   batch <- list(
     feature_ids = torch$randint(1L, vocab_size + 1L, c(8L, 10L), dtype = torch$long),
@@ -166,16 +166,16 @@ test_that("RealMLP supports PL and PBLD numerical embedding modes", {
 })
 
 test_that("RealMLP module and schedules are wired correctly", {
-  schedules <- reticulate::import_from_path("schedules", path = path)
+  schedules <- importModule("schedules")
   t <- 0.31
   expected <- 0.5 * (1.0 - cos(2.0 * pi * log2(1.0 + (2^4 - 1.0) * t)))
   expect_equal(schedules$coslog_k(t, 4L), expected, tolerance = 1e-12)
   expect_equal(schedules$flat_cos(0.25), 1.0, tolerance = 1e-12)
   expect_lt(schedules$flat_cos(0.75), 1.0)
 
-  realMlp <- reticulate::import_from_path("RealMLP", path = path)$RealMLP
+  realMlp <- importModule("RealMLP")$RealMLP
   model <- realMlp(
-    feature_info = dataset$get_feature_info(),
+    feature_info = simDataset$get_feature_info(),
     size_embedding = 8L,
     size_hidden = 16L,
     num_layers = 1L,
@@ -193,9 +193,9 @@ test_that("RealMLP module and schedules are wired correctly", {
 })
 
 test_that("RealMLP paper mode resolves aggregation and sum_len_norm works", {
-  realMlp <- reticulate::import_from_path("RealMLP", path = path)$RealMLP
+  realMlp <- importModule("RealMLP")$RealMLP
   model <- realMlp(
-    feature_info = dataset$get_feature_info(),
+    feature_info = simDataset$get_feature_info(),
     size_embedding = 8L,
     size_hidden = 16L,
     num_layers = 1L,
@@ -209,7 +209,7 @@ test_that("RealMLP paper mode resolves aggregation and sum_len_norm works", {
   expect_equal(reticulate::py_to_r(model$output_dim), 2L)
 
   modelNorm <- realMlp(
-    feature_info = dataset$get_feature_info(),
+    feature_info = simDataset$get_feature_info(),
     size_embedding = 8L,
     size_hidden = 16L,
     num_layers = 1L,
@@ -235,9 +235,9 @@ test_that("RealMLP paper mode resolves aggregation and sum_len_norm works", {
 })
 
 test_that("RealMLP paper mode uses CE-compatible outputs and probabilities", {
-  realMlp <- reticulate::import_from_path("RealMLP", path = path)$RealMLP
+  realMlp <- importModule("RealMLP")$RealMLP
   model <- realMlp(
-    feature_info = dataset$get_feature_info(),
+    feature_info = simDataset$get_feature_info(),
     size_embedding = 8L,
     size_hidden = 16L,
     num_layers = 1L,
@@ -246,7 +246,7 @@ test_that("RealMLP paper mode uses CE-compatible outputs and probabilities", {
   )
 
   vocab_size <- as.integer(
-    reticulate::py_to_r(dataset$get_feature_info()$get_vocabulary_size())
+    reticulate::py_to_r(simDataset$get_feature_info()$get_vocabulary_size())
   )
   batch <- list(
     feature_ids = torch$randint(1L, vocab_size + 1L, c(8L, 12L), dtype = torch$long),
@@ -264,9 +264,9 @@ test_that("RealMLP paper mode uses CE-compatible outputs and probabilities", {
 })
 
 test_that("RealMLP data-dependent initialization rescales hidden layers", {
-  realMlp <- reticulate::import_from_path("RealMLP", path = path)$RealMLP
+  realMlp <- importModule("RealMLP")$RealMLP
   model <- realMlp(
-    feature_info = dataset$get_feature_info(),
+    feature_info = simDataset$get_feature_info(),
     size_embedding = 8L,
     size_hidden = 16L,
     num_layers = 1L,
@@ -276,7 +276,7 @@ test_that("RealMLP data-dependent initialization rescales hidden layers", {
   linear <- model$blocks$`__getitem__`(0L)
   weight_before <- as.array(linear$weight$detach()$cpu()$numpy())
   vocab_size <- as.integer(
-    reticulate::py_to_r(dataset$get_feature_info()$get_vocabulary_size())
+    reticulate::py_to_r(simDataset$get_feature_info()$get_vocabulary_size())
   )
   batch <- list(
     feature_ids = torch$randint(1L, vocab_size + 1L, c(32L, 16L), dtype = torch$long),
@@ -296,9 +296,9 @@ test_that("RealMLP data-dependent initialization rescales hidden layers", {
 })
 
 test_that("RealMLP data-dependent he5 bias fitting moves mean to target", {
-  realMlp <- reticulate::import_from_path("RealMLP", path = path)$RealMLP
+  realMlp <- importModule("RealMLP")$RealMLP
   model <- realMlp(
-    feature_info = dataset$get_feature_info(),
+    feature_info = simDataset$get_feature_info(),
     size_embedding = 8L,
     size_hidden = 16L,
     num_layers = 1L,
@@ -307,7 +307,7 @@ test_that("RealMLP data-dependent he5 bias fitting moves mean to target", {
 
   linear <- model$blocks$`__getitem__`(0L)
   vocab_size <- as.integer(
-    reticulate::py_to_r(dataset$get_feature_info()$get_vocabulary_size())
+    reticulate::py_to_r(simDataset$get_feature_info()$get_vocabulary_size())
   )
   batch <- list(
     feature_ids = torch$randint(1L, vocab_size + 1L, c(32L, 16L), dtype = torch$long),
@@ -330,16 +330,16 @@ test_that("RealMLP data-dependent he5 bias fitting moves mean to target", {
 })
 
 test_that("RealMLP paper_lsuv data-dependent init mode runs with row caps", {
-  realMlp <- reticulate::import_from_path("RealMLP", path = path)$RealMLP
+  realMlp <- importModule("RealMLP")$RealMLP
   model <- realMlp(
-    feature_info = dataset$get_feature_info(),
+    feature_info = simDataset$get_feature_info(),
     size_embedding = 8L,
     size_hidden = 16L,
     num_layers = 1L,
     dropout = 0.1
   )
   vocab_size <- as.integer(
-    reticulate::py_to_r(dataset$get_feature_info()$get_vocabulary_size())
+    reticulate::py_to_r(simDataset$get_feature_info()$get_vocabulary_size())
   )
   batch <- list(
     feature_ids = torch$randint(1L, vocab_size + 1L, c(64L, 12L), dtype = torch$long),
@@ -374,7 +374,7 @@ test_that("RealMLP optimizer parameter groups and dynamic schedules work", {
 
   parameters <- list(
     modelParameters = c(
-      list(feature_info = dataset$get_feature_info(), modelType = "RealMLP"),
+      list(feature_info = simDataset$get_feature_info(), modelType = "RealMLP"),
       settings$param[[1]]
     ),
     estimatorSettings = settings$estimatorSettings
@@ -410,14 +410,14 @@ test_that("RealMLP optimizer parameter groups and dynamic schedules work", {
 })
 
 test_that("Estimator tie-breaking chooses the last best epoch", {
-  estimatorModule <- reticulate::import_from_path("Estimator", path = path)
+  estimatorModule <- importModule("Estimator")
   expect_equal(estimatorModule$select_best_epoch(list(0.1, 0.5, 0.5), "max"), 2L)
   expect_equal(estimatorModule$select_best_epoch(list(0.2, 0.1, 0.1), "min"), 2L)
 })
 
 test_that("RealMLP wide path composes logits as wide + alpha * deep", {
-  realMlp <- reticulate::import_from_path("RealMLP", path = path)$RealMLP
-  featureInfo <- dataset$get_feature_info()
+  realMlp <- importModule("RealMLP")$RealMLP
+  featureInfo <- simDataset$get_feature_info()
 
   modelWide <- realMlp(
     feature_info = featureInfo,
@@ -468,9 +468,9 @@ test_that("RealMLP wide path composes logits as wide + alpha * deep", {
 })
 
 test_that("RealMLP wide L1 regularization excludes padding row", {
-  realMlp <- reticulate::import_from_path("RealMLP", path = path)$RealMLP
+  realMlp <- importModule("RealMLP")$RealMLP
   model <- realMlp(
-    feature_info = dataset$get_feature_info(),
+    feature_info = simDataset$get_feature_info(),
     size_embedding = 8L,
     size_hidden = 16L,
     num_layers = 1L,
@@ -495,7 +495,7 @@ test_that("RealMLP wide L1 regularization excludes padding row", {
 })
 
 test_that("RealMLP wide initialization loads coefficients from csv", {
-  realMlp <- reticulate::import_from_path("RealMLP", path = path)$RealMLP
+  realMlp <- importModule("RealMLP")$RealMLP
   initCsv <- tempfile(fileext = ".csv")
   writeLines(
     c(
@@ -508,7 +508,7 @@ test_that("RealMLP wide initialization loads coefficients from csv", {
   )
 
   model <- realMlp(
-    feature_info = dataset$get_feature_info(),
+    feature_info = simDataset$get_feature_info(),
     size_embedding = 8L,
     size_hidden = 16L,
     num_layers = 1L,

@@ -2,30 +2,8 @@
 # trip: runPlp(), savePlpModel(), loadPlpModel() and predictPlp(). Simulated
 # data keeps this offline; it needs Python but no database.
 
-simulatedPlpData <- function(n = 400) {
-  profileEnv <- new.env()
-  utils::data("simulationProfile", package = "PatientLevelPrediction", envir = profileEnv)
-  plpData <- PatientLevelPrediction::simulatePlpData(
-    profileEnv$simulationProfile, n = n, seed = 42
-  )
-  # simulatePlpData() leaves out analysisRef: gender, age, conditions and
-  # drugs, of which only age is continuous
-  plpData$covariateData$analysisRef <- data.frame(
-    analysisId = c(1, 2, 102, 402),
-    isBinary = c("Y", "N", "Y", "Y"),
-    missingMeansZero = c(NA, "Y", NA, NA)
-  )
-  plpData
-}
-
 quickEstimator <- function() {
   setEstimator(learningRate = 1e-3, batchSize = 64, epochs = 1, seed = 42, device = "cpu")
-}
-
-roundTripPopulationSettings <- function() {
-  PatientLevelPrediction::createStudyPopulationSettings(
-    riskWindowEnd = 90, minTimeAtRisk = 89
-  )
 }
 
 # Fits with runPlp(), saves and loads the model, and returns the predictions
@@ -36,7 +14,7 @@ roundTrip <- function(plpData, modelSettings, directory, analysisId) {
     plpData = plpData,
     outcomeId = 3,
     analysisId = analysisId,
-    populationSettings = roundTripPopulationSettings(),
+    populationSettings = simulatedPopulationSettings(),
     splitSettings = PatientLevelPrediction::createDefaultSplitSetting(
       splitSeed = 42, nfold = 2
     ),
@@ -50,7 +28,7 @@ roundTrip <- function(plpData, modelSettings, directory, analysisId) {
   PatientLevelPrediction::savePlpModel(result$model, modelPath)
   loaded <- PatientLevelPrediction::loadPlpModel(modelPath)
   population <- PatientLevelPrediction::createStudyPopulation(
-    plpData, outcomeId = 3, populationSettings = roundTripPopulationSettings()
+    plpData, outcomeId = 3, populationSettings = simulatedPopulationSettings()
   )
   list(
     modelPath = modelPath,
@@ -74,7 +52,7 @@ expectSamePredictions <- function(predictions) {
 
 test_that("each model predicts the same after saving and loading", {
   skip_if_no_python()
-  plpData <- simulatedPlpData()
+  plpData <- simulatedPlpData(n = 400)
   directory <- withr::local_tempdir()
   realMlp <- setRealMLP(numLayers = 1, sizeHidden = 8, dropout = 0, sizeEmbedding = 8)
   realMlp$estimatorSettings$epochs <- 1L
@@ -103,7 +81,7 @@ test_that("each model predicts the same after saving and loading", {
 
 test_that("custom embedding models predict the same after saving and loading", {
   skip_if_no_python()
-  plpData <- simulatedPlpData()
+  plpData <- simulatedPlpData(n = 400)
   directory <- withr::local_tempdir()
 
   # condition concepts get a vector from the embeddings file, which must still
@@ -129,7 +107,7 @@ test_that("custom embedding models predict the same after saving and loading", {
 
 test_that("fine-tuned models predict the same after saving and loading", {
   skip_if_no_python()
-  plpData <- simulatedPlpData()
+  plpData <- simulatedPlpData(n = 400)
   directory <- withr::local_tempdir()
   base <- roundTrip(
     plpData,
