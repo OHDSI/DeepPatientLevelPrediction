@@ -438,10 +438,6 @@ class Estimator:
         if hasattr(self.model, "set_dropout"):
             self.model.set_dropout(self.base_dropout * drop_scale)
 
-    # backwards compatibility for tests and existing external code
-    def _apply_realmlp_step_hparams(self):
-        self._apply_step_hparams()
-
     def _maybe_run_data_dependent_init(self, dataloader):
         if (
             not self.has_data_dependent_init
@@ -477,10 +473,6 @@ class Estimator:
         with torch.no_grad():
             self.model.data_dependent_init(sampled_batches, **accepted_kwargs)
         self.data_dependent_init_done = True
-
-    # backwards compatibility for tests and existing external code
-    def _maybe_run_realmlp_data_dependent_init(self, dataloader):
-        self._maybe_run_data_dependent_init(dataloader)
 
     def _maybe_init_output_bias(self, dataset):
         """Start the output bias at the log-odds of the outcome rate of ``dataset``.
