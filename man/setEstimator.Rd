@@ -48,8 +48,9 @@ training begins.}
 \item{criterion}{PyTorch loss constructor. Evaluation is delayed until
 training begins.}
 
-\item{earlyStopping}{Early-stopping settings, or \code{NULL} to disable early
-stopping.}
+\item{earlyStopping}{Early-stopping settings: a list with
+\code{useEarlyStopping} and the \code{params} \code{patience}, \code{delta} and \code{min_epochs}.
+\code{NULL} or \code{useEarlyStopping = FALSE} disable early stopping.}
 
 \item{compile}{Whether to compile the PyTorch model before training.}
 

@@ -36,8 +36,9 @@
 #'   training begins.
 #' @param criterion PyTorch loss constructor. Evaluation is delayed until
 #'   training begins.
-#' @param earlyStopping Early-stopping settings, or `NULL` to disable early
-#'   stopping.
+#' @param earlyStopping Early-stopping settings: a list with
+#'   `useEarlyStopping` and the `params` `patience`, `delta` and `min_epochs`.
+#'   `NULL` or `useEarlyStopping = FALSE` disable early stopping.
 #' @param compile Whether to compile the PyTorch model before training.
 #' @param metric Either `"auc"`, `"loss"`, or a list defining a custom metric.
 #'   A custom metric list must contain `fun`, `mode`, and `name`.
