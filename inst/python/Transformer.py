@@ -8,7 +8,6 @@ import torch.nn.functional as F
 from torch import nn
 
 from Embeddings import ClassToken, Embedding
-from PositionalEncodings import EfficientRPE
 from Dataset import FeatureInfo
 from PositionalEncodings import PositionalEncoding, NoPositionalEncoding
 
