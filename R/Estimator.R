@@ -400,7 +400,9 @@ fitEstimator <- function(
       )$preprocessSettings,
       modelSettings = modelSettings,
       splitSettings = attr(trainData, "metaData")$splitSettings,
-      sampleSettings = attr(trainData, "metaData")$sampleSettings
+      sampleSettings = attr(trainData, "metaData")$sampleSettings,
+      hyperparameterSettings = hyperparameterSettings %||%
+        PatientLevelPrediction::createHyperparameterSettings()
     ),
     trainDetails = list(
       analysisId = analysisId,

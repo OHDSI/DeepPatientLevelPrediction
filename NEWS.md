@@ -47,6 +47,7 @@ Bug fixes
 - Use the slopes of the ALiBi paper in `ALiBiPE`. A wrong formula gave other slopes for every number of heads but 4, for example 2^-3 to 2^-24 instead of 2^-1 to 2^-8 for 8 heads, and numbers of heads that are not a power of two failed. Saved models keep the slopes they were trained with.
 - Build `ResLayer` without dropout, which failed in `forward`.
 - Let the learning rate finder use the model's own loss and label smoothing, as training does. It failed for RealMLP in paper mode, which has two outputs.
+- Record the hyperparameter settings given to `fitEstimator()` in the model design, instead of PatientLevelPrediction's defaults.
 
 Removed
 - Remove settings that no function of the package sets, and that could only be reached by editing the model or estimator settings by hand. Models fitted with the package's own settings train and predict exactly as before.
