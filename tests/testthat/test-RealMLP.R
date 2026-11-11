@@ -17,26 +17,28 @@ test_that("setRealMLP settings are created correctly", {
   expect_s3_class(settings, "modelSettings")
   expect_equal(settings$modelType, "RealMLP")
   expect_equal(settings$fitFunction, "DeepPatientLevelPrediction::fitEstimator")
-  expect_equal(settings$estimatorSettings$beta2, 0.95)
-  expect_equal(settings$estimatorSettings$eps, 1e-8)
+  # the paper's training settings are the default estimator settings
+  expect_equal(settings$estimatorSettings$learningRate, 2e-3)
+  expect_equal(settings$estimatorSettings$weightDecay, 0.02)
+  expect_equal(settings$estimatorSettings$batchSize, 256L)
+  expect_equal(settings$estimatorSettings$epochs, 256L)
   expect_equal(settings$estimatorSettings$metric, "loss")
-  expect_equal(settings$estimatorSettings$lrSchedule, "coslog4")
-  expect_equal(settings$estimatorSettings$dropoutSchedule, "flat_cos")
-  expect_equal(settings$estimatorSettings$weightDecaySchedule, "flat_cos")
-  expect_equal(settings$estimatorSettings$scalingLrMult, 6.0)
-  expect_equal(settings$estimatorSettings$biasLrMult, 0.1)
-  expect_equal(settings$estimatorSettings$actLrMult, 0.1)
-  expect_equal(settings$estimatorSettings$embeddingLrMult, 0.1)
-  expect_equal(settings$estimatorSettings$biasWdFactor, 0.0)
-  expect_true(settings$estimatorSettings$dataDependentInit)
-  expect_equal(settings$estimatorSettings$dataDependentInitBatches, 8L)
-  expect_equal(settings$estimatorSettings$dataDependentInitMode, "paper_lsuv")
-  expect_equal(settings$estimatorSettings$dataDependentInitTargetVar, 1.0)
-  expect_equal(settings$estimatorSettings$dataDependentInitMaxRows, 65536L)
-  expect_equal(settings$estimatorSettings$dataDependentInitGainClip, 10.0)
-  expect_equal(settings$estimatorSettings$dataDependentInitBiasMode, "he5")
-  expect_equal(settings$estimatorSettings$dataDependentInitBiasScale, 1.0)
-  expect_equal(settings$estimatorSettings$dataDependentInitBiasRefitSteps, 2L)
+  expect_null(settings$estimatorSettings$earlyStopping)
+  # RealMLP's own training settings are model parameters
+  for (name in c("beta2", "eps", "labelSmoothing", "lrSchedule", "scalingLrMult",
+                 "dataDependentInit", "dataDependentInitMode")) {
+    expect_null(settings$estimatorSettings[[name]])
+  }
+  expect_equal(settings$param[[1]]$labelSmoothing, 0.05)
+  expect_equal(settings$param[[1]]$scalingLrMult, 6.0)
+  expect_equal(settings$param[[1]]$biasLrMult, 0.1)
+  expect_equal(settings$param[[1]]$actLrMult, 0.1)
+  expect_equal(settings$param[[1]]$embeddingLrMult, 0.1)
+  expect_equal(settings$param[[1]]$dataDependentInitMode, "paper_lsuv")
+  expect_equal(settings$param[[1]]$dataDependentInitTargetVar, 1.0)
+  expect_equal(settings$param[[1]]$dataDependentInitMaxRows, 65536L)
+  expect_equal(settings$param[[1]]$dataDependentInitGainClip, 10.0)
+  expect_equal(settings$param[[1]]$dataDependentInitBiasRefitSteps, 2L)
   expect_true(settings$param[[1]]$paperMode)
   expect_equal(settings$param[[1]]$numericEmbeddingMode, "pbld")
   expect_equal(settings$param[[1]]$numericNumFrequencies, 6L)
@@ -65,9 +67,9 @@ test_that("setRealMLP expands vector parameters into grid combinations", {
   expect_true(all(vapply(settings$param, function(x) length(x$sizeHidden), integer(1)) == 1L))
   expect_true(all(vapply(settings$param, function(x) length(x$dropout), integer(1)) == 1L))
   expect_true(all(vapply(settings$param, function(x) length(x$numericEmbeddingMode), integer(1)) == 1L))
-  expect_true(all(vapply(settings$param, function(x) length(x$estimator.labelSmoothing), integer(1)) == 1L))
+  expect_true(all(vapply(settings$param, function(x) length(x$labelSmoothing), integer(1)) == 1L))
   expect_setequal(
-    vapply(settings$param, function(x) x$estimator.labelSmoothing, numeric(1)),
+    vapply(settings$param, function(x) x$labelSmoothing, numeric(1)),
     c(0, 0.1)
   )
   expect_false(any(vapply(settings$param, function(x) x$tokenAggregation == "auto", logical(1))))
@@ -248,7 +250,8 @@ test_that("RealMLP paper mode uses CE-compatible outputs and probabilities", {
     size_hidden = 16L,
     num_layers = 1L,
     dropout = 0.1,
-    paper_mode = TRUE
+    paper_mode = TRUE,
+    label_smoothing = 0.1
   )
 
   vocab_size <- as.integer(
@@ -262,8 +265,12 @@ test_that("RealMLP paper mode uses CE-compatible outputs and probabilities", {
   expect_equal(as.integer(reticulate::py_to_r(logits$size(1L))), 2L)
 
   targets <- torch$tensor(c(0, 1, 1, 0, 1, 0, 0, 1), dtype = torch$float32)
-  loss <- model$compute_loss(logits, targets, criterion = NULL, label_smoothing = 0.1)
+  loss <- model$compute_loss(logits, targets, criterion = NULL)
   expect_gt(as.numeric(loss$item()), 0.0)
+  # the loss uses the model's label smoothing
+  model$label_smoothing <- 0.0
+  unsmoothed <- model$compute_loss(logits, targets, criterion = NULL)
+  expect_false(isTRUE(all.equal(as.numeric(loss$item()), as.numeric(unsmoothed$item()))))
 
   probs <- model$predict_proba_from_output(logits)
   expect_equal(as.integer(reticulate::py_to_r(probs$size(0L))), 8L)
@@ -397,8 +404,8 @@ test_that("RealMLP optimizer parameter groups and dynamic schedules work", {
   expect_true("bias" %in% groupNames)
   expect_true("act" %in% groupNames)
   expect_true(any(wdFactors == 0.0))
-  expect_true(any(lrFactors == settings$estimatorSettings$scalingLrMult))
-  expect_true(any(lrFactors == settings$estimatorSettings$embeddingLrMult))
+  expect_true(any(lrFactors == settings$param[[1]]$scalingLrMult))
+  expect_true(any(lrFactors == settings$param[[1]]$embeddingLrMult))
   expect_equal(
     reticulate::py_to_r(estimator$model$numeric_embedding_mode),
     "pbld"
@@ -415,20 +422,45 @@ test_that("RealMLP optimizer parameter groups and dynamic schedules work", {
   expect_false(isTRUE(all.equal(lr0, lr1)))
 })
 
-test_that("RealMLP passes its beta2 setting to the optimizer", {
+test_that("RealMLP passes its optimizer options to an optimizer that takes them", {
   skip_if_no_python()
-  settings <- setRealMLP(sizeHidden = 4L, numLayers = 1L, sizeEmbedding = 4L)
-  parameters <- settings$param[[1]]
-  parameters$modelType <- settings$modelType
-  parameters$feature_info <- mappedFeatureInfo()
-  estimator <- createEstimator(list(
-    modelParameters = parameters,
-    estimatorSettings = settings$estimatorSettings
-  ))
-  expect_equal(estimator$beta2, settings$estimatorSettings$beta2)
-  for (group in estimator$optimizer$param_groups) {
-    expect_equal(group$betas[[2]], settings$estimatorSettings$beta2)
+  realMlpEstimator <- function(optimizer = NULL) {
+    settings <- setRealMLP(sizeHidden = 4L, numLayers = 1L, sizeEmbedding = 4L)
+    if (!is.null(optimizer)) {
+      settings$estimatorSettings$optimizer <- optimizer
+    }
+    parameters <- settings$param[[1]]
+    parameters$modelType <- settings$modelType
+    parameters$feature_info <- mappedFeatureInfo()
+    createEstimator(list(
+      modelParameters = parameters,
+      estimatorSettings = settings$estimatorSettings
+    ))
   }
+  estimator <- realMlpEstimator()
+  for (group in estimator$optimizer$param_groups) {
+    expect_equal(group$betas[[2]], 0.95)
+    expect_equal(group$eps, 1e-8)
+  }
+  # SGD has no betas or eps, so they are left out with a warning
+  estimator <- realMlpEstimator(torch$optim$SGD)
+  expect_s3_class(estimator$optimizer, "torch.optim.sgd.SGD")
+  py <- reticulate::py_run_string("
+import warnings
+
+def caught_warnings(fun, *args):
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter('always')
+        result = fun(*args)
+    return result, [str(warning.message) for warning in caught]
+")
+  result <- py$caught_warnings(estimator$`_accepted_optimizer_options`, torch$optim$SGD)
+  expect_length(result[[1]], 0)
+  expect_match(
+    result[[2]][[1]],
+    "SGD does not take the option(s) betas, eps of RealMLP, which are ignored",
+    fixed = TRUE
+  )
 })
 
 test_that("RealMLP mean aggregation ignores padding", {

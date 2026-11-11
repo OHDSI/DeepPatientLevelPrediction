@@ -152,46 +152,36 @@ setRealMLP <- function(
     optimizer = torch$optim$AdamW,
     # the learning rate follows RealMLP's own schedule
     scheduler = NULL,
-    criterion = torch$nn$BCEWithLogitsLoss, # logits + label smoothing inside Estimator
+    # RealMLP computes its own loss, with label smoothing
+    criterion = torch$nn$BCEWithLogitsLoss,
     earlyStopping = NULL, # train full and pick best
     compile = FALSE,
     metric = "loss",
     seed = NULL,
     trainValidationSplit = FALSE
   )
-  # RealMLP-specific knobs passed through estimatorSettings
-  est$beta2 <- 0.95
-  est$eps <- 1e-8
-  est$labelSmoothing <- labelSmoothing
-  est$lrSchedule <- "coslog4"
-  est$dropoutSchedule <- "flat_cos"
-  est$weightDecaySchedule <- "flat_cos"
-  est$scalingLrMult <- scalingLrMult
-  est$biasLrMult <- biasLrMult
-  est$actLrMult <- actLrMult
-  est$embeddingLrMult <- embeddingLrMult
-  est$biasWdFactor <- 0.0
-  est$dataDependentInit <- TRUE
-  est$dataDependentInitBatches <- 8L
-  est$dataDependentInitMode <- dataDependentInitMode
-  est$dataDependentInitTargetVar <- dataDependentInitTargetVar
-  est$dataDependentInitMaxRows <- as.integer(dataDependentInitMaxRows)
-  est$dataDependentInitGainClip <- dataDependentInitGainClip
-  est$dataDependentInitBiasMode <- "he5"
-  est$dataDependentInitBiasScale <- 1.0
-  est$dataDependentInitBiasRefitSteps <- as.integer(dataDependentInitBiasRefitSteps)
-  est$paramsToTune <- extractParamsToTune(est)
 
+  # RealMLP's own training settings are model parameters, which RealMLP reads
   paramGrid <- list(
     numLayers = as.integer(numLayers),
     sizeHidden = as.integer(sizeHidden),
     dropout = dropout,
     sizeEmbedding = as.integer(sizeEmbedding),
+    labelSmoothing = labelSmoothing,
     numericEmbeddingMode = numericEmbeddingMode,
     numericNumFrequencies = as.integer(numericNumFrequencies),
     numericPeriodicInitStd = numericPeriodicInitStd,
     numericPbldHiddenDim = as.integer(numericPbldHiddenDim),
     numericPbldEmbeddingDim = as.integer(numericPbldEmbeddingDim),
+    dataDependentInitMode = dataDependentInitMode,
+    dataDependentInitTargetVar = dataDependentInitTargetVar,
+    dataDependentInitMaxRows = as.integer(dataDependentInitMaxRows),
+    dataDependentInitGainClip = dataDependentInitGainClip,
+    dataDependentInitBiasRefitSteps = as.integer(dataDependentInitBiasRefitSteps),
+    scalingLrMult = scalingLrMult,
+    biasLrMult = biasLrMult,
+    actLrMult = actLrMult,
+    embeddingLrMult = embeddingLrMult,
     paperMode = paperMode,
     tokenAggregation = tokenAggregation,
     featureScaleMode = featureScaleMode
@@ -242,10 +232,13 @@ setRealMLP <- function(
     saveType = "file",
     modelParamNames = c(
       "numLayers", "sizeHidden", "dropout", "sizeEmbedding",
-      "numericEmbeddingMode", "numericNumFrequencies",
+      "labelSmoothing", "numericEmbeddingMode", "numericNumFrequencies",
       "numericPeriodicInitStd", "numericPbldHiddenDim",
-      "numericPbldEmbeddingDim", "paperMode", "tokenAggregation",
-      "featureScaleMode"
+      "numericPbldEmbeddingDim", "dataDependentInitMode",
+      "dataDependentInitTargetVar", "dataDependentInitMaxRows",
+      "dataDependentInitGainClip", "dataDependentInitBiasRefitSteps",
+      "scalingLrMult", "biasLrMult", "actLrMult", "embeddingLrMult",
+      "paperMode", "tokenAggregation", "featureScaleMode"
     ),
     modelType = "RealMLP"
   )

@@ -624,7 +624,7 @@ class WrappedHeadModel(nn.Module):
         return self.head.linear(x['feature_values']).squeeze(-1)
 
 class CustomLossModel(HeadModel):
-    def compute_loss(self, predictions, targets, criterion, label_smoothing=0.0):
+    def compute_loss(self, predictions, targets, criterion):
         return criterion(predictions.squeeze(), targets.float())
 
 class LabelledData(ToyData):
@@ -661,11 +661,6 @@ test_that("the output bias starts at the outcome rate of the training data", {
     torch$utils$data$Subset(data, indices = 4:7)
   )
   expect_equal(asNumeric(estimator$model$head$bias), qlogis(1 / 4), tolerance = 1e-6)
-
-  # the loss sees smoothed labels, so their rate is used
-  estimator <- py$bias_estimator(Estimator, py$HeadModel, label_smoothing = 0.1)
-  estimator$fit_whole_training_set(data, list(0))
-  expect_equal(asNumeric(estimator$model$head$bias), qlogis(2 / 8 * 0.9 + 0.05), tolerance = 1e-6)
 
   # transformer heads keep their linear layer in head.linear
   estimator <- py$bias_estimator(Estimator, py$WrappedHeadModel)
