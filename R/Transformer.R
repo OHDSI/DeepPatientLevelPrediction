@@ -189,13 +189,15 @@ setTransformer <- function(numBlocks = 3,
 
   checkIsClass(randomSampleSeed, c("numeric", "integer", "NULL"))
 
-  if (any(with(
-    expand.grid(dimToken = dimToken, numHeads = numHeads),
-    dimToken %% numHeads != 0
-  ))) {
-    stop(paste(
-      "dimToken needs to divisible by numHeads. dimToken =", dimToken,
-      "is not divisible by numHeads =", numHeads
+  combinations <- expand.grid(dimToken = dimToken, numHeads = numHeads)
+  notDivisible <- combinations[combinations$dimToken %% combinations$numHeads != 0, ]
+  if (nrow(notDivisible) > 0) {
+    stop(paste0(
+      "dimToken needs to be divisible by numHeads, which it is not for ",
+      paste0(
+        "dimToken = ", notDivisible$dimToken, " and numHeads = ", notDivisible$numHeads,
+        collapse = "; "
+      )
     ))
   }
 

@@ -275,6 +275,9 @@ fitEstimator <- function(
     hyperparameterSettings = NULL,
     ...) {
   start <- Sys.time()
+  if (!inherits(trainData$covariateData, "CovariateData")) {
+    stop("trainData$covariateData must be a CovariateData object")
+  }
   warnIgnoredSearchSettings(hyperparameterSettings)
   if (!is.null(trainData$folds)) {
     trainData$labels <- merge(trainData$labels, trainData$fold, by = "rowId")
