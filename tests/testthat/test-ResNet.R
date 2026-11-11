@@ -1,5 +1,3 @@
-skip_if_no_integration()
-
 resSet <- setResNet(
   numLayers = 2,
   sizeHidden = 32,
@@ -39,40 +37,45 @@ test_that("setResNet works", {
                          randomSample = 2))
 })
 
-sink(nullfile())
-res2 <- tryCatch(
-  {
-    PatientLevelPrediction::runPlp(
-      plpData = plpData,
-      outcomeId = 3,
-      modelSettings = resSet,
-      analysisId = "Analysis_ResNet",
-      analysisName = "Testing Deep Learning",
-      populationSettings = populationSet,
-      splitSettings = PatientLevelPrediction::createDefaultSplitSetting(),
-      sampleSettings = PatientLevelPrediction::createSampleSettings(),
-      featureEngineeringSettings =
-        PatientLevelPrediction::createFeatureEngineeringSettings(),
-      preprocessSettings = PatientLevelPrediction::createPreprocessSettings(),
-      executeSettings = PatientLevelPrediction::createExecuteSettings(
-        runSplitData = TRUE,
-        runSampleData = FALSE,
-        runFeatureEngineering = FALSE,
-        runPreprocessData = TRUE,
-        runModelDevelopment = TRUE,
-        runCovariateSummary = FALSE
-      ),
-      saveDirectory = file.path(testLoc, "ResNet")
-    )
-  },
-  error = function(e) {
-    print(e)
-    return(NULL)
-  }
-)
-sink()
+# fitted on Eunomia when an integration test first uses it
+delayedAssign("res2", {
+  sink(nullfile())
+  result <- tryCatch(
+    {
+      PatientLevelPrediction::runPlp(
+        plpData = plpData,
+        outcomeId = 3,
+        modelSettings = resSet,
+        analysisId = "Analysis_ResNet",
+        analysisName = "Testing Deep Learning",
+        populationSettings = populationSet,
+        splitSettings = PatientLevelPrediction::createDefaultSplitSetting(),
+        sampleSettings = PatientLevelPrediction::createSampleSettings(),
+        featureEngineeringSettings =
+          PatientLevelPrediction::createFeatureEngineeringSettings(),
+        preprocessSettings = PatientLevelPrediction::createPreprocessSettings(),
+        executeSettings = PatientLevelPrediction::createExecuteSettings(
+          runSplitData = TRUE,
+          runSampleData = FALSE,
+          runFeatureEngineering = FALSE,
+          runPreprocessData = TRUE,
+          runModelDevelopment = TRUE,
+          runCovariateSummary = FALSE
+        ),
+        saveDirectory = file.path(tempdir(), "ResNet")
+      )
+    },
+    error = function(e) {
+      print(e)
+      return(NULL)
+    }
+  )
+  sink()
+  result
+})
 
 test_that("ResNet with runPlp working checks", {
+  skip_if_no_integration()
   expect_false(is.null(res2))
 
   # check structure
@@ -94,59 +97,44 @@ test_that("ResNet with runPlp working checks", {
 
 
 test_that("ResNet nn-module works ", {
-  pl <- reticulate::import("polars")
-  resNet <- reticulate::import_from_path("ResNet", path = path)$ResNet
-  featureInfo <- reticulate::import_from_path("Dataset", path = path)$FeatureInfo
-  dataRef <- mappedData$covariateRef %>% dplyr::filter(.data$columnId <= 5) %>% dplyr::collect()
-  analysisRef <- mappedData$analysisRef %>% dplyr::collect()
-  dataRef <- dataRef %>% dplyr::left_join(analysisRef, by = "analysisId")
-  dataRef <- r_to_py(dataRef)
-  model <- resNet(
-    feature_info = featureInfo(data_reference = dataRef),
-    size_embedding = 5,
-    size_hidden = 16,
-    num_layers = 1,
-    hidden_factor = 2,
-    activation = torch$nn$ReLU,
-    normalization = torch$nn$BatchNorm1d,
-    hidden_dropout = 0.3,
-    residual_dropout = 0.3
-  )
+  skip_if_no_python()
+  resNet <- importModule("ResNet")$ResNet
+  newModel <- function(featureInfo) {
+    resNet(
+      feature_info = featureInfo,
+      size_embedding = 5,
+      size_hidden = 16,
+      num_layers = 1,
+      hidden_factor = 2,
+      activation = torch$nn$ReLU,
+      normalization = torch$nn$BatchNorm1d,
+      hidden_dropout = 0.3,
+      residual_dropout = 0.3
+    )
+  }
+  # one numeric and four binary features
+  model <- newModel(mappedFeatureInfo(
+    covariateIds = 1:5 + 100, conceptIds = 1:5 + 1000,
+    isBinary = c("N", "Y", "Y", "Y", "Y")
+  ))
 
   pars <- sum(reticulate::iterate(model$parameters(), function(x) x$numel()))
 
   # expected number of parameters
-  expect_equal(pars, 1299)
+  expect_equal(pars, 1294)
 
   input <- list()
   input[["feature_ids"]] <- torch$randint(1L, 5L, c(10L, 5L), dtype = torch$long)
   input[["feature_values"]] <- torch$randn(10L, 5L, dtype = torch$float32)
 
-
   output <- model(input)
 
   # output is correct shape
   expect_equal(output$shape[0], 10L)
-  
-  dataRef <- mappedData$covariateRef %>% dplyr::filter(.data$columnId <= 7,
-  .data$columnId > 2) %>% 
-    dplyr::collect()
-  dataRef <- dataRef %>% dplyr::left_join(analysisRef, by = "analysisId")
-  dataRef <- r_to_py(dataRef)
-  featureInfo <- featureInfo(data_reference = dataRef)
 
-
-  model <- resNet(
-    feature_info = featureInfo,
-    size_embedding = 5,
-    size_hidden = 16,
-    num_layers = 1,
-    hidden_factor = 2,
-    activation = torch$nn$ReLU,
-    normalization = torch$nn$BatchNorm1d,
-    hidden_dropout = 0.3,
-    residual_dropout = 0.3
-  )
+  model <- newModel(mappedFeatureInfo(
+    covariateIds = 1:5 + 100, conceptIds = 1:5 + 1000, isBinary = rep("Y", 5)
+  ))
   output <- model(input)
   # model works without numeric variables
   expect_equal(output$shape[0], 10L)
@@ -186,7 +174,9 @@ test_that("Can upload results to database", {
   skip_if_not_installed("DatabaseConnector")
   skip_if_not_installed("ResultModelManager")
   skip_if_not_installed("RSQLite")
-  skip_if_offline()
+  skip_if_no_integration()
+  # writes the results that are uploaded
+  force(res2)
 
   cohortDefinitions <- data.frame(
     cohortName = c("blank1"),
@@ -196,7 +186,7 @@ test_that("Can upload results to database", {
 
   sink(nullfile())
   sqliteFile <-
-    PatientLevelPrediction::insertResultsToSqlite(resultLocation = file.path(testLoc, "ResNet"),
+    PatientLevelPrediction::insertResultsToSqlite(resultLocation = file.path(tempdir(), "ResNet"),
                           cohortDefinitions = cohortDefinitions)
   sink()
 
