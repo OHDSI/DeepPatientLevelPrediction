@@ -1,0 +1,42 @@
+"covariateId","columnId","covariateName","analysisId","conceptId","valueAsConceptId","isBinary","missingMeansZero","included","covariateValue"
+1002,1,"age in years",2,0,NA,"N","Y",1,0
+8507001,2,"gender = MALE",1,8507,NA,"Y",NA,1,0
+8532001,3,"gender = FEMALE",1,8532,NA,"Y",NA,1,0
+28060102,4,"condition_occurrence during day -365 through 0 days relative to index: Streptococcal sore throat",102,28060,NA,"Y",NA,1,0
+30753102,5,"condition_occurrence during day -365 through 0 days relative to index: Esophagitis",102,30753,NA,"Y",NA,1,0
+78272102,6,"condition_occurrence during day -365 through 0 days relative to index: Sprain of wrist",102,78272,NA,"Y",NA,1,0
+80180102,7,"condition_occurrence during day -365 through 0 days relative to index: Osteoarthritis",102,80180,NA,"Y",NA,1,0
+81151102,8,"condition_occurrence during day -365 through 0 days relative to index: Sprain of ankle",102,81151,NA,"Y",NA,1,0
+81893102,9,"condition_occurrence during day -365 through 0 days relative to index: Ulcerative colitis",102,81893,NA,"Y",NA,1,0
+195588102,10,"condition_occurrence during day -365 through 0 days relative to index: Cystitis",102,195588,NA,"Y",NA,1,0
+198199102,11,"condition_occurrence during day -365 through 0 days relative to index: Pyelonephritis",102,198199,NA,"Y",NA,1,0
+257012102,12,"condition_occurrence during day -365 through 0 days relative to index: Chronic sinusitis",102,257012,NA,"Y",NA,1,0
+260139102,13,"condition_occurrence during day -365 through 0 days relative to index: Acute bronchitis",102,260139,NA,"Y",NA,1,0
+317576102,14,"condition_occurrence during day -365 through 0 days relative to index: Coronary arteriosclerosis",102,317576,NA,"Y",NA,1,0
+378001102,15,"condition_occurrence during day -365 through 0 days relative to index: Concussion with no loss of consciousness",102,378001,NA,"Y",NA,1,0
+439777102,16,"condition_occurrence during day -365 through 0 days relative to index: Anemia",102,439777,NA,"Y",NA,1,0
+920293402,17,"drug_era during day -365 through 0 days relative to index: Nitrofurantoin",402,920293,NA,"Y",NA,1,0
+1110410402,18,"drug_era during day -365 through 0 days relative to index: Morphine",402,1110410,NA,"Y",NA,1,0
+1112807402,19,"drug_era during day -365 through 0 days relative to index: Aspirin",402,1112807,NA,"Y",NA,1,0
+1115008402,20,"drug_era during day -365 through 0 days relative to index: Naproxen",402,1115008,NA,"Y",NA,1,0
+1118084402,21,"drug_era during day -365 through 0 days relative to index: celecoxib",402,1118084,NA,"Y",NA,1,0
+1119510402,22,"drug_era during day -365 through 0 days relative to index: Dextromethorphan",402,1119510,NA,"Y",NA,1,0
+1125315402,23,"drug_era during day -365 through 0 days relative to index: Acetaminophen",402,1125315,NA,"Y",NA,1,0
+1137529402,24,"drug_era during day -365 through 0 days relative to index: salmeterol",402,1137529,NA,"Y",NA,1,0
+1322184402,25,"drug_era during day -365 through 0 days relative to index: clopidogrel",402,1322184,NA,"Y",NA,1,0
+1361711402,26,"drug_era during day -365 through 0 days relative to index: Nitroglycerin",402,1361711,NA,"Y",NA,1,0
+1713332402,27,"drug_era during day -365 through 0 days relative to index: Amoxicillin",402,1713332,NA,"Y",NA,1,0
+1729720402,28,"drug_era during day -365 through 0 days relative to index: Penicillin V",402,1729720,NA,"Y",NA,1,0
+1759842402,29,"drug_era during day -365 through 0 days relative to index: Clavulanate",402,1759842,NA,"Y",NA,1,0
+4112343102,30,"condition_occurrence during day -365 through 0 days relative to index: Acute viral pharyngitis",102,4112343,NA,"Y",NA,1,0
+4113008102,31,"condition_occurrence during day -365 through 0 days relative to index: Laceration of hand",102,4113008,NA,"Y",NA,1,0
+4116491102,32,"condition_occurrence during day -365 through 0 days relative to index: Escherichia coli urinary tract infection",102,4116491,NA,"Y",NA,1,0
+4134304102,33,"condition_occurrence during day -365 through 0 days relative to index: Fracture subluxation of wrist",102,4134304,NA,"Y",NA,1,0
+4152936102,34,"condition_occurrence during day -365 through 0 days relative to index: Laceration of thigh",102,4152936,NA,"Y",NA,1,0
+4218389102,35,"condition_occurrence during day -365 through 0 days relative to index: Whiplash injury to neck",102,4218389,NA,"Y",NA,1,0
+4266809102,36,"condition_occurrence during day -365 through 0 days relative to index: Diverticular disease",102,4266809,NA,"Y",NA,1,0
+4278672102,37,"condition_occurrence during day -365 through 0 days relative to index: Fracture of forearm",102,4278672,NA,"Y",NA,1,0
+4283893102,38,"condition_occurrence during day -365 through 0 days relative to index: Sinusitis",102,4283893,NA,"Y",NA,1,0
+4285898102,39,"condition_occurrence during day -365 through 0 days relative to index: Polyp of colon",102,4285898,NA,"Y",NA,1,0
+40479422102,40,"condition_occurrence during day -365 through 0 days relative to index: Injury of medial collateral ligament of knee",102,40479422,NA,"Y",NA,1,0
+40481087102,41,"condition_occurrence during day -365 through 0 days relative to index: Viral sinusitis",102,40481087,NA,"Y",NA,1,0

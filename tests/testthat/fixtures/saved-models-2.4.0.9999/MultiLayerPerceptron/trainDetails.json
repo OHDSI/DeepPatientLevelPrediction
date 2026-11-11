@@ -1,0 +1,44 @@
+{
+  "analysisId": "MultiLayerPerceptron",
+  "analysisSource": "",
+  "developmentDatabase": "CDM_NAME",
+  "developmentDatabaseSchema": "CDM_SCHEMA",
+  "attrition": {
+    "outcomeId": [3, 3, 3, 3],
+    "description": ["Simulated data", "Initial plpData cohort or population", "No prior outcome", "Removing non-outcome subjects with insufficient time at risk (if any)"],
+    "targetCount": [200, 200, 200, 200],
+    "uniquePeople": [200, 200, 200, 200],
+    "outcomes": [90, 90, 90, 90],
+    "attr_class": "data.frame",
+    "attr_row.names": [1, 2, 3, 4]
+  },
+  "trainingTime": "1.12760066986084 secs",
+  "trainingDate": "2026-11-11",
+  "modelName": "MultiLayerPerceptron",
+  "finalModelParameters": {
+    "numLayers": 1,
+    "sizeHidden": 8,
+    "dropout": 0,
+    "sizeEmbedding": 8,
+    "learnSchedule": {
+      "LRs": 0.001,
+      "bestEpoch": 0
+    }
+  },
+  "hyperParamSearch": {
+    "metric": ["AUC", "AUC", "AUC"],
+    "fold": ["CV", "1", "2"],
+    "value": [0.4429, 0.4566, 0.4275],
+    "numLayers": [1, 1, 1],
+    "sizeHidden": [8, 8, 8],
+    "dropout": [0, 0, 0],
+    "sizeEmbedding": [8, 8, 8],
+    "learnRates": [
+      0.001,
+      0.001,
+      0.001
+    ],
+    "attr_class": "data.frame",
+    "attr_row.names": [1, 2, 3]
+  }
+}
