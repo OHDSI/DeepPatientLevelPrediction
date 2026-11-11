@@ -23,7 +23,8 @@ jobs:
         config:
           - {os: windows-latest, r: 'release', python: '3.14', torch: '2.12.1'}
           - {os: macOS-latest, r: 'release', python: '3.14', torch: '2.12.1'}
-          - {os: ubuntu-24.04, r: 'release', python: '3.14', torch: '2.12.1', rspm: "https://packagemanager.rstudio.com/cran/__linux__/noble/latest"}
+          # coverage runs on one job only: it runs the whole suite a second time
+          - {os: ubuntu-24.04, r: 'release', python: '3.14', torch: '2.12.1', rspm: "https://packagemanager.rstudio.com/cran/__linux__/noble/latest", coverage: true}
           - {os: ubuntu-24.04, r: 'release', python: '3.14', torch: 'latest', rspm: "https://packagemanager.rstudio.com/cran/__linux__/noble/latest"}
           - {os: ubuntu-26.04, r: 'release', python: '3.14', torch: '2.12.1', rspm: "https://packagemanager.rstudio.com/cran/__linux__/resolute/latest"}
 
@@ -105,15 +106,30 @@ jobs:
           check-dir: '"check"'
 
       - name: Install covr
-        if: runner.os == 'Linux'
+        if: matrix.config.coverage
         run: |
           remotes::install_cran("covr")
         shell: Rscript {0}
 
       - name: Test coverage
-        if: runner.os == 'Linux'
+        if: matrix.config.coverage
         run: covr::codecov(token = "${{ secrets.CODECOV_TOKEN }}")
         shell: Rscript {0}
+
+      # covr cannot see the Python backend, which runs through reticulate
+      - name: Python test coverage
+        if: matrix.config.coverage
+        run: |
+          uv pip install coverage
+          Rscript .github/scripts/python-coverage.R
+
+      - name: Upload Python coverage
+        if: matrix.config.coverage
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage-python.xml
+          flags: python
 
       - name: Upload source package
         if: success() && runner.os == 'macOS' && github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
