@@ -86,7 +86,7 @@ checkIsClass <- function(parameter, classes) {
 #' @param value which value it should be higher than
 checkHigher <- function(parameter, value) {
   name <- deparse(substitute(parameter))
-  if (!is.numeric(parameter) || all(parameter <= value)) {
+  if (!is.numeric(parameter) || anyNA(parameter) || any(parameter <= value)) {
     ParallelLogger::logError(paste0(name, " needs to be > ", value))
     stop(paste0(name, " needs to be > ", value))
   }
@@ -99,9 +99,23 @@ checkHigher <- function(parameter, value) {
 #' @param value which value it should be higher or equal than
 checkHigherEqual <- function(parameter, value) {
   name <- deparse(substitute(parameter))
-  if (!is.numeric(parameter) || all(parameter < value)) {
+  if (!is.numeric(parameter) || anyNA(parameter) || any(parameter < value)) {
     ParallelLogger::logError(paste0(name, " needs to be >= ", value))
     stop(paste0(name, " needs to be >= ", value))
+  }
+  return(TRUE)
+}
+
+#' helper function to check that input is lower than a certain value
+#'
+#' @param parameter the input parameter to check, can be a vector
+#' @param value which value it should be lower than
+#' @noRd
+checkLower <- function(parameter, value) {
+  name <- deparse(substitute(parameter))
+  if (!is.numeric(parameter) || anyNA(parameter) || any(parameter >= value)) {
+    ParallelLogger::logError(paste0(name, " needs to be < ", value))
+    stop(paste0(name, " needs to be < ", value))
   }
   return(TRUE)
 }
@@ -118,14 +132,13 @@ checkFileExists <- function(file) {
 
 checkInStringVector <- function(parameter, values) {
   name <- deparse(substitute(parameter))
-  if (!parameter %in% values) {
-    ParallelLogger::logError(paste0(
-      name, " should be ",
-      paste0(as.character(values),
-        collapse = "or "
-      )
-    ))
-    stop(paste0(name, " has incorrect value"))
+  if (length(parameter) != 1 || !parameter %in% values) {
+    message <- paste0(
+      name, " has incorrect value. It must be one of: ",
+      paste0('"', values, '"', collapse = ", ")
+    )
+    ParallelLogger::logError(message)
+    stop(message)
   }
   return(TRUE)
 }

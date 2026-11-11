@@ -123,14 +123,17 @@ setResNet <- function(numLayers = c(1:8),
 
   checkIsClass(residualDropout, "numeric")
   checkHigherEqual(residualDropout, 0)
+  checkLower(residualDropout, 1)
 
   checkIsClass(hiddenDropout, "numeric")
   checkHigherEqual(hiddenDropout, 0)
+  checkLower(hiddenDropout, 1)
 
   checkIsClass(sizeEmbedding, c("integer", "numeric"))
   checkHigherEqual(sizeEmbedding, 1)
 
   checkIsClass(hyperParamSearch, "character")
+  checkInStringVector(hyperParamSearch, c("random", "grid"))
 
   checkIsClass(randomSample, c("numeric", "integer"))
   checkHigherEqual(randomSample, 1)
