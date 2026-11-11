@@ -88,6 +88,23 @@ test_that("LR finder works", {
   expect_false(results$trainDetails$finalModelParameters$learnSchedule$LRs == 3e-4)
 })
 
+test_that("RealMLP's final fit starts from the learning rate the finder chose", {
+  modelSettings <- setRealMLP(
+    numLayers = 1L, sizeHidden = 8L, sizeEmbedding = 8L,
+    estimatorSettings = setEstimator(
+      learningRate = "auto", epochs = 2L, batchSize = 128L, seed = 42L,
+      scheduler = NULL, earlyStopping = NULL, metric = "loss"
+    )
+  )
+  results <- fitEstimator(simTrainData$Train, modelSettings, 1, withr::local_tempdir())
+  learnSchedule <- results$trainDetails$finalModelParameters$learnSchedule
+  # RealMLP's recorded rates follow its schedule, so they differ from the base rate
+  expect_type(learnSchedule$baseLR, "double")
+  expect_false(isTRUE(all.equal(learnSchedule$baseLR, learnSchedule$LRs[[1]])))
+  expect_equal(nrow(results$prediction[results$prediction$evaluationType == "Train", ]),
+               nrow(simTrainData$Train$labels))
+})
+
 test_that("LR finder works with device specified by a function", {
   deviceFun <- function() {
     dev <- "cpu"

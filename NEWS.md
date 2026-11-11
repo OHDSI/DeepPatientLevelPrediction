@@ -5,6 +5,7 @@ New features
 - Add a `min_epochs` parameter to early stopping, so that training runs for at least that many epochs before it can stop early (#36).
 - Start the bias of the output layer at the log-odds of the outcome rate in the training data, controlled by `initOutputBias` in `setEstimator()` and on by default. Models with rare outcomes no longer spend their first epochs lowering all predictions to the outcome rate, which with few batches per epoch let early stopping end training before the model ranked patients. This removes most of the instability in ResNet learning curves. It applies to models with a single-logit linear `head`, and not to the learning rate search.
 - Add `gradClipNorm` and `deterministic` to `setEstimator()`. `gradClipNorm` limits the norm of the gradients at each optimizer step, and several values are tuned as hyperparameters. `deterministic` makes PyTorch use only deterministic algorithms, so that training on a GPU with the same seed and data gives the same model. Both could only be set by editing the estimator settings by hand, and deterministic training then stayed on for later fits in the same session.
+- `setRealMLP()` takes `estimatorSettings` like the other model settings, so RealMLP's learning rate, batch size, epochs, seed, early stopping, `gradClipNorm` and `deterministic` can be set and tuned. The default keeps the paper's training settings. A `scheduler` is ignored with a warning, because RealMLP follows its own learning rate schedule. `learningRate = "auto"` works too: the final model starts from the rate the learning rate finder chose, which is now recorded as `baseLR` in the learning schedule.
 - Add a `curvature` argument to `setCustomEmbeddingModel()` for Poincare embeddings trained in a ball whose curvature is not -1. HypLL, which OHDSI/context uses, applies softplus to its curvature parameter, so its default of 1, when not trained, is a curvature of about -1.313.
 
 Bug fixes
@@ -59,6 +60,9 @@ Removed
 - Move RealMLP's own training settings out of the estimator settings: label smoothing, the learning rate multipliers and the data-dependent initialization settings are model parameters, and the schedules, AdamW's `betas` and `eps` and the weight decay of biases belong to the RealMLP model. RealMLP trains as before. Estimator settings edited by hand to change them no longer have an effect.
 - Remove the retry of the optimizer without `betas` and `eps` when it failed. Options that a model gives the optimizer, such as RealMLP's `betas`, are now passed only to optimizers that take them, and the others give a warning.
 - Remove the second way that ResNet and the MLP pooled custom embeddings, which summed the tokens and divided by their number. They now take the mean of the tokens like the other models, so predictions of saved custom embedding models change only by rounding.
+
+Deprecated
+- The `device` argument of `setRealMLP()`. Use `estimatorSettings = setEstimator(device = )`.
 
 Runtime and compatibility
 - Require Python 3.11 or newer. Python 3.10 reached end-of-life in October 2026, and duckdb 2.0.0 requires Python 3.11.

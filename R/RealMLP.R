@@ -31,12 +31,19 @@
 #' @param paperMode if TRUE, enforce paper-aligned defaults where possible
 #' @param tokenAggregation token aggregation mode: "auto", "mean", "sum", "sum_len_norm"
 #' @param featureScaleMode feature scale mode: "auto", "scalar", "vector"
-#' @param device     "cpu" or "cuda" (default "cpu")
+#' @param estimatorSettings Estimator settings created by [setEstimator()].
+#'   The default trains as in the RealMLP paper: AdamW with learning rate
+#'   2e-3 and weight decay 0.02, batches of 256 and 256 epochs, keeping the
+#'   epoch with the lowest validation loss. RealMLP follows its own
+#'   learning-rate schedule, so a `scheduler` is ignored with a warning, and
+#'   its own loss, so `criterion` is not used. Early stopping is possible, but
+#'   the paper trains for all epochs.
 #' @param hyperParamSearch Which kind of hyperparameter search to use: random
 #' sampling or exhaustive grid search. Default: "grid"
 #' @param randomSample How many random samples from hyperparameter space to use
 #' when `hyperParamSearch = "random"`
 #' @param randomSampleSeed Random seed to sample hyperparameter combinations
+#' @param device Deprecated. Use `estimatorSettings = setEstimator(device = )`.
 #'
 #' @return A `modelSettings` object for use with `PatientLevelPrediction`.
 #'
@@ -73,10 +80,19 @@ setRealMLP <- function(
   paperMode = TRUE,
   tokenAggregation = "auto",
   featureScaleMode = "auto",
-  device = "cpu",
+  estimatorSettings = setEstimator(
+    learningRate = 2e-3,
+    weightDecay = 0.02,
+    batchSize = 256L,
+    epochs = 256L,
+    scheduler = NULL,
+    earlyStopping = NULL,
+    metric = "loss"
+  ),
   hyperParamSearch = "grid",
   randomSample = 100,
-  randomSampleSeed = NULL
+  randomSampleSeed = NULL,
+  device = NULL
 ) {
   checkIsClass(numLayers, c("integer", "numeric"))
   checkHigherEqual(numLayers, 1)
@@ -133,7 +149,25 @@ setRealMLP <- function(
   if (!all(featureScaleMode %in% c("auto", "scalar", "vector"))) {
     stop("featureScaleMode has incorrect value")
   }
-  checkIsClass(device, c("character", "function"))
+  if (!is.null(device)) {
+    warning(
+      "`device` is deprecated. Use `estimatorSettings = setEstimator(device = )`.",
+      call. = FALSE
+    )
+    checkIsClass(device, c("character", "function"))
+    estimatorSettings$device <- device
+    if (is.function(device)) {
+      class(estimatorSettings$device) <- c("delayed", class(device))
+    }
+  }
+  if (!isDelayedNull(estimatorSettings$scheduler)) {
+    warning(
+      "RealMLP follows its own learning-rate schedule, so the scheduler in ",
+      "`estimatorSettings` is ignored.",
+      call. = FALSE
+    )
+    estimatorSettings$scheduler <- delaySetting(rlang::quo(NULL))
+  }
 
   checkIsClass(hyperParamSearch, "character")
   checkInStringVector(hyperParamSearch, c("random", "grid"))
@@ -142,24 +176,6 @@ setRealMLP <- function(
   checkHigherEqual(randomSample, 1)
 
   checkIsClass(randomSampleSeed, c("numeric", "integer", "NULL"))
-
-  est <- setEstimator(
-    learningRate = 2e-3,
-    weightDecay = 0.02,
-    batchSize = 256L,
-    epochs = 256L,
-    device = device,
-    optimizer = torch$optim$AdamW,
-    # the learning rate follows RealMLP's own schedule
-    scheduler = NULL,
-    # RealMLP computes its own loss, with label smoothing
-    criterion = torch$nn$BCEWithLogitsLoss,
-    earlyStopping = NULL, # train full and pick best
-    compile = FALSE,
-    metric = "loss",
-    seed = NULL,
-    trainValidationSplit = FALSE
-  )
 
   # RealMLP's own training settings are model parameters, which RealMLP reads
   paramGrid <- list(
@@ -186,7 +202,7 @@ setRealMLP <- function(
     tokenAggregation = tokenAggregation,
     featureScaleMode = featureScaleMode
   )
-  paramGrid <- c(paramGrid, est$paramsToTune)
+  paramGrid <- c(paramGrid, estimatorSettings$paramsToTune)
 
   param <- PatientLevelPrediction::listCartesian(paramGrid)
   param <- lapply(param, function(x) {
@@ -228,7 +244,7 @@ setRealMLP <- function(
   results <- list(
     fitFunction = "DeepPatientLevelPrediction::fitEstimator",
     param = param,
-    estimatorSettings = est,
+    estimatorSettings = estimatorSettings,
     saveType = "file",
     modelParamNames = c(
       "numLayers", "sizeHidden", "dropout", "sizeEmbedding",

@@ -27,10 +27,12 @@ setRealMLP(
   paperMode = TRUE,
   tokenAggregation = "auto",
   featureScaleMode = "auto",
-  device = "cpu",
+  estimatorSettings = setEstimator(learningRate = 0.002, weightDecay = 0.02, batchSize =
+    256L, epochs = 256L, scheduler = NULL, earlyStopping = NULL, metric = "loss"),
   hyperParamSearch = "grid",
   randomSample = 100,
-  randomSampleSeed = NULL
+  randomSampleSeed = NULL,
+  device = NULL
 )
 }
 \arguments{
@@ -78,7 +80,13 @@ setRealMLP(
 
 \item{featureScaleMode}{feature scale mode: "auto", "scalar", "vector"}
 
-\item{device}{"cpu" or "cuda" (default "cpu")}
+\item{estimatorSettings}{Estimator settings created by \code{\link[=setEstimator]{setEstimator()}}.
+The default trains as in the RealMLP paper: AdamW with learning rate
+2e-3 and weight decay 0.02, batches of 256 and 256 epochs, keeping the
+epoch with the lowest validation loss. RealMLP follows its own
+learning-rate schedule, so a \code{scheduler} is ignored with a warning, and
+its own loss, so \code{criterion} is not used. Early stopping is possible, but
+the paper trains for all epochs.}
 
 \item{hyperParamSearch}{Which kind of hyperparameter search to use: random
 sampling or exhaustive grid search. Default: "grid"}
@@ -87,6 +95,8 @@ sampling or exhaustive grid search. Default: "grid"}
 when \code{hyperParamSearch = "random"}}
 
 \item{randomSampleSeed}{Random seed to sample hyperparameter combinations}
+
+\item{device}{Deprecated. Use \code{estimatorSettings = setEstimator(device = )}.}
 }
 \value{
 A \code{modelSettings} object for use with \code{PatientLevelPrediction}.
