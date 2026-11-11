@@ -168,3 +168,23 @@ def failed_model_freed():
   expect_equal(nrow(result$prediction), nrow(labels))
   expect_true(main$failed_model_freed())
 })
+
+test_that("an error other than running out of memory stops the search", {
+  skip_if_no_python()
+  reticulate::py_run_string("
+def fail_otherwise():
+    raise ValueError('not a memory problem')
+")
+  main <- reticulate::import_main()
+  expect_error(
+    testthat::with_mocked_bindings(
+      doCrossValidation(
+        dataset = NULL, labels = createMockLabels(), parameters = list(numLayers = 1),
+        modelSettings = list()
+      ),
+      doCrossValidationImpl = function(...) main$fail_otherwise()
+    ),
+    "not a memory problem",
+    fixed = TRUE
+  )
+})
