@@ -8,6 +8,7 @@ import pathlib
 import inspect
 import os
 import random
+import warnings
 
 import torch
 from torch.utils.data import DataLoader, BatchSampler, RandomSampler, SequentialSampler
@@ -80,33 +81,22 @@ class Estimator:
         self.has_custom_loss = hasattr(self.model, "compute_loss")
         self.has_custom_scores = hasattr(self.model, "prediction_scores")
         self.has_custom_proba = hasattr(self.model, "predict_proba_from_output")
-        self.has_custom_schedule = hasattr(self.model, "apply_dynamic_schedule")
         self.has_data_dependent_init = hasattr(self.model, "data_dependent_init")
 
-        # R converts beta2 to beta_2, while Python callers may pass beta2 directly.
-        self.beta2_key = next(
-            (
-                key
-                for key in ("beta_2", "beta2")
-                if key in parameters["estimator_settings"]
-            ),
-            None,
-        )
-        self.beta2 = float(
-            parameters["estimator_settings"][self.beta2_key]
-            if self.beta2_key is not None
-            else 0.999
-        )
-        self.eps = float(parameters["estimator_settings"].get("eps", 1e-8))
-        self.label_smoothing = float(parameters["estimator_settings"].get("label_smoothing", 0.0))
         # settings created before this option existed keep the default initialization
         self.init_output_bias = bool(
             parameters["estimator_settings"].get("init_output_bias", False)
         )
         self.base_dropout = float(parameters["model_parameters"].get("dropout", 0.0))
-        self.lr_schedule_name = parameters["estimator_settings"].get("lr_schedule")
-        self.dropout_schedule_name = parameters["estimator_settings"].get("dropout_schedule")
-        self.weight_decay_schedule_name = parameters["estimator_settings"].get("weight_decay_schedule")
+
+        # A model can declare training settings of its own, as RealMLP does:
+        # per-step schedules, optimizer options, and how many batches its
+        # data-dependent initialization sees.
+        training_settings = getattr(self.model, "training_settings", None) or {}
+        self.optimizer_options = dict(training_settings.get("optimizer_options", {}))
+        self.lr_schedule_name = training_settings.get("lr_schedule")
+        self.dropout_schedule_name = training_settings.get("dropout_schedule")
+        self.weight_decay_schedule_name = training_settings.get("weight_decay_schedule")
         self.lr_schedule = get_schedule(self.lr_schedule_name)
         self.dropout_schedule = get_schedule(self.dropout_schedule_name)
         self.weight_decay_schedule = get_schedule(self.weight_decay_schedule_name)
@@ -120,34 +110,8 @@ class Estimator:
                 self.weight_decay_schedule_name,
             )
         )
-        self.use_data_dependent_init = bool(
-            parameters["estimator_settings"].get("data_dependent_init", self.has_data_dependent_init)
-        )
         self.data_dependent_init_batches = int(
-            parameters["estimator_settings"].get("data_dependent_init_batches", 8)
-        )
-        self.data_dependent_init_bias_mode = parameters["estimator_settings"].get(
-            "data_dependent_init_bias_mode",
-            "he5",
-        )
-        self.data_dependent_init_bias_scale = float(
-            parameters["estimator_settings"].get("data_dependent_init_bias_scale", 1.0)
-        )
-        self.data_dependent_init_mode = parameters["estimator_settings"].get(
-            "data_dependent_init_mode",
-            "current",
-        )
-        self.data_dependent_init_target_var = float(
-            parameters["estimator_settings"].get("data_dependent_init_target_var", 1.0)
-        )
-        self.data_dependent_init_max_rows = int(
-            parameters["estimator_settings"].get("data_dependent_init_max_rows", 0)
-        )
-        self.data_dependent_init_gain_clip = float(
-            parameters["estimator_settings"].get("data_dependent_init_gain_clip", 0.0)
-        )
-        self.data_dependent_init_bias_refit_steps = int(
-            parameters["estimator_settings"].get("data_dependent_init_bias_refit_steps", 2)
+            training_settings.get("data_dependent_init_batches", 8)
         )
         self.data_dependent_init_done = False
         self._log_model_training_configuration()
@@ -215,12 +179,12 @@ class Estimator:
 
     def _log_model_training_configuration(self):
         if hasattr(self.model, "log_training_config"):
-            self.model.log_training_config(self)
+            self.model.log_training_config()
 
     def _create_optimizer(self, optimizer_class):
         params = self.model.parameters()
         if self.has_custom_param_groups:
-            param_groups = self.model.get_optimizer_param_groups(self.estimator_settings)
+            param_groups = self.model.get_optimizer_param_groups()
             if param_groups is not None and len(param_groups) > 0:
                 params = param_groups
         if isinstance(params, list):
@@ -239,22 +203,30 @@ class Estimator:
             "lr": self.learning_rate,
             "weight_decay": self.weight_decay,
         }
-        if self.beta2_key is not None:
-            kwargs["betas"] = (0.9, self.beta2)
-        if "eps" in self.estimator_settings:
-            kwargs["eps"] = self.eps
-        try:
-            return optimizer_class(**kwargs)
-        except TypeError:
-            kwargs.pop("betas", None)
-            kwargs.pop("eps", None)
-            return optimizer_class(**kwargs)
+        kwargs.update(self._accepted_optimizer_options(optimizer_class))
+        return optimizer_class(**kwargs)
 
-    def _default_prepare_targets_for_loss(self, targets):
-        targets = targets.float()
-        if self.label_smoothing > 0.0:
-            targets = targets * (1.0 - self.label_smoothing) + 0.5 * self.label_smoothing
-        return targets
+    def _accepted_optimizer_options(self, optimizer_class):
+        """The model's optimizer options that ``optimizer_class`` takes.
+
+        A model's options are meant for the optimizer it was designed with, such as
+        RealMLP's betas for AdamW. Another optimizer may not take them.
+        """
+        parameters = inspect.signature(optimizer_class).parameters
+        if any(p.kind is inspect.Parameter.VAR_KEYWORD for p in parameters.values()):
+            return dict(self.optimizer_options)
+        ignored = sorted(key for key in self.optimizer_options if key not in parameters)
+        if ignored:
+            warnings.warn(
+                f"{getattr(optimizer_class, '__name__', optimizer_class)} does not take "
+                f"the option(s) {', '.join(ignored)} of {type(self.model).__name__}, "
+                "which are ignored."
+            )
+        return {
+            key: value
+            for key, value in self.optimizer_options.items()
+            if key in parameters
+        }
 
     def _compute_loss(self, predictions, targets):
         if self.has_custom_loss:
@@ -262,10 +234,8 @@ class Estimator:
                 predictions=predictions,
                 targets=targets,
                 criterion=self.criterion,
-                label_smoothing=self.label_smoothing,
             )
-        prepared_targets = self._default_prepare_targets_for_loss(targets)
-        return self.criterion(predictions.squeeze(), prepared_targets)
+        return self.criterion(predictions.squeeze(), targets.float())
 
     def _prediction_scores(self, predictions):
         if self.has_custom_scores:
@@ -288,18 +258,6 @@ class Estimator:
         lr_scale = self.lr_schedule(t)
         wd_scale = self.weight_decay_schedule(t)
         drop_scale = self.dropout_schedule(t)
-        if self.has_custom_schedule:
-            self.model.apply_dynamic_schedule(
-                optimizer=self.optimizer,
-                base_learning_rate=self.base_learning_rate,
-                base_weight_decay=self.base_weight_decay,
-                lr_scale=lr_scale,
-                wd_scale=wd_scale,
-                drop_scale=drop_scale,
-                base_dropout=self.base_dropout,
-            )
-            return
-
         for group in self.optimizer.param_groups:
             group["lr"] = self.base_learning_rate * group.get("lr_factor", 1.0) * lr_scale
             group["weight_decay"] = self.base_weight_decay * group.get("wd_factor", 1.0) * wd_scale
@@ -307,11 +265,7 @@ class Estimator:
             self.model.set_dropout(self.base_dropout * drop_scale)
 
     def _maybe_run_data_dependent_init(self, dataloader):
-        if (
-            not self.has_data_dependent_init
-            or not self.use_data_dependent_init
-            or self.data_dependent_init_done
-        ):
+        if not self.has_data_dependent_init or self.data_dependent_init_done:
             return
         sampled_batches = []
         max_batches = max(1, self.data_dependent_init_batches)
@@ -325,21 +279,9 @@ class Estimator:
 
         if len(sampled_batches) == 0:
             return
-        ddinit_kwargs = {
-            "init_mode": self.data_dependent_init_mode,
-            "target_var": self.data_dependent_init_target_var,
-            "max_rows": self.data_dependent_init_max_rows,
-            "gain_clip": self.data_dependent_init_gain_clip,
-            "bias_mode": self.data_dependent_init_bias_mode,
-            "bias_scale": self.data_dependent_init_bias_scale,
-            "bias_refit_steps": self.data_dependent_init_bias_refit_steps,
-        }
-        signature = inspect.signature(self.model.data_dependent_init)
-        accepted_kwargs = {
-            key: value for key, value in ddinit_kwargs.items() if key in signature.parameters
-        }
+        # the model initializes itself with its own settings
         with torch.no_grad():
-            self.model.data_dependent_init(sampled_batches, **accepted_kwargs)
+            self.model.data_dependent_init(sampled_batches)
         self.data_dependent_init_done = True
 
     def _maybe_init_output_bias(self, dataset):
@@ -358,8 +300,6 @@ class Estimator:
         if layer is None or layer.bias is None or layer.out_features != 1 or targets is None:
             return
         rate = targets.float().mean().item()
-        # the loss is computed against smoothed labels
-        rate = rate * (1.0 - self.label_smoothing) + 0.5 * self.label_smoothing
         if not 0.0 < rate < 1.0:
             return
         with torch.no_grad():

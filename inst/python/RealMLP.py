@@ -77,6 +77,17 @@ class RealMLP(nn.Module):
     Assumes preprocessing (robust scaling/clipping) is handled upstream.
     """
 
+    # The paper's training settings, which the Estimator applies: per-step
+    # schedules, AdamW's betas and eps, and how many batches the data-dependent
+    # initialization sees.
+    training_settings = {
+        "lr_schedule": "coslog4",
+        "dropout_schedule": "flat_cos",
+        "weight_decay_schedule": "flat_cos",
+        "optimizer_options": {"betas": (0.9, 0.95), "eps": 1e-8},
+        "data_dependent_init_batches": 8,
+    }
+
     def __init__(
         self,
         feature_info,
@@ -94,9 +105,33 @@ class RealMLP(nn.Module):
         numeric_periodic_init_std: float = 0.1,
         numeric_pbld_hidden_dim: int = 16,
         numeric_pbld_embedding_dim: int = 4,
+        label_smoothing: float = 0.0,
+        scaling_lr_mult: float = 6.0,
+        bias_lr_mult: float = 0.1,
+        act_lr_mult: float = 0.1,
+        embedding_lr_mult: float = 0.1,
+        data_dependent_init_mode: str = "paper_lsuv",
+        data_dependent_init_target_var: float = 1.0,
+        data_dependent_init_max_rows: int = 65536,
+        data_dependent_init_gain_clip: float = 10.0,
+        data_dependent_init_bias_refit_steps: int = 2,
     ):
         super().__init__()
         self.name = model_type
+        self.label_smoothing = float(label_smoothing)
+        self.lr_factors = {
+            "scale": float(scaling_lr_mult),
+            "embed": float(embedding_lr_mult),
+            "bias": float(bias_lr_mult),
+            "act": float(act_lr_mult),
+        }
+        self.data_dependent_init_options = {
+            "init_mode": str(data_dependent_init_mode),
+            "target_var": float(data_dependent_init_target_var),
+            "max_rows": int(data_dependent_init_max_rows),
+            "gain_clip": float(data_dependent_init_gain_clip),
+            "bias_refit_steps": int(data_dependent_init_bias_refit_steps),
+        }
         self.paper_mode = bool(paper_mode)
         self.use_two_logit_ce = self.paper_mode
         self.token_aggregation = str(token_aggregation)
@@ -168,7 +203,7 @@ class RealMLP(nn.Module):
     def reset_head(self):
         self.head = nn.Linear(self.head.in_features, self.head.out_features)
 
-    def log_training_config(self, estimator):
+    def log_training_config(self):
         print(
             "RealMLP config | "
             f"paper_mode={self.paper_mode} | "
@@ -176,27 +211,19 @@ class RealMLP(nn.Module):
             f"token_aggregation={self.token_aggregation} | "
             f"feature_scale_mode={self.feature_scale_mode} | "
             f"numeric_embedding_mode={self.numeric_embedding_mode} | "
-            f"label_smoothing={estimator.label_smoothing} | "
-            f"lr_schedule={estimator.lr_schedule_name} | "
-            f"dropout_schedule={estimator.dropout_schedule_name} | "
-            f"weight_decay_schedule={estimator.weight_decay_schedule_name} | "
-            f"data_dependent_init={estimator.use_data_dependent_init} | "
-            f"data_dependent_init_mode={estimator.data_dependent_init_mode} | "
-            f"data_dependent_init_bias_mode={estimator.data_dependent_init_bias_mode}"
+            f"label_smoothing={self.label_smoothing} | "
+            f"lr_schedule={self.training_settings['lr_schedule']} | "
+            f"dropout_schedule={self.training_settings['dropout_schedule']} | "
+            f"weight_decay_schedule={self.training_settings['weight_decay_schedule']} | "
+            f"data_dependent_init_mode={self.data_dependent_init_options['init_mode']}"
         )
 
-    def get_optimizer_param_groups(self, estimator_settings):
+    def get_optimizer_param_groups(self):
         scale_params = []
         embedding_params = []
         act_params = []
         bias_params = []
         other_params = []
-
-        scaling_lr_mult = float(estimator_settings.get("scaling_lr_mult", 1.0))
-        bias_lr_mult = float(estimator_settings.get("bias_lr_mult", 1.0))
-        act_lr_mult = float(estimator_settings.get("act_lr_mult", 1.0))
-        embedding_lr_mult = float(estimator_settings.get("embedding_lr_mult", 1.0))
-        bias_wd_factor = float(estimator_settings.get("bias_wd_factor", 0.0))
 
         for name, param in self.named_parameters():
             if not param.requires_grad:
@@ -222,7 +249,7 @@ class RealMLP(nn.Module):
                 {
                     "params": scale_params,
                     "name": "scale",
-                    "lr_factor": scaling_lr_mult,
+                    "lr_factor": self.lr_factors["scale"],
                     "wd_factor": 1.0,
                 }
             )
@@ -231,7 +258,7 @@ class RealMLP(nn.Module):
                 {
                     "params": embedding_params,
                     "name": "embed",
-                    "lr_factor": embedding_lr_mult,
+                    "lr_factor": self.lr_factors["embed"],
                     "wd_factor": 1.0,
                 }
             )
@@ -240,44 +267,34 @@ class RealMLP(nn.Module):
                 {
                     "params": bias_params,
                     "name": "bias",
-                    "lr_factor": bias_lr_mult,
-                    "wd_factor": bias_wd_factor,
+                    "lr_factor": self.lr_factors["bias"],
+                    # biases are not decayed
+                    "wd_factor": 0.0,
                 }
             )
         if act_params:
             groups.append(
-                {"params": act_params, "name": "act", "lr_factor": act_lr_mult, "wd_factor": 1.0}
+                {
+                    "params": act_params,
+                    "name": "act",
+                    "lr_factor": self.lr_factors["act"],
+                    "wd_factor": 1.0,
+                }
             )
         return groups
 
-    def apply_dynamic_schedule(
-        self,
-        optimizer,
-        base_learning_rate: float,
-        base_weight_decay: float,
-        lr_scale: float,
-        wd_scale: float,
-        drop_scale: float,
-        base_dropout: float,
-    ):
-        for group in optimizer.param_groups:
-            group["lr"] = base_learning_rate * group.get("lr_factor", 1.0) * lr_scale
-            group["weight_decay"] = (
-                base_weight_decay * group.get("wd_factor", 1.0) * wd_scale
-            )
-        self.set_dropout(base_dropout * drop_scale)
-
-    def compute_loss(self, predictions, targets, criterion, label_smoothing: float = 0.0):
+    def compute_loss(self, predictions, targets, criterion):
+        # RealMLP has its own losses, with label smoothing, so criterion is unused
         if self.use_two_logit_ce:
             return self._cross_entropy_loss(
                 predictions=predictions,
                 targets=targets,
-                label_smoothing=label_smoothing,
+                label_smoothing=self.label_smoothing,
             )
         return self._binary_loss(
             predictions=predictions,
             targets=targets,
-            label_smoothing=label_smoothing,
+            label_smoothing=self.label_smoothing,
         )
 
     def prediction_scores(self, predictions):
@@ -351,20 +368,29 @@ class RealMLP(nn.Module):
         self,
         batches,
         eps: float = 1e-6,
-        init_mode: str = "current",
-        target_var: float = 1.0,
-        max_rows: int = 0,
-        gain_clip: float = 0.0,
+        init_mode: Optional[str] = None,
+        target_var: Optional[float] = None,
+        max_rows: Optional[int] = None,
+        gain_clip: Optional[float] = None,
         bias_mode: Optional[str] = "he5",
         bias_scale: float = 1.0,
-        bias_refit_steps: int = 2,
+        bias_refit_steps: Optional[int] = None,
         verbose: bool = False,
     ):
         """
         Sequentially rescale each hidden LinearNTP row so pre-activation
         variance is ~1 on a small sample of training batches and optionally
         fit layer biases to a target mean ("he5" or "zero").
+
+        Options left as None take the model's own settings.
         """
+        options = self.data_dependent_init_options
+        init_mode = options["init_mode"] if init_mode is None else init_mode
+        target_var = options["target_var"] if target_var is None else target_var
+        max_rows = options["max_rows"] if max_rows is None else max_rows
+        gain_clip = options["gain_clip"] if gain_clip is None else gain_clip
+        if bias_refit_steps is None:
+            bias_refit_steps = options["bias_refit_steps"]
         if not self._linear_layers:
             return
         mode = str(init_mode).lower()
