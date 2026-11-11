@@ -1,0 +1,26 @@
+# R and Python are measured separately, so each gets its own project status.
+# Their combined total would fall whenever Python code is added, as Python has
+# lower coverage than R.
+coverage:
+  status:
+    project:
+      default: false
+      r:
+        flags:
+          - r
+      python:
+        flags:
+          - python
+    patch:
+      default:
+        target: auto
+
+flags:
+  r:
+    paths:
+      - R/
+    carryforward: true
+  python:
+    paths:
+      - inst/python/
+    carryforward: true

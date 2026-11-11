@@ -113,7 +113,7 @@ jobs:
 
       - name: Test coverage
         if: matrix.config.coverage
-        run: covr::codecov(token = "${{ secrets.CODECOV_TOKEN }}")
+        run: covr::codecov(token = "${{ secrets.CODECOV_TOKEN }}", flags = "r")
         shell: Rscript {0}
 
       # covr cannot see the Python backend, which runs through reticulate
