@@ -382,6 +382,15 @@ hyperparameter or sensitivity search. By default, RealMLP uses grid
 search over the supplied values. Set `hyperParamSearch = "random"` and
 `randomSample` to sample from the expanded grid instead.
 
+Its `estimatorSettings` default to the training settings of the paper:
+AdamW with a learning rate of 2e-3 and weight decay of 0.02, batches of
+256 and 256 epochs, keeping the epoch with the lowest validation loss.
+Pass your own
+[`setEstimator()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setEstimator.md)
+to change them, for example to train on a GPU or with fewer epochs.
+RealMLP follows its own learning rate schedule, so a `scheduler` is
+ignored.
+
 #### Example Code
 
 ``` r
@@ -389,8 +398,24 @@ search over the supplied values. Set `hyperParamSearch = "random"` and
 modelSettings <- setRealMLP(
   numLayers = 3L,
   sizeHidden = 256L,
+  dropout = 0.15
+)
+
+# the paper's training settings on a GPU, with 100 epochs
+modelSettings <- setRealMLP(
+  numLayers = 3L,
+  sizeHidden = 256L,
   dropout = 0.15,
-  device = "cpu"
+  estimatorSettings = setEstimator(
+    learningRate = 2e-3,
+    weightDecay = 0.02,
+    batchSize = 256L,
+    epochs = 100L,
+    device = "cuda",
+    scheduler = NULL,
+    earlyStopping = NULL,
+    metric = "loss"
+  )
 )
 ```
 
@@ -429,8 +454,7 @@ modelSettings <- setRealMLP(
   numericEmbeddingMode = c("scale", "pbld"),
   hyperParamSearch = "random",
   randomSample = 4L,
-  randomSampleSeed = 42L,
-  device = "cpu"
+  randomSampleSeed = 42L
 )
 ```
 

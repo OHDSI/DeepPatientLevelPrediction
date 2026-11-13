@@ -22,7 +22,9 @@ setEstimator(
   accumulationSteps = NULL,
   seed = NULL,
   trainValidationSplit = FALSE,
-  initOutputBias = TRUE
+  initOutputBias = TRUE,
+  gradClipNorm = NULL,
+  deterministic = FALSE
 )
 ```
 
@@ -66,7 +68,9 @@ setEstimator(
 
 - earlyStopping:
 
-  Early-stopping settings, or `NULL` to disable early stopping.
+  Early-stopping settings: a list with `useEarlyStopping` and the
+  `params` `patience`, `delta` and `min_epochs`. `NULL` or
+  `useEarlyStopping = FALSE` disable early stopping.
 
 - compile:
 
@@ -101,6 +105,22 @@ setEstimator(
   can end training before they learn to rank patients. It applies to
   models whose output is a single logit from a linear `head` layer and
   is not used during the learning-rate search.
+
+- gradClipNorm:
+
+  The largest norm the gradients may have at each optimizer step, or
+  `NULL` to leave them as they are. Larger gradients are scaled down to
+  this norm, which keeps a few extreme batches from destabilizing
+  training. The loss is summed over the patients of a batch, so the
+  gradient norm grows with the batch size. Several values are tuned as
+  hyperparameters.
+
+- deterministic:
+
+  Whether PyTorch may only use deterministic algorithms, so that
+  training with the same seed and data gives the same model each time.
+  This matters mostly on a GPU, and makes training slower. Operations
+  that have no deterministic version give a warning.
 
 ## Value
 

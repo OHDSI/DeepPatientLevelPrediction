@@ -68,7 +68,11 @@ setTransformer(
 - temporalSettings:
 
   A list with `positionalEncoding`, `maxSequenceLength`, `truncation`,
-  and `timeTokens`. The only supported truncation strategy is `"tail"`.
+  and `timeTokens`. Settings left out keep their defaults, and other
+  names are an error. The only supported truncation strategy is
+  `"tail"`. The options in `positionalEncoding`, other than its `name`,
+  are passed to the encoding and may be written in camelCase; options
+  the encoding does not take give a warning.
 
 - estimatorSettings:
 

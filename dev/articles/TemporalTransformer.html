@@ -65,7 +65,7 @@
                         <h4 data-toc-skip class="author">Egill
 Fridgeirsson</h4>
             
-            <h4 data-toc-skip class="date">2026-11-11</h4>
+            <h4 data-toc-skip class="date">2026-11-13</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/OHDSI/DeepPatientLevelPrediction/blob/develop/vignettes/TemporalTransformer.Rmd" class="external-link"><code>vignettes/TemporalTransformer.Rmd</code></a></small>
       <div class="d-none name"><code>TemporalTransformer.Rmd</code></div>
@@ -142,6 +142,108 @@ transformer. This can be a character value such as
 <code>"SinusoidalPE"</code> or a list with the encoding name and
 settings.</li>
 </ul>
+<p>The positional encodings tell the transformer when each record
+happened. All but <code>NoPositionalEncoding</code> use the time of each
+record. Give the options in the list with the <code>name</code>, for
+example <code>list(name = "StochasticConvPE", kernelSize = 7)</code>.
+Options may be written in camelCase or snake_case, and an option the
+encoding does not take gives a warning. A vector of values, such as
+<code>kernelSize = c(7, 15)</code>, is tuned like other
+hyperparameters.</p>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr class="header">
+<th>Encoding</th>
+<th>How it encodes time</th>
+<th>Options (defaults)</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>NoPositionalEncoding</code></td>
+<td>Not at all; the records are a set</td>
+<td></td>
+</tr>
+<tr class="even">
+<td><code>SinusoidalPE</code></td>
+<td>Adds a fixed sinusoidal vector of the time to each token</td>
+<td>
+<code>base</code> (10000), <code>dropout</code> (0)</td>
+</tr>
+<tr class="odd">
+<td><code>LearnablePE</code></td>
+<td>Adds a learned vector for each time</td>
+<td>
+<code>dropout</code> (0.1)</td>
+</tr>
+<tr class="even">
+<td><code>TapePE</code></td>
+<td>Adds sinusoids scaled to the embedding size and sequence length
+(tAPE)</td>
+<td>
+<code>dropout</code> (0.1), <code>base</code> (10000)</td>
+</tr>
+<tr class="odd">
+<td><code>RotaryPE</code></td>
+<td>Rotates the queries and keys by the time (RoPE)</td>
+<td>
+<code>base</code> (10000)</td>
+</tr>
+<tr class="even">
+<td><code>RelativePE</code></td>
+<td>Adds a learned attention bias for each distance in time, up to a
+maximum (Shaw et al.)</td>
+<td>
+<code>maxRelativePosition</code> (16)</td>
+</tr>
+<tr class="odd">
+<td><code>EfficientRPE</code></td>
+<td>Adds a learned bias for each distance to the attention weights after
+the softmax (eRPE)</td>
+<td></td>
+</tr>
+<tr class="even">
+<td><code>TemporalPE</code></td>
+<td>Adds sinusoids of the time, and an attention bias from the
+similarity of the tokens</td>
+<td>
+<code>base</code> (10000), <code>sigma</code> (1),
+<code>dropout</code> (0), <code>learnableSigma</code>
+(<code>FALSE</code>)</td>
+</tr>
+<tr class="odd">
+<td><code>StochasticConvPE</code></td>
+<td>Adds convolved random noise to the queries and keys (convSPE)</td>
+<td>
+<code>kernelSize</code> (15)</td>
+</tr>
+<tr class="even">
+<td><code>HybridRoPEConvPE</code></td>
+<td>Combines <code>RotaryPE</code> and
+<code>StochasticConvPE</code>
+</td>
+<td>
+<code>kernelSize</code> (15), <code>base</code> (10000)</td>
+</tr>
+<tr class="odd">
+<td><code>TUPE</code></td>
+<td>Computes the attention of the positions apart from that of the
+content, with an absolute encoding as its base (TUPE)</td>
+<td>
+<code>basePeConfig</code>
+(<code>list(name = "SinusoidalPE", dropout = 0.1)</code>)</td>
+</tr>
+<tr class="even">
+<td><code>ALiBiPE</code></td>
+<td>Lowers the attention between records in proportion to the time
+between them, with a different slope for each head (ALiBi)</td>
+<td></td>
+</tr>
+</tbody>
+</table>
 <p>For reproducible model definitions, set <code>temporalSettings</code>
 explicitly instead of relying on defaults.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">

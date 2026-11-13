@@ -29,10 +29,12 @@ setRealMLP(
   paperMode = TRUE,
   tokenAggregation = "auto",
   featureScaleMode = "auto",
-  device = "cpu",
+  estimatorSettings = setEstimator(learningRate = 0.002, weightDecay = 0.02, batchSize =
+    256L, epochs = 256L, scheduler = NULL, earlyStopping = NULL, metric = "loss"),
   hyperParamSearch = "grid",
   randomSample = 100,
-  randomSampleSeed = NULL
+  randomSampleSeed = NULL,
+  device = NULL
 )
 ```
 
@@ -126,9 +128,16 @@ setRealMLP(
 
   feature scale mode: "auto", "scalar", "vector"
 
-- device:
+- estimatorSettings:
 
-  "cpu" or "cuda" (default "cpu")
+  Estimator settings created by
+  [`setEstimator()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setEstimator.md).
+  The default trains as in the RealMLP paper: AdamW with learning rate
+  2e-3 and weight decay 0.02, batches of 256 and 256 epochs, keeping the
+  epoch with the lowest validation loss. RealMLP follows its own
+  learning-rate schedule, so a `scheduler` is ignored with a warning,
+  and its own loss, so `criterion` is not used. Early stopping is
+  possible, but the paper trains for all epochs.
 
 - hyperParamSearch:
 
@@ -143,6 +152,10 @@ setRealMLP(
 - randomSampleSeed:
 
   Random seed to sample hyperparameter combinations
+
+- device:
+
+  Deprecated. Use `estimatorSettings = setEstimator(device = )`.
 
 ## Value
 

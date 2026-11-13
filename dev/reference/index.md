@@ -26,10 +26,6 @@
   : Tune a Deep Learning Estimator
 - [`predictDeepEstimator()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/predictDeepEstimator.md)
   : Predict with a Deep Learning Estimator
-- [`py_to_r(`*`<polars.dataframe.frame.DataFrame>`*`)`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/py_to_r.polars.dataframe.frame.DataFrame.md)
-  : Use polars instead of pandas for default conversion from python to R
-- [`r_to_py(`*`<data.frame>`*`)`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/r_to_py.data.frame.md)
-  : Use polars instead of pandas for default conversion from R to Python
 - [`setCustomEmbeddingModel()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setCustomEmbeddingModel.md)
   : Create Model Settings with Custom Embeddings
 - [`setDefaultResNet()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setDefaultResNet.md)

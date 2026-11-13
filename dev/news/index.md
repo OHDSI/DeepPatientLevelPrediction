@@ -13,7 +13,23 @@ epochs lowering all predictions to the outcome rate, which with few
 batches per epoch let early stopping end training before the model
 ranked patients. This removes most of the instability in ResNet learning
 curves. It applies to models with a single-logit linear `head`, and not
-to the learning rate search. - Add a `curvature` argument to
+to the learning rate search. - Add `gradClipNorm` and `deterministic` to
+[`setEstimator()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setEstimator.md).
+`gradClipNorm` limits the norm of the gradients at each optimizer step,
+and several values are tuned as hyperparameters. `deterministic` makes
+PyTorch use only deterministic algorithms, so that training on a GPU
+with the same seed and data gives the same model. Both could only be set
+by editing the estimator settings by hand, and deterministic training
+then stayed on for later fits in the same session. -
+[`setRealMLP()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setRealMLP.md)
+takes `estimatorSettings` like the other model settings, so RealMLP’s
+learning rate, batch size, epochs, seed, early stopping, `gradClipNorm`
+and `deterministic` can be set and tuned. The default keeps the paper’s
+training settings. A `scheduler` is ignored with a warning, because
+RealMLP follows its own learning rate schedule. `learningRate = "auto"`
+works too: the final model starts from the rate the learning rate finder
+chose, which is now recorded as `baseLR` in the learning schedule. - Add
+a `curvature` argument to
 [`setCustomEmbeddingModel()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setCustomEmbeddingModel.md)
 for Poincare embeddings trained in a ball whose curvature is not -1.
 HypLL, which OHDSI/context uses, applies softplus to its curvature
@@ -62,39 +78,115 @@ embedding models, RealMLP with mean aggregation and convolutional
 positional encodings. - Compute time token gaps in days from the time
 reference: its `timePart` and `timeInterval` for temporal sequence
 covariates, or the start day of each time window for covariates with
-explicit windows. Raise an error if neither is available. - Keep column
-and covariate IDs apart when loading RealMLP wide coefficients. A row’s
-covariateId is used when it has one, so coefficients exported from
-another model, such as a covariateImportance file, load correctly. -
-Leave frozen RealMLP layers unchanged during data-dependent
-initialization. - Use the requested `sigma` in `TemporalPE` when it is
-not learnable. It was applied as exp(sigma), so the default of 1 acted
-as 2.72. - Add the trainable offsets of `PoincareEmbeddings` in the
-tangent space at the origin. For the Transformer and RealMLP they were
-combined with the mapped vectors by Mobius addition, which is defined
-for points inside the ball, not for tangent vectors. - Check that
-Poincare embeddings are finite and inside the ball. Vectors outside it
-passed through without being mapped, and vectors on its boundary became
-infinite. Compute the log map accurately near the boundary and for small
-curvatures, and reject trainable ball coordinates, which a Euclidean
-optimizer can move outside the ball. - Apply the projection of custom
-embeddings, used when the embeddings file has another dimension than the
-model, to custom features only. Its bias was added once per patient for
-ResNet and MLP, and to every padding and regular feature for the
-Transformer and RealMLP. - Leave the batch given to custom embeddings
-unchanged. Its custom features were set to zero, so RealMLP lost them in
-its wide branch and in data-dependent initialization. - Load custom
-embedding files saved from GPU tensors, and reject Poincare embeddings
-too close to the boundary of the ball to be mapped in their precision. -
-Give custom embedding vectors to binary covariates only. A numeric
-covariate whose concept was in the embeddings file, such as a
-measurement value, got the concept’s vector and lost its value. -
+explicit windows. Raise an error if neither is available. - Leave frozen
+RealMLP layers unchanged during data-dependent initialization. - Use the
+requested `sigma` in `TemporalPE` when it is not learnable. It was
+applied as exp(sigma), so the default of 1 acted as 2.72. - Add the
+trainable offsets of `PoincareEmbeddings` in the tangent space at the
+origin. For the Transformer and RealMLP they were combined with the
+mapped vectors by Mobius addition, which is defined for points inside
+the ball, not for tangent vectors. - Check that Poincare embeddings are
+finite and inside the ball. Vectors outside it passed through without
+being mapped, and vectors on its boundary became infinite. Compute the
+log map accurately near the boundary and for small curvatures, and
+reject trainable ball coordinates, which a Euclidean optimizer can move
+outside the ball. - Apply the projection of custom embeddings, used when
+the embeddings file has another dimension than the model, to custom
+features only. Its bias was added once per patient for ResNet and MLP,
+and to every padding and regular feature for the Transformer and
+RealMLP. - Leave the batch given to custom embeddings unchanged. Its
+custom features were set to zero, so RealMLP lost them in data-dependent
+initialization. - Load custom embedding files saved from GPU tensors,
+and reject Poincare embeddings too close to the boundary of the ball to
+be mapped in their precision. - Give custom embedding vectors to binary
+covariates only. A numeric covariate whose concept was in the embeddings
+file, such as a measurement value, got the concept’s vector and lost its
+value. - Name the combinations of `dimToken` and `numHeads` that are not
+divisible in the error of
+[`setTransformer()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setTransformer.md).
+It pasted the two vectors element by element, so it could name a
+combination that is divisible. - Stop with a clear error when
+[`fitEstimator()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/fitEstimator.md)
+gets training data without a `CovariateData` object, instead of an error
+from deep inside the data mapping. - Predict with models loaded by
+`loadPlpModel()` when the data store `analysisId` as doubles. The saved
+covariate reference comes back from CSV with integer IDs, and joining it
+to the data’s analysis reference failed with a polars `SchemaError`. -
 Continue the hyperparameter search after a combination runs out of GPU
 memory, and free that combination’s memory first. Since torch 2.5 the
 error was not recognized, so the search stopped. The cleanup could not
 free memory that the error’s traceback still referred to, and instead,
 when more than 3 GB stayed allocated, emptied the storage of every CUDA
-tensor, including those still in use.
+tensor, including those still in use. - Switch early stopping off when
+`earlyStopping` has `useEarlyStopping = FALSE`. The setting was never
+read, so training still stopped early. - Reject model settings in which
+any value is out of range. The checks only failed when every value was,
+so `dropout = c(-1, 0.5)` passed. Dropout must now also be below 1. -
+Reject an unknown `hyperParamSearch`. Any value other than `"random"`,
+such as a misspelling, ran the full grid. - Fine-tune models trained
+with custom embeddings, and RealMLP models
+([\#198](https://github.com/OHDSI/DeepPatientLevelPrediction/issues/198)).
+The fine-tuner rebuilt the network without its custom embeddings, so the
+saved weights did not fit, and RealMLP had no `reset_head()`. - Keep the
+defaults of the temporal settings that a partial `temporalSettings` list
+leaves out. A partial list had `timeTokens = FALSE`, while the
+argument’s default has `TRUE`. Unknown names, such as `time_tokens`, are
+now an error; they were passed on next to the default. - Pass positional
+encoding options written in camelCase, such as `kernelSize`, to the
+encoding. Options an encoding does not take were dropped without a
+message, and now give a warning. - Reject `tokenAggregation = "mean"`
+with `paperMode = TRUE` in
+[`setRealMLP()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setRealMLP.md).
+RealMLP sums the tokens in paper mode, so it silently replaced the
+setting. - Use the slopes of the ALiBi paper in `ALiBiPE`. A wrong
+formula gave other slopes for every number of heads but 4, for example
+2^-3 to 2^-24 instead of 2^-1 to 2^-8 for 8 heads, and numbers of heads
+that are not a power of two failed. Saved models keep the slopes they
+were trained with. - Build `ResLayer` without dropout, which failed in
+`forward`. - Let the learning rate finder use the model’s own loss and
+label smoothing, as training does. It failed for RealMLP in paper mode,
+which has two outputs. - Record the hyperparameter settings given to
+[`fitEstimator()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/fitEstimator.md)
+in the model design, instead of PatientLevelPrediction’s defaults.
+
+Removed - Remove settings that no function of the package sets, and that
+could only be reached by editing the model or estimator settings by
+hand. Models fitted with the package’s own settings train and predict
+exactly as before. - Remove RealMLP’s wide branch: a linear model added
+to the network’s logit, with coefficient files to start it from,
+freezing of either part, an L1 penalty, weighting by the linear model’s
+uncertainty, and starting the whole model from a file. It is kept on the
+branch `archive/realmlp-wide-branch`. - Remove the `concat_num`,
+`token_aggregation` and numerical bias options of ResNet and the MLP,
+and the `concatenate` numeric embedding mode, which only `concat_num`
+used. - Remove the optimizer parameter groups of ResNet and the MLP.
+With their default factors they trained exactly like a single group. -
+Remove parallel data loading workers, input fingerprints, batch
+diagnostics, the `previous_epochs` epoch offset and an unused `prefix`
+setting. - Remove code that could not work: the `plpData` branch of
+[`predictDeepEstimator()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/predictDeepEstimator.md),
+the `numericalIndex` branch of the dataset creation,
+`convert_to_long()`, and `extras/example_plp5.R`, which called functions
+that do not exist. Also remove the placeholder scheduler of
+[`setRealMLP()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setRealMLP.md),
+which RealMLP’s learning rate schedule bypassed. - Move RealMLP’s own
+training settings out of the estimator settings: label smoothing, the
+learning rate multipliers and the data-dependent initialization settings
+are model parameters, and the schedules, AdamW’s `betas` and `eps` and
+the weight decay of biases belong to the RealMLP model. RealMLP trains
+as before. Estimator settings edited by hand to change them no longer
+have an effect. - Remove the retry of the optimizer without `betas` and
+`eps` when it failed. Options that a model gives the optimizer, such as
+RealMLP’s `betas`, are now passed only to optimizers that take them, and
+the others give a warning. - Remove the second way that ResNet and the
+MLP pooled custom embeddings, which summed the tokens and divided by
+their number. They now take the mean of the tokens like the other
+models, so predictions of saved custom embedding models change only by
+rounding.
+
+Deprecated - The `device` argument of
+[`setRealMLP()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setRealMLP.md).
+Use `estimatorSettings = setEstimator(device = )`.
 
 Runtime and compatibility - Require Python 3.11 or newer. Python 3.10
 reached end-of-life in October 2026, and duckdb 2.0.0 requires Python
@@ -105,12 +197,27 @@ aggregation, time tokens, convolutional positional encodings or a fixed
 from such saved models change, so retrain them. - Poincare embeddings
 with vectors outside the ball are now an error, also when predicting
 with a model saved by an earlier version. - Drop the `nvidia-ml-py`
-Python dependency.
+Python dependency. - Stop registering `r_to_py()` and `py_to_r()`
+methods for data frames for the whole R session. Once the package was
+loaded, every data frame that reticulate converted became a polars
+DataFrame instead of a pandas one, also in other packages and in users’
+own code. The package now converts its own data frames.
 
 Documentation and CI - Add an Ubuntu 26.04 CI job and a regression test
 for batched matrix multiplication. - Stop pinning Python duckdb on macOS
 CI, because version 1.5.2 cannot read files written by R duckdb 2.0.0. -
-Update `tlmgr` before installing LaTeX packages in the R-devel CI job.
+Update `tlmgr` before installing LaTeX packages in the R-devel CI job. -
+Opt into the Eunomia integration tests with
+`DPLP_RUN_INTEGRATION_TESTS=true`, separately from the Python tests
+(`DPLP_RUN_PYTHON_TESTS=true`). Running Python tests no longer downloads
+Eunomia and fits a model before the first test. Most tests now use
+PatientLevelPrediction’s simulated data; only the runPlp() checks on
+real data, the result uploads and the temporal Transformer test need
+Eunomia. - Check the Python backend with ruff in CI. - Measure test
+coverage on one CI job instead of all three Linux jobs, and add coverage
+of the Python backend, which covr cannot see. - Document the 12
+positional encodings and their options in the temporal transformer
+vignette.
 
 ## DeepPatientLevelPrediction 2.4.0
 

@@ -115,8 +115,11 @@ or temporal transformer.</p>
 
 <dt id="arg-temporalsettings">temporalSettings<a class="anchor" aria-label="anchor" href="#arg-temporalsettings"></a></dt>
 <dd><p>A list with <code>positionalEncoding</code>,
-<code>maxSequenceLength</code>, <code>truncation</code>, and <code>timeTokens</code>. The only supported
-truncation strategy is <code>"tail"</code>.</p></dd>
+<code>maxSequenceLength</code>, <code>truncation</code>, and <code>timeTokens</code>. Settings left out
+keep their defaults, and other names are an error. The only supported
+truncation strategy is <code>"tail"</code>. The options in <code>positionalEncoding</code>, other
+than its <code>name</code>, are passed to the encoding and may be written in camelCase;
+options the encoding does not take give a warning.</p></dd>
 
 
 <dt id="arg-estimatorsettings">estimatorSettings<a class="anchor" aria-label="anchor" href="#arg-estimatorsettings"></a></dt>

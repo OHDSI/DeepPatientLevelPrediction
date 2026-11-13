@@ -68,7 +68,9 @@ selection for a deep learning estimator.</p>
 <span>  accumulationSteps <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  seed <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  trainValidationSplit <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  initOutputBias <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span>  initOutputBias <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  gradClipNorm <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  deterministic <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -115,8 +117,9 @@ training begins.</p></dd>
 
 
 <dt id="arg-earlystopping">earlyStopping<a class="anchor" aria-label="anchor" href="#arg-earlystopping"></a></dt>
-<dd><p>Early-stopping settings, or <code>NULL</code> to disable early
-stopping.</p></dd>
+<dd><p>Early-stopping settings: a list with
+<code>useEarlyStopping</code> and the <code>params</code> <code>patience</code>, <code>delta</code> and <code>min_epochs</code>.
+<code>NULL</code> or <code>useEarlyStopping = FALSE</code> disable early stopping.</p></dd>
 
 
 <dt id="arg-compile">compile<a class="anchor" aria-label="anchor" href="#arg-compile"></a></dt>
@@ -151,6 +154,22 @@ rare outcomes spend their first epochs lowering all predictions, and early
 stopping can end training before they learn to rank patients. It applies to
 models whose output is a single logit from a linear <code>head</code> layer and is
 not used during the learning-rate search.</p></dd>
+
+
+<dt id="arg-gradclipnorm">gradClipNorm<a class="anchor" aria-label="anchor" href="#arg-gradclipnorm"></a></dt>
+<dd><p>The largest norm the gradients may have at each
+optimizer step, or <code>NULL</code> to leave them as they are. Larger gradients are
+scaled down to this norm, which keeps a few extreme batches from
+destabilizing training. The loss is summed over the patients of a batch, so
+the gradient norm grows with the batch size. Several values are tuned as
+hyperparameters.</p></dd>
+
+
+<dt id="arg-deterministic">deterministic<a class="anchor" aria-label="anchor" href="#arg-deterministic"></a></dt>
+<dd><p>Whether PyTorch may only use deterministic algorithms,
+so that training with the same seed and data gives the same model each
+time. This matters mostly on a GPU, and makes training slower. Operations
+that have no deterministic version give a warning.</p></dd>
 
 </dl></div>
     <div class="section level2">
