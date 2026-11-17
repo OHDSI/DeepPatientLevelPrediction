@@ -285,3 +285,15 @@ keepDefaults <- function(defaultSettings, userSettings) {
   return(defaultSettings)
 }
 
+
+# Converts the names of a list and of the lists in it to snake_case.
+snakeCaseNamesDeep <- function(x) {
+  if (!is.list(x)) {
+    return(x)
+  }
+  x <- lapply(x, snakeCaseNamesDeep)
+  if (!is.null(names(x))) {
+    names(x) <- camelCaseToSnakeCase(names(x))
+  }
+  x
+}

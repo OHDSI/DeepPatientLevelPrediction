@@ -101,14 +101,13 @@ setCustomEmbeddingModel <- function(
     stop("curvature only applies to embeddingsClass = \"PoincareEmbeddings\"")
   }
   
-  path <- system.file("python", package = "DeepPatientLevelPrediction")
-  modelSettings$estimatorSettings$initStrategy <-
-    reticulate::import_from_path("InitStrategy",
-                                 path = path)$CustomEmbeddingInitStrategy(
-                                   embedding_class = embeddingsClass,
-                                   embedding_file = embeddingFilePath,
-                                   curvature = curvature
-                                 )
+  # plain data, from which the Estimator builds the strategy in Python
+  modelSettings$estimatorSettings$initStrategy <- list(
+    name = "customEmbedding",
+    embeddingClass = embeddingsClass,
+    embeddingFile = embeddingFilePath,
+    curvature = curvature
+  )
   transformerSettings <- modelSettings
 
   attr(transformerSettings, "settings")$name <- "CustomEmbeddingModel"
