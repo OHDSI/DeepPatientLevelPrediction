@@ -109,10 +109,10 @@ NSAIDs until one year later.
 Now it’s time to define our deep learning model. It can be daunting for
 those not familiar with deep learning to define their first model since
 the models are very flexible and have many hyperparameters to define for
-your model architecture. To help with this, DeepPLP has helper functions
-with a sensible set of hyperparameters for testing. Best practice is
-still to do an extensive hyperparameter tuning step using cross
-validation.
+your model architecture. To help with this, each model’s settings
+function in DeepPLP defaults to one sensible set of hyperparameters.
+Best practice is still to do an extensive hyperparameter tuning step
+using cross validation.
 
 We will use a simple ResNet for our example. ResNets use skip
 connections between layers to support deeper models without overfitting
@@ -122,7 +122,7 @@ layer.
 ``` r
 
 library(DeepPatientLevelPrediction)
-modelSettings <- setDefaultResNet(
+modelSettings <- setResNet(
   estimatorSettings = setEstimator(learningRate=3e-4,
                                    device="cpu",
                                    batchSize=256L,

@@ -28,8 +28,37 @@ and `deterministic` can be set and tuned. The default keeps the paper’s
 training settings. A `scheduler` is ignored with a warning, because
 RealMLP follows its own learning rate schedule. `learningRate = "auto"`
 works too: the final model starts from the rate the learning rate finder
-chose, which is now recorded as `baseLR` in the learning schedule. - Add
-a `curvature` argument to
+chose, which is now recorded as `baseLR` in the learning schedule. -
+[`setResNet()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setResNet.md)
+and
+[`setMultiLayerPerceptron()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setMultiLayerPerceptron.md)
+default to one model, as
+[`setTransformer()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setTransformer.md)
+and
+[`setRealMLP()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setRealMLP.md)
+do. They defaulted to random searches of 100 of 154,880 and of 1,792
+combinations; their help pages show those search spaces.
+[`setResNet()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setResNet.md)
+defaults to the model of
+[`setDefaultResNet()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setDefaultResNet.md),
+and
+[`setTransformer()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setTransformer.md)
+to the estimator settings of
+[`setDefaultTransformer()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setDefaultTransformer.md):
+weight decay 1e-4 and batches of 512, instead of 1e-6 and 1024. - A
+`randomSample` larger than the number of combinations uses each
+combination once, instead of being an error. -
+[`setCustomEmbeddingModel()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setCustomEmbeddingModel.md)
+and
+[`setFinetuner()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setFinetuner.md)
+store their init strategy as plain data, and
+[`setCustomEmbeddingModel()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setCustomEmbeddingModel.md)
+no longer starts Python. The model design now keeps the init strategy.
+Models saved with the strategy object still load, predict and
+fine-tune. -
+[`setFinetuner()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setFinetuner.md)
+tunes estimator settings with several values, like the other model
+settings. - Add a `curvature` argument to
 [`setCustomEmbeddingModel()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setCustomEmbeddingModel.md)
 for Poincare embeddings trained in a ball whose curvature is not -1.
 HypLL, which OHDSI/context uses, applies softplus to its curvature
@@ -186,7 +215,14 @@ rounding.
 
 Deprecated - The `device` argument of
 [`setRealMLP()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setRealMLP.md).
-Use `estimatorSettings = setEstimator(device = )`.
+Use `estimatorSettings = setEstimator(device = )`. -
+[`setDefaultResNet()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setDefaultResNet.md)
+and
+[`setDefaultTransformer()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setDefaultTransformer.md).
+[`setResNet()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setResNet.md)
+and
+[`setTransformer()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setTransformer.md)
+now default to the same models.
 
 Runtime and compatibility - Require Python 3.11 or newer. Python 3.10
 reached end-of-life in October 2026, and duckdb 2.0.0 requires Python

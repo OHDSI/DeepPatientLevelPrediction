@@ -65,7 +65,7 @@
                         <h4 data-toc-skip class="author">Egill
 Fridgeirsson</h4>
             
-            <h4 data-toc-skip class="date">2026-11-13</h4>
+            <h4 data-toc-skip class="date">2026-11-17</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/OHDSI/DeepPatientLevelPrediction/blob/develop/vignettes/FirstModel.Rmd" class="external-link"><code>vignettes/FirstModel.Rmd</code></a></small>
       <div class="d-none name"><code>FirstModel.Rmd</code></div>
@@ -162,17 +162,17 @@ NSAIDs until one year later.</p>
 <p>Now it’s time to define our deep learning model. It can be daunting
 for those not familiar with deep learning to define their first model
 since the models are very flexible and have many hyperparameters to
-define for your model architecture. To help with this, DeepPLP has
-helper functions with a sensible set of hyperparameters for testing.
-Best practice is still to do an extensive hyperparameter tuning step
-using cross validation.</p>
+define for your model architecture. To help with this, each model’s
+settings function in DeepPLP defaults to one sensible set of
+hyperparameters. Best practice is still to do an extensive
+hyperparameter tuning step using cross validation.</p>
 <p>We will use a simple ResNet for our example. ResNets use skip
 connections between layers to support deeper models without overfitting
 as quickly. The default ResNet is a 6 layer model with 512 neurons per
 layer.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ohdsi.github.io/DeepPatientLevelPrediction/" class="external-link">DeepPatientLevelPrediction</a></span><span class="op">)</span></span>
-<span><span class="va">modelSettings</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/setDefaultResNet.html">setDefaultResNet</a></span><span class="op">(</span></span>
+<span><span class="va">modelSettings</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/setResNet.html">setResNet</a></span><span class="op">(</span></span>
 <span>  estimatorSettings <span class="op">=</span> <span class="fu"><a href="../reference/setEstimator.html">setEstimator</a></span><span class="op">(</span>learningRate<span class="op">=</span><span class="fl">3e-4</span>,</span>
 <span>                                   device<span class="op">=</span><span class="st">"cpu"</span>,</span>
 <span>                                   batchSize<span class="op">=</span><span class="fl">256L</span>,</span>

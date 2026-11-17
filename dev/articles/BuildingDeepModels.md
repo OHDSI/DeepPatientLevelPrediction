@@ -83,7 +83,7 @@ first-model vignette.
 library(DeepPatientLevelPrediction)
 
 # Pick the model settings from DeepPatientLevelPrediction.
-deepLearningModel <- DeepPatientLevelPrediction::setDefaultResNet()
+deepLearningModel <- DeepPatientLevelPrediction::setResNet()
 ```
 
 ``` r
@@ -166,6 +166,12 @@ weights may sub-optimally converge too fast.
 The `seed` lets the user use the same random initialization of the
 network’s weights as a previous run.
 
+Each model’s settings function defaults to one set of hyperparameters,
+so it trains one model. To search hyperparameters, give several values
+for the hyperparameters you want to tune; the examples in each
+function’s help page show the search space the package used to search by
+default.
+
 The `hyperParamSearch` chooses the strategy to find the best
 hyperparameters. Currently a random search and grid search are
 supported. Grid search searches every possible combination of
@@ -174,7 +180,8 @@ combinations. Since neural networks can be very flexible and have many
 hyperparameter combinations it’s almost never feasible to do a full grid
 search unless the network is really small.
 
-The `randomSample` chooses how many random samples to use.
+The `randomSample` chooses how many random samples to use. If there are
+fewer combinations, each is used once.
 
 The `device` specifies what device to use. Either `cpu` or `cuda`. If
 you have multiple GPUs, use `cuda:x`, where `x` is the GPU number as

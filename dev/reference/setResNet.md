@@ -6,14 +6,14 @@ Creates model and hyperparameter-search settings for a residual network.
 
 ``` r
 setResNet(
-  numLayers = c(1:8),
-  sizeHidden = c(2^(6:10)),
-  hiddenFactor = c(1:4),
-  residualDropout = c(seq(0, 0.5, 0.05)),
-  hiddenDropout = c(seq(0, 0.5, 0.05)),
-  sizeEmbedding = c(2^(6:9)),
-  estimatorSettings = setEstimator(learningRate = "auto", weightDecay = c(1e-06, 0.001),
-    device = "cpu", batchSize = 1024, epochs = 30, seed = NULL),
+  numLayers = 6,
+  sizeHidden = 512,
+  hiddenFactor = 2,
+  residualDropout = 0.1,
+  hiddenDropout = 0.4,
+  sizeEmbedding = 256,
+  estimatorSettings = setEstimator(learningRate = "auto", weightDecay = 1e-06, device =
+    "cpu", batchSize = 1024, epochs = 50, seed = NULL),
   hyperParamSearch = "random",
   randomSample = 100,
   randomSampleSeed = NULL
@@ -59,7 +59,8 @@ setResNet(
 
 - randomSample:
 
-  Number of combinations sampled when `hyperParamSearch = "random"`.
+  Number of combinations sampled when `hyperParamSearch = "random"`. If
+  there are fewer combinations, each is used once.
 
 - randomSampleSeed:
 
@@ -74,17 +75,32 @@ A `modelSettings` object for use with `PatientLevelPrediction`.
 The architecture is based on [Gorishniy et al.
 (2021)](https://arxiv.org/abs/2106.11959).
 
+The defaults define one model, selected for patient-level prediction
+tasks. To search hyperparameters, give several values; the example shows
+the search space that the package used to search by default.
+
 ## Examples
 
 ``` r
-resnetSettings <- setResNet(
-  numLayers = c(2, 4),
-  sizeHidden = 128,
-  hiddenFactor = 2,
-  residualDropout = 0.1,
-  hiddenDropout = 0.1,
-  sizeEmbedding = 64,
-  randomSample = 2,
+# one model, with the default hyperparameters
+resnetSettings <- setResNet()
+
+# a random search over 100 of the 154,880 combinations of this space
+resnetSearch <- setResNet(
+  numLayers = 1:8,
+  sizeHidden = 2^(6:10),
+  hiddenFactor = 1:4,
+  residualDropout = seq(0, 0.5, 0.05),
+  hiddenDropout = seq(0, 0.5, 0.05),
+  sizeEmbedding = 2^(6:9),
+  estimatorSettings = setEstimator(
+    learningRate = "auto",
+    weightDecay = c(1e-6, 1e-3),
+    batchSize = 1024,
+    epochs = 30
+  ),
+  hyperParamSearch = "random",
+  randomSample = 100,
   randomSampleSeed = 42
 )
 ```

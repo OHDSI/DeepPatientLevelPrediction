@@ -66,7 +66,7 @@
 Egill Fridgeirsson, Chungsoo Kim, Henrik John, Seng Chan You, Xiaoyong
 Pan</h4>
             
-            <h4 data-toc-skip class="date">2026-11-13</h4>
+            <h4 data-toc-skip class="date">2026-11-17</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/OHDSI/DeepPatientLevelPrediction/blob/develop/vignettes/BuildingDeepModels.Rmd" class="external-link"><code>vignettes/BuildingDeepModels.Rmd</code></a></small>
       <div class="d-none name"><code>BuildingDeepModels.Rmd</code></div>
@@ -156,7 +156,7 @@ shown in the first-model vignette.</p>
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ohdsi.github.io/DeepPatientLevelPrediction/" class="external-link">DeepPatientLevelPrediction</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Pick the model settings from DeepPatientLevelPrediction.</span></span>
-<span><span class="va">deepLearningModel</span> <span class="op">&lt;-</span> <span class="fu">DeepPatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="../reference/setDefaultResNet.html">setDefaultResNet</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">deepLearningModel</span> <span class="op">&lt;-</span> <span class="fu">DeepPatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="../reference/setResNet.html">setResNet</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># load the data</span></span>
 <span><span class="va">plpData</span> <span class="op">&lt;-</span> <span class="fu">PatientLevelPrediction</span><span class="fu">::</span><span class="fu"><a href="https://ohdsi.github.io/PatientLevelPrediction/reference/loadPlpData.html" class="external-link">loadPlpData</a></span><span class="op">(</span><span class="st">'locationOfData'</span><span class="op">)</span></span>
@@ -237,6 +237,11 @@ and the model weights may get stuck, but if the
 converge too fast.</p>
 <p>The <code>seed</code> lets the user use the same random
 initialization of the network’s weights as a previous run.</p>
+<p>Each model’s settings function defaults to one set of
+hyperparameters, so it trains one model. To search hyperparameters, give
+several values for the hyperparameters you want to tune; the examples in
+each function’s help page show the search space the package used to
+search by default.</p>
 <p>The <code>hyperParamSearch</code> chooses the strategy to find the
 best hyperparameters. Currently a random search and grid search are
 supported. Grid search searches every possible combination of
@@ -244,8 +249,8 @@ hyperparameters while random search samples randomly from the
 combinations. Since neural networks can be very flexible and have many
 hyperparameter combinations it’s almost never feasible to do a full grid
 search unless the network is really small.</p>
-<p>The <code>randomSample</code> chooses how many random samples to
-use.</p>
+<p>The <code>randomSample</code> chooses how many random samples to use.
+If there are fewer combinations, each is used once.</p>
 <p>The <code>device</code> specifies what device to use. Either
 <code>cpu</code> or <code>cuda</code>. If you have multiple GPUs, use
 <code>cuda:x</code>, where <code>x</code> is the GPU number as seen in

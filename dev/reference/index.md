@@ -28,10 +28,6 @@
   : Predict with a Deep Learning Estimator
 - [`setCustomEmbeddingModel()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setCustomEmbeddingModel.md)
   : Create Model Settings with Custom Embeddings
-- [`setDefaultResNet()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setDefaultResNet.md)
-  : Create Default ResNet Settings
-- [`setDefaultTransformer()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setDefaultTransformer.md)
-  : Create default settings for a non-temporal transformer
 - [`setEstimator()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setEstimator.md)
   : Create Estimator Settings
 - [`setFinetuner()`](https://ohdsi.github.com/DeepPatientLevelPrediction/dev/reference/setFinetuner.md)

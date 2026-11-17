@@ -50,14 +50,14 @@
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">setResNet</span><span class="op">(</span></span>
-<span>  numLayers <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">8</span><span class="op">)</span>,</span>
-<span>  sizeHidden <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span><span class="op">^</span><span class="op">(</span><span class="fl">6</span><span class="op">:</span><span class="fl">10</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>  hiddenFactor <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">4</span><span class="op">)</span>,</span>
-<span>  residualDropout <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">0.5</span>, <span class="fl">0.05</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>  hiddenDropout <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">0.5</span>, <span class="fl">0.05</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>  sizeEmbedding <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span><span class="op">^</span><span class="op">(</span><span class="fl">6</span><span class="op">:</span><span class="fl">9</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>  estimatorSettings <span class="op">=</span> <span class="fu"><a href="setEstimator.html">setEstimator</a></span><span class="op">(</span>learningRate <span class="op">=</span> <span class="st">"auto"</span>, weightDecay <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1e-06</span>, <span class="fl">0.001</span><span class="op">)</span>,</span>
-<span>    device <span class="op">=</span> <span class="st">"cpu"</span>, batchSize <span class="op">=</span> <span class="fl">1024</span>, epochs <span class="op">=</span> <span class="fl">30</span>, seed <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span>,</span>
+<span>  numLayers <span class="op">=</span> <span class="fl">6</span>,</span>
+<span>  sizeHidden <span class="op">=</span> <span class="fl">512</span>,</span>
+<span>  hiddenFactor <span class="op">=</span> <span class="fl">2</span>,</span>
+<span>  residualDropout <span class="op">=</span> <span class="fl">0.1</span>,</span>
+<span>  hiddenDropout <span class="op">=</span> <span class="fl">0.4</span>,</span>
+<span>  sizeEmbedding <span class="op">=</span> <span class="fl">256</span>,</span>
+<span>  estimatorSettings <span class="op">=</span> <span class="fu"><a href="setEstimator.html">setEstimator</a></span><span class="op">(</span>learningRate <span class="op">=</span> <span class="st">"auto"</span>, weightDecay <span class="op">=</span> <span class="fl">1e-06</span>, device <span class="op">=</span></span>
+<span>    <span class="st">"cpu"</span>, batchSize <span class="op">=</span> <span class="fl">1024</span>, epochs <span class="op">=</span> <span class="fl">50</span>, seed <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span>,</span>
 <span>  hyperParamSearch <span class="op">=</span> <span class="st">"random"</span>,</span>
 <span>  randomSample <span class="op">=</span> <span class="fl">100</span>,</span>
 <span>  randomSampleSeed <span class="op">=</span> <span class="cn">NULL</span></span>
@@ -106,7 +106,8 @@ or <code>"grid"</code>.</p></dd>
 
 <dt id="arg-randomsample">randomSample<a class="anchor" aria-label="anchor" href="#arg-randomsample"></a></dt>
 <dd><p>Number of combinations sampled when
-<code>hyperParamSearch = "random"</code>.</p></dd>
+<code>hyperParamSearch = "random"</code>. If there are fewer combinations, each is
+used once.</p></dd>
 
 
 <dt id="arg-randomsampleseed">randomSampleSeed<a class="anchor" aria-label="anchor" href="#arg-randomsampleseed"></a></dt>
@@ -121,18 +122,32 @@ or <code>"grid"</code>.</p></dd>
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>The architecture is based on
 <a href="https://arxiv.org/abs/2106.11959" class="external-link">Gorishniy et al. (2021)</a>.</p>
+<p>The defaults define one model, selected for patient-level prediction tasks.
+To search hyperparameters, give several values; the example shows the
+search space that the package used to search by default.</p>
     </div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">resnetSettings</span> <span class="op">&lt;-</span> <span class="fu">setResNet</span><span class="op">(</span></span></span>
-<span class="r-in"><span>  numLayers <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">4</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>  sizeHidden <span class="op">=</span> <span class="fl">128</span>,</span></span>
-<span class="r-in"><span>  hiddenFactor <span class="op">=</span> <span class="fl">2</span>,</span></span>
-<span class="r-in"><span>  residualDropout <span class="op">=</span> <span class="fl">0.1</span>,</span></span>
-<span class="r-in"><span>  hiddenDropout <span class="op">=</span> <span class="fl">0.1</span>,</span></span>
-<span class="r-in"><span>  sizeEmbedding <span class="op">=</span> <span class="fl">64</span>,</span></span>
-<span class="r-in"><span>  randomSample <span class="op">=</span> <span class="fl">2</span>,</span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># one model, with the default hyperparameters</span></span></span>
+<span class="r-in"><span><span class="va">resnetSettings</span> <span class="op">&lt;-</span> <span class="fu">setResNet</span><span class="op">(</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># a random search over 100 of the 154,880 combinations of this space</span></span></span>
+<span class="r-in"><span><span class="va">resnetSearch</span> <span class="op">&lt;-</span> <span class="fu">setResNet</span><span class="op">(</span></span></span>
+<span class="r-in"><span>  numLayers <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">8</span>,</span></span>
+<span class="r-in"><span>  sizeHidden <span class="op">=</span> <span class="fl">2</span><span class="op">^</span><span class="op">(</span><span class="fl">6</span><span class="op">:</span><span class="fl">10</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  hiddenFactor <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">4</span>,</span></span>
+<span class="r-in"><span>  residualDropout <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">0.5</span>, <span class="fl">0.05</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  hiddenDropout <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">0.5</span>, <span class="fl">0.05</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  sizeEmbedding <span class="op">=</span> <span class="fl">2</span><span class="op">^</span><span class="op">(</span><span class="fl">6</span><span class="op">:</span><span class="fl">9</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  estimatorSettings <span class="op">=</span> <span class="fu"><a href="setEstimator.html">setEstimator</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>    learningRate <span class="op">=</span> <span class="st">"auto"</span>,</span></span>
+<span class="r-in"><span>    weightDecay <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1e-6</span>, <span class="fl">1e-3</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>    batchSize <span class="op">=</span> <span class="fl">1024</span>,</span></span>
+<span class="r-in"><span>    epochs <span class="op">=</span> <span class="fl">30</span></span></span>
+<span class="r-in"><span>  <span class="op">)</span>,</span></span>
+<span class="r-in"><span>  hyperParamSearch <span class="op">=</span> <span class="st">"random"</span>,</span></span>
+<span class="r-in"><span>  randomSample <span class="op">=</span> <span class="fl">100</span>,</span></span>
 <span class="r-in"><span>  randomSampleSeed <span class="op">=</span> <span class="fl">42</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 </code></pre></div>

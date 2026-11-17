@@ -147,7 +147,8 @@ setRealMLP(
 - randomSample:
 
   How many random samples from hyperparameter space to use when
-  `hyperParamSearch = "random"`
+  `hyperParamSearch = "random"`. If there are fewer combinations, each
+  is used once.
 
 - randomSampleSeed:
 

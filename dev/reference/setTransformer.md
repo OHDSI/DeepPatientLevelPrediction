@@ -18,8 +18,8 @@ setTransformer(
   temporal = FALSE,
   temporalSettings = list(positionalEncoding = list(name = "SinusoidalPE", dropout =
     0.1), maxSequenceLength = 256, truncation = "tail", timeTokens = TRUE),
-  estimatorSettings = setEstimator(weightDecay = 1e-06, batchSize = 1024, epochs = 10,
-    seed = NULL),
+  estimatorSettings = setEstimator(learningRate = "auto", weightDecay = 1e-04, batchSize
+    = 512, epochs = 10, seed = NULL, device = "cpu"),
   hyperParamSearch = "random",
   randomSample = 1,
   randomSampleSeed = NULL
@@ -85,7 +85,8 @@ setTransformer(
 
 - randomSample:
 
-  Number of combinations sampled when `hyperParamSearch = "random"`.
+  Number of combinations sampled when `hyperParamSearch = "random"`. If
+  there are fewer combinations, each is used once.
 
 - randomSampleSeed:
 
