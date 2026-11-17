@@ -44,16 +44,10 @@ createDeepModelSettings <- function(modelType,
     param <- lapply(param, prepareCandidate)
   }
 
-  if (hyperParamSearch == "random" && randomSample > length(param)) {
-    stop(paste(
-      "\n Chosen amount of randomSamples is higher than the amount of
-               possible hyperparameter combinations.", "\n randomSample:",
-      randomSample, "\n Possible hyperparameter combinations:",
-      length(param), "\n Please lower the amount of randomSamples"
-    ))
-  }
-
   if (hyperParamSearch == "random") {
+    # asking for more samples than there are combinations runs each once, so
+    # that the default randomSample works with one combination
+    randomSample <- min(randomSample, length(param))
     suppressWarnings(withr::with_seed(randomSampleSeed, {
       param <- param[sample(
         length(param),

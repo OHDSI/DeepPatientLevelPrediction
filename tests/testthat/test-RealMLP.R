@@ -147,16 +147,6 @@ test_that("setRealMLP random search samples expanded grid combinations", {
   )
 
   expect_equal(length(settings$param), 3L)
-  expect_error(
-    setRealMLP(
-      numLayers = 1L,
-      sizeHidden = 16L,
-      dropout = 0.1,
-      sizeEmbedding = 8L,
-      hyperParamSearch = "random",
-      randomSample = 2L
-    )
-  , "Chosen amount of randomSamples is higher than the", fixed = TRUE)
 })
 
 test_that("setRealMLP validates vector-aware RealMLP parameters", {

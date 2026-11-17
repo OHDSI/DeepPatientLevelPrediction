@@ -158,8 +158,8 @@ test_that("model constructors create PLP model settings in R", {
 })
 
 test_that("default and temporal model settings are available without Python", {
-  defaultResnet <- setDefaultResNet()
-  defaultTransformer <- setDefaultTransformer()
+  defaultResnet <- setResNet()
+  defaultTransformer <- setTransformer()
   temporalTransformer <- setTransformer(
     temporal = TRUE,
     temporalSettings = list(

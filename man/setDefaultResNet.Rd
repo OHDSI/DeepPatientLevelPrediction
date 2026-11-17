@@ -16,15 +16,6 @@ setDefaultResNet(
 A \code{modelSettings} object for use with \code{PatientLevelPrediction}.
 }
 \description{
-Creates settings for the package's default residual-network model.
+Deprecated: \code{\link[=setResNet]{setResNet()}} now defaults to the same model.
 }
-\details{
-The architecture is based on
-\href{https://arxiv.org/abs/2106.11959}{Gorishniy et al. (2021)}. The
-hyperparameters are defaults selected for patient-level prediction tasks.
-}
-\examples{
-resnetSettings <- setDefaultResNet()
-resnetSettings$param[[1]]$numLayers
-
-}
+\keyword{internal}

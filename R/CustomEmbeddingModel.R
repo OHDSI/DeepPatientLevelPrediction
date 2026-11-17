@@ -56,7 +56,7 @@
 #'
 #' modelSettings <- setCustomEmbeddingModel(
 #'   embeddingFilePath = embeddingFilePath,
-#'   modelSettings = setDefaultTransformer()
+#'   modelSettings = setTransformer()
 #' )
 #'
 #' # Clean up this example's file. In real use, keep it for as long as you use

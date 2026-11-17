@@ -16,8 +16,8 @@ setTransformer(
   temporal = FALSE,
   temporalSettings = list(positionalEncoding = list(name = "SinusoidalPE", dropout =
     0.1), maxSequenceLength = 256, truncation = "tail", timeTokens = TRUE),
-  estimatorSettings = setEstimator(weightDecay = 1e-06, batchSize = 1024, epochs = 10,
-    seed = NULL),
+  estimatorSettings = setEstimator(learningRate = "auto", weightDecay = 1e-04, batchSize
+    = 512, epochs = 10, seed = NULL, device = "cpu"),
   hyperParamSearch = "random",
   randomSample = 1,
   randomSampleSeed = NULL
@@ -56,7 +56,8 @@ options the encoding does not take give a warning.}
 or \code{"grid"}.}
 
 \item{randomSample}{Number of combinations sampled when
-\code{hyperParamSearch = "random"}.}
+\code{hyperParamSearch = "random"}. If there are fewer combinations, each is
+used once.}
 
 \item{randomSampleSeed}{Random seed used when sampling combinations.}
 }

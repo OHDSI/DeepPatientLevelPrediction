@@ -41,7 +41,8 @@
 #' @param hyperParamSearch Which kind of hyperparameter search to use: random
 #' sampling or exhaustive grid search. Default: "grid"
 #' @param randomSample How many random samples from hyperparameter space to use
-#' when `hyperParamSearch = "random"`
+#' when `hyperParamSearch = "random"`. If there are fewer combinations, each is
+#' used once.
 #' @param randomSampleSeed Random seed to sample hyperparameter combinations
 #' @param device Deprecated. Use `estimatorSettings = setEstimator(device = )`.
 #'

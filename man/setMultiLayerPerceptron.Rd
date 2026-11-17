@@ -5,12 +5,12 @@
 \title{Create Multilayer Perceptron Settings}
 \usage{
 setMultiLayerPerceptron(
-  numLayers = c(1:8),
-  sizeHidden = c(2^(6:9)),
-  dropout = c(seq(0, 0.3, 0.05)),
-  sizeEmbedding = c(2^(6:9)),
-  estimatorSettings = setEstimator(learningRate = "auto", weightDecay = c(1e-06, 0.001),
-    batchSize = 1024, epochs = 30, device = "cpu"),
+  numLayers = 3,
+  sizeHidden = 256,
+  dropout = 0.1,
+  sizeEmbedding = 256,
+  estimatorSettings = setEstimator(learningRate = "auto", weightDecay = 1e-06, batchSize
+    = 1024, epochs = 50, device = "cpu"),
   hyperParamSearch = "random",
   randomSample = 100,
   randomSampleSeed = NULL
@@ -31,7 +31,8 @@ setMultiLayerPerceptron(
 or \code{"grid"}.}
 
 \item{randomSample}{Number of combinations sampled when
-\code{hyperParamSearch = "random"}.}
+\code{hyperParamSearch = "random"}. If there are fewer combinations, each is
+used once.}
 
 \item{randomSampleSeed}{Random seed used when sampling combinations.}
 }
@@ -42,13 +43,29 @@ A \code{modelSettings} object for use with \code{PatientLevelPrediction}.
 Creates model and hyperparameter-search settings for a multilayer
 perceptron.
 }
+\details{
+The defaults define one model. To search hyperparameters, give several
+values; the example shows the search space that the package used to search
+by default.
+}
 \examples{
-mlpSettings <- setMultiLayerPerceptron(
-  numLayers = c(1, 2),
-  sizeHidden = 64,
-  dropout = 0.1,
-  sizeEmbedding = 32,
-  randomSample = 2,
+# one model, with the default hyperparameters
+mlpSettings <- setMultiLayerPerceptron()
+
+# a random search over 100 of the 1,792 combinations of this space
+mlpSearch <- setMultiLayerPerceptron(
+  numLayers = 1:8,
+  sizeHidden = 2^(6:9),
+  dropout = seq(0, 0.3, 0.05),
+  sizeEmbedding = 2^(6:9),
+  estimatorSettings = setEstimator(
+    learningRate = "auto",
+    weightDecay = c(1e-6, 1e-3),
+    batchSize = 1024,
+    epochs = 30
+  ),
+  hyperParamSearch = "random",
+  randomSample = 100,
   randomSampleSeed = 42
 )
 

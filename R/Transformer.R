@@ -18,19 +18,13 @@
 
 #' Create default settings for a non-temporal transformer
 #'
-#' Creates settings for the package's default non-temporal transformer model.
-#'
-#' @details The architecture and default hyperparameters are based on
-#' [Gorishniy et al. (2021)](https://arxiv.org/abs/2106.11959).
+#' Deprecated: [setTransformer()] now defaults to the same model.
 #'
 #' @param estimatorSettings Estimator settings created by [setEstimator()].
 #'
 #' @return A `modelSettings` object for use with `PatientLevelPrediction`.
 #'
-#' @examples
-#' transformerSettings <- setDefaultTransformer()
-#' transformerSettings$param[[1]]$numBlocks
-#'
+#' @keywords internal
 #' @export
 setDefaultTransformer <- function(estimatorSettings =
                                     setEstimator(
@@ -41,18 +35,12 @@ setDefaultTransformer <- function(estimatorSettings =
                                       seed = NULL,
                                       device = "cpu"
                                     )) {
-  transformerSettings <- setTransformer(
-    numBlocks = 3,
-    dimToken = 192,
-    dimOut = 1,
-    numHeads = 8,
-    attDropout = 0.2,
-    ffnDropout = 0.1,
-    dimHidden = 256,
-    estimatorSettings = estimatorSettings,
-    hyperParamSearch = "random",
-    randomSample = 1
+  warning(
+    "`setDefaultTransformer()` is deprecated. Use `setTransformer()`, which ",
+    "now defaults to the same model.",
+    call. = FALSE
   )
+  transformerSettings <- setTransformer(estimatorSettings = estimatorSettings)
   attr(transformerSettings, "settings")$name <- "defaultTransformer"
   return(transformerSettings)
 }
@@ -86,7 +74,8 @@ setDefaultTransformer <- function(estimatorSettings =
 #' @param hyperParamSearch Hyperparameter-search strategy, either `"random"`
 #'   or `"grid"`.
 #' @param randomSample Number of combinations sampled when
-#'   `hyperParamSearch = "random"`.
+#'   `hyperParamSearch = "random"`. If there are fewer combinations, each is
+#'   used once.
 #' @param randomSampleSeed Random seed used when sampling combinations.
 #'
 #' @return A `modelSettings` object. Temporal settings are stored as attributes
@@ -134,10 +123,12 @@ setTransformer <- function(numBlocks = 3,
                              timeTokens = TRUE
                            ),
                            estimatorSettings = setEstimator(
-                             weightDecay = 1e-6,
-                             batchSize = 1024,
+                             learningRate = "auto",
+                             weightDecay = 1e-4,
+                             batchSize = 512,
                              epochs = 10,
-                             seed = NULL
+                             seed = NULL,
+                             device = "cpu"
                            ),
                            hyperParamSearch = "random",
                            randomSample = 1,

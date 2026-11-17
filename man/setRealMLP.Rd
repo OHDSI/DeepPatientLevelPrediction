@@ -92,7 +92,8 @@ the paper trains for all epochs.}
 sampling or exhaustive grid search. Default: "grid"}
 
 \item{randomSample}{How many random samples from hyperparameter space to use
-when \code{hyperParamSearch = "random"}}
+when \code{hyperParamSearch = "random"}. If there are fewer combinations, each is
+used once.}
 
 \item{randomSampleSeed}{Random seed to sample hyperparameter combinations}
 
