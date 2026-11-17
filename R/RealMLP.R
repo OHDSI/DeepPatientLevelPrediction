@@ -169,14 +169,6 @@ setRealMLP <- function(
     estimatorSettings$scheduler <- delaySetting(rlang::quo(NULL))
   }
 
-  checkIsClass(hyperParamSearch, "character")
-  checkInStringVector(hyperParamSearch, c("random", "grid"))
-
-  checkIsClass(randomSample, c("numeric", "integer"))
-  checkHigherEqual(randomSample, 1)
-
-  checkIsClass(randomSampleSeed, c("numeric", "integer", "NULL"))
-
   # RealMLP's own training settings are model parameters, which RealMLP reads
   paramGrid <- list(
     numLayers = as.integer(numLayers),
@@ -202,63 +194,29 @@ setRealMLP <- function(
     tokenAggregation = tokenAggregation,
     featureScaleMode = featureScaleMode
   )
-  paramGrid <- c(paramGrid, estimatorSettings$paramsToTune)
-
-  param <- PatientLevelPrediction::listCartesian(paramGrid)
-  param <- lapply(param, function(x) {
-    if (x$tokenAggregation == "auto") {
-      x$tokenAggregation <- if (isTRUE(x$paperMode)) "sum" else "mean"
-    }
-    # RealMLP() replaces mean by sum in paper mode, which models saved
-    # before this check rely on
-    if (isTRUE(x$paperMode) && x$tokenAggregation == "mean") {
-      stop(
-        "tokenAggregation = \"mean\" can't be combined with paperMode = TRUE, ",
-        "which sums the tokens. Use \"auto\", \"sum\" or \"sum_len_norm\"."
-      )
-    }
-    if (x$featureScaleMode == "auto") {
-      x$featureScaleMode <- "scalar"
-    }
-    x
-  })
-
-  if (hyperParamSearch == "random" && randomSample > length(param)) {
-    stop(paste(
-      "\n Chosen amount of randomSamples is higher than the amount of
-               possible hyperparameter combinations.", "\n randomSample:",
-      randomSample, "\n Possible hyperparameter combinations:",
-      length(param), "\n Please lower the amount of randomSamples"
-    ))
-  }
-
-  if (hyperParamSearch == "random") {
-    suppressWarnings(withr::with_seed(randomSampleSeed, {
-      param <- param[sample(
-        length(param),
-        randomSample
-      )]
-    }))
-  }
-
-  results <- list(
-    fitFunction = "DeepPatientLevelPrediction::fitEstimator",
-    param = param,
+  createDeepModelSettings(
+    modelType = "RealMLP",
+    paramGrid = paramGrid,
     estimatorSettings = estimatorSettings,
-    saveType = "file",
-    modelParamNames = c(
-      "numLayers", "sizeHidden", "dropout", "sizeEmbedding",
-      "labelSmoothing", "numericEmbeddingMode", "numericNumFrequencies",
-      "numericPeriodicInitStd", "numericPbldHiddenDim",
-      "numericPbldEmbeddingDim", "dataDependentInitMode",
-      "dataDependentInitTargetVar", "dataDependentInitMaxRows",
-      "dataDependentInitGainClip", "dataDependentInitBiasRefitSteps",
-      "scalingLrMult", "biasLrMult", "actLrMult", "embeddingLrMult",
-      "paperMode", "tokenAggregation", "featureScaleMode"
-    ),
-    modelType = "RealMLP"
+    hyperParamSearch = hyperParamSearch,
+    randomSample = randomSample,
+    randomSampleSeed = randomSampleSeed,
+    prepareCandidate = function(x) {
+      if (x$tokenAggregation == "auto") {
+        x$tokenAggregation <- if (isTRUE(x$paperMode)) "sum" else "mean"
+      }
+      # RealMLP() replaces mean by sum in paper mode, which models saved
+      # before this check rely on
+      if (isTRUE(x$paperMode) && x$tokenAggregation == "mean") {
+        stop(
+          "tokenAggregation = \"mean\" can't be combined with paperMode = TRUE, ",
+          "which sums the tokens. Use \"auto\", \"sum\" or \"sum_len_norm\"."
+        )
+      }
+      if (x$featureScaleMode == "auto") {
+        x$featureScaleMode <- "scalar"
+      }
+      x
+    }
   )
-  attr(results$param, "settings")$modelType <- results$modelType
-  class(results) <- "modelSettings"
-  results
 }

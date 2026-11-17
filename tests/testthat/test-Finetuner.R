@@ -21,12 +21,20 @@ test_that("Finetuner settings work", {
   expect_equal(fineTunerSettings$estimatorSettings$device, "cpu")
   expect_equal(fineTunerSettings$estimatorSettings$batchSize, 128)
   expect_equal(fineTunerSettings$estimatorSettings$epochs, 1)  
-  expect_equal(fineTunerSettings$fitFunction, "fitEstimator")
+  expect_equal(fineTunerSettings$fitFunction, "DeepPatientLevelPrediction::fitEstimator")
   expect_equal(fineTunerSettings$saveType, "file")
   expect_equal(fineTunerSettings$modelType, modelType)
-  expect_equal(fineTunerSettings$modelParamNames, "modelPath")
   expect_equal(class(fineTunerSettings), "modelSettings")
   expect_equal(attr(fineTunerSettings$param, "settings")$modelType, "Finetuner")
+  # estimator settings with several values are tuned, as for the other models
+  tunedSettings <- setFinetuner(
+    modelPath = file.path(simFitEstimatorPath, "plpModel"),
+    estimatorSettings = setEstimator(weightDecay = c(1e-4, 1e-3))
+  )
+  expect_equal(
+    vapply(tunedSettings$param, function(x) x$estimator.weightDecay, numeric(1)),
+    c(1e-4, 1e-3)
+  )
   expect_error(setFinetuner(modelPath = "notAPath", estimatorSettings = setEstimator()), "does not exist", fixed = TRUE)
   expect_error(setFinetuner(modelPath = simFitEstimatorPath, estimatorSettings = setEstimator()), "does not contain a model directory", fixed = TRUE)
   fakeDir <- file.path(simFitEstimatorPath, "fakeDir")

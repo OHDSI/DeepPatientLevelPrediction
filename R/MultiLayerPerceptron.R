@@ -73,14 +73,6 @@ setMultiLayerPerceptron <- function(numLayers = c(1:8),
   checkIsClass(sizeEmbedding, c("numeric", "integer"))
   checkHigherEqual(sizeEmbedding, 1)
 
-  checkIsClass(hyperParamSearch, "character")
-  checkInStringVector(hyperParamSearch, c("random", "grid"))
-
-  checkIsClass(randomSample, c("numeric", "integer"))
-  checkHigherEqual(randomSample, 1)
-
-  checkIsClass(randomSampleSeed, c("numeric", "integer", "NULL"))
-
   paramGrid <- list(
     numLayers = numLayers,
     sizeHidden = sizeHidden,
@@ -88,42 +80,12 @@ setMultiLayerPerceptron <- function(numLayers = c(1:8),
     sizeEmbedding = sizeEmbedding
   )
 
-  paramGrid <- c(paramGrid, estimatorSettings$paramsToTune)
-
-  param <- PatientLevelPrediction::listCartesian(paramGrid)
-  if (hyperParamSearch == "random" && randomSample > length(param)) {
-    stop(paste(
-      "\n Chosen amount of randomSamples is higher than the
-               amount of possible hyperparameter combinations.",
-      "\n randomSample:", randomSample, "\n Possible hyperparameter
-               combinations:", length(param),
-      "\n Please lower the amount of randomSamples"
-    ))
-  }
-
-  if (hyperParamSearch == "random") {
-    suppressWarnings(withr::with_seed(randomSampleSeed, {
-      param <- param[sample(
-        length(param),
-        randomSample
-      )]
-    }))
-  }
-  results <- list(
-    fitFunction = "DeepPatientLevelPrediction::fitEstimator",
-    param = param,
+  createDeepModelSettings(
+    modelType = "MultiLayerPerceptron",
+    paramGrid = paramGrid,
     estimatorSettings = estimatorSettings,
-    saveType = "file",
-    modelParamNames = c(
-      "numLayers", "sizeHidden",
-      "dropout", "sizeEmbedding"
-    ),
-    modelType = "MultiLayerPerceptron"
+    hyperParamSearch = hyperParamSearch,
+    randomSample = randomSample,
+    randomSampleSeed = randomSampleSeed
   )
-  attr(results$param, "settings")$modelType <- results$modelType
-
-
-  class(results) <- "modelSettings"
-
-  return(results)
 }

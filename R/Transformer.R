@@ -180,14 +180,6 @@ setTransformer <- function(numBlocks = 3,
     checkHigher(dimHiddenRatio, 0)
   }
 
-  checkIsClass(hyperParamSearch, "character")
-  checkInStringVector(hyperParamSearch, c("random", "grid"))
-
-  checkIsClass(randomSample, c("numeric", "integer"))
-  checkHigherEqual(randomSample, 1)
-
-  checkIsClass(randomSampleSeed, c("numeric", "integer", "NULL"))
-
   combinations <- expand.grid(dimToken = dimToken, numHeads = numHeads)
   notDivisible <- combinations[combinations$dimToken %% combinations$numHeads != 0, ]
   if (nrow(notDivisible) > 0) {
@@ -256,55 +248,28 @@ setTransformer <- function(numBlocks = 3,
     }
   }
 
-  paramGrid <- c(paramGrid, estimatorSettings$paramsToTune)
-
-  param <- PatientLevelPrediction::listCartesian(paramGrid)
-
   if (!is.null(dimHiddenRatio)) {
-    param <- lapply(param, function(x) {
+    prepareCandidate <- function(x) {
       x$dimHidden <- round(x$dimToken * x$dimHidden, digits = 0)
-      return(x)
-    })
+      x
+    }
+  } else {
+    prepareCandidate <- NULL
   }
-
-  if (hyperParamSearch == "random" && randomSample > length(param)) {
-    stop(paste(
-      "\n Chosen amount of randomSamples is higher than the amount of
-               possible hyperparameter combinations.", "\n randomSample:",
-      randomSample, "\n Possible hyperparameter combinations:",
-      length(param), "\n Please lower the amount of randomSample"
-    ))
-  }
-
-  if (hyperParamSearch == "random") {
-    suppressWarnings(withr::with_seed(randomSampleSeed, {
-      param <- param[sample(
-        length(param),
-        randomSample
-      )]
-    }))
-  }
-  results <- list(
-    fitFunction = "DeepPatientLevelPrediction::fitEstimator",
-    param = param,
+  results <- createDeepModelSettings(
+    modelType = "Transformer",
+    paramGrid = paramGrid,
     estimatorSettings = estimatorSettings,
-    saveType = "file",
-    modelParamNames = c(
-      "numBlocks", "dimToken", "dimOut", "numHeads",
-      "attDropout", "ffnDropout", "dimHidden"
-    ),
-    modelType = "Transformer"
+    hyperParamSearch = hyperParamSearch,
+    randomSample = randomSample,
+    randomSampleSeed = randomSampleSeed,
+    prepareCandidate = prepareCandidate
   )
   if (temporal) {
     attr(results$param, "temporalModel") <- TRUE
     attr(results$param, "temporalSettings") <- temporalSettings
-    if (!is.null(temporalSettings$positionalEncoding)) {
-      results$modelParamNames <- c(results$modelParamNames, "positionalEncoding")
-    }
   }
-  attr(results$param, "settings")$modelType <- results$modelType
-  class(results) <- "modelSettings"
-  return(results)
+  results
 }
 
 # Converts the names of a list and of the lists in it to snake_case.

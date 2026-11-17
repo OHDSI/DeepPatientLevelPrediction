@@ -126,20 +126,14 @@ setFinetuner <- function(modelPath,
     reticulate::import_from_path("InitStrategy",
                                  path = path)$FinetuneInitStrategy()
   
-  param <- list()
-  param[[1]] <- list(modelPath = modelPath)
-
-  results <- list(
-    fitFunction = "fitEstimator",
-    param = param,
+  results <- createDeepModelSettings(
+    modelType = modelType,
+    paramGrid = list(modelPath = modelPath),
     estimatorSettings = estimatorSettings,
-    saveType = "file",
-    modelParamNames = c("modelPath"),
-    modelType = modelType
+    hyperParamSearch = "grid",
+    randomSample = 1,
+    randomSampleSeed = NULL
   )
   attr(results$param, "settings")$modelType <- "Finetuner"
-
-  class(results) <- "modelSettings"
-
-  return(results)
+  results
 }
