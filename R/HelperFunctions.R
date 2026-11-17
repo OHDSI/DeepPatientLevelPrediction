@@ -243,10 +243,6 @@ expandComponentGrid <- function(componentSetting) {
   subGrids <- configTemplate[isSubGrid]
   mainParams <- configTemplate[!isSubGrid]
   mainGrid <- PatientLevelPrediction::listCartesian(mainParams)
-  mainGrid <- lapply(mainGrid, function(cfg) {
-    cfg[] <- lapply(cfg, function(v) if (is.factor(v)) as.character(v) else v)
-    cfg
-  })
   
   expandedSubGrids <- lapply(subGrids, expandComponentGrid)
   
