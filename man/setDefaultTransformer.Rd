@@ -16,14 +16,6 @@ setDefaultTransformer(
 A \code{modelSettings} object for use with \code{PatientLevelPrediction}.
 }
 \description{
-Creates settings for the package's default non-temporal transformer model.
+Deprecated: \code{\link[=setTransformer]{setTransformer()}} now defaults to the same model.
 }
-\details{
-The architecture and default hyperparameters are based on
-\href{https://arxiv.org/abs/2106.11959}{Gorishniy et al. (2021)}.
-}
-\examples{
-transformerSettings <- setDefaultTransformer()
-transformerSettings$param[[1]]$numBlocks
-
-}
+\keyword{internal}

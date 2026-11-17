@@ -145,8 +145,16 @@ test_that("transformer nn-module works", {
   expect_equal(output$shape[0], 10L)
 })
 
-test_that("Default Transformer works", {
-  defaultTransformer <- setDefaultTransformer()
+test_that("setTransformer() defaults to the model setDefaultTransformer() gave", {
+  expect_warning(
+    defaultTransformer <- setDefaultTransformer(),
+    "`setDefaultTransformer()` is deprecated",
+    fixed = TRUE
+  )
+  transformer <- setTransformer()
+  expect_equal(defaultTransformer$param, transformer$param)
+  expect_equal(transformer$estimatorSettings$weightDecay, 1e-4)
+  expect_equal(transformer$estimatorSettings$batchSize, 512)
   params <- defaultTransformer$param[[1]]
 
   expect_equal(params$numBlocks, 3)
@@ -157,12 +165,6 @@ test_that("Default Transformer works", {
   settings <- attr(defaultTransformer, "settings")
 
   expect_equal(settings$name, "defaultTransformer")
-})
-
-test_that("Errors are produced by settings function", {
-  randomSample <- 2
-
-  expect_error(setTransformer(randomSample = randomSample), "Chosen amount of randomSamples is higher than the", fixed = TRUE)
 })
 
 test_that("dimHidden ratio works as expected", {

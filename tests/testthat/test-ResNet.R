@@ -20,21 +20,6 @@ test_that("setResNet works", {
   expect_equal(resSet$fitFunction, "DeepPatientLevelPrediction::fitEstimator")
 
   expect_true(length(resSet$param) > 0)
-
-  expect_error(setResNet(numLayers = 2,
-                         sizeHidden = 32,
-                         hiddenFactor = 2,
-                         residualDropout = 0.1,
-                         hiddenDropout = 0.1,
-                         sizeEmbedding = 32,
-                         estimatorSettings =
-                           setEstimator(learningRate = c(3e-4),
-                                        weightDecay = c(1e-6),
-                                        seed = 42,
-                                        batchSize = 128,
-                                        epochs = 1),
-                         hyperParamSearch = "random",
-                         randomSample = 2), "Chosen amount of randomSamples is higher than the", fixed = TRUE)
 })
 
 # fitted on Eunomia when an integration test first uses it
@@ -125,9 +110,10 @@ test_that("a residual layer works without dropout", {
   expect_equal(layer(torch$randn(3L, 4L))$shape[1], 4L)
 })
 
-test_that("Default Resnet works", {
-  defaultResNet <- setDefaultResNet()
-  params <- defaultResNet$param[[1]]
+test_that("setResNet() defaults to one model, which setDefaultResNet() gave", {
+  resnet <- setResNet()
+  expect_length(resnet$param, 1)
+  params <- resnet$param[[1]]
 
   expect_equal(params$numLayers, 6)
   expect_equal(params$sizeHidden, 512)
@@ -135,23 +121,24 @@ test_that("Default Resnet works", {
   expect_equal(params$residualDropout, 0.1)
   expect_equal(params$hiddenDropout, 0.4)
   expect_equal(params$sizeEmbedding, 256)
+  expect_equal(resnet$estimatorSettings$weightDecay, 1e-6)
+  expect_equal(resnet$estimatorSettings$epochs, 50)
 
+  expect_warning(
+    defaultResNet <- setDefaultResNet(),
+    "`setDefaultResNet()` is deprecated",
+    fixed = TRUE
+  )
+  expect_equal(defaultResNet$param, resnet$param)
+  expect_equal(attr(defaultResNet, "settings")$name, "defaultResnet")
 })
 
-test_that("Errors are produced by settings function", {
-  randomSample <- 2
-
-  expect_error(setResNet(numLayers = 1,
-                         sizeHidden = 128,
-                         hiddenFactor = 1,
-                         residualDropout = 0.0,
-                         hiddenDropout = 0.0,
-                         sizeEmbedding = 128,
-                         estimatorSettings = setEstimator(weightDecay = 1e-6,
-                                                          learningRate = 0.01,
-                                                          seed = 42),
-                         hyperParamSearch = "random",
-                         randomSample = randomSample), "Chosen amount of randomSamples is higher than the", fixed = TRUE)
+test_that("a random search with more samples than combinations runs each once", {
+  settings <- setResNet(
+    numLayers = 1:2, hyperParamSearch = "random", randomSample = 100,
+    randomSampleSeed = 1
+  )
+  expect_setequal(vapply(settings$param, function(x) x$numLayers, numeric(1)), 1:2)
 })
 
 

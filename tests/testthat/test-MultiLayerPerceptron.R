@@ -19,14 +19,15 @@ test_that("setMultiLayerPerceptron works", {
 
   expect_equal(modelSettings$fitFunction, "DeepPatientLevelPrediction::fitEstimator")
   expect_true(length(modelSettings$param) > 0)
+})
 
-  expect_error(setMultiLayerPerceptron(numLayers = 1,
-                                       sizeHidden = 128,
-                                       dropout = 0.2,
-                                       sizeEmbedding = 128,
-                                       estimatorSettings =
-                                         setEstimator(learningRate = 3e-4),
-                                       randomSample = 2), "Chosen amount of randomSamples is higher than the", fixed = TRUE)
+test_that("setMultiLayerPerceptron() defaults to one model", {
+  mlp <- setMultiLayerPerceptron()
+  expect_length(mlp$param, 1)
+  expect_equal(
+    mlp$param[[1]][c("numLayers", "sizeHidden", "dropout", "sizeEmbedding")],
+    list(numLayers = 3, sizeHidden = 256, dropout = 0.1, sizeEmbedding = 256)
+  )
 })
 
 test_that("MLP nn-module works ", {
@@ -72,21 +73,3 @@ test_that("MLP nn-module works ", {
   expect_equal(output$shape[0], 10L)
 })
 
-test_that("Errors are produced by settings function", {
-  randomSample <- 2
-
-  expect_error(setMultiLayerPerceptron(
-                                       numLayers = 1,
-                                       sizeHidden = 128,
-                                       dropout = 0.0,
-                                       sizeEmbedding = 128,
-                                       hyperParamSearch = "random",
-                                       estimatorSettings =
-                                         setEstimator(
-                                                      learningRate = "auto",
-                                                      weightDecay = c(1e-3),
-                                                      batchSize = 1024,
-                                                      epochs = 30,
-                                                      device = "cpu")),
-               "Chosen amount of randomSamples is higher than the", fixed = TRUE)
-})

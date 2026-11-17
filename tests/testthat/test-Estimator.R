@@ -425,7 +425,7 @@ test_that("device as a function argument works", {
   estimatorSettings <- setEstimator(device = getDevice,
                                     learningRate = 3e-4)
 
-  model <- setDefaultResNet(estimatorSettings = estimatorSettings)
+  model <- setResNet(estimatorSettings = estimatorSettings)
   model$param[[1]]$feature_info <- featureInfo
   model$param[[1]]$modelType <- "ResNet"
   parameters <- list(modelParameters = model$param[[1]],
@@ -439,7 +439,7 @@ test_that("device as a function argument works", {
   estimatorSettings <- setEstimator(device = getDevice,
                                     learningRate = 3e-4)
 
-  model <- setDefaultResNet(estimatorSettings = estimatorSettings)
+  model <- setResNet(estimatorSettings = estimatorSettings)
   model$param[[1]]$feature_info <- featureInfo
   model$param[[1]]$modelType <- "ResNet"
   parameters <- list(modelParameters = model$param[[1]],
@@ -495,7 +495,7 @@ test_that("accumulationSteps as a function argument works", {
                                     learningRate = 3e-4,
                                     batchSize = 128)
 
-  model <- setDefaultResNet(estimatorSettings = estimatorSettings)
+  model <- setResNet(estimatorSettings = estimatorSettings)
   model$param[[1]]$feature_info <- featureInfo
   model$param[[1]]$modelType <- "ResNet"
   parameters <- list(modelParameters = model$param[[1]],
@@ -510,7 +510,7 @@ test_that("accumulationSteps as a function argument works", {
                                     learningRate = 3e-4,
                                     batchSize = 128)
 
-  model <- setDefaultResNet(estimatorSettings = estimatorSettings)
+  model <- setResNet(estimatorSettings = estimatorSettings)
   model$param[[1]]$feature_info <- featureInfo
   model$param[[1]]$modelType <- "ResNet"
   parameters <- list(modelParameters = model$param[[1]],

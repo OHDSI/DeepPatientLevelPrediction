@@ -6,6 +6,10 @@ New features
 - Start the bias of the output layer at the log-odds of the outcome rate in the training data, controlled by `initOutputBias` in `setEstimator()` and on by default. Models with rare outcomes no longer spend their first epochs lowering all predictions to the outcome rate, which with few batches per epoch let early stopping end training before the model ranked patients. This removes most of the instability in ResNet learning curves. It applies to models with a single-logit linear `head`, and not to the learning rate search.
 - Add `gradClipNorm` and `deterministic` to `setEstimator()`. `gradClipNorm` limits the norm of the gradients at each optimizer step, and several values are tuned as hyperparameters. `deterministic` makes PyTorch use only deterministic algorithms, so that training on a GPU with the same seed and data gives the same model. Both could only be set by editing the estimator settings by hand, and deterministic training then stayed on for later fits in the same session.
 - `setRealMLP()` takes `estimatorSettings` like the other model settings, so RealMLP's learning rate, batch size, epochs, seed, early stopping, `gradClipNorm` and `deterministic` can be set and tuned. The default keeps the paper's training settings. A `scheduler` is ignored with a warning, because RealMLP follows its own learning rate schedule. `learningRate = "auto"` works too: the final model starts from the rate the learning rate finder chose, which is now recorded as `baseLR` in the learning schedule.
+- `setResNet()` and `setMultiLayerPerceptron()` default to one model, as `setTransformer()` and `setRealMLP()` do. They defaulted to random searches of 100 of 154,880 and of 1,792 combinations; their help pages show those search spaces. `setResNet()` defaults to the model of `setDefaultResNet()`, and `setTransformer()` to the estimator settings of `setDefaultTransformer()`: weight decay 1e-4 and batches of 512, instead of 1e-6 and 1024.
+- A `randomSample` larger than the number of combinations uses each combination once, instead of being an error.
+- `setCustomEmbeddingModel()` and `setFinetuner()` store their init strategy as plain data, and `setCustomEmbeddingModel()` no longer starts Python. The model design now keeps the init strategy. Models saved with the strategy object still load, predict and fine-tune.
+- `setFinetuner()` tunes estimator settings with several values, like the other model settings.
 - Add a `curvature` argument to `setCustomEmbeddingModel()` for Poincare embeddings trained in a ball whose curvature is not -1. HypLL, which OHDSI/context uses, applies softplus to its curvature parameter, so its default of 1, when not trained, is a curvature of about -1.313.
 
 Bug fixes
@@ -63,6 +67,7 @@ Removed
 
 Deprecated
 - The `device` argument of `setRealMLP()`. Use `estimatorSettings = setEstimator(device = )`.
+- `setDefaultResNet()` and `setDefaultTransformer()`. `setResNet()` and `setTransformer()` now default to the same models.
 
 Runtime and compatibility
 - Require Python 3.11 or newer. Python 3.10 reached end-of-life in October 2026, and duckdb 2.0.0 requires Python 3.11.
