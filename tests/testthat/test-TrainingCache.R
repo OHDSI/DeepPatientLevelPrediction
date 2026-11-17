@@ -216,6 +216,28 @@ test_that("the data fingerprint does not depend on the chunk size", {
   expect_identical(dataset$fingerprint(chunk_rows = 3L), dataset$fingerprint())
 })
 
+test_that("Python objects in the settings are described by their state", {
+  skip_if_no_python()
+  reticulate::py_run_string(paste(
+    "class FingerprintedSetting:",
+    "    def __init__(self, size):",
+    "        self.size = size",
+    sep = "\n"
+  ))
+  main <- reticulate::import_main()
+  small <- normalizeForFingerprint(list(setting = main$FingerprintedSetting(1L)))
+  large <- normalizeForFingerprint(list(setting = main$FingerprintedSetting(2L)))
+  # the repr of an instance holds its address, which differs between sessions
+  expect_false(any(grepl(" at 0x", small$setting)))
+  expect_false(identical(small, large))
+  expect_identical(
+    small,
+    normalizeForFingerprint(list(setting = main$FingerprintedSetting(1L)))
+  )
+  # a class is described by its name
+  expect_length(normalizeForFingerprint(main$FingerprintedSetting), 1)
+})
+
 test_that("files read during training are identified by their contents", {
   skip_if_no_python()
   modelFile <- withr::local_tempfile(lines = "weights 1")
