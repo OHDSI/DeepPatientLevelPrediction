@@ -220,10 +220,10 @@ test_that("files read during training are identified by their contents", {
   skip_if_no_python()
   modelFile <- withr::local_tempfile(lines = "weights 1")
   embeddingFile <- withr::local_tempfile(lines = "embeddings 1")
-  strategy <- importModule("InitStrategy")$CustomEmbeddingInitStrategy(
-    embedding_class = "CustomEmbeddings", embedding_file = embeddingFile
+  settings <- list(
+    finetuneModelPath = modelFile,
+    initStrategy = list(name = "customEmbedding", embeddingFile = embeddingFile)
   )
-  settings <- list(finetuneModelPath = modelFile, initStrategy = strategy)
   first <- describeInputFiles(settings)
   expect_length(first, 2)
 

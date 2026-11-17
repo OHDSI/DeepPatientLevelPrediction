@@ -68,6 +68,7 @@ test_that("Finetuner fitEstimator works", {
   expect_equal(fineTunedModel$estimator_settings$finetune_model_path, 
                normalizePath(file.path(simFitEstimatorPath, "plpModel", "model",
                          "DeepEstimatorModel.pt")))
+  expect_equal(fineTunedModel$estimator_settings$init_strategy, list(name = "finetune"))
   expect_equal(fineTunedModel$model_parameters$model_type, 
                simFitEstimatorResults$modelDesign$modelSettings$modelType)
 })

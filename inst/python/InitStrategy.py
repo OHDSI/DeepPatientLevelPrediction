@@ -35,7 +35,7 @@ class FinetuneInitStrategy(InitStrategy):
         # Build the network the way the fitted model was built, for example with
         # its custom embeddings, so that its weights fit.
         fitted_settings = fitted_estimator["estimator_settings"]
-        fitted_strategy = fitted_settings.get("init_strategy") or DefaultInitStrategy()
+        fitted_strategy = create_init_strategy(fitted_settings.get("init_strategy"))
         model_instance = fitted_strategy.initialize(
             model,
             {
@@ -146,3 +146,28 @@ class CustomEmbeddingInitStrategy(InitStrategy):
             **extra,
         )
         return model
+
+
+INIT_STRATEGIES = {
+    "finetune": FinetuneInitStrategy,
+    "customEmbedding": CustomEmbeddingInitStrategy,
+}
+
+
+def create_init_strategy(spec):
+    """Build the init strategy that the settings describe.
+
+    The settings give it as plain data: a dict with the strategy's ``name`` and
+    its options. Models saved before that hold the strategy object itself.
+    """
+    if spec is None:
+        return DefaultInitStrategy()
+    if isinstance(spec, InitStrategy):
+        return spec
+    options = dict(spec)
+    name = options.pop("name")
+    if name not in INIT_STRATEGIES:
+        raise ValueError(
+            f"Unknown init strategy {name!r}; known are {', '.join(INIT_STRATEGIES)}"
+        )
+    return INIT_STRATEGIES[name](**options)

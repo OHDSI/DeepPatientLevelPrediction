@@ -14,7 +14,7 @@ import torch
 from torch.utils.data import DataLoader, BatchSampler, RandomSampler, SequentialSampler
 from tqdm import tqdm
 
-from InitStrategy import DefaultInitStrategy
+from InitStrategy import create_init_strategy
 from schedules import get_schedule
 try:
     import numpy as np
@@ -43,11 +43,9 @@ class Estimator:
         self.deterministic = bool(parameters["estimator_settings"].get("deterministic", False))
         self._configure_determinism()
 
-        if "init_strategy" in parameters["estimator_settings"]:
-            self.model = parameters["estimator_settings"]["init_strategy"].initialize(model, parameters)
-        else:
-            self.model = DefaultInitStrategy().initialize(model, parameters)
-            
+        init_strategy = create_init_strategy(parameters["estimator_settings"].get("init_strategy"))
+        self.model = init_strategy.initialize(model, parameters)
+
         self.model_parameters = parameters["model_parameters"]
         self.estimator_settings = parameters["estimator_settings"]
 

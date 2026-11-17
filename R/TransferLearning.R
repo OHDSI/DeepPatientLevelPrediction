@@ -121,10 +121,7 @@ setFinetuner <- function(modelPath,
   modelType <-
     plpModel$modelDesign$modelSettings$modelType
   
-  path <- system.file("python", package = "DeepPatientLevelPrediction")
-  estimatorSettings$initStrategy <-
-    reticulate::import_from_path("InitStrategy",
-                                 path = path)$FinetuneInitStrategy()
+  estimatorSettings$initStrategy <- list(name = "finetune")
   
   results <- createDeepModelSettings(
     modelType = modelType,

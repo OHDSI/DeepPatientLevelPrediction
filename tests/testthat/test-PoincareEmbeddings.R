@@ -206,12 +206,17 @@ test_that("setCustomEmbeddingModel passes the curvature to Poincare embeddings",
     )
   }
 
-  # an init strategy saved with a model before curvature was a setting
-  strategy <- settings$estimatorSettings$initStrategy
+  # Models saved before the init strategy was plain data hold the strategy
+  # object, and those saved before curvature was a setting have none.
+  strategy <- importModule("InitStrategy")$CustomEmbeddingInitStrategy(
+    embedding_class = "PoincareEmbeddings", embedding_file = embeddingFile
+  )
   reticulate::py_del_attr(strategy, "curvature")
+  oldSettings <- settings$estimatorSettings
+  oldSettings$initStrategy <- strategy
   estimator <- createEstimator(list(
     modelParameters = parameters,
-    estimatorSettings = settings$estimatorSettings
+    estimatorSettings = oldSettings
   ))
   expect_equal(estimator$model$embedding$curvature, 1)
 })

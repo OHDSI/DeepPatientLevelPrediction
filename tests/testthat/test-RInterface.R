@@ -12,6 +12,20 @@ test_that("package loading and settings do not initialize Python", {
   expect_false(isDelayedNull(estimator$scheduler))
   expect_true(isDelayedNull(setEstimator(seed = 1, scheduler = NULL)$scheduler))
   expect_false(reticulate::py_available(initialize = FALSE))
+
+  # the init strategy of custom embeddings is plain data, built in Python later
+  embeddingFile <- withr::local_tempfile(fileext = ".pt", lines = "")
+  customEmbeddingSettings <- setCustomEmbeddingModel(embeddingFile)
+  expect_equal(
+    customEmbeddingSettings$estimatorSettings$initStrategy,
+    list(
+      name = "customEmbedding",
+      embeddingClass = "CustomEmbeddings",
+      embeddingFile = normalizePath(embeddingFile),
+      curvature = 1
+    )
+  )
+  expect_false(reticulate::py_available(initialize = FALSE))
 })
 
 test_that("isDelayedNull evaluates delayed settings created before delaySetting()", {
@@ -184,6 +198,16 @@ test_that("training cache persists R objects", {
 
   restored <- trainingCache$new(cacheDirectory)
   expect_identical(restored$getGridSearchPredictions(), predictions)
+})
+
+test_that("an unknown init strategy is an error", {
+  skip_if_no_python()
+  createInitStrategy <- importModule("InitStrategy")$create_init_strategy
+  expect_error(createInitStrategy(list(name = "nope")), "Unknown init strategy 'nope'")
+  expect_equal(
+    class(createInitStrategy(NULL))[[1]],
+    "InitStrategy.DefaultInitStrategy"
+  )
 })
 
 test_that("Python-backed settings reject missing model files before import", {

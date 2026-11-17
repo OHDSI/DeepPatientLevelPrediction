@@ -366,7 +366,6 @@ fitEstimator <- function(
     )
 
   comp <- start - Sys.time()
-  modelSettings$estimatorSettings$initStrategy <- NULL
   result <- list(
     model = cvResult$estimator,
     preprocessing = list(
@@ -814,6 +813,10 @@ createEstimator <- function(parameters) {
   )
   parameters$estimatorSettings <- camelCaseToSnakeCaseNames(
     parameters$estimatorSettings
+  )
+  # the options of an init strategy become keyword arguments in Python
+  parameters$estimatorSettings$init_strategy <- snakeCaseNamesDeep(
+    parameters$estimatorSettings$init_strategy
   )
   parameters$estimatorSettings <- evalEstimatorSettings(
     parameters$estimatorSettings

@@ -205,11 +205,7 @@ createCacheFingerprint <- function(
 # path can hold new weights or embeddings in a later run.
 describeInputFiles <- function(estimatorSettings) {
   paths <- estimatorSettings$finetuneModelPath
-  strategy <- estimatorSettings$initStrategy
-  if (inherits(strategy, "python.builtin.object") &&
-    reticulate::py_has_attr(strategy, "embedding_file")) {
-    paths <- c(paths, as.character(strategy$embedding_file))
-  }
+  paths <- c(paths, estimatorSettings$initStrategy$embeddingFile)
   return(vapply(
     paths,
     function(path) if (file.exists(path)) rlang::hash_file(path) else NA_character_,
