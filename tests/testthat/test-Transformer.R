@@ -297,7 +297,7 @@ test_that("Positional encodings work", {
   )
 
   expect_equal(length(results$param), 1)
-  expect_false("positionalEncoding" %in% results$modelParamNames)
+  expect_false("positionalEncoding" %in% names(results$param[[1]]))
 
 
   results <- setTransformer(
@@ -311,7 +311,6 @@ test_that("Positional encodings work", {
   # if temporal is TRUE and positionalEncoding is NULL, it should not be set
   # and accounted for in the hyperparameter search
   expect_equal(length(results$param), 1)
-  expect_false("positionalEncoding" %in% results$modelParamNames)
   expect_false("positionalEncoding" %in% names(results$param[[1]]))
 
 
@@ -325,7 +324,7 @@ test_that("Positional encodings work", {
   )
 
   expect_equal(length(results$param), 1)
-  expect_true("positionalEncoding" %in% results$modelParamNames)
+  expect_true("positionalEncoding" %in% names(results$param[[1]]))
   expect_equal(results$param[[1]]$positionalEncoding, list(name = "SinusoidalPE"))
 
   # Handles a single PE provided as a list
@@ -340,7 +339,7 @@ test_that("Positional encodings work", {
   )
 
   expect_equal(length(results$param), 1)
-  expect_true("positionalEncoding" %in% results$modelParamNames)
+  expect_true("positionalEncoding" %in% names(results$param[[1]]))
   expect_equal(results$param[[1]]$positionalEncoding, peConfig)
 
   # Handles multiple PEs provided
@@ -359,7 +358,7 @@ test_that("Positional encodings work", {
   )
 
   expect_equal(length(results$param), 2)
-  expect_true("positionalEncoding" %in% results$modelParamNames)
+  expect_true("positionalEncoding" %in% names(results$param[[1]]))
   expect_equal(results$param[[1]]$positionalEncoding, peConfigs[[1]])
   expect_equal(results$param[[2]]$positionalEncoding, peConfigs[[2]])
 
@@ -377,7 +376,7 @@ test_that("Positional encodings work", {
   )
 
   expect_equal(length(results$param), 2)
-  expect_true("positionalEncoding" %in% results$modelParamNames)
+  expect_true("positionalEncoding" %in% names(results$param[[1]]))
 
   expect_equal(results$param[[1]]$positionalEncoding, list(name = "SinusoidalPE", dropout = 0.1))
   expect_equal(results$param[[2]]$positionalEncoding, list(name = "SinusoidalPE", dropout = 0.2))
@@ -400,7 +399,7 @@ test_that("Positional encodings work", {
 
   # Expected number of combinations = 2 (for dimToken) * (2 + 1) (for PEs) = 6
   expect_equal(length(results$param), 6)
-  expect_true("positionalEncoding" %in% results$modelParamNames)
+  expect_true("positionalEncoding" %in% names(results$param[[1]]))
 
   # Spot-check some of the combinations to ensure correctness
   paramSummary <- sapply(results$param, function(p) {
