@@ -100,10 +100,13 @@ jobs:
             uv pip install "torch==${{ matrix.config.torch }}" --index https://download.pytorch.org/whl/cpu/
           fi
 
-      - name: Setup tmate session
-        uses: mxschmitt/action-tmate@v3
+      # tmate's public servers are shut down (mxschmitt/action-tmate#255)
+      - name: Setup upterm session
+        uses: owenthereal/action-upterm@v2
         with:
           limit-access-to-actor: true
+          # jobs nobody joins carry on with the check
+          wait-timeout-minutes: 30
 
       - uses: r-lib/actions/check-r-package@v2
         with:
